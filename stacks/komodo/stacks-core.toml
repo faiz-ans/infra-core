@@ -1,13 +1,14 @@
 # ResourceSync source for the Core host (Komodo Core + local Periphery).
-# server name is [[CORE_SERVER]] (bootstrap default: core).
+# Komodo does not interpolate [[VAR]] in server/repo — those must be literals.
+# Environment [[VAR]] still interpolates at deploy from Core [secrets] / Variables.
 # webhook_enabled is false; poll on-site.
 
 [[stack]]
 name = "caddy"
 deploy = true
 [stack.config]
-server = "[[CORE_SERVER]]"
-repo = "[[CATALOG_REPO]]"
+server = "core"
+repo = "faiz-ans/infra-core"
 branch = "main"
 run_directory = "stacks/platform/caddy"
 file_paths = ["compose.yaml"]
@@ -25,8 +26,8 @@ name = "authelia"
 deploy = true
 after = ["caddy"]
 [stack.config]
-server = "[[CORE_SERVER]]"
-repo = "[[CATALOG_REPO]]"
+server = "core"
+repo = "faiz-ans/infra-core"
 branch = "main"
 run_directory = "stacks/platform/authelia"
 file_paths = ["compose.yaml"]
@@ -46,8 +47,8 @@ name = "pihole"
 deploy = true
 after = ["caddy"]
 [stack.config]
-server = "[[CORE_SERVER]]"
-repo = "[[CATALOG_REPO]]"
+server = "core"
+repo = "faiz-ans/infra-core"
 branch = "main"
 run_directory = "stacks/platform/pihole"
 file_paths = ["compose.yaml"]
@@ -65,8 +66,8 @@ name = "wireguard"
 deploy = true
 after = ["caddy"]
 [stack.config]
-server = "[[CORE_SERVER]]"
-repo = "[[CATALOG_REPO]]"
+server = "core"
+repo = "faiz-ans/infra-core"
 branch = "main"
 run_directory = "stacks/platform/wireguard"
 file_paths = ["compose.yaml"]
@@ -86,8 +87,8 @@ name = "homepage"
 deploy = true
 after = ["caddy", "authelia"]
 [stack.config]
-server = "[[CORE_SERVER]]"
-repo = "[[CATALOG_REPO]]"
+server = "core"
+repo = "faiz-ans/infra-core"
 branch = "main"
 run_directory = "stacks/platform/homepage"
 file_paths = ["compose.yaml"]
@@ -116,8 +117,8 @@ name = "vaultwarden"
 deploy = true
 after = ["caddy", "authelia"]
 [stack.config]
-server = "[[CORE_SERVER]]"
-repo = "[[CATALOG_REPO]]"
+server = "core"
+repo = "faiz-ans/infra-core"
 branch = "main"
 run_directory = "stacks/workload/vaultwarden"
 file_paths = ["compose.yaml"]
@@ -136,8 +137,8 @@ name = "restic"
 deploy = true
 after = ["vaultwarden"]
 [stack.config]
-server = "[[CORE_SERVER]]"
-repo = "[[CATALOG_REPO]]"
+server = "core"
+repo = "faiz-ans/infra-core"
 branch = "main"
 run_directory = "stacks/platform/restic"
 file_paths = ["compose.yaml"]

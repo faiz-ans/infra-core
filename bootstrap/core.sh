@@ -543,11 +543,12 @@ echo "Server '${CORE_SERVER}' is KOMODO_FIRST_SERVER_NAME / PERIPHERY_CONNECT_AS
 echo "Remote Periphery should connect_as '${PERIPHERY_SERVER}'."
 echo
 echo "Create a ResourceSync (webhooks disabled):"
-echo "  repo:            ${CATALOG_REPO}"
+echo "  repo:            faiz-ans/infra-core"
 echo "  branch:          main"
-echo "  resource path:   stacks/komodo"
+echo "  resource path:   stacks/komodo/stacks-core.toml"
 echo "  poll:            enabled"
 echo "  webhook_enabled: false"
+echo "After the remote Periphery server is OK, add stacks/komodo/stacks-periphery.toml."
 echo
 echo "Komodo [secrets] were written to ${KOMODO_DIR}/core.config.toml"
 echo "Also add remaining keys from stacks/komodo/VARIABLES.md (widget tokens, BACKUP_DRIVE on the remote host)."

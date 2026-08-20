@@ -8,9 +8,9 @@ Mark items tagged **secret** as secrets in Komodo.
 
 | Key | Secret | Used by |
 |---|---|---|
-| `CATALOG_REPO` | | ResourceSync git `owner/repo` |
-| `CORE_SERVER` | | Komodo server name for Core + local Periphery (default `core`) |
-| `PERIPHERY_SERVER` | | Komodo server name for the remote engine (default `periphery`) |
+| `CATALOG_REPO` | | Informational. Stack `repo` in ResourceSync TOML is the catalog literal `faiz-ans/infra-core` |
+| `CORE_SERVER` | | Bootstrap `connect_as` / first server. Must match TOML `server = "core"` |
+| `PERIPHERY_SERVER` | | Remote Periphery `connect_as`. Must match TOML `server = "periphery"` |
 | `DOMAIN` | | Caddy, Authelia, Pi-hole, Homepage, Vaultwarden public URL |
 | `TZ` | | Most containers |
 | `NAS_LAN_IP` | | Pi-hole wildcard, Homepage/Prometheus scrape of NAS-published ports |

@@ -1,13 +1,14 @@
 # ResourceSync source for the remote Periphery host.
-# server name is [[PERIPHERY_SERVER]] (bootstrap default: periphery).
+# Komodo does not interpolate [[VAR]] in server/repo — those must be literals.
+# Apply this file only after the periphery server is connected.
 # webhook_enabled is false; poll on-site.
 
 [[stack]]
 name = "jellyfin"
 deploy = true
 [stack.config]
-server = "[[PERIPHERY_SERVER]]"
-repo = "[[CATALOG_REPO]]"
+server = "periphery"
+repo = "faiz-ans/infra-core"
 branch = "main"
 run_directory = "stacks/workload/jellyfin"
 file_paths = ["compose.yaml"]
@@ -24,8 +25,8 @@ DATA_ROOT = [[DATA_ROOT]]
 name = "arr"
 deploy = true
 [stack.config]
-server = "[[PERIPHERY_SERVER]]"
-repo = "[[CATALOG_REPO]]"
+server = "periphery"
+repo = "faiz-ans/infra-core"
 branch = "main"
 run_directory = "stacks/workload/arr"
 file_paths = ["compose.yaml"]
@@ -42,8 +43,8 @@ DATA_ROOT = [[DATA_ROOT]]
 name = "qbittorrent"
 deploy = true
 [stack.config]
-server = "[[PERIPHERY_SERVER]]"
-repo = "[[CATALOG_REPO]]"
+server = "periphery"
+repo = "faiz-ans/infra-core"
 branch = "main"
 run_directory = "stacks/workload/qbittorrent"
 file_paths = ["compose.yaml"]
@@ -60,8 +61,8 @@ DATA_ROOT = [[DATA_ROOT]]
 name = "nextcloud"
 deploy = true
 [stack.config]
-server = "[[PERIPHERY_SERVER]]"
-repo = "[[CATALOG_REPO]]"
+server = "periphery"
+repo = "faiz-ans/infra-core"
 branch = "main"
 run_directory = "stacks/workload/nextcloud"
 file_paths = ["compose.yaml"]
@@ -81,8 +82,8 @@ DOMAIN = [[DOMAIN]]
 name = "homeassistant"
 deploy = true
 [stack.config]
-server = "[[PERIPHERY_SERVER]]"
-repo = "[[CATALOG_REPO]]"
+server = "periphery"
+repo = "faiz-ans/infra-core"
 branch = "main"
 run_directory = "stacks/workload/homeassistant"
 file_paths = ["compose.yaml"]
@@ -97,8 +98,8 @@ DATA_ROOT = [[DATA_ROOT]]
 name = "monitoring"
 deploy = true
 [stack.config]
-server = "[[PERIPHERY_SERVER]]"
-repo = "[[CATALOG_REPO]]"
+server = "periphery"
+repo = "faiz-ans/infra-core"
 branch = "main"
 run_directory = "stacks/platform/monitoring"
 file_paths = ["compose.yaml"]
@@ -115,8 +116,8 @@ GRAFANA_ADMIN_PASSWORD = [[GRAFANA_ADMIN_PASSWORD]]
 name = "restic-rest"
 deploy = true
 [stack.config]
-server = "[[PERIPHERY_SERVER]]"
-repo = "[[CATALOG_REPO]]"
+server = "periphery"
+repo = "faiz-ans/infra-core"
 branch = "main"
 run_directory = "stacks/platform/restic-rest"
 file_paths = ["compose.yaml"]
