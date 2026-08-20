@@ -250,6 +250,45 @@ seed_omv_keyring() {
   rm -f "${tmp}"
 }
 
+# OMV workbench listen port is conf.webadmin.port in the OMV database, not
+# OMV_NGINX_SITE_WEBGUI_LISTEN_PORT (that env var does not change nginx).
+move_omv_workbench_off_http() {
+  local omv_confdbadm
+  omv_confdbadm=$(command -v omv-confdbadm || true)
+  if [[ -x /usr/sbin/omv-confdbadm ]]; then
+    omv_confdbadm=/usr/sbin/omv-confdbadm
+  fi
+  if [[ -z "${omv_confdbadm}" ]]; then
+    return 0
+  fi
+
+  echo "Moving OMV workbench to :81 and disabling OMV TLS so Caddy can bind :80/:443."
+  # omv-confdbadm read conf.webadmin
+  # python3 -c '...'  # set port=81, enablessl=false
+  # omv-confdbadm update conf.webadmin '{...}'
+  python3 - "${omv_confdbadm}" <<'PY'
+import json, subprocess, sys
+tool = sys.argv[1]
+cfg = json.loads(subprocess.check_output([tool, "read", "conf.webadmin"], text=True))
+cfg["port"] = 81
+cfg["enablessl"] = False
+cfg["forcesslonly"] = False
+subprocess.check_call([tool, "update", "conf.webadmin", json.dumps(cfg)])
+print(json.dumps(cfg))
+PY
+  # omv-salt deploy run nginx
+  omv-salt deploy run nginx
+
+  if command -v docker >/dev/null 2>&1 && docker inspect caddy >/dev/null 2>&1; then
+    # docker start caddy
+    docker start caddy >/dev/null 2>&1 || docker restart caddy >/dev/null 2>&1 || true
+  fi
+
+  echo "Host listeners after OMV move:"
+  # ss -tlnp | grep -E ':80|:443|:81|:9120'
+  ss -tlnp | grep -E ':80|:443|:81|:9120' || true
+}
+
 install_omv() {
   local installer="https://github.com/OpenMediaVault-Plugin-Developers/installScript/raw/master/install"
   seed_omv_keyring
@@ -307,12 +346,7 @@ if [[ "${USE_EXTERNAL_DISK}" == "yes" ]]; then
   fi
 
   # Move OMV workbench off :80 so Caddy can bind 80/443.
-  # omv-env set OMV_NGINX_SITE_WEBGUI_LISTEN_PORT 81
-  # omv-salt deploy run nginx
-  if command -v omv-env >/dev/null 2>&1; then
-    omv-env set OMV_NGINX_SITE_WEBGUI_LISTEN_PORT 81 || true
-    omv-salt deploy run nginx || true
-  fi
+  move_omv_workbench_off_http
 
   if [[ -z "${DATA_ROOT}" || ! -d "${DATA_ROOT}" ]]; then
     ensure_data_disk

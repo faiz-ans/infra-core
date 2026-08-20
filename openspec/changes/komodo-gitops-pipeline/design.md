@@ -78,7 +78,7 @@ Public href: `https://<app>.{{HOMEPAGE_VAR_DOMAIN}}` (Caddy + Authelia). Interna
 
 ### 7. Vaultwarden Authelia matcher
 
-`vault.{$DOMAIN}`: `forward_auth` only for `/admin` and `/admin/*`. `/api/*`, `/icons/*`, `/events/*`, `/notifications/*`, and the web vault are Vaultwarden’s own auth so official clients work.
+`pw.{$DOMAIN}`: `forward_auth` only for `/admin` and `/admin/*`. `/api/*`, `/icons/*`, `/events/*`, `/notifications/*`, and the web vault are Vaultwarden’s own auth so official clients work.
 
 ### 8. Storage and backup
 

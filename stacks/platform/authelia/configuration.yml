@@ -21,7 +21,7 @@ authentication_backend:
 access_control:
   default_policy: one_factor
   rules:
-    - domain: 'authelia.{{ env "DOMAIN" }}'
+    - domain: 'auth.{{ env "DOMAIN" }}'
       policy: bypass
 
 session:
@@ -29,8 +29,8 @@ session:
   cookies:
     - name: authelia_session
       domain: '{{ env "DOMAIN" }}'
-      authelia_url: 'https://authelia.{{ env "DOMAIN" }}'
-      default_redirection_url: 'https://homepage.{{ env "DOMAIN" }}'
+      authelia_url: 'https://auth.{{ env "DOMAIN" }}'
+      default_redirection_url: 'https://dash.{{ env "DOMAIN" }}'
 
 storage:
   encryption_key: '{{ env "STORAGE_ENCRYPTION_KEY" }}'

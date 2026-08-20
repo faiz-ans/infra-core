@@ -18,6 +18,13 @@ Bootstrap SHALL install OpenMediaVault (when using an external data disk), Docke
 - **WHEN** bootstrap completes on Raspberry Pi OS Lite 64-bit with an OMV data disk attached
 - **THEN** Docker, Komodo Core, and Periphery are installed, the Core server resource exists under `CORE_SERVER` (default `core`), `DATA_ROOT` is set, and ResourceSync is configured to poll the catalog
 
+### Requirement: OMV workbench does not occupy HTTP/HTTPS
+When OpenMediaVault is installed, bootstrap SHALL move the OMV workbench off host ports 80 and 443 so Caddy can bind them. The workbench HTTP listen port SHALL be taken from the OMV configuration database (`conf.webadmin.port`), not from `OMV_NGINX_SITE_WEBGUI_LISTEN_PORT`. After the change, workbench SHALL listen on port 81 and OMV SHALL NOT terminate TLS on 443.
+
+#### Scenario: Caddy can bind 80 and 443
+- **WHEN** bootstrap has installed OMV and applied the workbench port change
+- **THEN** host nginx listens on 81 (not 80/443) and Caddy can publish `80:80` and `443:443`
+
 ### Requirement: Komodo Core is not a catalog chicken-egg
 Komodo Core (and the first local Periphery) SHALL be brought up by bootstrap, not by ResourceSync. After Core exists, ResourceSync MAY manage other stacks. Bootstrap MAY later adopt Core as a visible stack but MUST remain able to start Core without Komodo already running.
 

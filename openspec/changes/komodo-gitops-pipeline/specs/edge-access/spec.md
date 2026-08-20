@@ -1,14 +1,18 @@
 ## ADDED Requirements
 
 ### Requirement: Single Caddy on the NAS
-Caddy SHALL run only on server `nas`. It SHALL terminate `*.{$DOMAIN}` and reverse-proxy to NAS containers on the edge Docker network by name, and to HTPC published ports at `{$HTPC_UPSTREAM}`. No second reverse proxy SHALL be required on the HTPC for these apps.
+Caddy SHALL run only on server `nas`. It SHALL bind host ports 80 and 443, terminate `*.{$DOMAIN}` (HTTPS, internal TLS in this catalog), and reverse-proxy to NAS containers on the edge Docker network by name, and to HTPC published ports at `{$HTPC_UPSTREAM}`. No second reverse proxy SHALL be required on the HTPC for these apps. Host nginx (OMV workbench) MUST NOT listen on 80 or 443.
+
+#### Scenario: Hostname is not the OMV workbench
+- **WHEN** a LAN client opens `https://dash.{$DOMAIN}` (or another catalogued hostname) with DNS pointing at the NAS
+- **THEN** Caddy serves that vhost, not the OMV workbench on port 80
 
 #### Scenario: Jellyfin through Pi Caddy
 - **WHEN** a client requests `jellyfin.{$DOMAIN}`
 - **THEN** Caddy on `nas` proxies to `{$HTPC_UPSTREAM}` on Jellyfin’s published port
 
 #### Scenario: Vaultwarden local
-- **WHEN** a client requests `vault.{$DOMAIN}`
+- **WHEN** a client requests `pw.{$DOMAIN}`
 - **THEN** Caddy on `nas` proxies to the Vaultwarden service on the edge network
 
 ### Requirement: Authelia at the edge

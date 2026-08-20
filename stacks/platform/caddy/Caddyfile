@@ -9,42 +9,42 @@
 	}
 }
 
-https://authelia.{$DOMAIN} {
+https://auth.{$DOMAIN} {
 	tls internal
 	reverse_proxy authelia:9091
 }
 
-https://homepage.{$DOMAIN} {
+https://dash.{$DOMAIN} {
 	tls internal
 	import authelia_gate
 	reverse_proxy homepage:3000
 }
 
-https://pihole.{$DOMAIN} {
+https://dns.{$DOMAIN} {
 	tls internal
 	import authelia_gate
 	reverse_proxy pihole:80
 }
 
-https://wireguard.{$DOMAIN} {
+https://vpn.{$DOMAIN} {
 	tls internal
 	import authelia_gate
 	reverse_proxy wireguard:51821
 }
 
-https://komodo.{$DOMAIN} {
+https://ops.{$DOMAIN} {
 	tls internal
 	import authelia_gate
 	reverse_proxy host.docker.internal:9120
 }
 
-https://omv.{$DOMAIN} {
+https://nas.{$DOMAIN} {
 	tls internal
 	import authelia_gate
 	reverse_proxy host.docker.internal:81
 }
 
-https://vault.{$DOMAIN} {
+https://pw.{$DOMAIN} {
 	tls internal
 
 	@admin path /admin /admin/*

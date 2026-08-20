@@ -1,15 +1,15 @@
 ---
 - Platform:
     - Homepage:
-        href: https://homepage.{{HOMEPAGE_VAR_DOMAIN}}
+        href: https://dash.{{HOMEPAGE_VAR_DOMAIN}}
         siteMonitor: http://homepage:3000
         icon: homepage.png
     - Authelia:
-        href: https://authelia.{{HOMEPAGE_VAR_DOMAIN}}
+        href: https://auth.{{HOMEPAGE_VAR_DOMAIN}}
         siteMonitor: http://authelia:9091
         icon: authelia.png
     - Pi-hole:
-        href: https://pihole.{{HOMEPAGE_VAR_DOMAIN}}
+        href: https://dns.{{HOMEPAGE_VAR_DOMAIN}}
         siteMonitor: http://pihole:80
         icon: pi-hole.png
         widget:
@@ -18,19 +18,19 @@
           key: "{{HOMEPAGE_VAR_PIHOLE_TOKEN}}"
           version: 6
     - WireGuard:
-        href: https://wireguard.{{HOMEPAGE_VAR_DOMAIN}}
+        href: https://vpn.{{HOMEPAGE_VAR_DOMAIN}}
         siteMonitor: http://wireguard:51821
         icon: wireguard.png
     - Komodo:
-        href: https://komodo.{{HOMEPAGE_VAR_DOMAIN}}
+        href: https://ops.{{HOMEPAGE_VAR_DOMAIN}}
         siteMonitor: http://{{HOMEPAGE_VAR_NAS_LAN_IP}}:9120
         icon: mdi-lizard
     - OMV:
-        href: https://omv.{{HOMEPAGE_VAR_DOMAIN}}
+        href: https://nas.{{HOMEPAGE_VAR_DOMAIN}}
         siteMonitor: http://{{HOMEPAGE_VAR_NAS_LAN_IP}}:81
         icon: openmediavault.png
     - Vaultwarden:
-        href: https://vault.{{HOMEPAGE_VAR_DOMAIN}}
+        href: https://pw.{{HOMEPAGE_VAR_DOMAIN}}
         siteMonitor: http://vaultwarden:80
         icon: bitwarden.png
 

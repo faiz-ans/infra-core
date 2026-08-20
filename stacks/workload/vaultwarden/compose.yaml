@@ -5,7 +5,7 @@ services:
     restart: unless-stopped
     environment:
       TZ: ${TZ}
-      DOMAIN: https://vault.${DOMAIN}
+      DOMAIN: https://pw.${DOMAIN}
       ADMIN_TOKEN: ${VAULTWARDEN_ADMIN_TOKEN}
       SIGNUPS_ALLOWED: ${SIGNUPS_ALLOWED}
       WEBSOCKET_ENABLED: "true"

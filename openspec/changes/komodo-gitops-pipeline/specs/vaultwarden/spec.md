@@ -8,18 +8,18 @@ The catalog SHALL provide a Vaultwarden Compose stack deployed by Komodo Resourc
 - **THEN** Vaultwarden is running on `nas` with data under `${DATA_ROOT}/system/vaultwarden` and no host IPs, domains, or tokens committed in compose or config files
 
 ### Requirement: Authelia protects only /admin
-Caddy SHALL reverse-proxy `vault.{$DOMAIN}` to Vaultwarden. Authelia forward auth SHALL apply only to `/admin` (and `/admin/*`). The web vault, Bitwarden client API, icons, events, and websocket notification paths MUST NOT go through Authelia; Vaultwarden SHALL authenticate those itself.
+Caddy SHALL reverse-proxy `pw.{$DOMAIN}` to Vaultwarden. Authelia forward auth SHALL apply only to `/admin` (and `/admin/*`). The web vault, Bitwarden client API, icons, events, and websocket notification paths MUST NOT go through Authelia; Vaultwarden SHALL authenticate those itself.
 
 #### Scenario: Client sync bypasses Authelia
-- **WHEN** an official Bitwarden client calls `/api/*`, `/icons/*`, `/events/*`, or `/notifications/*` on `vault.{$DOMAIN}`
+- **WHEN** an official Bitwarden client calls `/api/*`, `/icons/*`, `/events/*`, or `/notifications/*` on `pw.{$DOMAIN}`
 - **THEN** Caddy proxies to Vaultwarden without Authelia forward auth
 
 #### Scenario: Admin UI requires Authelia
-- **WHEN** a browser requests `/admin` or `/admin/*` on `vault.{$DOMAIN}`
+- **WHEN** a browser requests `/admin` or `/admin/*` on `pw.{$DOMAIN}`
 - **THEN** Caddy enforces Authelia forward auth before proxying to Vaultwarden
 
 ### Requirement: Homepage uses public href and internal scrape
-Homepage SHALL link Vaultwarden with a public href on `vault.{{HOMEPAGE_VAR_DOMAIN}}` (through Caddy) and SHALL monitor or scrape it via the internal URL `http://vaultwarden:80` (edge network), not through Authelia.
+Homepage SHALL link Vaultwarden with a public href on `pw.{{HOMEPAGE_VAR_DOMAIN}}` (through Caddy) and SHALL monitor or scrape it via the internal URL `http://vaultwarden:80` (edge network), not through Authelia.
 
 #### Scenario: Widget does not hit Authelia
 - **WHEN** Homepage checks Vaultwarden
