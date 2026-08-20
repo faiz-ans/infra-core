@@ -8,6 +8,7 @@ services:
     container_name: wireguard
     restart: unless-stopped
     privileged: true
+    entrypoint: ["/bin/sh", "/entrypoint.sh"]
     environment:
       TZ: ${TZ}
       PORT: "51821"
@@ -24,6 +25,7 @@ services:
     volumes:
       - ${DATA_ROOT}/system/core/wireguard:/etc/wireguard
       - /lib/modules:/lib/modules:ro
+      - ./entrypoint.sh:/entrypoint.sh:ro
     devices:
       - /dev/net/tun:/dev/net/tun
     cap_add:

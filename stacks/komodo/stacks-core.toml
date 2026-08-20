@@ -74,6 +74,9 @@ repo = "faiz-ans/infra-core"
 branch = "main"
 run_directory = "stacks/platform/wireguard"
 file_paths = ["compose.yaml"]
+config_files = [
+  { path = "entrypoint.sh", requires = "Redeploy" },
+]
 webhook_enabled = false
 poll_for_updates = true
 environment = """
