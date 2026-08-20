@@ -11,7 +11,7 @@ This design implements the `komodo-gitops-pipeline` proposal and specs.
 **Goals:**
 
 - Reproducible GitOps: clone catalog → fill Komodo → sync.
-- One Caddy on the Pi for `*.{$DOMAIN}`; Authelia at the edge with the Vaultwarden `/admin` exception.
+- One Caddy on the Pi for `*.{$DOMAIN}`; Authelia at the edge with the Vaultwarden `/admin` exception and Komodo (`ops`) serving its own login.
 - NAS + HTPC stacks up, including backup to the HTPC 4TB USB.
 - Pi bootstrap that prompts and writes secrets on-box.
 

@@ -16,7 +16,15 @@ Caddy SHALL run only on server `nas`. It SHALL bind host ports 80 and 443, termi
 - **THEN** Caddy on `nas` proxies to the Vaultwarden service on the edge network
 
 ### Requirement: Authelia at the edge
-Authelia SHALL run on `nas` and SHALL protect Caddy sites via forward auth, except where a stack spec defines a narrower matcher. Vaultwarden SHALL keep Authelia on `/admin` and `/admin/*` only, as specified by the `vaultwarden` capability.
+Authelia SHALL run on `nas` and SHALL protect Caddy sites via forward auth, except where a stack spec defines a narrower matcher. Vaultwarden SHALL keep Authelia on `/admin` and `/admin/*` only, as specified by the `vaultwarden` capability. Komodo at `ops.{$DOMAIN}` SHALL NOT use Authelia forward auth; Komodo authenticates the UI itself.
+
+#### Scenario: Default app is SSO-gated
+- **WHEN** a browser opens Homepage or another Authelia-protected site
+- **THEN** Caddy performs Authelia forward auth before the upstream
+
+#### Scenario: Komodo login is not Authelia
+- **WHEN** a browser opens `https://ops.{$DOMAIN}`
+- **THEN** Caddy proxies to Komodo Core without Authelia forward auth, and Komodo’s own login is used
 
 #### Scenario: Default app is SSO-gated
 - **WHEN** a browser opens Homepage or another Authelia-protected site

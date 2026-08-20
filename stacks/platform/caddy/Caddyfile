@@ -34,7 +34,8 @@ https://vpn.{$DOMAIN} {
 
 https://ops.{$DOMAIN} {
 	tls internal
-	import authelia_gate
+	# Komodo has its own login. Authelia forward_auth breaks /auth/GetUser
+	# (empty login form after sign-in). Direct :9120 stays published on the host.
 	reverse_proxy host.docker.internal:9120
 }
 
