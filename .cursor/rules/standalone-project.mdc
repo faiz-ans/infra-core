@@ -1,0 +1,18 @@
+---
+description: Treat this repo as a standalone project; do not reuse context from other projects
+alwaysApply: true
+---
+
+# Standalone project — no other-project context
+
+This repository is a **standalone project**. Treat it as isolated from every other Cursor workspace, repo, lab, or prior engagement.
+
+- Use only this conversation, files in this workspace, and tools run in this session.
+- Do not recall, search, or reuse memories, decisions, preferences, paths, credentials, stack choices, or unfinished work from other projects.
+- Do not search prior chats or agent transcripts from other workspaces unless the user explicitly asks.
+- If a fact might have come from another project, ignore it and gather it again here by reading this repo or asking.
+
+```
+❌ BAD: "In the other infra repo we used that cluster layout, so I'll reuse it here."
+✅ GOOD: Inspect this repository (or ask) before assuming paths, stack, naming, or prior decisions.
+```

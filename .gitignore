@@ -1,0 +1,5 @@
+.env
+*.env
+!*.env.template
+bootstrap/komodo/compose.env
+.DS_Store

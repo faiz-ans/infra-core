@@ -1,0 +1,16 @@
+---
+title: home
+headerStyle: boxed
+layout:
+  Platform:
+    style: row
+    columns: 4
+  Media:
+    style: row
+    columns: 4
+  Cloud:
+    style: row
+    columns: 2
+  Monitor:
+    style: row
+    columns: 2

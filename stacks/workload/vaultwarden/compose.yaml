@@ -1,0 +1,20 @@
+services:
+  vaultwarden:
+    image: vaultwarden/server:latest
+    container_name: vaultwarden
+    restart: unless-stopped
+    environment:
+      TZ: ${TZ}
+      DOMAIN: https://vault.${DOMAIN}
+      ADMIN_TOKEN: ${VAULTWARDEN_ADMIN_TOKEN}
+      SIGNUPS_ALLOWED: ${SIGNUPS_ALLOWED}
+      WEBSOCKET_ENABLED: "true"
+    volumes:
+      - ${DATA_ROOT}/system/vaultwarden:/data
+    networks:
+      - edge
+
+networks:
+  edge:
+    external: true
+    name: edge

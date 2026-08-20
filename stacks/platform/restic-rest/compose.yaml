@@ -1,0 +1,19 @@
+services:
+  restic-rest:
+    image: restic/rest-server:latest
+    container_name: restic-rest
+    restart: unless-stopped
+    command:
+      - --path
+      - /data
+      - --htpasswd-file
+      - /htpasswd
+      - --listen
+      - :8000
+    ports:
+      - "8000:8000"
+    environment:
+      TZ: ${TZ}
+    volumes:
+      - ${BACKUP_DRIVE}/restic:/data
+      - ${BACKUP_DRIVE}/htpasswd:/htpasswd:ro

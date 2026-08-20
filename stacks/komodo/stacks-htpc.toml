@@ -1,0 +1,129 @@
+# ResourceSync source for server htpc. Values come from Komodo [[VARS]].
+# webhook_enabled is false; poll on-site.
+
+[[stack]]
+name = "jellyfin"
+deploy = true
+[stack.config]
+server = "htpc"
+repo = "[[CATALOG_REPO]]"
+branch = "main"
+run_directory = "stacks/workload/jellyfin"
+file_paths = ["compose.yaml"]
+webhook_enabled = false
+poll_for_updates = true
+environment = """
+TZ = [[TZ]]
+PUID = [[PUID]]
+PGID = [[PGID]]
+DATA_ROOT = [[DATA_ROOT]]
+"""
+
+[[stack]]
+name = "arr"
+deploy = true
+[stack.config]
+server = "htpc"
+repo = "[[CATALOG_REPO]]"
+branch = "main"
+run_directory = "stacks/workload/arr"
+file_paths = ["compose.yaml"]
+webhook_enabled = false
+poll_for_updates = true
+environment = """
+TZ = [[TZ]]
+PUID = [[PUID]]
+PGID = [[PGID]]
+DATA_ROOT = [[DATA_ROOT]]
+"""
+
+[[stack]]
+name = "qbittorrent"
+deploy = true
+[stack.config]
+server = "htpc"
+repo = "[[CATALOG_REPO]]"
+branch = "main"
+run_directory = "stacks/workload/qbittorrent"
+file_paths = ["compose.yaml"]
+webhook_enabled = false
+poll_for_updates = true
+environment = """
+TZ = [[TZ]]
+PUID = [[PUID]]
+PGID = [[PGID]]
+DATA_ROOT = [[DATA_ROOT]]
+"""
+
+[[stack]]
+name = "nextcloud"
+deploy = true
+[stack.config]
+server = "htpc"
+repo = "[[CATALOG_REPO]]"
+branch = "main"
+run_directory = "stacks/workload/nextcloud"
+file_paths = ["compose.yaml"]
+webhook_enabled = false
+poll_for_updates = true
+environment = """
+TZ = [[TZ]]
+PUID = [[PUID]]
+PGID = [[PGID]]
+DATA_ROOT = [[DATA_ROOT]]
+NEXTCLOUD_ADMIN_USER = [[NEXTCLOUD_ADMIN_USER]]
+NEXTCLOUD_ADMIN_PASSWORD = [[NEXTCLOUD_ADMIN_PASSWORD]]
+DOMAIN = [[DOMAIN]]
+"""
+
+[[stack]]
+name = "homeassistant"
+deploy = true
+[stack.config]
+server = "htpc"
+repo = "[[CATALOG_REPO]]"
+branch = "main"
+run_directory = "stacks/workload/homeassistant"
+file_paths = ["compose.yaml"]
+webhook_enabled = false
+poll_for_updates = true
+environment = """
+TZ = [[TZ]]
+DATA_ROOT = [[DATA_ROOT]]
+"""
+
+[[stack]]
+name = "monitoring"
+deploy = true
+[stack.config]
+server = "htpc"
+repo = "[[CATALOG_REPO]]"
+branch = "main"
+run_directory = "stacks/platform/monitoring"
+file_paths = ["compose.yaml"]
+webhook_enabled = false
+poll_for_updates = true
+environment = """
+TZ = [[TZ]]
+DOMAIN = [[DOMAIN]]
+NAS_LAN_IP = [[NAS_LAN_IP]]
+GRAFANA_ADMIN_PASSWORD = [[GRAFANA_ADMIN_PASSWORD]]
+"""
+
+[[stack]]
+name = "restic-rest"
+deploy = true
+[stack.config]
+server = "htpc"
+repo = "[[CATALOG_REPO]]"
+branch = "main"
+run_directory = "stacks/platform/restic-rest"
+file_paths = ["compose.yaml"]
+webhook_enabled = false
+poll_for_updates = true
+environment = """
+TZ = [[TZ]]
+BACKUP_DRIVE = [[BACKUP_DRIVE]]
+RESTIC_REST_USER = [[RESTIC_REST_USER]]
+RESTIC_REST_PASSWORD = [[RESTIC_REST_PASSWORD]]
+"""

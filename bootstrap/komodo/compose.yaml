@@ -1,0 +1,63 @@
+###################################
+# Komodo Core + local Periphery
+# Used only by bootstrap (Layer 0). Not deployed via ResourceSync.
+###################################
+
+services:
+  postgres:
+    image: ghcr.io/ferretdb/postgres-documentdb:17
+    labels:
+      komodo.skip: true
+    restart: unless-stopped
+    volumes:
+      - postgres-data:/var/lib/postgresql/data
+    environment:
+      POSTGRES_USER: ${KOMODO_DATABASE_USERNAME}
+      POSTGRES_PASSWORD: ${KOMODO_DATABASE_PASSWORD}
+      POSTGRES_DB: postgres
+
+  ferretdb:
+    image: ghcr.io/ferretdb/ferretdb:2
+    labels:
+      komodo.skip: true
+    restart: unless-stopped
+    depends_on:
+      - postgres
+    volumes:
+      - ferretdb-state:/state
+    environment:
+      FERRETDB_POSTGRESQL_URL: postgres://${KOMODO_DATABASE_USERNAME}:${KOMODO_DATABASE_PASSWORD}@postgres:5432/postgres
+
+  core:
+    image: ghcr.io/moghtech/komodo-core:${COMPOSE_KOMODO_IMAGE_TAG:-2}
+    init: true
+    restart: unless-stopped
+    depends_on:
+      - ferretdb
+    ports:
+      - "9120:9120"
+    env_file: ./compose.env
+    environment:
+      KOMODO_DATABASE_ADDRESS: ferretdb:27017
+    volumes:
+      - keys:/config/keys
+      - ${COMPOSE_KOMODO_BACKUPS_PATH}:/backups
+      - ${KOMODO_CORE_CONFIG_TOML}:/config/config.toml:ro
+
+  periphery:
+    image: ghcr.io/moghtech/komodo-periphery:${COMPOSE_KOMODO_IMAGE_TAG:-2}
+    init: true
+    restart: unless-stopped
+    depends_on:
+      - core
+    env_file: ./compose.env
+    volumes:
+      - keys:/config/keys
+      - /var/run/docker.sock:/var/run/docker.sock
+      - /proc:/proc
+      - ${PERIPHERY_ROOT_DIRECTORY}:${PERIPHERY_ROOT_DIRECTORY}
+
+volumes:
+  postgres-data:
+  ferretdb-state:
+  keys:

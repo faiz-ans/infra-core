@@ -1,0 +1,28 @@
+services:
+  homepage:
+    image: ghcr.io/gethomepage/homepage:latest
+    container_name: homepage
+    restart: unless-stopped
+    environment:
+      TZ: ${TZ}
+      HOMEPAGE_ALLOWED_HOSTS: ${HOMEPAGE_ALLOWED_HOSTS}
+      HOMEPAGE_VAR_DOMAIN: ${HOMEPAGE_VAR_DOMAIN}
+      HOMEPAGE_VAR_HTPC_UPSTREAM: ${HOMEPAGE_VAR_HTPC_UPSTREAM}
+      HOMEPAGE_VAR_NAS_LAN_IP: ${HOMEPAGE_VAR_NAS_LAN_IP}
+      HOMEPAGE_VAR_PIHOLE_TOKEN: ${HOMEPAGE_VAR_PIHOLE_TOKEN}
+      HOMEPAGE_VAR_JELLYFIN_KEY: ${HOMEPAGE_VAR_JELLYFIN_KEY}
+      HOMEPAGE_VAR_SONARR_KEY: ${HOMEPAGE_VAR_SONARR_KEY}
+      HOMEPAGE_VAR_RADARR_KEY: ${HOMEPAGE_VAR_RADARR_KEY}
+      HOMEPAGE_VAR_PROWLARR_KEY: ${HOMEPAGE_VAR_PROWLARR_KEY}
+      HOMEPAGE_VAR_QBIT_USERNAME: ${HOMEPAGE_VAR_QBIT_USERNAME}
+      HOMEPAGE_VAR_QBIT_PASSWORD: ${HOMEPAGE_VAR_QBIT_PASSWORD}
+      HOMEPAGE_VAR_GRAFANA_KEY: ${HOMEPAGE_VAR_GRAFANA_KEY}
+    volumes:
+      - ./config:/app/config
+    networks:
+      - edge
+
+networks:
+  edge:
+    external: true
+    name: edge

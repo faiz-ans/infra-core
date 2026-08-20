@@ -1,0 +1,29 @@
+services:
+  pihole:
+    image: pihole/pihole:latest
+    container_name: pihole
+    restart: unless-stopped
+    ports:
+      - "53:53/tcp"
+      - "53:53/udp"
+    environment:
+      TZ: ${TZ}
+      FTLCONF_dns_listeningMode: ALL
+      FTLCONF_webserver_api_password: ""
+      DOMAIN: ${DOMAIN}
+      NAS_LAN_IP: ${NAS_LAN_IP}
+    volumes:
+      - ${DATA_ROOT}/system/pihole:/etc/pihole
+      - ./99-wildcard.conf.template:/etc/dnsmasq.d/99-wildcard.template:ro
+      - ./apply-wildcard.sh:/apply-wildcard.sh:ro
+    entrypoint: ["/bin/sh", "-c"]
+    command: "sh /apply-wildcard.sh && exec start.sh"
+    cap_add:
+      - NET_ADMIN
+    networks:
+      - edge
+
+networks:
+  edge:
+    external: true
+    name: edge

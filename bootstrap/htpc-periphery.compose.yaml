@@ -1,0 +1,18 @@
+# Outbound Periphery for Docker Desktop (server name htpc).
+# Copy to the HTPC and pass an env file written from bootstrap/htpc.md — do not commit filled env.
+
+services:
+  periphery:
+    image: ghcr.io/moghtech/komodo-periphery:${COMPOSE_KOMODO_IMAGE_TAG:-2}
+    init: true
+    restart: unless-stopped
+    environment:
+      PERIPHERY_CORE_ADDRESS: ${PERIPHERY_CORE_ADDRESS}
+      PERIPHERY_CONNECT_AS: htpc
+      PERIPHERY_ONBOARDING_KEY: ${PERIPHERY_ONBOARDING_KEY}
+      PERIPHERY_ROOT_DIRECTORY: ${PERIPHERY_ROOT_DIRECTORY:-/etc/komodo}
+      TZ: ${TZ:-Etc/UTC}
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock
+      - /proc:/proc
+      - ${PERIPHERY_ROOT_DIRECTORY:-/etc/komodo}:${PERIPHERY_ROOT_DIRECTORY:-/etc/komodo}

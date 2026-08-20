@@ -1,0 +1,117 @@
+{
+	email off
+}
+
+(authelia_gate) {
+	forward_auth authelia:9091 {
+		uri /api/authz/forward-auth
+		copy_headers Remote-User Remote-Groups Remote-Name Remote-Email
+	}
+}
+
+https://authelia.{$DOMAIN} {
+	tls internal
+	reverse_proxy authelia:9091
+}
+
+https://homepage.{$DOMAIN} {
+	tls internal
+	import authelia_gate
+	reverse_proxy homepage:3000
+}
+
+https://pihole.{$DOMAIN} {
+	tls internal
+	import authelia_gate
+	reverse_proxy pihole:80
+}
+
+https://wireguard.{$DOMAIN} {
+	tls internal
+	import authelia_gate
+	reverse_proxy wireguard:51821
+}
+
+https://komodo.{$DOMAIN} {
+	tls internal
+	import authelia_gate
+	reverse_proxy host.docker.internal:9120
+}
+
+https://omv.{$DOMAIN} {
+	tls internal
+	import authelia_gate
+	reverse_proxy host.docker.internal:81
+}
+
+https://vault.{$DOMAIN} {
+	tls internal
+
+	@admin path /admin /admin/*
+
+	handle @admin {
+		forward_auth authelia:9091 {
+			uri /api/authz/forward-auth
+			copy_headers Remote-User Remote-Groups Remote-Name Remote-Email
+		}
+		reverse_proxy vaultwarden:80
+	}
+
+	handle {
+		reverse_proxy vaultwarden:80
+	}
+}
+
+https://jellyfin.{$DOMAIN} {
+	tls internal
+	import authelia_gate
+	reverse_proxy {$HTPC_UPSTREAM}:8096
+}
+
+https://ha.{$DOMAIN} {
+	tls internal
+	import authelia_gate
+	reverse_proxy {$HTPC_UPSTREAM}:8123
+}
+
+https://nextcloud.{$DOMAIN} {
+	tls internal
+	import authelia_gate
+	reverse_proxy {$HTPC_UPSTREAM}:8080
+}
+
+https://sonarr.{$DOMAIN} {
+	tls internal
+	import authelia_gate
+	reverse_proxy {$HTPC_UPSTREAM}:8989
+}
+
+https://radarr.{$DOMAIN} {
+	tls internal
+	import authelia_gate
+	reverse_proxy {$HTPC_UPSTREAM}:7878
+}
+
+https://prowlarr.{$DOMAIN} {
+	tls internal
+	import authelia_gate
+	reverse_proxy {$HTPC_UPSTREAM}:9696
+}
+
+https://qbittorrent.{$DOMAIN} {
+	tls internal
+	import authelia_gate
+	reverse_proxy {$HTPC_UPSTREAM}:8081
+}
+
+https://grafana.{$DOMAIN} {
+	tls internal
+	import authelia_gate
+	reverse_proxy {$HTPC_UPSTREAM}:3000
+}
+
+https://prometheus.{$DOMAIN} {
+	tls internal
+	import authelia_gate
+	reverse_proxy {$HTPC_UPSTREAM}:9090
+}

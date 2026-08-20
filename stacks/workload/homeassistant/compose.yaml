@@ -1,0 +1,12 @@
+services:
+  homeassistant:
+    image: ghcr.io/home-assistant/home-assistant:stable
+    container_name: homeassistant
+    restart: unless-stopped
+    environment:
+      TZ: ${TZ}
+    ports:
+      - "8123:8123"
+    volumes:
+      - ${DATA_ROOT}/system/homeassistant:/config
+    # wifi / integrations only; no USB radio passthrough

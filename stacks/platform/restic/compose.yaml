@@ -1,0 +1,13 @@
+services:
+  restic:
+    image: restic/restic:latest
+    container_name: restic
+    restart: unless-stopped
+    environment:
+      TZ: ${TZ}
+      RESTIC_REPOSITORY: rest:http://${RESTIC_REST_USER}:${RESTIC_REST_PASSWORD}@${HTPC_UPSTREAM}:8000/nas
+      RESTIC_PASSWORD: ${RESTIC_PASSWORD}
+    volumes:
+      - ${DATA_ROOT}:/data:ro
+      - ./backup.sh:/backup.sh:ro
+    entrypoint: ["/bin/sh", "/backup.sh"]

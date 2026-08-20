@@ -1,0 +1,152 @@
+# ResourceSync source for server nas. Values come from Komodo [[VARS]].
+# webhook_enabled is false; poll on-site.
+
+[[stack]]
+name = "caddy"
+deploy = true
+[stack.config]
+server = "nas"
+repo = "[[CATALOG_REPO]]"
+branch = "main"
+run_directory = "stacks/platform/caddy"
+file_paths = ["compose.yaml"]
+webhook_enabled = false
+poll_for_updates = true
+environment = """
+DOMAIN = [[DOMAIN]]
+HTPC_UPSTREAM = [[HTPC_UPSTREAM]]
+NAS_LAN_IP = [[NAS_LAN_IP]]
+TZ = [[TZ]]
+"""
+
+[[stack]]
+name = "authelia"
+deploy = true
+after = ["caddy"]
+[stack.config]
+server = "nas"
+repo = "[[CATALOG_REPO]]"
+branch = "main"
+run_directory = "stacks/platform/authelia"
+file_paths = ["compose.yaml"]
+webhook_enabled = false
+poll_for_updates = true
+environment = """
+DOMAIN = [[DOMAIN]]
+TZ = [[TZ]]
+DATA_ROOT = [[DATA_ROOT]]
+AUTHELIA_JWT_SECRET = [[AUTHELIA_JWT_SECRET]]
+AUTHELIA_SESSION_SECRET = [[AUTHELIA_SESSION_SECRET]]
+AUTHELIA_STORAGE_ENCRYPTION_KEY = [[AUTHELIA_STORAGE_ENCRYPTION_KEY]]
+"""
+
+[[stack]]
+name = "pihole"
+deploy = true
+after = ["caddy"]
+[stack.config]
+server = "nas"
+repo = "[[CATALOG_REPO]]"
+branch = "main"
+run_directory = "stacks/platform/pihole"
+file_paths = ["compose.yaml"]
+webhook_enabled = false
+poll_for_updates = true
+environment = """
+DOMAIN = [[DOMAIN]]
+NAS_LAN_IP = [[NAS_LAN_IP]]
+TZ = [[TZ]]
+DATA_ROOT = [[DATA_ROOT]]
+"""
+
+[[stack]]
+name = "wireguard"
+deploy = true
+after = ["caddy"]
+[stack.config]
+server = "nas"
+repo = "[[CATALOG_REPO]]"
+branch = "main"
+run_directory = "stacks/platform/wireguard"
+file_paths = ["compose.yaml"]
+webhook_enabled = false
+poll_for_updates = true
+environment = """
+DOMAIN = [[DOMAIN]]
+NAS_LAN_IP = [[NAS_LAN_IP]]
+TZ = [[TZ]]
+DATA_ROOT = [[DATA_ROOT]]
+WG_HOST = [[WG_HOST]]
+WG_PASSWORD_HASH = [[WG_PASSWORD_HASH]]
+"""
+
+[[stack]]
+name = "homepage"
+deploy = true
+after = ["caddy", "authelia"]
+[stack.config]
+server = "nas"
+repo = "[[CATALOG_REPO]]"
+branch = "main"
+run_directory = "stacks/platform/homepage"
+file_paths = ["compose.yaml"]
+webhook_enabled = false
+poll_for_updates = true
+environment = """
+DOMAIN = [[DOMAIN]]
+TZ = [[TZ]]
+DATA_ROOT = [[DATA_ROOT]]
+HOMEPAGE_VAR_DOMAIN = [[DOMAIN]]
+HOMEPAGE_VAR_HTPC_UPSTREAM = [[HTPC_UPSTREAM]]
+HOMEPAGE_VAR_NAS_LAN_IP = [[NAS_LAN_IP]]
+HOMEPAGE_VAR_PIHOLE_TOKEN = [[HOMEPAGE_VAR_PIHOLE_TOKEN]]
+HOMEPAGE_VAR_JELLYFIN_KEY = [[HOMEPAGE_VAR_JELLYFIN_KEY]]
+HOMEPAGE_VAR_SONARR_KEY = [[HOMEPAGE_VAR_SONARR_KEY]]
+HOMEPAGE_VAR_RADARR_KEY = [[HOMEPAGE_VAR_RADARR_KEY]]
+HOMEPAGE_VAR_PROWLARR_KEY = [[HOMEPAGE_VAR_PROWLARR_KEY]]
+HOMEPAGE_VAR_QBIT_USERNAME = [[HOMEPAGE_VAR_QBIT_USERNAME]]
+HOMEPAGE_VAR_QBIT_PASSWORD = [[HOMEPAGE_VAR_QBIT_PASSWORD]]
+HOMEPAGE_VAR_GRAFANA_KEY = [[HOMEPAGE_VAR_GRAFANA_KEY]]
+HOMEPAGE_ALLOWED_HOSTS = homepage.[[DOMAIN]]
+"""
+
+[[stack]]
+name = "vaultwarden"
+deploy = true
+after = ["caddy", "authelia"]
+[stack.config]
+server = "nas"
+repo = "[[CATALOG_REPO]]"
+branch = "main"
+run_directory = "stacks/workload/vaultwarden"
+file_paths = ["compose.yaml"]
+webhook_enabled = false
+poll_for_updates = true
+environment = """
+DOMAIN = [[DOMAIN]]
+TZ = [[TZ]]
+DATA_ROOT = [[DATA_ROOT]]
+VAULTWARDEN_ADMIN_TOKEN = [[VAULTWARDEN_ADMIN_TOKEN]]
+SIGNUPS_ALLOWED = [[SIGNUPS_ALLOWED]]
+"""
+
+[[stack]]
+name = "restic"
+deploy = true
+after = ["vaultwarden"]
+[stack.config]
+server = "nas"
+repo = "[[CATALOG_REPO]]"
+branch = "main"
+run_directory = "stacks/platform/restic"
+file_paths = ["compose.yaml"]
+webhook_enabled = false
+poll_for_updates = true
+environment = """
+TZ = [[TZ]]
+DATA_ROOT = [[DATA_ROOT]]
+HTPC_UPSTREAM = [[HTPC_UPSTREAM]]
+RESTIC_PASSWORD = [[RESTIC_PASSWORD]]
+RESTIC_REST_USER = [[RESTIC_REST_USER]]
+RESTIC_REST_PASSWORD = [[RESTIC_REST_PASSWORD]]
+"""

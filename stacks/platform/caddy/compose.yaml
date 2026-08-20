@@ -1,0 +1,30 @@
+services:
+  caddy:
+    image: caddy:2
+    container_name: caddy
+    restart: unless-stopped
+    ports:
+      - "80:80"
+      - "443:443"
+      - "443:443/udp"
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+    environment:
+      DOMAIN: ${DOMAIN}
+      HTPC_UPSTREAM: ${HTPC_UPSTREAM}
+      TZ: ${TZ}
+    volumes:
+      - ./Caddyfile:/etc/caddy/Caddyfile:ro
+      - caddy-data:/data
+      - caddy-config:/config
+    networks:
+      - edge
+
+networks:
+  edge:
+    external: true
+    name: edge
+
+volumes:
+  caddy-data:
+  caddy-config:

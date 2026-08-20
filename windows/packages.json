@@ -1,0 +1,22 @@
+{
+  "$schema": "https://aka.ms/winget-packages.schema.2.0.json",
+  "WinGetVersion": "1.7.0",
+  "Sources": [
+    {
+      "Packages": [
+        { "PackageIdentifier": "Docker.DockerDesktop" },
+        { "PackageIdentifier": "XBMCFoundation.Kodi" },
+        { "PackageIdentifier": "AutoHotkey.AutoHotkey" },
+        { "PackageIdentifier": "Mozilla.Firefox" },
+        { "PackageIdentifier": "Valve.Steam" },
+        { "PackageIdentifier": "DolphinEmulator.Dolphin" },
+        { "PackageIdentifier": "PCSX2.PCSX2" }
+      ],
+      "SourceDetails": {
+        "Argument": "https://cdn.winget.microsoft.com/cache",
+        "Identifier": "Microsoft.Winget.Source_8wekyb3d8bbwe",
+        "Name": "winget"
+      }
+    }
+  ]
+}

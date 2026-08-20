@@ -1,0 +1,40 @@
+services:
+  prometheus:
+    image: prom/prometheus:latest
+    container_name: prometheus
+    restart: unless-stopped
+    command:
+      - --config.file=/etc/prometheus/prometheus.yml
+      - --storage.tsdb.path=/prometheus
+    ports:
+      - "9090:9090"
+    environment:
+      TZ: ${TZ}
+      NAS_LAN_IP: ${NAS_LAN_IP}
+    volumes:
+      - ./prometheus.yml.template:/etc/prometheus/prometheus.yml.template:ro
+      - ./apply-config.sh:/apply-config.sh:ro
+      - prometheus-data:/prometheus
+    entrypoint:
+      - /bin/sh
+      - -c
+      - "sh /apply-config.sh && exec /bin/prometheus --config.file=/etc/prometheus/prometheus.yml --storage.tsdb.path=/prometheus"
+
+  grafana:
+    image: grafana/grafana:latest
+    container_name: grafana
+    restart: unless-stopped
+    environment:
+      TZ: ${TZ}
+      GF_SECURITY_ADMIN_PASSWORD: ${GRAFANA_ADMIN_PASSWORD}
+      GF_SERVER_ROOT_URL: https://grafana.${DOMAIN}
+    ports:
+      - "3000:3000"
+    volumes:
+      - grafana-data:/var/lib/grafana
+    depends_on:
+      - prometheus
+
+volumes:
+  prometheus-data:
+  grafana-data:

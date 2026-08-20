@@ -1,0 +1,26 @@
+services:
+  authelia:
+    image: authelia/authelia:4
+    container_name: authelia
+    restart: unless-stopped
+    environment:
+      TZ: ${TZ}
+      AUTHELIA_JWT_SECRET: ${AUTHELIA_JWT_SECRET}
+      AUTHELIA_SESSION_SECRET: ${AUTHELIA_SESSION_SECRET}
+      AUTHELIA_STORAGE_ENCRYPTION_KEY: ${AUTHELIA_STORAGE_ENCRYPTION_KEY}
+      AUTHELIA_SESSION_COOKIES_0_DOMAIN: ${DOMAIN}
+      X_AUTHELIA_CONFIG_FILTERS: template
+    volumes:
+      - ./configuration.yml:/config/configuration.yml:ro
+      - ${DATA_ROOT}/system/authelia/users.yml:/config/users.yml:ro
+      - authelia-data:/data
+    networks:
+      - edge
+
+networks:
+  edge:
+    external: true
+    name: edge
+
+volumes:
+  authelia-data:
