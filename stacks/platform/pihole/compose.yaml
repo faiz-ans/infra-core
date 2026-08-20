@@ -3,21 +3,17 @@ services:
     image: pihole/pihole:latest
     container_name: pihole
     restart: unless-stopped
+    # Bind DNS to the LAN IP only so systemd-resolved on 127.0.0.53 keeps :53.
     ports:
-      - "53:53/tcp"
-      - "53:53/udp"
+      - "${NAS_LAN_IP}:53:53/tcp"
+      - "${NAS_LAN_IP}:53:53/udp"
     environment:
       TZ: ${TZ}
       FTLCONF_dns_listeningMode: ALL
       FTLCONF_webserver_api_password: ""
-      DOMAIN: ${DOMAIN}
-      NAS_LAN_IP: ${NAS_LAN_IP}
+      FTLCONF_misc_dnsmasq_lines: "address=/${DOMAIN}/${NAS_LAN_IP}"
     volumes:
       - ${DATA_ROOT}/system/pihole:/etc/pihole
-      - ./99-wildcard.conf.template:/etc/dnsmasq.d/99-wildcard.template:ro
-      - ./apply-wildcard.sh:/apply-wildcard.sh:ro
-    entrypoint: ["/bin/sh", "-c"]
-    command: "sh /apply-wildcard.sh && exec start.sh"
     cap_add:
       - NET_ADMIN
     networks:

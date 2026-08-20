@@ -28,7 +28,7 @@ Mark items tagged **secret** as secrets in Komodo.
 | `AUTHELIA_SESSION_SECRET` | secret | Authelia |
 | `AUTHELIA_STORAGE_ENCRYPTION_KEY` | secret | Authelia |
 | `WG_HOST` | | wg-easy endpoint (hostname or IP clients dial) |
-| `WG_PASSWORD_HASH` | secret | wg-easy UI |
+| `WG_PASSWORD_HASH` | secret | wg-easy UI bcrypt hash. In Komodo, write each `$` as `$$` so Compose does not strip it |
 
 Authelia user hashes live in `${DATA_ROOT}/system/authelia/users.yml` on the NAS (written by bootstrap), not in Komodo.
 

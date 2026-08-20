@@ -6,6 +6,7 @@ services:
     environment:
       TZ: ${TZ}
       WG_HOST: ${WG_HOST}
+      # bcrypt. In Komodo store $ as $$ so Compose does not eat the hash.
       PASSWORD_HASH: ${WG_PASSWORD_HASH}
       WG_DEFAULT_DNS: ${NAS_LAN_IP}
       WG_PORT: "51820"
@@ -13,6 +14,9 @@ services:
       - "51820:51820/udp"
     volumes:
       - ${DATA_ROOT}/system/wireguard:/etc/wireguard
+      - /lib/modules:/lib/modules:ro
+    devices:
+      - /dev/net/tun:/dev/net/tun
     cap_add:
       - NET_ADMIN
       - SYS_MODULE
