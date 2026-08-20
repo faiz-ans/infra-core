@@ -7,7 +7,7 @@
     #    widget:
     #      type: sonarr
     #      url: http://{{HOMEPAGE_VAR_HTPC_UPSTREAM}}:8989
-          key: "{{HOMEPAGE_VAR_SONARR_KEY}}"
+    #      key: "{{HOMEPAGE_VAR_SONARR_KEY}}"
     - Radarr:
         href: https://radarr.{{HOMEPAGE_VAR_DOMAIN}}
         siteMonitor: http://{{HOMEPAGE_VAR_HTPC_UPSTREAM}}:7878
