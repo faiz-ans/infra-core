@@ -5,7 +5,7 @@
       dateStyle: medium
 - greeting:
     text_size: xl
-    text: Hello, {{USER}}!
+    text: Home
 - search:
     provider: duckduckgo
     target: _blank
