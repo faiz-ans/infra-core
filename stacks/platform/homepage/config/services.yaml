@@ -9,7 +9,7 @@
         siteMonitor: http://authelia:9091
         icon: authelia.png
     - Pi-hole:
-        href: https://dns.{{HOMEPAGE_VAR_DOMAIN}}
+        href: https://dns.{{HOMEPAGE_VAR_DOMAIN}}/admin
         siteMonitor: http://pihole:80
         icon: pi-hole.png
         widget:

@@ -9,6 +9,9 @@ services:
       - "443:443/udp"
     extra_hosts:
       - "host.docker.internal:host-gateway"
+    # Bind-mounted Caddyfile is not a compose spec change; --watch reloads it.
+    # docker compose up -d will not restart Caddy for Caddyfile-only git pulls.
+    command: ["caddy", "run", "--config", "/etc/caddy/Caddyfile", "--adapter", "caddyfile", "--watch"]
     environment:
       DOMAIN: ${DOMAIN}
       HTPC_UPSTREAM: ${HTPC_UPSTREAM}
