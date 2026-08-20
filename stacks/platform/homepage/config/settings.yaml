@@ -3,11 +3,10 @@ theme: dark
 headerStyle: clean
 hideVersion: true
 statusStyle: dot
-
 background:
   image: /images/background.png
-  opacity: 50
   brightness: 50
+  opacity: 80
 
 #layout:
 #  Platform:
