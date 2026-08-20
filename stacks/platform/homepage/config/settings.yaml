@@ -5,7 +5,7 @@ hideVersion: true
 statusStyle: dot
 
 background:
-  image: /images/background.jpg
+  image: /images/background.png
   opacity: 50
   brightness: 50
 
