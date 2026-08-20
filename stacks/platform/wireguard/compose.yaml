@@ -1,13 +1,16 @@
 # wg-easy v15 ignores v14 PASSWORD_HASH / WG_HOST env.
-# It expects a dedicated 10.42.42.0/24 network and INSECURE=true behind Caddy.
+# Dedicated 10.42.42.0/24 network, INSECURE=true behind Caddy.
+# edge + wg: pin wg as eth0 or PostUp NAT and wg-quick fail (no wg0).
 
 services:
   wireguard:
     image: ghcr.io/wg-easy/wg-easy:15
     container_name: wireguard
     restart: unless-stopped
+    privileged: true
     environment:
       TZ: ${TZ}
+      PORT: "51821"
       INSECURE: "true"
       DISABLE_IPV6: "true"
       INIT_ENABLED: "true"
@@ -26,8 +29,6 @@ services:
     cap_add:
       - NET_ADMIN
       - SYS_MODULE
-    # Official v15 compose. Without the ipv6 sysctls, wg-quick often fails
-    # (ip6tables / RTNETLINK) and the UI shows "server error" on client create.
     sysctls:
       - net.ipv4.ip_forward=1
       - net.ipv4.conf.all.src_valid_mark=1
@@ -35,9 +36,13 @@ services:
       - net.ipv6.conf.all.forwarding=1
       - net.ipv6.conf.default.forwarding=1
     networks:
-      edge: {}
       wg:
+        interface_name: eth0
+        gw_priority: 1
         ipv4_address: 10.42.42.42
+      edge:
+        interface_name: eth1
+        gw_priority: 0
 
 networks:
   edge:
