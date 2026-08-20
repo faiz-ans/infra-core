@@ -1,13 +1,62 @@
----
-- Platform:
-    - Homepage:
-        href: https://dash.{{HOMEPAGE_VAR_DOMAIN}}
-        siteMonitor: http://homepage:3000
-        icon: homepage.png
-    - Authelia:
-        href: https://auth.{{HOMEPAGE_VAR_DOMAIN}}
-        siteMonitor: http://authelia:9091
-        icon: authelia.png
+- Downloads:
+    - Sonarr:
+        href: https://sonarr.{{HOMEPAGE_VAR_DOMAIN}}
+        siteMonitor: http://{{HOMEPAGE_VAR_HTPC_UPSTREAM}}:8989
+        icon: sonarr.png
+        description: Lookup TV Shows
+    #    widget:
+    #      type: sonarr
+    #      url: http://{{HOMEPAGE_VAR_HTPC_UPSTREAM}}:8989
+          key: "{{HOMEPAGE_VAR_SONARR_KEY}}"
+    - Radarr:
+        href: https://radarr.{{HOMEPAGE_VAR_DOMAIN}}
+        siteMonitor: http://{{HOMEPAGE_VAR_HTPC_UPSTREAM}}:7878
+        icon: radarr.png
+        description: Lookup Movies
+    #    widget:
+    #      type: radarr
+    #      url: http://{{HOMEPAGE_VAR_HTPC_UPSTREAM}}:7878
+    #      key: "{{HOMEPAGE_VAR_RADARR_KEY}}"
+    - qBittorrent:
+        href: https://qbittorrent.{{HOMEPAGE_VAR_DOMAIN}}
+        siteMonitor: http://{{HOMEPAGE_VAR_HTPC_UPSTREAM}}:8081
+        icon: qbittorrent.png
+        description: Downloads
+    #    widget:
+    #      type: qbittorrent
+    #      url: http://{{HOMEPAGE_VAR_HTPC_UPSTREAM}}:8081
+    #      username: "{{HOMEPAGE_VAR_QBIT_USERNAME}}"
+    #      password: "{{HOMEPAGE_VAR_QBIT_PASSWORD}}"
+
+- Apps:
+    - Nextcloud:
+        href: https://nextcloud.{{HOMEPAGE_VAR_DOMAIN}}
+        siteMonitor: http://{{HOMEPAGE_VAR_HTPC_UPSTREAM}}:8080
+        icon: nextcloud.png
+        description: Docs / Photos
+    - Home Assistant:
+        href: https://ha.{{HOMEPAGE_VAR_DOMAIN}}
+        siteMonitor: http://{{HOMEPAGE_VAR_HTPC_UPSTREAM}}:8123
+        icon: home-assistant.png
+        description: Home Automation
+    - Vaultwarden:
+        href: https://pw.{{HOMEPAGE_VAR_DOMAIN}}
+        siteMonitor: http://vaultwarden:80
+        icon: bitwarden.png
+        description: Passwords
+    - Jellyfin:
+        href: https://jellyfin.{{HOMEPAGE_VAR_DOMAIN}}
+        siteMonitor: http://{{HOMEPAGE_VAR_HTPC_UPSTREAM}}:8096
+        icon: jellyfin.png
+        description: Movies & TV
+    #    widget:
+    #      type: jellyfin
+    #      url: http://{{HOMEPAGE_VAR_HTPC_UPSTREAM}}:8096
+    #      key: "{{HOMEPAGE_VAR_JELLYFIN_KEY}}"
+    #      enableBlocks: true
+    #      enableNowPlaying: true
+
+- Network:
     - Pi-hole:
         href: https://dns.{{HOMEPAGE_VAR_DOMAIN}}/admin
         siteMonitor: http://pihole:80/admin
@@ -20,84 +69,28 @@
         href: https://vpn.{{HOMEPAGE_VAR_DOMAIN}}
         siteMonitor: http://wireguard:51821
         icon: wireguard.png
+
+- System:
     - Komodo:
         href: https://ops.{{HOMEPAGE_VAR_DOMAIN}}
         siteMonitor: http://{{HOMEPAGE_VAR_NAS_LAN_IP}}:9120
         icon: docker.png
-    - OMV:
+        description: Deployment
+    - OpenMediaVault:
         href: https://nas.{{HOMEPAGE_VAR_DOMAIN}}
         siteMonitor: http://{{HOMEPAGE_VAR_NAS_LAN_IP}}:81
         icon: openmediavault.png
-    - Vaultwarden:
-        href: https://pw.{{HOMEPAGE_VAR_DOMAIN}}
-        siteMonitor: http://vaultwarden:80
-        icon: bitwarden.png
-
-- Media:
-    - Jellyfin:
-        href: https://jellyfin.{{HOMEPAGE_VAR_DOMAIN}}
-        siteMonitor: http://{{HOMEPAGE_VAR_HTPC_UPSTREAM}}:8096
-        icon: jellyfin.png
-        widget:
-          type: jellyfin
-          url: http://{{HOMEPAGE_VAR_HTPC_UPSTREAM}}:8096
-          key: "{{HOMEPAGE_VAR_JELLYFIN_KEY}}"
-          enableBlocks: true
-          enableNowPlaying: true
-    - Sonarr:
-        href: https://sonarr.{{HOMEPAGE_VAR_DOMAIN}}
-        siteMonitor: http://{{HOMEPAGE_VAR_HTPC_UPSTREAM}}:8989
-        icon: sonarr.png
-        widget:
-          type: sonarr
-          url: http://{{HOMEPAGE_VAR_HTPC_UPSTREAM}}:8989
-          key: "{{HOMEPAGE_VAR_SONARR_KEY}}"
-    - Radarr:
-        href: https://radarr.{{HOMEPAGE_VAR_DOMAIN}}
-        siteMonitor: http://{{HOMEPAGE_VAR_HTPC_UPSTREAM}}:7878
-        icon: radarr.png
-        widget:
-          type: radarr
-          url: http://{{HOMEPAGE_VAR_HTPC_UPSTREAM}}:7878
-          key: "{{HOMEPAGE_VAR_RADARR_KEY}}"
-    - Prowlarr:
-        href: https://prowlarr.{{HOMEPAGE_VAR_DOMAIN}}
-        siteMonitor: http://{{HOMEPAGE_VAR_HTPC_UPSTREAM}}:9696
-        icon: prowlarr.png
-        widget:
-          type: prowlarr
-          url: http://{{HOMEPAGE_VAR_HTPC_UPSTREAM}}:9696
-          key: "{{HOMEPAGE_VAR_PROWLARR_KEY}}"
-    - qBittorrent:
-        href: https://qbittorrent.{{HOMEPAGE_VAR_DOMAIN}}
-        siteMonitor: http://{{HOMEPAGE_VAR_HTPC_UPSTREAM}}:8081
-        icon: qbittorrent.png
-        widget:
-          type: qbittorrent
-          url: http://{{HOMEPAGE_VAR_HTPC_UPSTREAM}}:8081
-          username: "{{HOMEPAGE_VAR_QBIT_USERNAME}}"
-          password: "{{HOMEPAGE_VAR_QBIT_PASSWORD}}"
-
-- Cloud:
-    - Nextcloud:
-        href: https://nextcloud.{{HOMEPAGE_VAR_DOMAIN}}
-        siteMonitor: http://{{HOMEPAGE_VAR_HTPC_UPSTREAM}}:8080
-        icon: nextcloud.png
-    - Home Assistant:
-        href: https://ha.{{HOMEPAGE_VAR_DOMAIN}}
-        siteMonitor: http://{{HOMEPAGE_VAR_HTPC_UPSTREAM}}:8123
-        icon: home-assistant.png
-
-- Monitor:
+        description: Storage
     - Grafana:
         href: https://grafana.{{HOMEPAGE_VAR_DOMAIN}}
         siteMonitor: http://{{HOMEPAGE_VAR_HTPC_UPSTREAM}}:3000
         icon: grafana.png
-        widget:
-          type: grafana
-          url: http://{{HOMEPAGE_VAR_HTPC_UPSTREAM}}:3000
-          key: "{{HOMEPAGE_VAR_GRAFANA_KEY}}"
-    - Prometheus:
-        href: https://prometheus.{{HOMEPAGE_VAR_DOMAIN}}
-        siteMonitor: http://{{HOMEPAGE_VAR_HTPC_UPSTREAM}}:9090
-        icon: prometheus.png
+        description: Monitoring
+    #    widget:
+    #      type: grafana
+    #      url: http://{{HOMEPAGE_VAR_HTPC_UPSTREAM}}:3000
+    #      key: "{{HOMEPAGE_VAR_GRAFANA_KEY}}"
+    #- Prometheus:
+    #    href: https://prometheus.{{HOMEPAGE_VAR_DOMAIN}}
+    #    siteMonitor: http://{{HOMEPAGE_VAR_HTPC_UPSTREAM}}:9090
+    #    icon: prometheus.png

@@ -1,1 +1,11 @@
----
+- datetime:
+    text_size: xl
+    format:
+      timeStyle: short
+      dateStyle: medium
+- greeting:
+    text_size: xl
+    text: Home
+- search:
+    provider: duckduckgo
+    target: _blank
