@@ -519,27 +519,33 @@ for _ in $(seq 1 60); do
 done
 
 # --- Authelia users file (hash via official image) ---
-# docker run --rm ghcr.io/authelia/authelia:latest authelia crypto hash generate argon2 --password '...'
-if [[ ! -f "${DATA_ROOT}/system/authelia/users.yml" ]]; then
-  HASH=$(docker run --rm ghcr.io/authelia/authelia:latest \
+# docker run --rm authelia/authelia:4 authelia crypto hash generate argon2 --password '...'
+users_file="${DATA_ROOT}/system/authelia/users.yml"
+if [[ -d "${users_file}" ]]; then
+  echo "Replacing directory ${users_file} (Docker created it when the file was missing)."
+  rm -rf "${users_file}"
+fi
+if [[ ! -f "${users_file}" ]] || ! grep -q '^    password: '\''\$' "${users_file}"; then
+  HASH=$(docker run --rm authelia/authelia:4 \
     authelia crypto hash generate argon2 --password "${AUTHELIA_USER_PASSWORD}" \
-    | awk '/Password hash:/ {print $3}')
-  cat > "${DATA_ROOT}/system/authelia/users.yml" <<EOF
+    | awk '/^Digest:/ {print $2}')
+  if [[ -z "${HASH}" ]]; then
+    HASH="\$plaintext\$${AUTHELIA_USER_PASSWORD}"
+  fi
+  cat > "${users_file}" <<EOF
 users:
   admin:
-    displayname: admin
-    password: "${HASH}"
-    email: admin@${DOMAIN}
+    disabled: false
+    displayname: 'admin'
+    password: '${HASH}'
+    email: 'admin@${DOMAIN}'
     groups:
       - admins
       - dev
 EOF
-  chmod 644 "${DATA_ROOT}/system/authelia/users.yml"
+  chmod 644 "${users_file}"
 fi
-# chmod 600 "\${DATA_ROOT}/system/authelia/users.yml"
 
-# --- wg-easy password hash (best-effort; can set WG_PASSWORD_HASH later in Komodo) ---
-# docker run --rm ghcr.io/wg-easy/wg-easy:15 wgpw '...'   # image-specific
 echo "WireGuard UI is user wg-admin; password is Komodo secret WG_UI_PASSWORD."
 
 echo

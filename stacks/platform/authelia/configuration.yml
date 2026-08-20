@@ -14,7 +14,7 @@ log:
 
 authentication_backend:
   file:
-    path: /config/users.yml
+    path: /config/userdb/users.yml
   password_reset:
     disable: true
 
