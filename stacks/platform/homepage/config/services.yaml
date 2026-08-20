@@ -77,6 +77,8 @@
           version: 2
           username: wg-admin
           password: "{{HOMEPAGE_VAR_WGEASY_PASSWORD}}"
+          fields:
+            - connected
 
 - System:
     - Komodo:
