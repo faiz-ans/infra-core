@@ -1,37 +1,30 @@
 (() => {
-  const apply = (url) => {
-    const el = document.getElementById("background");
-    if (!el || !url) return false;
-    const current = el.style.backgroundImage;
-    if (current && current.includes("url(")) {
-      el.style.backgroundImage = current.replace(
-        /url\((['"]?)[^'")]+(['"]?)\)/,
-        `url("${url}")`,
-      );
-    } else {
-      el.style.backgroundImage = `url("${url}")`;
+  // Fallback if /images/backgrounds.json is not served yet (needs a container restart).
+  const FALLBACK = [
+    "/images/o3uxqvbai6gh1.png",
+    "/images/mgaoqgmu9pq61.jpg",
+    "/images/1o07cxcm3mfh1.png",
+  ];
+
+  const pick = (list) => list[Math.floor(Math.random() * list.length)];
+
+  const install = (url) => {
+    let tag = document.getElementById("homepage-random-bg");
+    if (!tag) {
+      tag = document.createElement("style");
+      tag.id = "homepage-random-bg";
+      document.documentElement.appendChild(tag);
     }
-    el.style.backgroundSize = "cover";
-    el.style.backgroundPosition = "center";
-    return true;
+    // !important so React re-renders of #background do not reset settings.yaml's image.
+    tag.textContent =
+      "#background{background-image:linear-gradient(rgb(var(--bg-color) / 0.5), rgb(var(--bg-color) / 0.5)), url(\"" +
+      url +
+      "\") !important;background-size:cover !important;background-position:center !important;}";
   };
 
-  const run = async () => {
-    let list;
-    try {
-      const res = await fetch("/images/backgrounds.json", { cache: "no-store" });
-      list = await res.json();
-    } catch {
-      return;
-    }
-    if (!Array.isArray(list) || list.length === 0) return;
-    const url = list[Math.floor(Math.random() * list.length)];
-    if (apply(url)) return;
-    const obs = new MutationObserver(() => {
-      if (apply(url)) obs.disconnect();
-    });
-    obs.observe(document.documentElement, { childList: true, subtree: true });
-  };
-
-  run();
+  fetch("/images/backgrounds.json", { cache: "no-store" })
+    .then((r) => (r.ok ? r.json() : Promise.reject()))
+    .then((list) => (Array.isArray(list) && list.length ? list : FALLBACK))
+    .catch(() => FALLBACK)
+    .then((list) => install(pick(list)));
 })();
