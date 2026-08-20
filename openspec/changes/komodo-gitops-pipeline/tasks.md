@@ -7,14 +7,14 @@
 ## 2. NAS bootstrap
 
 - [x] 2.1 Add `bootstrap/` Komodo Core compose (and Periphery) used only for first start, independent of ResourceSync
-- [x] 2.2 Write `bootstrap/nas.sh` that prompts (domain default `home.lan`, NAS IP, HTPC upstream, passwords/tokens, confirm detected `DATA_ROOT`) and writes Core/Periphery `[secrets]`
-- [x] 2.3 In `nas.sh`, install OMV, Docker, start Core + local Periphery, onboard server `nas`, create `DATA_ROOT` tree, configure ResourceSync poll with webhooks off
-- [x] 2.4 Comment every bootstrap command in `nas.sh` for manual copy-paste
+- [x] 2.2 Write `bootstrap/core.sh` that prompts (domain default `home.lan`, Core LAN IP, remote Periphery upstream, passwords/tokens, confirm detected `DATA_ROOT`) and writes Core/Periphery `[secrets]`
+- [x] 2.3 In `core.sh`, install OMV (if external disk), Docker, start Core + local Periphery, onboard `CORE_SERVER` (default `core`), create `DATA_ROOT` tree, configure ResourceSync poll with webhooks off
+- [x] 2.4 Comment every bootstrap command in `core.sh` for manual copy-paste
 
 ## 3. HTPC runtime
 
 - [x] 3.1 Add `bootstrap/` Periphery compose for Docker Desktop (socket mount, outbound `PERIPHERY_CORE_ADDRESS`, `connect_as=htpc`)
-- [x] 3.2 Add `bootstrap/htpc.md` (or script) covering Docker Desktop, SMB mapping for `DATA_ROOT`, `BACKUP_DRIVE`, firewall ports, onboarding key prompt/write
+- [x] 3.2 Add `bootstrap/periphery.md` (or script) covering Docker Desktop, SMB mapping for `DATA_ROOT`, `BACKUP_DRIVE`, firewall ports, onboarding key prompt/write
 - [x] 3.3 Add `windows/` winget list including Docker Desktop plus Kodi, AHK, Firefox, Steam, Dolphin, ePSXe, PCSX2 (list only)
 
 ## 4. ResourceSync
@@ -52,5 +52,5 @@
 
 ## 9. Sanity
 
-- [x] 9.1 Grep the catalog (excluding `bootstrap/nas.sh` prompt default) for leaked `home.lan`, RFC1918 literals, uuid paths, and password assignments
+- [x] 9.1 Grep the catalog (excluding `bootstrap/core.sh` prompt default) for leaked `home.lan`, RFC1918 literals, uuid paths, and password assignments
 - [x] 9.2 Update README with bootstrap order: Pi script → ResourceSync NAS → HTPC Desktop/Periphery → ResourceSync HTPC

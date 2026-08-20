@@ -31,7 +31,7 @@ Komodo cannot install itself through ResourceSync on an empty Pi.
 
 | Layer | Where | Role |
 |---|---|---|
-| 0 | `bootstrap/nas.sh` (+ thin `bootstrap/htpc`) | OMV, Docker, Core, first Periphery; prompt/write secrets |
+| 0 | `bootstrap/core.sh` (+ thin `bootstrap/periphery`) | OMV, Docker, Core, first Periphery; prompt/write secrets |
 | 1 | Komodo DB + Core/Periphery `[secrets]` | Only store of live values |
 | 2 | This git repo | Compose, config templates, ResourceSync TOML |
 
@@ -39,7 +39,7 @@ Komodo cannot install itself through ResourceSync on an empty Pi.
 
 ### 2. ResourceSync in git, servers onboarded not committed
 
-`stacks/komodo/*.toml` declares stacks with `server = "nas"` or `"htpc"`, `repo` + `run_directory`, and `environment` keys mapped to `[[VARS]]`. Server resources are created by onboarding (bootstrap / Periphery `connect_as`). IPs never appear in TOML.
+`stacks/komodo/*.toml` declares stacks with `server = "[[CORE_SERVER]]"` or `"[[PERIPHERY_SERVER]]"` (defaults `core` / `periphery`), `repo` + `run_directory`, and `environment` keys mapped to `[[VARS]]`. Server resources are created by onboarding (bootstrap / Periphery `connect_as`). IPs never appear in TOML.
 
 **Alternative considered:** UI-only stacks pointing at git folders. Rejected: a dead Pi would lose topology; ResourceSync is the reproduce path.
 
@@ -98,11 +98,11 @@ IronWolf swap = change `DATA_ROOT` on `nas` (and remount on HTPC), not a git com
 ### 9. Repo and stack layout
 
 ```
-bootstrap/nas.sh
-bootstrap/htpc.md + periphery compose   # thin; Desktop + outbound agent
+bootstrap/core.sh
+bootstrap/periphery.md + periphery.compose.yaml
 stacks/platform/{caddy,authelia,pihole,wireguard,homepage,restic,restic-rest,monitoring}/
 stacks/workload/{vaultwarden,jellyfin,arr,qbittorrent,nextcloud,homeassistant}/
-stacks/komodo/{stacks-nas.toml,stacks-htpc.toml}
+stacks/komodo/{stacks-core.toml,stacks-periphery.toml}
 windows/winget.json                     # stub
 ```
 
@@ -137,10 +137,10 @@ Exact non-colliding host ports are an implementation detail; Caddyfile and Homep
 ## Migration Plan
 
 1. Commit catalog + bootstrap (this change) to the public repo.
-2. SCP `bootstrap/nas.sh` to the Pi; run (or follow comments). Confirm Core UI, server `nas`, variables present.
+2. SCP `bootstrap/core.sh` to the Core host; run (or follow comments). Confirm Core UI, server `core` (or `CORE_SERVER` override), variables present.
 3. ResourceSync poll: platform stacks (Caddy, Authelia, Pi-hole, WireGuard), then Homepage, Vaultwarden, restic client.
 4. On the HTPC: Docker Desktop, map OMV shares, attach USB, run thin Periphery bootstrap, open firewall ports.
-5. Confirm server `htpc` connected; sync HTPC stacks; point Caddy upstreams at `HTPC_UPSTREAM`.
+5. Confirm the periphery server connected; sync periphery stacks; point Caddy upstreams at `HTPC_UPSTREAM`.
 6. Create first Vaultwarden user; set signups false; confirm clients sync and `/admin` requires Authelia.
 7. When IronWolf arrives: migrate OMV disk, update `DATA_ROOT`, remount HTPC share, redeploy—no catalog rewrite.
 

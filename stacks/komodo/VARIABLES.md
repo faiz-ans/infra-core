@@ -9,11 +9,13 @@ Mark items tagged **secret** as secrets in Komodo.
 | Key | Secret | Used by |
 |---|---|---|
 | `CATALOG_REPO` | | ResourceSync git `owner/repo` |
+| `CORE_SERVER` | | Komodo server name for Core + local Periphery (default `core`) |
+| `PERIPHERY_SERVER` | | Komodo server name for the remote engine (default `periphery`) |
 | `DOMAIN` | | Caddy, Authelia, Pi-hole, Homepage, Vaultwarden public URL |
 | `TZ` | | Most containers |
 | `NAS_LAN_IP` | | Pi-hole wildcard, Homepage/Prometheus scrape of NAS-published ports |
 | `HTPC_UPSTREAM` | | Caddy upstreams, Homepage HTPC widgets, NAS restic client |
-| `DATA_ROOT` | | Per-server. NAS: OMV uuid mount. HTPC: Docker Desktop-visible NAS share |
+| `DATA_ROOT` | | Per-server. Core: OMV uuid mount or `/srv/core`. Periphery: Docker Desktop-visible share |
 | `BACKUP_DRIVE` | | HTPC Restic REST data directory |
 | `PUID` | | linuxserver images on both hosts |
 | `PGID` | | linuxserver images on both hosts |

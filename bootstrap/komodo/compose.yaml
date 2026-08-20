@@ -40,6 +40,7 @@ services:
     environment:
       KOMODO_DATABASE_ADDRESS: ferretdb:27017
     volumes:
+      # Shared with periphery so Core can trust file:/config/keys/periphery.pub
       - keys:/config/keys
       - ${COMPOSE_KOMODO_BACKUPS_PATH}:/backups
       - ${KOMODO_CORE_CONFIG_TOML}:/config/config.toml:ro

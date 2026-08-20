@@ -1,11 +1,12 @@
-# ResourceSync source for server nas. Values come from Komodo [[VARS]].
+# ResourceSync source for the Core host (Komodo Core + local Periphery).
+# server name is [[CORE_SERVER]] (bootstrap default: core).
 # webhook_enabled is false; poll on-site.
 
 [[stack]]
 name = "caddy"
 deploy = true
 [stack.config]
-server = "nas"
+server = "[[CORE_SERVER]]"
 repo = "[[CATALOG_REPO]]"
 branch = "main"
 run_directory = "stacks/platform/caddy"
@@ -24,7 +25,7 @@ name = "authelia"
 deploy = true
 after = ["caddy"]
 [stack.config]
-server = "nas"
+server = "[[CORE_SERVER]]"
 repo = "[[CATALOG_REPO]]"
 branch = "main"
 run_directory = "stacks/platform/authelia"
@@ -45,7 +46,7 @@ name = "pihole"
 deploy = true
 after = ["caddy"]
 [stack.config]
-server = "nas"
+server = "[[CORE_SERVER]]"
 repo = "[[CATALOG_REPO]]"
 branch = "main"
 run_directory = "stacks/platform/pihole"
@@ -64,7 +65,7 @@ name = "wireguard"
 deploy = true
 after = ["caddy"]
 [stack.config]
-server = "nas"
+server = "[[CORE_SERVER]]"
 repo = "[[CATALOG_REPO]]"
 branch = "main"
 run_directory = "stacks/platform/wireguard"
@@ -85,7 +86,7 @@ name = "homepage"
 deploy = true
 after = ["caddy", "authelia"]
 [stack.config]
-server = "nas"
+server = "[[CORE_SERVER]]"
 repo = "[[CATALOG_REPO]]"
 branch = "main"
 run_directory = "stacks/platform/homepage"
@@ -115,7 +116,7 @@ name = "vaultwarden"
 deploy = true
 after = ["caddy", "authelia"]
 [stack.config]
-server = "nas"
+server = "[[CORE_SERVER]]"
 repo = "[[CATALOG_REPO]]"
 branch = "main"
 run_directory = "stacks/workload/vaultwarden"
@@ -135,7 +136,7 @@ name = "restic"
 deploy = true
 after = ["vaultwarden"]
 [stack.config]
-server = "nas"
+server = "[[CORE_SERVER]]"
 repo = "[[CATALOG_REPO]]"
 branch = "main"
 run_directory = "stacks/platform/restic"

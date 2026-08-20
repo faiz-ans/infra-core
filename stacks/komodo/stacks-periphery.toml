@@ -1,11 +1,12 @@
-# ResourceSync source for server htpc. Values come from Komodo [[VARS]].
+# ResourceSync source for the remote Periphery host.
+# server name is [[PERIPHERY_SERVER]] (bootstrap default: periphery).
 # webhook_enabled is false; poll on-site.
 
 [[stack]]
 name = "jellyfin"
 deploy = true
 [stack.config]
-server = "htpc"
+server = "[[PERIPHERY_SERVER]]"
 repo = "[[CATALOG_REPO]]"
 branch = "main"
 run_directory = "stacks/workload/jellyfin"
@@ -23,7 +24,7 @@ DATA_ROOT = [[DATA_ROOT]]
 name = "arr"
 deploy = true
 [stack.config]
-server = "htpc"
+server = "[[PERIPHERY_SERVER]]"
 repo = "[[CATALOG_REPO]]"
 branch = "main"
 run_directory = "stacks/workload/arr"
@@ -41,7 +42,7 @@ DATA_ROOT = [[DATA_ROOT]]
 name = "qbittorrent"
 deploy = true
 [stack.config]
-server = "htpc"
+server = "[[PERIPHERY_SERVER]]"
 repo = "[[CATALOG_REPO]]"
 branch = "main"
 run_directory = "stacks/workload/qbittorrent"
@@ -59,7 +60,7 @@ DATA_ROOT = [[DATA_ROOT]]
 name = "nextcloud"
 deploy = true
 [stack.config]
-server = "htpc"
+server = "[[PERIPHERY_SERVER]]"
 repo = "[[CATALOG_REPO]]"
 branch = "main"
 run_directory = "stacks/workload/nextcloud"
@@ -80,7 +81,7 @@ DOMAIN = [[DOMAIN]]
 name = "homeassistant"
 deploy = true
 [stack.config]
-server = "htpc"
+server = "[[PERIPHERY_SERVER]]"
 repo = "[[CATALOG_REPO]]"
 branch = "main"
 run_directory = "stacks/workload/homeassistant"
@@ -96,7 +97,7 @@ DATA_ROOT = [[DATA_ROOT]]
 name = "monitoring"
 deploy = true
 [stack.config]
-server = "htpc"
+server = "[[PERIPHERY_SERVER]]"
 repo = "[[CATALOG_REPO]]"
 branch = "main"
 run_directory = "stacks/platform/monitoring"
@@ -114,7 +115,7 @@ GRAFANA_ADMIN_PASSWORD = [[GRAFANA_ADMIN_PASSWORD]]
 name = "restic-rest"
 deploy = true
 [stack.config]
-server = "htpc"
+server = "[[PERIPHERY_SERVER]]"
 repo = "[[CATALOG_REPO]]"
 branch = "main"
 run_directory = "stacks/platform/restic-rest"

@@ -1,5 +1,5 @@
-# Outbound Periphery for Docker Desktop (server name htpc).
-# Copy to the HTPC and pass an env file written from bootstrap/htpc.md — do not commit filled env.
+# Outbound Periphery for a remote Docker engine (default server name: periphery).
+# Copy to that host and pass an env file — do not commit filled env.
 
 services:
   periphery:
@@ -8,10 +8,10 @@ services:
     restart: unless-stopped
     environment:
       PERIPHERY_CORE_ADDRESS: ${PERIPHERY_CORE_ADDRESS}
-      PERIPHERY_CONNECT_AS: htpc
+      PERIPHERY_CONNECT_AS: ${PERIPHERY_CONNECT_AS:-periphery}
       PERIPHERY_ONBOARDING_KEY: ${PERIPHERY_ONBOARDING_KEY}
       PERIPHERY_ROOT_DIRECTORY: ${PERIPHERY_ROOT_DIRECTORY:-/etc/komodo}
-      TZ: ${TZ:-Etc/UTC}
+      TZ: ${TZ:-America/Los_Angeles}
     volumes:
       - /var/run/docker.sock:/var/run/docker.sock
       - /proc:/proc
