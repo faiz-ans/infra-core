@@ -10,12 +10,11 @@
         icon: authelia.png
     - Pi-hole:
         href: https://dns.{{HOMEPAGE_VAR_DOMAIN}}/admin
-        siteMonitor: http://pihole:80
+        siteMonitor: http://pihole:80/admin
         icon: pi-hole.png
         widget:
           type: pihole
           url: http://pihole:80
-          key: "{{HOMEPAGE_VAR_PIHOLE_TOKEN}}"
           version: 6
     - WireGuard:
         href: https://vpn.{{HOMEPAGE_VAR_DOMAIN}}
