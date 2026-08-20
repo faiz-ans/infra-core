@@ -97,6 +97,7 @@ run_directory = "stacks/platform/homepage"
 file_paths = ["compose.yaml"]
 config_files = [
   { path = "config/services.yaml", requires = "Redeploy" },
+  { path = "config/settings.yaml", requires = "Redeploy" },
 ]
 webhook_enabled = false
 poll_for_updates = true

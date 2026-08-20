@@ -61,6 +61,7 @@
         href: https://dns.{{HOMEPAGE_VAR_DOMAIN}}/admin
         siteMonitor: http://pihole:80/admin
         icon: pi-hole.png
+        description: DNS
         widget:
           type: pihole
           url: http://pihole:80
@@ -69,6 +70,7 @@
         href: https://vpn.{{HOMEPAGE_VAR_DOMAIN}}
         siteMonitor: http://wireguard:51821
         icon: wireguard.png
+        description: VPN
 
 - System:
     - Komodo:

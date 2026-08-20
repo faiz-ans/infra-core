@@ -4,6 +4,11 @@ headerStyle: clean
 hideVersion: true
 statusStyle: dot
 
+background:
+  image: /images/background.jpg
+  opacity: 50
+  brightness: 50
+
 #layout:
 #  Platform:
 #    style: row

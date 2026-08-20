@@ -19,6 +19,7 @@ services:
       HOMEPAGE_VAR_GRAFANA_KEY: ${HOMEPAGE_VAR_GRAFANA_KEY}
     volumes:
       - ./config:/app/config
+      - ./images:/app/public/images
     networks:
       - edge
 
