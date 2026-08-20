@@ -6,7 +6,7 @@ statusStyle: dot
 background:
   image: /images/background.png
   brightness: 50
-  opacity: 80
+  opacity: 30
 cardBlur: sm
 
 #layout:
