@@ -16,32 +16,26 @@ https://auth.{$DOMAIN} {
 
 https://dash.{$DOMAIN} {
 	tls internal
-	import authelia_gate
 	reverse_proxy homepage:3000
 }
 
 https://dns.{$DOMAIN} {
 	tls internal
-	import authelia_gate
 	reverse_proxy pihole:80
 }
 
 https://vpn.{$DOMAIN} {
 	tls internal
-	import authelia_gate
 	reverse_proxy wireguard:51821
 }
 
 https://ops.{$DOMAIN} {
 	tls internal
-	# Komodo has its own login. Authelia forward_auth breaks /auth/GetUser
-	# (empty login form after sign-in). Direct :9120 stays published on the host.
 	reverse_proxy host.docker.internal:9120
 }
 
 https://nas.{$DOMAIN} {
 	tls internal
-	import authelia_gate
 	reverse_proxy host.docker.internal:81
 }
 
