@@ -6,8 +6,7 @@ statusStyle: dot
 background:
   image: /images/background.png
   opacity: 80
-  #brightness: 50
-cardBlur: sm
+  brightness: 50
 
 #layout:
 #  Platform:
