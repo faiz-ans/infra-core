@@ -420,18 +420,11 @@ else
   AUTHELIA_SESSION=$(rand)
   AUTHELIA_STORAGE=$(rand)
 fi
-if [[ -f "${KOMODO_DIR}/core.config.toml" ]] && grep -q '^WG_PASSWORD_HASH' "${KOMODO_DIR}/core.config.toml"; then
-  WG_PASSWORD_HASH=$(awk -F '"' '/^WG_PASSWORD_HASH/ {print $2}' "${KOMODO_DIR}/core.config.toml")
+if [[ -f "${KOMODO_DIR}/core.config.toml" ]] && grep -q '^WG_UI_PASSWORD' "${KOMODO_DIR}/core.config.toml"; then
+  WG_UI_PASSWORD=$(awk -F '"' '/^WG_UI_PASSWORD/ {print $2}' "${KOMODO_DIR}/core.config.toml")
 else
-  WG_UI_PASS=$(rand)
-  echo "Generating WireGuard UI password hash."
-  # docker run --rm ghcr.io/wg-easy/wg-easy:15 wgpw '...'
-  WG_RAW=$(docker run --rm "ghcr.io/wg-easy/wg-easy:15" wgpw "${WG_UI_PASS}" \
-    | sed -n "s/.*PASSWORD_HASH='\\(.*\\)'.*/\\1/p")
-  WG_RAW="${WG_RAW:-}"
-  # Compose treats $ in .env as interpolation; store $$ so bcrypt survives.
-  WG_PASSWORD_HASH="${WG_RAW//\$/\$\$}"
-  echo "WireGuard UI password (save now): ${WG_UI_PASS}"
+  WG_UI_PASSWORD=$(rand)
+  echo "WireGuard UI user wg-admin password (save now): ${WG_UI_PASSWORD}"
 fi
 
 # openssl rand -hex 24   (used above)
@@ -499,7 +492,7 @@ RESTIC_PASSWORD = "${RESTIC_PASSWORD}"
 RESTIC_REST_USER = "${RESTIC_REST_USER}"
 RESTIC_REST_PASSWORD = "${RESTIC_REST_PASSWORD}"
 WG_HOST = "${WG_HOST}"
-WG_PASSWORD_HASH = "${WG_PASSWORD_HASH}"
+WG_UI_PASSWORD = "${WG_UI_PASSWORD}"
 GRAFANA_ADMIN_PASSWORD = "${GRAFANA_ADMIN_PASSWORD}"
 NEXTCLOUD_ADMIN_USER = "${NEXTCLOUD_ADMIN_USER}"
 NEXTCLOUD_ADMIN_PASSWORD = "${NEXTCLOUD_ADMIN_PASSWORD}"
@@ -541,13 +534,13 @@ users:
       - admins
       - dev
 EOF
-  chmod 600 "${DATA_ROOT}/system/authelia/users.yml"
+  chmod 644 "${DATA_ROOT}/system/authelia/users.yml"
 fi
 # chmod 600 "\${DATA_ROOT}/system/authelia/users.yml"
 
 # --- wg-easy password hash (best-effort; can set WG_PASSWORD_HASH later in Komodo) ---
 # docker run --rm ghcr.io/wg-easy/wg-easy:15 wgpw '...'   # image-specific
-echo "Set Komodo secret WG_PASSWORD_HASH if WireGuard is still restarting (bcrypt; write \$ as \$\$)."
+echo "WireGuard UI is user wg-admin; password is Komodo secret WG_UI_PASSWORD."
 
 echo
 echo "DATA_ROOT=${DATA_ROOT}"

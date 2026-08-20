@@ -1,6 +1,6 @@
-# Secrets come from AUTHELIA_* environment variables. Do not use
-# {{ env "AUTHELIA_*_SECRET" }} — Authelia's template env() hides those names
-# and would render empty keys (container restart loop).
+# Authelia's template env() refuses names that start with AUTHELIA_ and
+# end in SECRET/KEY. Pass the same values as JWT_SECRET / SESSION_SECRET /
+# STORAGE_ENCRYPTION_KEY instead.
 
 server:
   address: tcp://0.0.0.0:9091
@@ -15,14 +15,17 @@ log:
 authentication_backend:
   file:
     path: /config/users.yml
+  password_reset:
+    disable: true
 
 access_control:
-  default_policy: two_factor
+  default_policy: one_factor
   rules:
     - domain: 'authelia.{{ env "DOMAIN" }}'
       policy: bypass
 
 session:
+  secret: '{{ env "SESSION_SECRET" }}'
   cookies:
     - name: authelia_session
       domain: '{{ env "DOMAIN" }}'
@@ -30,6 +33,7 @@ session:
       default_redirection_url: 'https://homepage.{{ env "DOMAIN" }}'
 
 storage:
+  encryption_key: '{{ env "STORAGE_ENCRYPTION_KEY" }}'
   local:
     path: /data/db.sqlite3
 

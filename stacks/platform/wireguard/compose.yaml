@@ -1,3 +1,6 @@
+# wg-easy v15 ignores v14 PASSWORD_HASH / WG_HOST env.
+# It expects a dedicated 10.42.42.0/24 network and INSECURE=true behind Caddy.
+
 services:
   wireguard:
     image: ghcr.io/wg-easy/wg-easy:15
@@ -5,11 +8,14 @@ services:
     restart: unless-stopped
     environment:
       TZ: ${TZ}
-      WG_HOST: ${WG_HOST}
-      # bcrypt. In Komodo store $ as $$ so Compose does not eat the hash.
-      PASSWORD_HASH: ${WG_PASSWORD_HASH}
-      WG_DEFAULT_DNS: ${NAS_LAN_IP}
-      WG_PORT: "51820"
+      INSECURE: "true"
+      DISABLE_IPV6: "true"
+      INIT_ENABLED: "true"
+      INIT_USERNAME: wg-admin
+      INIT_PASSWORD: ${WG_UI_PASSWORD}
+      INIT_HOST: ${WG_HOST}
+      INIT_PORT: "51820"
+      INIT_DNS: ${NAS_LAN_IP}
     ports:
       - "51820:51820/udp"
     volumes:
@@ -24,9 +30,16 @@ services:
       - net.ipv4.ip_forward=1
       - net.ipv4.conf.all.src_valid_mark=1
     networks:
-      - edge
+      edge: {}
+      wg:
+        ipv4_address: 10.42.42.42
 
 networks:
   edge:
     external: true
     name: edge
+  wg:
+    driver: bridge
+    ipam:
+      config:
+        - subnet: 10.42.42.0/24
