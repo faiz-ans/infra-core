@@ -10,7 +10,7 @@ services:
       SIGNUPS_ALLOWED: ${SIGNUPS_ALLOWED}
       WEBSOCKET_ENABLED: "true"
     volumes:
-      - ${DATA_ROOT}/system/vaultwarden:/data
+      - ${DATA_ROOT}/system/core/vaultwarden:/data
     networks:
       - edge
 

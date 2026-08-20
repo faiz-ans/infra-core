@@ -13,7 +13,7 @@ services:
       FTLCONF_webserver_api_password: ""
       FTLCONF_misc_dnsmasq_lines: "address=/${DOMAIN}/${NAS_LAN_IP}"
     volumes:
-      - ${DATA_ROOT}/system/pihole:/etc/pihole
+      - ${DATA_ROOT}/system/core/pihole:/etc/pihole
     cap_add:
       - NET_ADMIN
     networks:

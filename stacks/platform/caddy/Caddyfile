@@ -94,7 +94,7 @@ https://prowlarr.{$DOMAIN} {
 	reverse_proxy {$HTPC_UPSTREAM}:9696
 }
 
-https://qbittorrent.{$DOMAIN} {
+https://qbit.{$DOMAIN} {
 	tls internal
 	import authelia_gate
 	reverse_proxy {$HTPC_UPSTREAM}:8081

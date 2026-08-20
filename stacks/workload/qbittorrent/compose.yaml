@@ -14,6 +14,6 @@ services:
       - "6881:6881"
       - "6881:6881/udp"
     volumes:
-      - ${DATA_ROOT}/system/qbittorrent:/config
+      - ${DATA_ROOT}/system/periphery/qbittorrent:/config
       - ${DATA_ROOT}/shared/downloads:/downloads
       - ${DATA_ROOT}/shared/media:/data/media

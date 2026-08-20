@@ -10,5 +10,5 @@ services:
     ports:
       - "8096:8096"
     volumes:
-      - ${DATA_ROOT}/system/jellyfin:/config
+      - ${DATA_ROOT}/system/periphery/jellyfin:/config
       - ${DATA_ROOT}/shared/media:/data/media

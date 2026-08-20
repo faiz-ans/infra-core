@@ -18,6 +18,13 @@ Bootstrap SHALL install OpenMediaVault (when using an external data disk), Docke
 - **WHEN** bootstrap completes on Raspberry Pi OS Lite 64-bit with an OMV data disk attached
 - **THEN** Docker, Komodo Core, and Periphery are installed, the Core server resource exists under `CORE_SERVER` (default `core`), `DATA_ROOT` is set, and ResourceSync is configured to poll the catalog
 
+### Requirement: OMV owns the data disk mount
+When using an external data disk, bootstrap SHALL register the ext4 filesystem with OpenMediaVault (`FileSystemMgmt.setMountPoint`) and apply the fstab module so the volume appears in Storage → File Systems. Bootstrap MUST NOT leave only a Debian `/etc/fstab` UUID line: that hides the disk from the OMV Mount UI and blocks shared folders. A plain fstab mount is allowed only if the OMV RPC is unavailable or fails.
+
+#### Scenario: Shared folders can use DATA_ROOT
+- **WHEN** bootstrap has mounted the external disk as `DATA_ROOT`
+- **THEN** the same UUID is an OMV mount-point object and the fstab line lives in the `[openmediavault]` tagged block
+
 ### Requirement: OMV install must not steal the SSH session
 When bootstrap installs OpenMediaVault over SSH, it SHALL invoke the vendor install script with skip-network (`-n`) and skip-reboot (`-r`) so the installer does not purge NetworkManager, rewrite systemd-networkd, or reboot. After the installer returns, bootstrap SHALL verify an IPv4 default route still exists before continuing.
 

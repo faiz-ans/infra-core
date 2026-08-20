@@ -6,6 +6,8 @@ On the NAS data disk, the following directory contract SHALL exist (created by b
 ```
 ${DATA_ROOT}/
   system/
+    core/
+    periphery/
   shared/
     media/
     downloads/
@@ -19,7 +21,7 @@ ${DATA_ROOT}/
 
 #### Scenario: Tree creation
 - **WHEN** NAS bootstrap or an initial storage task runs
-- **THEN** `system`, `shared/{media,downloads,files,photos}`, and a documented pattern for `users/<user>/{files,photos}` exist under `DATA_ROOT`
+- **THEN** `system/core`, `system/periphery`, `shared/{media,downloads,files,photos}`, and a documented pattern for `users/<user>/{files,photos}` exist under `DATA_ROOT`
 
 ### Requirement: Workloads bind the tree via variables
 Jellyfin, Arr, qBittorrent, and Nextcloud SHALL mount subdirectories of this tree using `${DATA_ROOT}/...` (or the HTPC host’s equivalent `DATA_ROOT`). Shared household content uses `shared/`; per-user Nextcloud files and Memories use `users/<user>/files` and `users/<user>/photos`.
@@ -38,3 +40,10 @@ The absolute `DATA_ROOT` path SHALL be a Komodo variable per server. On `nas` it
 #### Scenario: Restic REST storage
 - **WHEN** Restic REST runs on `htpc`
 - **THEN** its repository path uses `BACKUP_DRIVE` (the USB volume), not `shared/media`
+
+### Requirement: Permission boundaries
+NAS-only app state SHALL live under `${DATA_ROOT}/system/core`. HTPC app state SHALL live under `${DATA_ROOT}/system/periphery`. Household content SHALL live under `shared/` and `users/`. The HTPC SMB identity MAY have read/write on `shared/`, `users/`, and `system/periphery`, and MUST NOT have access to `system/core`.
+
+#### Scenario: HTPC share ACL
+- **WHEN** the HTPC Docker engine binds `DATA_ROOT` over SMB
+- **THEN** it can persist Nextcloud, Jellyfin, Arr, qBittorrent, and Home Assistant config under `system/periphery` and write household data under `shared/` and `users/`, without reading Authelia, Vaultwarden, Pi-hole, or WireGuard data under `system/core`

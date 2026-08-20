@@ -15,7 +15,7 @@ Mark items tagged **secret** as secrets in Komodo.
 | `TZ` | | Most containers |
 | `NAS_LAN_IP` | | Pi-hole wildcard, Homepage/Prometheus scrape of NAS-published ports |
 | `HTPC_UPSTREAM` | | Caddy upstreams, Homepage HTPC widgets, NAS restic client |
-| `DATA_ROOT` | | Per-server. Core: OMV uuid mount or `/srv/core`. Periphery: Docker Desktop-visible share |
+| `DATA_ROOT` | | Per-server. Core: OMV uuid mount or `/srv/core`. Periphery: Docker Desktop-visible share of the same tree (`system/periphery`, `shared`, `users`; not `system/core`) |
 | `BACKUP_DRIVE` | | HTPC Restic REST data directory |
 | `PUID` | | linuxserver images on both hosts |
 | `PGID` | | linuxserver images on both hosts |
@@ -30,7 +30,7 @@ Mark items tagged **secret** as secrets in Komodo.
 | `WG_HOST` | | wg-easy INIT_HOST (clients dial this) |
 | `WG_UI_PASSWORD` | secret | wg-easy v15 admin password (plaintext; used only at first start) |
 
-Authelia user hashes live in `${DATA_ROOT}/system/authelia/users.yml` on the NAS (written by bootstrap), not in Komodo.
+Authelia user hashes live in `${DATA_ROOT}/system/core/authelia/users.yml` on the NAS (written by bootstrap), not in Komodo.
 
 ## Vaultwarden
 

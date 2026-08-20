@@ -19,7 +19,7 @@ services:
     ports:
       - "51820:51820/udp"
     volumes:
-      - ${DATA_ROOT}/system/wireguard:/etc/wireguard
+      - ${DATA_ROOT}/system/core/wireguard:/etc/wireguard
       - /lib/modules:/lib/modules:ro
     devices:
       - /dev/net/tun:/dev/net/tun

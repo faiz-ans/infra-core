@@ -22,8 +22,8 @@ This repo is meant to be a public, environment-agnostic app catalog for a two-ho
 - `htpc-runtime`: Docker Desktop as the HTPC engine; outbound Periphery `connect_as=htpc`; published ports on the Windows LAN IP (`HTPC_UPSTREAM`).
 - `edge-access`: One Caddy on `nas`, Authelia, Pi-hole for `*.{$DOMAIN}`, WireGuard, and a shared Docker edge network.
 - `homepage`: Templated `services.yaml` with public hrefs and internal widget/monitor URLs.
-- `site-storage`: `DATA_ROOT` tree (`system/`, `shared/{media,downloads,files,photos}`, `users/<user>/{files,photos}`) and per-host roots.
-- `vaultwarden`: Vaultwarden on `nas`; Authelia on `/admin` only; data under `system/vaultwarden`.
+- `site-storage`: `DATA_ROOT` tree (`system/{core,periphery}`, `shared/{media,downloads,files,photos}`, `users/<user>/{files,photos}`) and per-host roots.
+- `vaultwarden`: Vaultwarden on `nas`; Authelia on `/admin` only; data under `system/core/vaultwarden`.
 - `backup`: NAS Restic client → HTPC Restic REST on `BACKUP_DRIVE`; include Vaultwarden data.
 - `htpc-workloads`: Home Assistant (wifi/integrations), Jellyfin, Arr, qBittorrent, Nextcloud, Prometheus/Grafana on `htpc`, bound to the storage tree.
 - `windows-winget`: Winget package list stub only; no Playnite/Kodi cutover.

@@ -10,7 +10,7 @@ services:
     ports:
       - "8989:8989"
     volumes:
-      - ${DATA_ROOT}/system/sonarr:/config
+      - ${DATA_ROOT}/system/periphery/sonarr:/config
       - ${DATA_ROOT}/shared/media:/data/media
       - ${DATA_ROOT}/shared/downloads:/downloads
 
@@ -25,7 +25,7 @@ services:
     ports:
       - "7878:7878"
     volumes:
-      - ${DATA_ROOT}/system/radarr:/config
+      - ${DATA_ROOT}/system/periphery/radarr:/config
       - ${DATA_ROOT}/shared/media:/data/media
       - ${DATA_ROOT}/shared/downloads:/downloads
 
@@ -40,4 +40,4 @@ services:
     ports:
       - "9696:9696"
     volumes:
-      - ${DATA_ROOT}/system/prowlarr:/config
+      - ${DATA_ROOT}/system/periphery/prowlarr:/config

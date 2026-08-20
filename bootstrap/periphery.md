@@ -16,7 +16,7 @@ Or install `Docker.DockerDesktop` alone. Enable WSL2 backend. Share the drive th
 
 ## 2. Map Core DATA_ROOT
 
-On Windows, map the Core host’s share (the same tree: `system/`, `shared/`, `users/`) to a persistent drive letter or a folder Docker Desktop can bind.
+On Windows, map the Core host’s share (the same tree: `system/core/`, `system/periphery/`, `shared/`, `users/`) to a persistent drive letter or a folder Docker Desktop can bind. The HTPC SMB account SHOULD have read/write on `shared/`, `users/`, and `system/periphery/`, and MUST NOT have access to `system/core/` (Authelia, Vaultwarden, Pi-hole, WireGuard).
 
 Set Komodo variable `DATA_ROOT` on the **periphery** server to that Docker-visible path. It must not be the laptop internal SSD.
 

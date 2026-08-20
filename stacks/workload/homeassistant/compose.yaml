@@ -8,5 +8,5 @@ services:
     ports:
       - "8123:8123"
     volumes:
-      - ${DATA_ROOT}/system/homeassistant:/config
+      - ${DATA_ROOT}/system/periphery/homeassistant:/config
     # wifi / integrations only; no USB radio passthrough

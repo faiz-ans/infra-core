@@ -12,7 +12,7 @@ services:
     ports:
       - "8080:80"
     volumes:
-      - ${DATA_ROOT}/system/nextcloud:/config
+      - ${DATA_ROOT}/system/periphery/nextcloud:/config
       - ${DATA_ROOT}/shared/files:/data/shared/files
       - ${DATA_ROOT}/shared/photos:/data/shared/photos
       - ${DATA_ROOT}/users:/data/users

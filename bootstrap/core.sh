@@ -115,12 +115,49 @@ part_from_disk() {
   fi
 }
 
+# Register DATA_ROOT with OMV (config.xml + tagged fstab) so Shared Folders/SMB work.
+# Do not write a plain UUID fstab line first: OMV hides already-mounted disks from
+# the Mount UI, and Salt will not fill the [openmediavault] block.
+register_omv_filesystem() {
+  local uuid="$1"
+  local mountpt="/srv/dev-disk-by-uuid-${uuid}"
+  local out rc=0
+  mkdir -p "${mountpt}"
+  if ! command -v omv-rpc >/dev/null 2>&1; then
+    return 1
+  fi
+  # omv-rpc -u admin FileSystemMgmt setMountPoint '{"id":"<uuid>","usagewarnthreshold":85}'
+  out=$(omv-rpc -u admin FileSystemMgmt setMountPoint \
+    "{\"id\":\"${uuid}\",\"usagewarnthreshold\":85}" 2>&1) || rc=$?
+  if [[ "${rc}" -ne 0 ]] && ! grep -qi 'already exists' <<<"${out}"; then
+    echo "OMV setMountPoint failed: ${out}"
+    return 1
+  fi
+  echo "OMV filesystem object exists for ${uuid}."
+  # Drop an untagged bootstrap fstab line so Salt can write the tagged one.
+  if grep -q "^UUID=${uuid} " /etc/fstab; then
+    awk -v u="UUID=${uuid} " '
+      BEGIN { inblk = 0 }
+      /# >>> \[openmediavault\]/ { inblk = 1 }
+      inblk == 0 && index($0, u) == 1 { next }
+      { print }
+      /# <<< \[openmediavault\]/ { inblk = 0 }
+    ' /etc/fstab > /etc/fstab.omvnew
+    mv /etc/fstab.omvnew /etc/fstab
+  fi
+  # omv-salt deploy run fstab
+  omv-salt deploy run fstab
+  findmnt -n "${mountpt}" >/dev/null 2>&1
+}
+
 ensure_data_disk() {
   local existing os_disk default_disk disk confirm fstype uuid part mountpt
   existing=$(ls -d /srv/dev-disk-by-uuid-* 2>/dev/null | head -1 || true)
   if [[ -n "${existing}" ]] && findmnt -n "${existing}" >/dev/null 2>&1; then
     DATA_ROOT="${existing}"
     echo "Using existing OMV data mount: ${DATA_ROOT}"
+    uuid="${existing#/srv/dev-disk-by-uuid-}"
+    register_omv_filesystem "${uuid}" || true
     return
   fi
 
@@ -195,16 +232,18 @@ ensure_data_disk() {
   mountpt="/srv/dev-disk-by-uuid-${uuid}"
   # mkdir -p /srv/dev-disk-by-uuid-<UUID>
   mkdir -p "${mountpt}"
-  if ! grep -q "${uuid}" /etc/fstab; then
+  if ! register_omv_filesystem "${uuid}"; then
+    echo "OMV did not take the disk; falling back to a plain fstab mount."
     # echo "UUID=<uuid> /srv/dev-disk-by-uuid-<uuid> ext4 defaults,nofail 0 2" >> /etc/fstab
-    echo "UUID=${uuid} ${mountpt} ext4 defaults,nofail 0 2" >> /etc/fstab
+    if ! grep -q "${uuid}" /etc/fstab; then
+      echo "UUID=${uuid} ${mountpt} ext4 defaults,nofail 0 2" >> /etc/fstab
+    fi
+    # mount /srv/dev-disk-by-uuid-<UUID>
+    mount "${mountpt}" 2>/dev/null || mount "UUID=${uuid}" "${mountpt}"
   fi
-  # mount /srv/dev-disk-by-uuid-<UUID>
-  mount "${mountpt}" 2>/dev/null || mount "UUID=${uuid}" "${mountpt}"
-
-  if command -v omv-rpc >/dev/null 2>&1; then
-    # omv-rpc FileSystemMgmt mount '{"id":"<uuid>","fstab":true}'
-    omv-rpc FileSystemMgmt mount "{\"id\":\"${uuid}\",\"fstab\":true}" >/dev/null 2>&1 || true
+  if ! findmnt -n "${mountpt}" >/dev/null 2>&1; then
+    echo "Failed to mount DATA_ROOT at ${mountpt}."
+    exit 1
   fi
 
   DATA_ROOT="${mountpt}"
@@ -442,22 +481,20 @@ if ! command -v docker >/dev/null 2>&1; then
 fi
 
 # --- DATA_ROOT tree ---
-# mkdir -p "${DATA_ROOT}/system" "${DATA_ROOT}/shared/media" ...
+# mkdir -p "${DATA_ROOT}/system/core" "${DATA_ROOT}/system/periphery" "${DATA_ROOT}/shared/media" ...
 mkdir -p \
-  "${DATA_ROOT}/system/authelia" \
-  "${DATA_ROOT}/system/vaultwarden" \
-  "${DATA_ROOT}/system/caddy" \
-  "${DATA_ROOT}/system/pihole" \
-  "${DATA_ROOT}/system/wireguard" \
-  "${DATA_ROOT}/system/homepage" \
-  "${DATA_ROOT}/system/restic" \
-  "${DATA_ROOT}/system/jellyfin" \
-  "${DATA_ROOT}/system/qbittorrent" \
-  "${DATA_ROOT}/system/sonarr" \
-  "${DATA_ROOT}/system/radarr" \
-  "${DATA_ROOT}/system/prowlarr" \
-  "${DATA_ROOT}/system/nextcloud" \
-  "${DATA_ROOT}/system/homeassistant" \
+  "${DATA_ROOT}/system/core/authelia" \
+  "${DATA_ROOT}/system/core/vaultwarden" \
+  "${DATA_ROOT}/system/core/pihole" \
+  "${DATA_ROOT}/system/core/wireguard" \
+  "${DATA_ROOT}/system/core/restic" \
+  "${DATA_ROOT}/system/periphery/jellyfin" \
+  "${DATA_ROOT}/system/periphery/qbittorrent" \
+  "${DATA_ROOT}/system/periphery/sonarr" \
+  "${DATA_ROOT}/system/periphery/radarr" \
+  "${DATA_ROOT}/system/periphery/prowlarr" \
+  "${DATA_ROOT}/system/periphery/nextcloud" \
+  "${DATA_ROOT}/system/periphery/homeassistant" \
   "${DATA_ROOT}/shared/media" \
   "${DATA_ROOT}/shared/downloads" \
   "${DATA_ROOT}/shared/files" \
@@ -588,7 +625,7 @@ done
 
 # --- Authelia users file (hash via official image) ---
 # docker run --rm authelia/authelia:4 authelia crypto hash generate argon2 --password '...'
-users_file="${DATA_ROOT}/system/authelia/users.yml"
+users_file="${DATA_ROOT}/system/core/authelia/users.yml"
 if [[ -d "${users_file}" ]]; then
   echo "Replacing directory ${users_file} (Docker created it when the file was missing)."
   rm -rf "${users_file}"

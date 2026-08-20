@@ -35,11 +35,11 @@
 
 - [x] 6.1 Add `stacks/workload/homepage/` compose and templated `services.yaml` (public hrefs, internal widget/monitor URLs, `{{HOMEPAGE_VAR_…}}`)
 - [x] 6.2 Map Komodo `[[DOMAIN]]` and `[[HTPC_UPSTREAM]]` (and widget keys) into `HOMEPAGE_VAR_*` in the Homepage stack environment
-- [x] 6.3 Add `stacks/workload/vaultwarden/` compose with `${DATA_ROOT}/system/vaultwarden`, edge network, env for URL/admin token/signups from Komodo
+- [x] 6.3 Add `stacks/workload/vaultwarden/` compose with `${DATA_ROOT}/system/core/vaultwarden`, edge network, env for URL/admin token/signups from Komodo
 
 ## 7. Backup
 
-- [x] 7.1 Add `stacks/workload/restic/` client on `nas` targeting REST on `HTPC_UPSTREAM`, including `${DATA_ROOT}/system/vaultwarden`
+- [x] 7.1 Add `stacks/workload/restic/` client on `nas` targeting REST on `HTPC_UPSTREAM`, including `${DATA_ROOT}/system/core/vaultwarden`
 - [x] 7.2 Add `stacks/workload/restic-rest/` on `htpc` with data on `${BACKUP_DRIVE}`
 
 ## 8. HTPC workloads
