@@ -71,6 +71,12 @@
         siteMonitor: http://wireguard:51821
         icon: wireguard.png
         description: VPN
+        widget:
+          type: wgeasy
+          url: http://wireguard:51821
+          version: 2
+          username: wg-admin
+          password: "{{HOMEPAGE_VAR_WGEASY_PASSWORD}}"
 
 - System:
     - Komodo:

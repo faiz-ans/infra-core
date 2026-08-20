@@ -17,6 +17,7 @@ services:
       HOMEPAGE_VAR_QBIT_USERNAME: ${HOMEPAGE_VAR_QBIT_USERNAME}
       HOMEPAGE_VAR_QBIT_PASSWORD: ${HOMEPAGE_VAR_QBIT_PASSWORD}
       HOMEPAGE_VAR_GRAFANA_KEY: ${HOMEPAGE_VAR_GRAFANA_KEY}
+      HOMEPAGE_VAR_WGEASY_PASSWORD: ${HOMEPAGE_VAR_WGEASY_PASSWORD}
     volumes:
       - ./config:/app/config
       # Local files are served from /app/public/images as /images/...

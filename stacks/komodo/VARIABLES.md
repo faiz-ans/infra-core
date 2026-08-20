@@ -59,6 +59,9 @@ Authelia user hashes live in `${DATA_ROOT}/system/core/authelia/users.yml` on th
 | `HOMEPAGE_VAR_QBIT_USERNAME` | |
 | `HOMEPAGE_VAR_QBIT_PASSWORD` | secret |
 | `HOMEPAGE_VAR_GRAFANA_KEY` | secret |
+| `HOMEPAGE_VAR_WGEASY_PASSWORD` | secret |
+
+`HOMEPAGE_VAR_WGEASY_PASSWORD` is the live wg-easy `wg-admin` login (not `WG_UI_PASSWORD` unless you never changed it). wg-easy 2FA must stay off for the widget API.
 
 `HOMEPAGE_VAR_DOMAIN` and `HOMEPAGE_VAR_HTPC_UPSTREAM` are **mapped from** `DOMAIN` and `HTPC_UPSTREAM` in the Homepage stack environment. Do not duplicate live values in git.
 
