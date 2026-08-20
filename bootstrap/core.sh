@@ -1,8 +1,9 @@
 #!/usr/bin/env bash
-# Core host Layer 0 bootstrap. Copy to the Core machine (scp) and run as root.
+# Core host Layer 0 bootstrap. Copy to the Core machine (scp) and run as root:
+#   sudo bash core.sh
 # Every live command is also shown in a nearby comment for copy-paste.
 #
-# Order: apt → external disk? → (if yes: OMV, may reboot, mount uuid path)
+# Order: apt → external disk? → (if yes: OMV with -n -r, mount uuid path)
 #        (if no: directory on OS disk) → site prompts → Docker → Komodo.
 
 set -euo pipefail
@@ -289,23 +290,56 @@ PY
   ss -tlnp | grep -E ':80|:443|:81|:9120' || true
 }
 
+run_omv_installer() {
+  local installer_url="$1"
+  local tmp
+  tmp=$(mktemp)
+  # wget -O /tmp/omv-install https://github.com/OpenMediaVault-Plugin-Developers/installScript/raw/master/install
+  # bash /tmp/omv-install -n -r
+  wget -O "${tmp}" "${installer_url}"
+  if [[ ! -s "${tmp}" ]]; then
+    echo "Failed to download OMV installer from ${installer_url}"
+    rm -f "${tmp}"
+    return 1
+  fi
+  # -n skip network setup (do not purge NetworkManager / rewrite systemd-networkd)
+  # -r skip reboot
+  echo "Running vendor OMV installer with -n -r (keep DHCP/SSH, no reboot)."
+  if bash "${tmp}" -n -r; then
+    rm -f "${tmp}"
+    return 0
+  fi
+  rm -f "${tmp}"
+  return 1
+}
+
+assert_ipv4_route() {
+  if ip -4 route get 1.1.1.1 >/dev/null 2>&1; then
+    echo "IPv4 default route still present after OMV install."
+    # ip -4 addr show scope global
+    ip -4 addr show scope global || true
+    return 0
+  fi
+  echo "ERROR: no IPv4 default route after OMV install. SSH may die; aborting."
+  ip -br addr || true
+  return 1
+}
+
 install_omv() {
   local installer="https://github.com/OpenMediaVault-Plugin-Developers/installScript/raw/master/install"
   seed_omv_keyring
-  echo "Installing OpenMediaVault (the vendor script may reboot)."
-  echo "If it reboots, run this script again; it will continue with disk mount, then prompts."
+  echo "Installing OpenMediaVault without taking over the NIC."
   # gpg --dearmor inherits umask; 022 so the vendor script writes a readable keyring.
   umask 022
-  # wget -O - https://github.com/OpenMediaVault-Plugin-Developers/installScript/raw/master/install | bash
-  if ! wget -O - "${installer}" | bash; then
+  if ! run_omv_installer "${installer}"; then
     echo "OMV installer failed (often an unreadable apt keyring on Debian/sqv). Fixing permissions and retrying."
     repair_apt_keyrings
     # apt-get update
     apt-get update
-    wget -O - "${installer}" | bash
+    run_omv_installer "${installer}"
   fi
   repair_apt_keyrings
-  echo "If the host rebooted, log in and run this script again."
+  assert_ipv4_route
 }
 
 echo "=== infra-core Core bootstrap ==="
@@ -340,7 +374,7 @@ if [[ -z "${USE_EXTERNAL_DISK}" ]]; then
 fi
 
 if [[ "${USE_EXTERNAL_DISK}" == "yes" ]]; then
-  # --- OMV (may reboot; re-run this script — storage choice is saved in STATE) ---
+  # --- OMV (installer is -n -r: keep NIC, do not reboot) ---
   if [[ ! -x /usr/sbin/omv-confdbadm ]] && [[ ! -x /usr/bin/omv-confdbadm ]]; then
     install_omv
   fi

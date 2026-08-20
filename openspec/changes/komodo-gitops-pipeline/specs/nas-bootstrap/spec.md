@@ -18,6 +18,13 @@ Bootstrap SHALL install OpenMediaVault (when using an external data disk), Docke
 - **WHEN** bootstrap completes on Raspberry Pi OS Lite 64-bit with an OMV data disk attached
 - **THEN** Docker, Komodo Core, and Periphery are installed, the Core server resource exists under `CORE_SERVER` (default `core`), `DATA_ROOT` is set, and ResourceSync is configured to poll the catalog
 
+### Requirement: OMV install must not steal the SSH session
+When bootstrap installs OpenMediaVault over SSH, it SHALL invoke the vendor install script with skip-network (`-n`) and skip-reboot (`-r`) so the installer does not purge NetworkManager, rewrite systemd-networkd, or reboot. After the installer returns, bootstrap SHALL verify an IPv4 default route still exists before continuing.
+
+#### Scenario: Installer keeps DHCP
+- **WHEN** bootstrap runs the OMV installer on a host that already has a working LAN address
+- **THEN** that address remains reachable over SSH when the installer finishes, and the host is not rebooted by the vendor script
+
 ### Requirement: OMV workbench does not occupy HTTP/HTTPS
 When OpenMediaVault is installed, bootstrap SHALL move the OMV workbench off host ports 80 and 443 so Caddy can bind them. The workbench HTTP listen port SHALL be taken from the OMV configuration database (`conf.webadmin.port`), not from `OMV_NGINX_SITE_WEBGUI_LISTEN_PORT`. After the change, workbench SHALL listen on port 81 and OMV SHALL NOT terminate TLS on 443.
 
