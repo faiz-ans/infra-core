@@ -9,8 +9,10 @@ services:
       PGID: ${PGID}
       NEXTCLOUD_ADMIN_USER: ${NEXTCLOUD_ADMIN_USER}
       NEXTCLOUD_ADMIN_PASSWORD: ${NEXTCLOUD_ADMIN_PASSWORD}
+      NEXTCLOUD_TRUSTED_DOMAINS: nextcloud.${DOMAIN}
     ports:
-      - "8080:80"
+      # linuxserver Nextcloud listens on 443 inside the container, not 80.
+      - "8080:443"
     volumes:
       - ${DATA_ROOT}/system/periphery/nextcloud:/config
       - ${DATA_ROOT}/shared/files:/data/shared/files

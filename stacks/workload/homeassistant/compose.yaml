@@ -9,4 +9,5 @@ services:
       - "8123:8123"
     volumes:
       - ${DATA_ROOT}/system/periphery/homeassistant:/config
+      - ./configuration.yaml:/config/configuration.yaml
     # wifi / integrations only; no USB radio passthrough
