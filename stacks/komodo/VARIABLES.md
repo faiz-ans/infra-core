@@ -15,7 +15,8 @@ Mark items tagged **secret** as secrets in Komodo.
 | `TZ` | | Most containers |
 | `NAS_LAN_IP` | | Pi-hole wildcard, Homepage/Prometheus scrape of NAS-published ports |
 | `HTPC_UPSTREAM` | | Caddy upstreams, Homepage HTPC widgets, NAS restic client |
-| `DATA_ROOT` | | Per-server. Core: OMV uuid mount or `/srv/core`. Periphery: Docker Desktop-visible share of the same tree (`system/periphery`, `shared`, `users`; not `system/core`) |
+| `DATA_ROOT` | | Core/NAS uuid mount (or `/srv/core`). Used by stacks-core.toml |
+| `HTPC_DATA_ROOT` | | Periphery Docker-visible path of the same tree (`Z:`). stacks-periphery.toml maps it to compose `DATA_ROOT` |
 | `BACKUP_DRIVE` | | HTPC Restic REST data directory |
 | `PUID` | | linuxserver images on both hosts |
 | `PGID` | | linuxserver images on both hosts |
