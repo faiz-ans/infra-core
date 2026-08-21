@@ -18,7 +18,7 @@ environment = """
 TZ = [[TZ]]
 PUID = [[PUID]]
 PGID = [[PGID]]
-DATA_ROOT = "[[HTPC_DATA_ROOT]]"
+DATA_ROOT=[[HTPC_DATA_ROOT]]
 """
 
 [[stack]]
@@ -36,7 +36,7 @@ environment = """
 TZ = [[TZ]]
 PUID = [[PUID]]
 PGID = [[PGID]]
-DATA_ROOT = "[[HTPC_DATA_ROOT]]"
+DATA_ROOT=[[HTPC_DATA_ROOT]]
 """
 
 [[stack]]
@@ -54,7 +54,7 @@ environment = """
 TZ = [[TZ]]
 PUID = [[PUID]]
 PGID = [[PGID]]
-DATA_ROOT = "[[HTPC_DATA_ROOT]]"
+DATA_ROOT=[[HTPC_DATA_ROOT]]
 """
 
 [[stack]]
@@ -72,7 +72,7 @@ environment = """
 TZ = [[TZ]]
 PUID = [[PUID]]
 PGID = [[PGID]]
-DATA_ROOT = "[[HTPC_DATA_ROOT]]"
+DATA_ROOT=[[HTPC_DATA_ROOT]]
 NEXTCLOUD_ADMIN_USER = [[NEXTCLOUD_ADMIN_USER]]
 NEXTCLOUD_ADMIN_PASSWORD = [[NEXTCLOUD_ADMIN_PASSWORD]]
 DOMAIN = [[DOMAIN]]
@@ -94,7 +94,7 @@ webhook_enabled = false
 poll_for_updates = true
 environment = """
 TZ = [[TZ]]
-DATA_ROOT = "[[HTPC_DATA_ROOT]]"
+DATA_ROOT=[[HTPC_DATA_ROOT]]
 """
 
 [[stack]]
