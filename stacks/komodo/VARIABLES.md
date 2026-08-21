@@ -16,7 +16,7 @@ Mark items tagged **secret** as secrets in Komodo.
 | `NAS_LAN_IP` | | Pi-hole wildcard, Homepage/Prometheus scrape of NAS-published ports |
 | `HTPC_UPSTREAM` | | Caddy upstreams, Homepage HTPC widgets, NAS restic client |
 | `DATA_ROOT` | | Core/NAS uuid mount (or `/srv/core`). Used by stacks-core.toml |
-| `HTPC_DATA_ROOT` | | Periphery Docker-visible path of the same tree. Use `Z:` with no extra quotes. stacks-periphery.toml maps it to compose `DATA_ROOT` as `"[[HTPC_DATA_ROOT]]"` so the colon is not parsed as TOML |
+| `HTPC_DATA_ROOT` | | Periphery Docker-visible path of the same tree (`Z:`). stacks-periphery.toml maps it to compose `DATA_ROOT` |
 | `BACKUP_DRIVE` | | HTPC Restic REST data directory |
 | `PUID` | | linuxserver images on both hosts |
 | `PGID` | | linuxserver images on both hosts |
