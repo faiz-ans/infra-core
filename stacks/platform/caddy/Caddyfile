@@ -40,6 +40,51 @@ https://nas.{$DOMAIN} {
 	reverse_proxy host.docker.internal:81
 }
 
+https://jellyfin.{$DOMAIN} {
+	tls internal
+	reverse_proxy {$HTPC_UPSTREAM}:8096
+}
+
+https://ha.{$DOMAIN} {
+	tls internal
+	reverse_proxy {$HTPC_UPSTREAM}:8123
+}
+
+https://nextcloud.{$DOMAIN} {
+	tls internal
+	reverse_proxy {$HTPC_UPSTREAM}:8080
+}
+
+https://sonarr.{$DOMAIN} {
+	tls internal
+	reverse_proxy {$HTPC_UPSTREAM}:8989
+}
+
+https://radarr.{$DOMAIN} {
+	tls internal
+	reverse_proxy {$HTPC_UPSTREAM}:7878
+}
+
+https://prowlarr.{$DOMAIN} {
+	tls internal
+	reverse_proxy {$HTPC_UPSTREAM}:9696
+}
+
+https://qbit.{$DOMAIN} {
+	tls internal
+	reverse_proxy {$HTPC_UPSTREAM}:8081
+}
+
+https://grafana.{$DOMAIN} {
+	tls internal
+	reverse_proxy {$HTPC_UPSTREAM}:3000
+}
+
+https://prometheus.{$DOMAIN} {
+	tls internal
+	reverse_proxy {$HTPC_UPSTREAM}:9090
+}
+
 https://pw.{$DOMAIN} {
 	tls internal
 
@@ -58,56 +103,4 @@ https://pw.{$DOMAIN} {
 	}
 }
 
-https://jellyfin.{$DOMAIN} {
-	tls internal
-	import authelia_gate
-	reverse_proxy {$HTPC_UPSTREAM}:8096
-}
 
-https://ha.{$DOMAIN} {
-	tls internal
-	import authelia_gate
-	reverse_proxy {$HTPC_UPSTREAM}:8123
-}
-
-https://nextcloud.{$DOMAIN} {
-	tls internal
-	import authelia_gate
-	reverse_proxy {$HTPC_UPSTREAM}:8080
-}
-
-https://sonarr.{$DOMAIN} {
-	tls internal
-	import authelia_gate
-	reverse_proxy {$HTPC_UPSTREAM}:8989
-}
-
-https://radarr.{$DOMAIN} {
-	tls internal
-	import authelia_gate
-	reverse_proxy {$HTPC_UPSTREAM}:7878
-}
-
-https://prowlarr.{$DOMAIN} {
-	tls internal
-	import authelia_gate
-	reverse_proxy {$HTPC_UPSTREAM}:9696
-}
-
-https://qbit.{$DOMAIN} {
-	tls internal
-	import authelia_gate
-	reverse_proxy {$HTPC_UPSTREAM}:8081
-}
-
-https://grafana.{$DOMAIN} {
-	tls internal
-	import authelia_gate
-	reverse_proxy {$HTPC_UPSTREAM}:3000
-}
-
-https://prometheus.{$DOMAIN} {
-	tls internal
-	import authelia_gate
-	reverse_proxy {$HTPC_UPSTREAM}:9090
-}

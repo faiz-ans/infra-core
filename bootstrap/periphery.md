@@ -18,7 +18,7 @@ Or install `Docker.DockerDesktop` alone. Enable WSL2 backend. Share the drive th
 
 On Windows, map the Core host’s share (the same tree: `system/core/`, `system/periphery/`, `shared/`, `users/`) to a persistent drive letter or a folder Docker Desktop can bind. The HTPC SMB account SHOULD have read/write on `shared/`, `users/`, and `system/periphery/`, and MUST NOT have access to `system/core/` (Authelia, Vaultwarden, Pi-hole, WireGuard).
 
-Set Komodo variable `DATA_ROOT` on the **periphery** server to that Docker-visible path. It must not be the laptop internal SSD.
+Set Komodo variable `HTPC_DATA_ROOT` (Settings → Variables in the same Core UI) to that Docker-visible path, for example `Z:`. Do not change `DATA_ROOT`; that is the Pi path.
 
 Set `BACKUP_DRIVE` to the USB backup volume path as Docker Desktop sees it (Restic REST data). Not under `shared/media`.
 
