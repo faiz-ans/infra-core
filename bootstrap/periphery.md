@@ -12,13 +12,22 @@ This catalog’s remote engine is Docker Desktop (WSL2 backend). Do not install 
 winget import -i windows\packages.json
 ```
 
-Or install `Docker.DockerDesktop` alone. Enable WSL2 backend. Share the drive that will hold `DATA_ROOT` (Settings → Resources → File sharing).
+Or install `Docker.DockerDesktop` alone. Enable WSL2 backend. Share only the USB volume used as `BACKUP_DRIVE` (Settings → Resources → File sharing). Do not share an SMB-mapped `Z:` (or similar) for app data.
 
-## 2. Map Core DATA_ROOT
+## 2. NAS data: pick a transport per stack
 
-On Windows, map the Core host’s share (the same tree: `system/core/`, `system/periphery/`, `shared/`, `users/`) to a persistent drive letter or a folder Docker Desktop can bind. The HTPC SMB account SHOULD have read/write on `shared/`, `users/`, and `system/periphery/`, and MUST NOT have access to `system/core/` (Authelia, Vaultwarden, Pi-hole, WireGuard).
+Workload compose is transport-agnostic. Komodo `file_paths` chooses one file (never both):
 
-Set Komodo variable `DATA_ROOT` on the **periphery** server to that Docker-visible path. It must not be the laptop internal SSD.
+| File | When | Komodo env |
+|---|---|---|
+| `compose.yaml` | Local disk, or a host mount of NFS/SMB/CIFS at `DATA_ROOT` | `DATA_ROOT` |
+| `compose.nfs.yaml` | Docker engine mounts OMV NFS itself (this HTPC) | `NAS_LAN_IP`, `NFS_EXPORT` |
+
+This site’s `stacks-periphery.toml` uses `compose.nfs.yaml`. Follow `bootstrap/omv-nfs.md`, then set `NAS_LAN_IP` and `NFS_EXPORT=/data` (or `/<shared-folder-name>`). Do not set that stack’s `DATA_ROOT` to `Z:`.
+
+A future single-host or Linux engine can point the same stack at `compose.yaml` and a local/host `DATA_ROOT`.
+
+SMB stays for Explorer/Finder. Map those shares as you like; they are not required for `compose.nfs.yaml`.
 
 Set `BACKUP_DRIVE` to the USB backup volume path as Docker Desktop sees it (Restic REST data). Not under `shared/media`.
 

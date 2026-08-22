@@ -14,7 +14,7 @@
 ## 3. HTPC runtime
 
 - [x] 3.1 Add `bootstrap/` Periphery compose for Docker Desktop (socket mount, outbound `PERIPHERY_CORE_ADDRESS`, `connect_as=htpc`)
-- [x] 3.2 Add `bootstrap/periphery.md` (or script) covering Docker Desktop, SMB mapping for `DATA_ROOT`, `BACKUP_DRIVE`, firewall ports, onboarding key prompt/write
+- [x] 3.2 Add `bootstrap/periphery.md` (or script) covering Docker Desktop, OMV NFS for app data, SMB for interactive copy, `BACKUP_DRIVE`, firewall ports, onboarding key prompt/write
 - [x] 3.3 Add `windows/` winget list including Docker Desktop plus Kodi, AHK, Firefox, Steam, Dolphin, ePSXe, PCSX2 (list only)
 
 ## 4. ResourceSync

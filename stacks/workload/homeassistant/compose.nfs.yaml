@@ -1,0 +1,23 @@
+# Docker NFS volume driver. Same tree as compose.yaml; engine mounts OMV itself.
+# Deploy this file instead of compose.yaml (do not merge both).
+services:
+  homeassistant:
+    image: ghcr.io/home-assistant/home-assistant:stable
+    container_name: homeassistant
+    restart: unless-stopped
+    environment:
+      TZ: ${TZ}
+    ports:
+      - "8123:8123"
+    volumes:
+      - homeassistant-config:/config
+      - ./configuration.yaml:/config/configuration.yaml
+    # wifi / integrations only; no USB radio passthrough
+
+volumes:
+  homeassistant-config:
+    driver: local
+    driver_opts:
+      type: nfs
+      o: addr=${NAS_LAN_IP},nfsvers=4,rw,nolock,hard
+      device: ":${NFS_EXPORT}/system/periphery/homeassistant"

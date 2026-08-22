@@ -90,8 +90,8 @@ ${DATA_ROOT}/users/<user>/{files,photos}
 ```
 
 - `nas` `DATA_ROOT` = OMV `/srv/dev-disk-by-uuid-*`
-- `htpc` `DATA_ROOT` = Docker Desktop-visible SMB (or equivalent) of the same tree
-- SMB: HTPC account may have `shared/`, `users/`, and `system/periphery/`; not `system/core/`
+- `htpc` app stacks = Docker NFS volumes of the same tree (`NAS_LAN_IP` + `NFS_EXPORT`)
+- SMB: household Explorer/Finder only; not the Docker bind path
 - `BACKUP_DRIVE` = HTPC 4TB USB; Restic REST lives there
 - NAS restic client → REST on `HTPC_UPSTREAM`; include `system/core/vaultwarden`
 
@@ -129,7 +129,7 @@ Exact non-colliding host ports are an implementation detail; Caddyfile and Homep
 
 - **[Pi 4GB still busy with OMV + Core + edge]** → Keep HA/media off the Pi; monitor memory; avoid extra NAS stacks.
 - **[Windows Firewall blocks Caddy → Desktop ports]** → HTPC bootstrap documents/allows the published port list.
-- **[Docker Desktop file sharing vs SMB bind mounts]** → Prefer a stable mapped share that Desktop can see; document the path as `DATA_ROOT` on `htpc`. If bind mounts fail, CIFS volumes with Komodo-injected SMB creds.
+- **[Docker Desktop file sharing vs SMB bind mounts]** → Do not bind SMB/NFS drive letters. HTPC app stacks use the Docker NFS volume driver (`NAS_LAN_IP` + `NFS_EXPORT`). SMB remains for Explorer/Finder.
 - **[WSL2/Desktop not running]** → HTPC workloads and restic REST are down; Core on Pi still up. Acceptable for an always-on HTPC.
 - **[Authelia vs widgets]** → Internal URLs avoid SSO on scrapes; hrefs stay protected.
 - **[Public ResourceSync TOML shows topology]** → Acceptable; no secrets. Repo name `owner/infra-core` in TOML is catalog identity, not site secret.
@@ -141,10 +141,10 @@ Exact non-colliding host ports are an implementation detail; Caddyfile and Homep
 1. Commit catalog + bootstrap (this change) to the public repo.
 2. SCP `bootstrap/core.sh` to the Core host; run (or follow comments). Confirm Core UI, server `core` (or `CORE_SERVER` override), variables present.
 3. ResourceSync poll: platform stacks (Caddy, Authelia, Pi-hole, WireGuard), then Homepage, Vaultwarden, restic client.
-4. On the HTPC: Docker Desktop, map OMV shares, attach USB, run thin Periphery bootstrap, open firewall ports.
+4. On the HTPC: Docker Desktop, NFS from OMV (not SMB drive letters), attach USB, run thin Periphery bootstrap, open firewall ports.
 5. Confirm the periphery server connected; sync periphery stacks; point Caddy upstreams at `HTPC_UPSTREAM`.
 6. Create first Vaultwarden user; set signups false; confirm clients sync and `/admin` requires Authelia.
-7. When IronWolf arrives: migrate OMV disk, update `DATA_ROOT`, remount HTPC share, redeploy—no catalog rewrite.
+7. When IronWolf arrives: migrate OMV disk, update Core `DATA_ROOT`, keep the same NFS share name, redeploy—no catalog rewrite.
 
 Rollback: disable ResourceSync auto-apply; `docker compose down` per stack on the affected server; Core remains via bootstrap compose. Git revert of catalog plus Komodo sync returns topology to the previous commit.
 
@@ -152,4 +152,3 @@ Rollback: disable ResourceSync auto-apply; `docker compose down` per stack on th
 
 - Nextcloud host port vs TLS-inside-container (Caddy vs Nextcloud TLS) — pick during compose so Caddy’s upstream is HTTP or HTTPS consistently.
 - Arr stack membership beyond Sonarr/Radarr (Prowlarr, Bazarr, etc.) — start with Sonarr + Radarr + Prowlarr. qBittorrent is its own stack.
-- SMB vs NFS for Docker Desktop `DATA_ROOT` — prefer SMB on Windows; fall back if Desktop cannot bind the mapped drive.

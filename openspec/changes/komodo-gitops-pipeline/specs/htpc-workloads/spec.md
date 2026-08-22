@@ -1,14 +1,14 @@
 ## ADDED Requirements
 
 ### Requirement: Media and download stacks on htpc
-Jellyfin, the Arr stack, and qBittorrent SHALL deploy on server `htpc` via ResourceSync. They SHALL mount `${DATA_ROOT}/shared/media` and `${DATA_ROOT}/shared/downloads` (and shall not use the laptop internal SSD as the media library). They SHALL be reachable from Caddy on `nas` via `HTPC_UPSTREAM` and their published ports.
+Jellyfin, the Arr stack, and qBittorrent SHALL deploy on server `htpc` via ResourceSync. They SHALL mount the OMV `shared/media` and `shared/downloads` trees over NFS (and shall not use the laptop internal SSD as the media library). They SHALL be reachable from Caddy on `nas` via `HTPC_UPSTREAM` and their published ports.
 
 #### Scenario: Jellyfin library on NAS
 - **WHEN** Jellyfin is deployed
-- **THEN** its library path is `${DATA_ROOT}/shared/media` as seen by Docker Desktop
+- **THEN** its library path is the OMV `shared/media` tree mounted over NFS
 
 ### Requirement: Nextcloud on htpc
-Nextcloud SHALL deploy on `htpc` and SHALL access both household and per-user trees: `${DATA_ROOT}/shared/files`, `${DATA_ROOT}/shared/photos`, `${DATA_ROOT}/users/<user>/files`, and `${DATA_ROOT}/users/<user>/photos`.
+Nextcloud SHALL deploy on `htpc` and SHALL access both household and per-user trees over NFS: `shared/files`, `shared/photos`, and `users/<user>/{files,photos}`.
 
 #### Scenario: Memories and household files
 - **WHEN** Nextcloud is deployed

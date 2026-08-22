@@ -115,7 +115,7 @@ part_from_disk() {
   fi
 }
 
-# Register DATA_ROOT with OMV (config.xml + tagged fstab) so Shared Folders/SMB work.
+# Register DATA_ROOT with OMV (config.xml + tagged fstab) so Shared Folders/SMB/NFS work.
 # Do not write a plain UUID fstab line first: OMV hides already-mounted disks from
 # the Mount UI, and Salt will not fill the [openmediavault] block.
 register_omv_filesystem() {

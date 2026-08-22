@@ -1,3 +1,5 @@
+# Bind mounts via DATA_ROOT (local disk, host NFS, or host SMB/CIFS).
+# Docker-engine NFS (no host mount): deploy compose.nfs.yaml instead.
 services:
   homeassistant:
     image: ghcr.io/home-assistant/home-assistant:stable

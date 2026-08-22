@@ -1,0 +1,30 @@
+# Docker NFS volume driver. Same tree as compose.yaml; engine mounts OMV itself.
+# Deploy this file instead of compose.yaml (do not merge both).
+services:
+  jellyfin:
+    image: lscr.io/linuxserver/jellyfin:latest
+    container_name: jellyfin
+    restart: unless-stopped
+    environment:
+      TZ: ${TZ}
+      PUID: ${PUID}
+      PGID: ${PGID}
+    ports:
+      - "8096:8096"
+    volumes:
+      - jellyfin-config:/config
+      - jellyfin-media:/data/media
+
+volumes:
+  jellyfin-config:
+    driver: local
+    driver_opts:
+      type: nfs
+      o: addr=${NAS_LAN_IP},nfsvers=4,rw,nolock,hard
+      device: ":${NFS_EXPORT}/system/periphery/jellyfin"
+  jellyfin-media:
+    driver: local
+    driver_opts:
+      type: nfs
+      o: addr=${NAS_LAN_IP},nfsvers=4,rw,nolock,hard
+      device: ":${NFS_EXPORT}/shared/media"

@@ -11,7 +11,7 @@ This repo is meant to be a public, environment-agnostic app catalog for a two-ho
 - Treat the HTPC as Docker Desktop (WSL2 engine), not docker-ce inside WSL2. A thin HTPC bootstrap brings up outbound Periphery as server `htpc`.
 - Put a single Caddy on the Pi in front of both hosts; Authelia at the edge except Vaultwarden `/admin` only.
 - Deploy NAS workloads (Homepage, Pi-hole, WireGuard, Vaultwarden, Restic client) and HTPC workloads (Home Assistant, Jellyfin, Arr, qBittorrent, Nextcloud, monitoring, Restic REST).
-- Establish the `DATA_ROOT` directory contract and host-specific roots (`nas` uuid path vs Docker Desktop-visible NAS mount; `BACKUP_DRIVE` for the 4TB USB).
+- Establish the `DATA_ROOT` directory contract (NAS uuid path locally; HTPC consumes the same tree over NFS; `BACKUP_DRIVE` for the 4TB USB).
 - Add a winget export under `windows/` for later HTPC apps (Kodi, AHK, Firefox kiosk, Steam, emulators). Do not implement those Windows apps in this change.
 
 ## Capabilities
@@ -36,5 +36,5 @@ This repo is meant to be a public, environment-agnostic app catalog for a two-ho
 
 - New tree under `bootstrap/`, `stacks/`, and `windows/` in this public repo.
 - Runtime: Raspberry Pi (OMV, Docker, Komodo Core/Periphery, edge and NAS stacks) and Windows 10 HTPC (Docker Desktop, Periphery, HTPC stacks, 4TB USB).
-- External systems: GitHub (public clone/poll only), Komodo ResourceSync, OMV shares consumed by Docker Desktop, Windows firewall for published ports.
+- External systems: GitHub (public clone/poll only), Komodo ResourceSync, OMV NFS for HTPC Docker, OMV SMB for interactive shares, Windows firewall for published ports.
 - Out of scope for implementation: Kodi launcher, AHK, Firefox kiosk, Steam, emulators, HA radios, share-name polish, SMTP for Vaultwarden.

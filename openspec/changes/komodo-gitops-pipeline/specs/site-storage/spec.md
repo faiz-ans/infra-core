@@ -24,26 +24,26 @@ ${DATA_ROOT}/
 - **THEN** `system/core`, `system/periphery`, `shared/{media,downloads,files,photos}`, and a documented pattern for `users/<user>/{files,photos}` exist under `DATA_ROOT`
 
 ### Requirement: Workloads bind the tree via variables
-Jellyfin, Arr, qBittorrent, and Nextcloud SHALL mount subdirectories of this tree using `${DATA_ROOT}/...` (or the HTPC host’s equivalent `DATA_ROOT`). Shared household content uses `shared/`; per-user Nextcloud files and Memories use `users/<user>/files` and `users/<user>/photos`.
+Jellyfin, Arr, qBittorrent, and Nextcloud SHALL mount subdirectories of this tree. Catalog `compose.yaml` uses `${DATA_ROOT}/...` bind mounts (local disk, host NFS, or host SMB/CIFS). Catalog `compose.nfs.yaml` uses Docker NFS volumes of `${NFS_EXPORT}/...` on `NAS_LAN_IP`. ResourceSync SHALL list exactly one of those files per stack. Shared household content uses `shared/`; per-user Nextcloud files and Memories use `users/<user>/files` and `users/<user>/photos`.
 
 #### Scenario: Media and photos mounts
 - **WHEN** Jellyfin and Nextcloud stacks are deployed
 - **THEN** Jellyfin uses `${DATA_ROOT}/shared/media` and Nextcloud can access both `${DATA_ROOT}/shared/{files,photos}` and `${DATA_ROOT}/users/<user>/{files,photos}`
 
 ### Requirement: Host-specific roots only
-The absolute `DATA_ROOT` path SHALL be a Komodo variable per server. On `nas` it SHALL be the OMV uuid mount (e.g. under `/srv/dev-disk-by-uuid-*`). On `htpc` it SHALL be the Docker Desktop-visible mount of the same OMV exports. The 4TB USB backup target SHALL be a separate HTPC variable (`BACKUP_DRIVE`) and MUST NOT be required to live under `DATA_ROOT`.
+The absolute `DATA_ROOT` path SHALL be a Komodo variable on `nas` (the OMV uuid mount, e.g. under `/srv/dev-disk-by-uuid-*`). HTPC app stacks SHALL mount the same tree over NFS using `NAS_LAN_IP` and `NFS_EXPORT` (the OMV shared-folder NFSv4 path). They MUST NOT bind a Windows SMB or NFS drive letter. The 4TB USB backup target SHALL be a separate HTPC variable (`BACKUP_DRIVE`) and MUST NOT be required to live under `DATA_ROOT`.
 
 #### Scenario: Disk swap
 - **WHEN** the OMV data disk UUID path changes
-- **THEN** updating `DATA_ROOT` in Komodo is sufficient for stacks to use the new disk without editing committed compose files
+- **THEN** updating `DATA_ROOT` on Core (and keeping the same NFS shared-folder name) is sufficient for stacks to use the new disk without editing committed compose files
 
 #### Scenario: Restic REST storage
 - **WHEN** Restic REST runs on `htpc`
 - **THEN** its repository path uses `BACKUP_DRIVE` (the USB volume), not `shared/media`
 
 ### Requirement: Permission boundaries
-NAS-only app state SHALL live under `${DATA_ROOT}/system/core`. HTPC app state SHALL live under `${DATA_ROOT}/system/periphery`. Household content SHALL live under `shared/` and `users/`. The HTPC SMB identity MAY have read/write on `shared/`, `users/`, and `system/periphery`, and MUST NOT have access to `system/core`.
+NAS-only app state SHALL live under `${DATA_ROOT}/system/core`. HTPC app state SHALL live under `${DATA_ROOT}/system/periphery`. Household content SHALL live under `shared/` and `users/`. SMB MAY remain for interactive Explorer/Finder access to `shared/` and `users/`. The HTPC Docker engine SHALL use NFS, not SMB, and MUST NOT require a Windows drive-letter bind of `DATA_ROOT`.
 
-#### Scenario: HTPC share ACL
-- **WHEN** the HTPC Docker engine binds `DATA_ROOT` over SMB
-- **THEN** it can persist Nextcloud, Jellyfin, Arr, qBittorrent, and Home Assistant config under `system/periphery` and write household data under `shared/` and `users/`, without reading Authelia, Vaultwarden, Pi-hole, or WireGuard data under `system/core`
+#### Scenario: HTPC NFS mount
+- **WHEN** the HTPC Docker engine mounts OMV NFS at `${NFS_EXPORT}/system/periphery` and `${NFS_EXPORT}/shared`
+- **THEN** it can persist Nextcloud, Jellyfin, Arr, qBittorrent, and Home Assistant config under `system/periphery` and write household data under `shared/` and `users/`

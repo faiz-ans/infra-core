@@ -2,6 +2,8 @@
 # Komodo does not interpolate [[VAR]] in server/repo — those must be literals.
 # Apply this file only after the periphery server is connected.
 # webhook_enabled is false; poll on-site.
+# Storage transport is per stack: compose.yaml + DATA_ROOT (local / host NFS / host SMB),
+# or compose.nfs.yaml + NAS_LAN_IP + NFS_EXPORT (Docker NFS driver). Do not list both files.
 
 [[stack]]
 name = "jellyfin"
@@ -11,14 +13,15 @@ server = "periphery"
 repo = "faiz-ans/infra-core"
 branch = "main"
 run_directory = "stacks/workload/jellyfin"
-file_paths = ["compose.yaml"]
+file_paths = ["compose.nfs.yaml"]
 webhook_enabled = false
 poll_for_updates = true
 environment = """
 TZ = [[TZ]]
 PUID = [[PUID]]
 PGID = [[PGID]]
-DATA_ROOT = [[DATA_ROOT]]
+NAS_LAN_IP = [[NAS_LAN_IP]]
+NFS_EXPORT = [[NFS_EXPORT]]
 """
 
 [[stack]]
@@ -29,14 +32,15 @@ server = "periphery"
 repo = "faiz-ans/infra-core"
 branch = "main"
 run_directory = "stacks/workload/arr"
-file_paths = ["compose.yaml"]
+file_paths = ["compose.nfs.yaml"]
 webhook_enabled = false
 poll_for_updates = true
 environment = """
 TZ = [[TZ]]
 PUID = [[PUID]]
 PGID = [[PGID]]
-DATA_ROOT = [[DATA_ROOT]]
+NAS_LAN_IP = [[NAS_LAN_IP]]
+NFS_EXPORT = [[NFS_EXPORT]]
 """
 
 [[stack]]
@@ -47,14 +51,15 @@ server = "periphery"
 repo = "faiz-ans/infra-core"
 branch = "main"
 run_directory = "stacks/workload/qbittorrent"
-file_paths = ["compose.yaml"]
+file_paths = ["compose.nfs.yaml"]
 webhook_enabled = false
 poll_for_updates = true
 environment = """
 TZ = [[TZ]]
 PUID = [[PUID]]
 PGID = [[PGID]]
-DATA_ROOT = [[DATA_ROOT]]
+NAS_LAN_IP = [[NAS_LAN_IP]]
+NFS_EXPORT = [[NFS_EXPORT]]
 """
 
 [[stack]]
@@ -65,14 +70,15 @@ server = "periphery"
 repo = "faiz-ans/infra-core"
 branch = "main"
 run_directory = "stacks/workload/nextcloud"
-file_paths = ["compose.yaml"]
+file_paths = ["compose.nfs.yaml"]
 webhook_enabled = false
 poll_for_updates = true
 environment = """
 TZ = [[TZ]]
 PUID = [[PUID]]
 PGID = [[PGID]]
-DATA_ROOT = [[DATA_ROOT]]
+NAS_LAN_IP = [[NAS_LAN_IP]]
+NFS_EXPORT = [[NFS_EXPORT]]
 NEXTCLOUD_ADMIN_USER = [[NEXTCLOUD_ADMIN_USER]]
 NEXTCLOUD_ADMIN_PASSWORD = [[NEXTCLOUD_ADMIN_PASSWORD]]
 DOMAIN = [[DOMAIN]]
@@ -86,7 +92,7 @@ server = "periphery"
 repo = "faiz-ans/infra-core"
 branch = "main"
 run_directory = "stacks/workload/homeassistant"
-file_paths = ["compose.yaml"]
+file_paths = ["compose.nfs.yaml"]
 config_files = [
   { path = "configuration.yaml", requires = "Redeploy" },
 ]
@@ -94,7 +100,8 @@ webhook_enabled = false
 poll_for_updates = true
 environment = """
 TZ = [[TZ]]
-DATA_ROOT = [[DATA_ROOT]]
+NAS_LAN_IP = [[NAS_LAN_IP]]
+NFS_EXPORT = [[NFS_EXPORT]]
 """
 
 [[stack]]

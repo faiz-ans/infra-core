@@ -13,9 +13,10 @@ Mark items tagged **secret** as secrets in Komodo.
 | `PERIPHERY_SERVER` | | Remote Periphery `connect_as`. Must match TOML `server = "periphery"` |
 | `DOMAIN` | | Caddy, Authelia, Pi-hole, Homepage, Vaultwarden public URL |
 | `TZ` | | Most containers |
-| `NAS_LAN_IP` | | Pi-hole wildcard, Homepage/Prometheus scrape of NAS-published ports |
+| `NAS_LAN_IP` | | Pi-hole wildcard, Homepage/Prometheus scrape, periphery NFS `addr=` |
 | `HTPC_UPSTREAM` | | Caddy upstreams, Homepage HTPC widgets, NAS restic client |
-| `DATA_ROOT` | | Per-server. Core: OMV uuid mount or `/srv/core`. Periphery: Docker Desktop-visible share of the same tree (`system/periphery`, `shared`, `users`; not `system/core`) |
+| `DATA_ROOT` | | Bind-mount compose (`compose.yaml`). Local disk, host NFS, or host SMB/CIFS path of the DATA_ROOT tree. Core uses this. A stack that uses `compose.nfs.yaml` does not. |
+| `NFS_EXPORT` | | Docker-NFS compose (`compose.nfs.yaml`). NFSv4 export path (`/data` if the OMV folder is named `data`). No quotes, not a drive letter |
 | `BACKUP_DRIVE` | | HTPC Restic REST data directory |
 | `PUID` | | linuxserver images on both hosts |
 | `PGID` | | linuxserver images on both hosts |
@@ -72,5 +73,5 @@ Authelia user hashes live in `${DATA_ROOT}/system/core/authelia/users.yml` on th
 | `GRAFANA_ADMIN_PASSWORD` | secret | Grafana |
 | `NEXTCLOUD_ADMIN_USER` | | Nextcloud first-run |
 | `NEXTCLOUD_ADMIN_PASSWORD` | secret | Nextcloud first-run |
-| `SMB_USERNAME` | | Optional CIFS fallback (not required if Desktop bind-mounts `DATA_ROOT`) |
-| `SMB_PASSWORD` | secret | Optional CIFS fallback |
+| `SMB_USERNAME` | | Unused by catalog stacks. SMB is for Explorer/Finder only |
+| `SMB_PASSWORD` | secret | Unused by catalog stacks |

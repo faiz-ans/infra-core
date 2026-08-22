@@ -101,7 +101,7 @@ apply_home() {
 apply_home faiz
 apply_home diana
 
-echo "Done. Reconnect the HTPC SMB session."
+echo "Done. Reconnect household SMB sessions. HTPC apps use NFS; remount/redeploy those stacks if needed."
 echo
 echo "Admin (pilot) uses:  sudo ls ${DATA_ROOT}/users/faiz"
 echo "  (sudo cd does not work; cd is a shell builtin.)"
