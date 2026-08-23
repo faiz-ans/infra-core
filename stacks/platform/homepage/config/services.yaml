@@ -71,10 +71,6 @@
         siteMonitor: http://{{HOMEPAGE_VAR_HTPC_UPSTREAM}}:8083/admin
         icon: pi-hole.png
         description: DNS (Secondary)
-        widget:
-          type: pihole
-          url: http://{{HOMEPAGE_VAR_HTPC_UPSTREAM}}:8083
-          version: 6
     - WireGuard:
         href: https://vpn.{{HOMEPAGE_VAR_DOMAIN}}
         siteMonitor: http://wireguard:51821
