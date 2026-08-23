@@ -45,6 +45,7 @@ AUTHELIA_SESSION_SECRET = [[AUTHELIA_SESSION_SECRET]]
 AUTHELIA_STORAGE_ENCRYPTION_KEY = [[AUTHELIA_STORAGE_ENCRYPTION_KEY]]
 """
 
+# Name is global across ResourceSync files. The HTPC copy is "pihole-periphery".
 [[stack]]
 name = "pihole"
 deploy = true

@@ -77,7 +77,7 @@ In Komodo UI, create an onboarding key and allow it to connect as that server na
 docker compose --env-file periphery.env -f periphery.compose.yaml up -d
 ```
 
-Confirm the periphery server is connected in Komodo, then add `stacks/komodo/stacks-periphery.toml` to ResourceSync (or a second sync) and apply. Do not apply that file before the `periphery` server exists.
+Confirm the periphery server is connected in Komodo, then add `stacks/komodo/stacks-periphery.toml` to ResourceSync (or a second sync) and apply. Do not apply that file before the `periphery` server exists. ResourceSync stack names are global; the HTPC Pi-hole is `pihole-periphery` so it does not collide with Core `pihole`.
 
 ## 6. Restic REST htpasswd (optional file on USB)
 

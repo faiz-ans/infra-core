@@ -110,8 +110,9 @@ TZ = [[TZ]]
 """
 
 # Local volume. Same wildcard as Core (*.DOMAIN → NAS_LAN_IP / Caddy).
+# ResourceSync matches stacks by name globally — must not reuse "pihole" from stacks-core.toml.
 [[stack]]
-name = "pihole"
+name = "pihole-periphery"
 deploy = true
 [stack.config]
 server = "periphery"
