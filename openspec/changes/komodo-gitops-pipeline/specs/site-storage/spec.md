@@ -6,8 +6,11 @@ On the NAS data disk, the following directory contract SHALL exist (created by b
 ```
 ${DATA_ROOT}/
   system/
-    core/
-    periphery/
+    authelia/
+    vaultwarden/
+    pihole/
+    wireguard/
+    restic/
   shared/
     media/
     downloads/
@@ -21,10 +24,10 @@ ${DATA_ROOT}/
 
 #### Scenario: Tree creation
 - **WHEN** NAS bootstrap or an initial storage task runs
-- **THEN** `system/core`, `system/periphery`, `shared/{media,downloads,files,photos}`, and a documented pattern for `users/<user>/{files,photos}` exist under `DATA_ROOT`
+- **THEN** `system/{authelia,vaultwarden,pihole,wireguard,restic}`, `shared/{media,downloads,files,photos}`, and a documented pattern for `users/<user>/{files,photos}` exist under `DATA_ROOT`
 
 ### Requirement: Workloads bind the tree via variables
-Jellyfin, Arr, qBittorrent, and Nextcloud SHALL mount subdirectories of this tree. Catalog `compose.yaml` uses `${DATA_ROOT}/...` bind mounts (local disk, host NFS, or host SMB/CIFS). Catalog `compose.nfs.yaml` uses Docker NFS volumes of `${NFS_EXPORT}/...` on `NAS_LAN_IP`. ResourceSync SHALL list exactly one of those files per stack. Shared household content uses `shared/`; per-user Nextcloud files and Memories use `users/<user>/files` and `users/<user>/photos`.
+Jellyfin, Arr, qBittorrent, and Nextcloud SHALL mount household subdirectories of this tree. `/config` for those apps (and Home Assistant) SHALL be a local Docker volume on the HTPC, not under `DATA_ROOT`. Catalog `compose.yaml` uses `${DATA_ROOT}/...` bind mounts for household data (local disk, host NFS, or host SMB/CIFS). Catalog `compose.nfs.yaml` uses Docker NFS volumes of `${NFS_EXPORT}/...` on `NAS_LAN_IP`. ResourceSync SHALL list exactly one of those files per stack. Shared household content uses `shared/`; per-user Nextcloud files and Memories use `users/<user>/files` and `users/<user>/photos`.
 
 #### Scenario: Media and photos mounts
 - **WHEN** Jellyfin and Nextcloud stacks are deployed
@@ -42,8 +45,8 @@ The absolute `DATA_ROOT` path SHALL be a Komodo variable on `nas` (the OMV uuid 
 - **THEN** its repository path uses `BACKUP_DRIVE` (the USB volume), not `shared/media`
 
 ### Requirement: Permission boundaries
-NAS-only app state SHALL live under `${DATA_ROOT}/system/core`. HTPC app state for Jellyfin, qBittorrent, and Nextcloud SHALL live under `${DATA_ROOT}/system/periphery` via NFS. Arr `/config` on Docker Desktop SHALL be a local volume (SQLite on NFS is unusable); media and downloads stay on NFS. Home Assistant `/config` on Docker Desktop SHALL be a local volume with the catalog `configuration.yaml` bind-mounted (NFS file overlays drop `trusted_proxies`). Household content SHALL live under `shared/` and `users/`. SMB MAY remain for interactive Explorer/Finder access.
+NAS-only app state SHALL live under `${DATA_ROOT}/system/<app>` (Authelia, Vaultwarden, Pi-hole, WireGuard, restic). HTPC `/config` for Jellyfin, Arr, qBittorrent, Nextcloud, and Home Assistant SHALL be local volumes so those apps can start if Core/NFS is down. Home Assistant SHALL bind-mount the catalog `configuration.yaml` (NFS file overlays drop `trusted_proxies`). Household content (media, downloads, Nextcloud files/photos/users) SHALL stay on NFS under `shared/` and `users/`. Bootstrap MUST NOT create `system/core` or `system/periphery`. SMB MAY remain for interactive Explorer/Finder access.
 
 #### Scenario: HTPC NFS mount
-- **WHEN** the HTPC Docker engine mounts OMV NFS at `${NFS_EXPORT}/system/periphery` and `${NFS_EXPORT}/shared`
-- **THEN** it can persist Nextcloud, Jellyfin, and qBittorrent config under `system/periphery` and write household data under `shared/` and `users/`
+- **WHEN** the HTPC Docker engine mounts OMV NFS at `${NFS_EXPORT}/shared` and `${NFS_EXPORT}/users`
+- **THEN** it can write household data under `shared/` and `users/`

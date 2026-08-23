@@ -3,8 +3,8 @@
 #   sudo bash bootstrap/data-root-perms.sh
 #
 #   faiz, diana  — R/W shared/ and users/<self> only (cannot enter system/)
-#   periphery    — R/W the tree except system/core/
-#   pilot        — SSH admin: list/enter users/* and system/periphery (not required for core)
+#   periphery    — R/W shared/ and users/ (cannot enter system/)
+#   pilot        — SSH admin: list/enter users/* (system/ is root-only)
 set -euo pipefail
 
 if [[ ${EUID:-0} -ne 0 ]]; then
@@ -40,8 +40,11 @@ done
 usermod -aG "${HTPC_GROUP}" "${HTPC}"
 
 mkdir -p \
-  "${DATA_ROOT}/system/core" \
-  "${DATA_ROOT}/system/periphery" \
+  "${DATA_ROOT}/system/authelia" \
+  "${DATA_ROOT}/system/vaultwarden" \
+  "${DATA_ROOT}/system/pihole" \
+  "${DATA_ROOT}/system/wireguard" \
+  "${DATA_ROOT}/system/restic" \
   "${DATA_ROOT}/shared/media" \
   "${DATA_ROOT}/shared/downloads" \
   "${DATA_ROOT}/shared/files" \
@@ -52,22 +55,10 @@ mkdir -p \
 chown root:"${HTPC_GROUP}" "${DATA_ROOT}"
 chmod 775 "${DATA_ROOT}"
 
-# Do not recurse into core. Named-user ACL so Samba does not depend on extra groups.
-chown root:"${HTPC_GROUP}" "${DATA_ROOT}/system"
-chmod 770 "${DATA_ROOT}/system"
+# system/ is NAS-only Core app state. Do not recurse into app dirs (Docker owns them).
+chown root:root "${DATA_ROOT}/system"
+chmod 700 "${DATA_ROOT}/system"
 setfacl -b "${DATA_ROOT}/system" || true
-setfacl -m "u:${HTPC}:rwx,u:${ADMIN}:rwx,g:${HTPC_GROUP}:rwx" "${DATA_ROOT}/system"
-
-chown root:root "${DATA_ROOT}/system/core"
-chmod 700 "${DATA_ROOT}/system/core"
-setfacl -b "${DATA_ROOT}/system/core" || true
-
-chown root:"${HTPC_GROUP}" "${DATA_ROOT}/system/periphery"
-find "${DATA_ROOT}/system/periphery" -type d -exec chmod 2770 {} +
-find "${DATA_ROOT}/system/periphery" -type f -exec chmod 660 {} +
-chgrp -R "${HTPC_GROUP}" "${DATA_ROOT}/system/periphery"
-setfacl -R -m "u:${HTPC}:rwx,u:${ADMIN}:rwx,g:${HTPC_GROUP}:rwx" "${DATA_ROOT}/system/periphery"
-setfacl -R -d -m "u:${HTPC}:rwx,u:${ADMIN}:rwx,g:${HTPC_GROUP}:rwx" "${DATA_ROOT}/system/periphery"
 
 chown root:"${SHARED_GROUP}" "${DATA_ROOT}/shared"
 find "${DATA_ROOT}/shared" -type d -exec chmod 2775 {} +
@@ -107,6 +98,5 @@ echo "Admin (pilot) uses:  sudo ls ${DATA_ROOT}/users/faiz"
 echo "  (sudo cd does not work; cd is a shell builtin.)"
 echo
 echo "sudo -u faiz rm -f ${DATA_ROOT}/shared/_t; sudo -u faiz touch ${DATA_ROOT}/shared/_t && sudo -u faiz rm -f ${DATA_ROOT}/shared/_t"
-echo "sudo -u ${HTPC} ls ${DATA_ROOT}/system && echo periphery_can_see_system"
-echo "sudo -u ${HTPC} ls ${DATA_ROOT}/system/core && echo FAIL || echo core_blocked"
+echo "sudo -u ${HTPC} ls ${DATA_ROOT}/system && echo FAIL || echo system_blocked"
 echo "sudo ls ${DATA_ROOT}/users/faiz"

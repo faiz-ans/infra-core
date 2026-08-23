@@ -15,7 +15,7 @@ Mark items tagged **secret** as secrets in Komodo.
 | `TZ` | | Most containers |
 | `NAS_LAN_IP` | | Pi-hole wildcard (`*.DOMAIN` → Caddy), Homepage/Prometheus scrape, periphery NFS `addr=` |
 | `HTPC_UPSTREAM` | | Caddy upstreams, Homepage HTPC widgets, NAS restic client |
-| `DATA_ROOT` | | Bind-mount compose (`compose.yaml`). Local disk, host NFS, or host SMB/CIFS path of the DATA_ROOT tree. Core uses this. A stack that uses `compose.nfs.yaml` does not. |
+| `DATA_ROOT` | | Bind-mount compose (`compose.yaml`). Core app state is `${DATA_ROOT}/system/<app>`. Periphery `/config` is a local volume; household data uses `${DATA_ROOT}/shared` and `${DATA_ROOT}/users`. A stack that uses `compose.nfs.yaml` does not set this. |
 | `NFS_EXPORT` | | Docker-NFS compose (`compose.nfs.yaml`) for Jellyfin, Arr, qBittorrent, Nextcloud. NFSv4 path (`/data` if the OMV folder is named `data`). Home Assistant does not use this. No quotes, not a drive letter |
 | `BACKUP_DRIVE` | | HTPC Restic REST data directory |
 | `PUID` | | linuxserver images on both hosts |
@@ -31,7 +31,7 @@ Mark items tagged **secret** as secrets in Komodo.
 | `WG_HOST` | | wg-easy INIT_HOST (clients dial this) |
 | `WG_UI_PASSWORD` | secret | wg-easy v15 admin password (plaintext; used only at first start) |
 
-Authelia user hashes live in `${DATA_ROOT}/system/core/authelia/users.yml` on the NAS (written by bootstrap), not in Komodo.
+Authelia user hashes live in `${DATA_ROOT}/system/authelia/users.yml` on the NAS (written by bootstrap), not in Komodo.
 
 ## Vaultwarden
 

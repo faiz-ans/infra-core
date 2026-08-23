@@ -1,11 +1,11 @@
 ## ADDED Requirements
 
 ### Requirement: Vaultwarden runs on the NAS
-The catalog SHALL provide a Vaultwarden Compose stack deployed by Komodo ResourceSync to server `nas` (the Raspberry Pi). The stack SHALL join the same Docker edge network as Caddy, Authelia, and Homepage so those services can reach it by container name. Persistent data SHALL live at `${DATA_ROOT}/system/core/vaultwarden`. Site-specific values (public URL, admin token, signup flag) SHALL come from Komodo variables or secrets and MUST NOT appear in the git catalog.
+The catalog SHALL provide a Vaultwarden Compose stack deployed by Komodo ResourceSync to server `nas` (the Raspberry Pi). The stack SHALL join the same Docker edge network as Caddy, Authelia, and Homepage so those services can reach it by container name. Persistent data SHALL live at `${DATA_ROOT}/system/vaultwarden`. Site-specific values (public URL, admin token, signup flag) SHALL come from Komodo variables or secrets and MUST NOT appear in the git catalog.
 
 #### Scenario: Deploy on nas
 - **WHEN** ResourceSync applies the NAS stacks
-- **THEN** Vaultwarden is running on `nas` with data under `${DATA_ROOT}/system/core/vaultwarden` and no host IPs, domains, or tokens committed in compose or config files
+- **THEN** Vaultwarden is running on `nas` with data under `${DATA_ROOT}/system/vaultwarden` and no host IPs, domains, or tokens committed in compose or config files
 
 ### Requirement: Authelia protects only /admin
 Caddy SHALL reverse-proxy `pw.{$DOMAIN}` to Vaultwarden. Authelia forward auth SHALL apply only to `/admin` (and `/admin/*`). The web vault, Bitwarden client API, icons, events, and websocket notification paths MUST NOT go through Authelia; Vaultwarden SHALL authenticate those itself.
@@ -26,8 +26,8 @@ Homepage SHALL link Vaultwarden with a public href on `pw.{{HOMEPAGE_VAR_DOMAIN}
 - **THEN** the request goes to `http://vaultwarden:80` and does not require an Authelia session
 
 ### Requirement: Vault data is included in NAS backup
-Restic on the NAS SHALL include `${DATA_ROOT}/system/core/vaultwarden` in the backup set sent to the HTPC Restic REST target.
+Restic on the NAS SHALL include `${DATA_ROOT}/system/vaultwarden` in the backup set sent to the HTPC Restic REST target.
 
 #### Scenario: Restore includes the vault
 - **WHEN** a NAS restic snapshot is taken
-- **THEN** Vaultwarden persistent data under `system/core/vaultwarden` is part of that snapshot
+- **THEN** Vaultwarden persistent data under `system/vaultwarden` is part of that snapshot

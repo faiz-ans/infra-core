@@ -1,4 +1,4 @@
-# Bind mounts via DATA_ROOT (local disk, host NFS, or host SMB/CIFS).
+# Household data via DATA_ROOT binds. /config is a local volume (same as compose.nfs.yaml).
 # Docker-engine NFS (no host mount): deploy compose.nfs.yaml instead.
 services:
   sonarr:
@@ -12,7 +12,7 @@ services:
     ports:
       - "8989:8989"
     volumes:
-      - ${DATA_ROOT}/system/periphery/sonarr:/config
+      - sonarr-config:/config
       - ${DATA_ROOT}/shared/media:/data/media
       - ${DATA_ROOT}/shared/downloads:/downloads
 
@@ -27,7 +27,7 @@ services:
     ports:
       - "7878:7878"
     volumes:
-      - ${DATA_ROOT}/system/periphery/radarr:/config
+      - radarr-config:/config
       - ${DATA_ROOT}/shared/media:/data/media
       - ${DATA_ROOT}/shared/downloads:/downloads
 
@@ -42,4 +42,12 @@ services:
     ports:
       - "9696:9696"
     volumes:
-      - ${DATA_ROOT}/system/periphery/prowlarr:/config
+      - prowlarr-config:/config
+
+volumes:
+  sonarr-config:
+    name: sonarr-config
+  radarr-config:
+    name: radarr-config
+  prowlarr-config:
+    name: prowlarr-config

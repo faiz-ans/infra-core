@@ -13,7 +13,7 @@ services:
       X_AUTHELIA_CONFIG_FILTERS: template
     volumes:
       - ./configuration.yml:/config/configuration.yml:ro
-      - ${DATA_ROOT}/system/core/authelia:/config/userdb
+      - ${DATA_ROOT}/system/authelia:/config/userdb
       - authelia-data:/data
     networks:
       - edge

@@ -1,4 +1,4 @@
-# Bind mounts via DATA_ROOT (local disk, host NFS, or host SMB/CIFS).
+# Household data via DATA_ROOT binds. /config is a local volume (same as compose.nfs.yaml).
 # Docker-engine NFS (no host mount): deploy compose.nfs.yaml instead.
 services:
   qbittorrent:
@@ -16,7 +16,11 @@ services:
       - "6881:6881"
       - "6881:6881/udp"
     volumes:
-      - ${DATA_ROOT}/system/periphery/qbittorrent:/config
+      - qbittorrent-config:/config
       - ${DATA_ROOT}/shared/downloads:/downloads
       - ${DATA_ROOT}/shared/media:/data/media
       - ./custom-cont-init.d:/custom-cont-init.d:ro
+
+volumes:
+  qbittorrent-config:
+    name: qbittorrent-config

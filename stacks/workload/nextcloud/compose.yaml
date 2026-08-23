@@ -1,4 +1,4 @@
-# Bind mounts via DATA_ROOT (local disk, host NFS, or host SMB/CIFS).
+# Household data via DATA_ROOT binds. /config is a local volume (same as compose.nfs.yaml).
 # Docker-engine NFS (no host mount): deploy compose.nfs.yaml instead.
 services:
   nextcloud:
@@ -17,8 +17,12 @@ services:
       # linuxserver Nextcloud listens on 443 inside the container, not 80.
       - "8080:443"
     volumes:
-      - ${DATA_ROOT}/system/periphery/nextcloud:/config
+      - nextcloud-config:/config
       - ${DATA_ROOT}/shared/files:/data/shared/files
       - ${DATA_ROOT}/shared/photos:/data/shared/photos
       - ${DATA_ROOT}/users:/data/users
       - ./custom-cont-init.d:/custom-cont-init.d:ro
+
+volumes:
+  nextcloud-config:
+    name: nextcloud-config

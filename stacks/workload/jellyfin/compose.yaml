@@ -1,4 +1,4 @@
-# Bind mounts via DATA_ROOT (local disk, host NFS, or host SMB/CIFS).
+# Household data via DATA_ROOT binds. /config is a local volume (same as compose.nfs.yaml).
 # Docker-engine NFS (no host mount): deploy compose.nfs.yaml instead.
 services:
   jellyfin:
@@ -12,5 +12,9 @@ services:
     ports:
       - "8096:8096"
     volumes:
-      - ${DATA_ROOT}/system/periphery/jellyfin:/config
+      - jellyfin-config:/config
       - ${DATA_ROOT}/shared/media:/data/media
+
+volumes:
+  jellyfin-config:
+    name: jellyfin-config

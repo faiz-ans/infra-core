@@ -1,4 +1,4 @@
-# Docker NFS volume driver. Same tree as compose.yaml; engine mounts OMV itself.
+# User data on Docker NFS. /config is a local volume (SQLite + app code).
 # Deploy this file instead of compose.yaml (do not merge both).
 services:
   nextcloud:
@@ -24,12 +24,9 @@ services:
       - ./custom-cont-init.d:/custom-cont-init.d:ro
 
 volumes:
+  # New name so Compose does not reuse the old NFS volume (nextcloud_nextcloud-config).
   nextcloud-config:
-    driver: local
-    driver_opts:
-      type: nfs
-      o: addr=${NAS_LAN_IP},nfsvers=4,rw,nolock,hard
-      device: ":${NFS_EXPORT}/system/periphery/nextcloud"
+    name: nextcloud-config
   nextcloud-files:
     driver: local
     driver_opts:

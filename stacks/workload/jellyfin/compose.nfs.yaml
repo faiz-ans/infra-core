@@ -1,4 +1,4 @@
-# Docker NFS volume driver. Same tree as compose.yaml; engine mounts OMV itself.
+# Media on Docker NFS. /config is local so the app can start if Core/NFS is down.
 # Deploy this file instead of compose.yaml (do not merge both).
 services:
   jellyfin:
@@ -16,12 +16,9 @@ services:
       - jellyfin-media:/data/media
 
 volumes:
+  # New name so Compose does not reuse the old NFS volume (jellyfin_jellyfin-config).
   jellyfin-config:
-    driver: local
-    driver_opts:
-      type: nfs
-      o: addr=${NAS_LAN_IP},nfsvers=4,rw,nolock,hard
-      device: ":${NFS_EXPORT}/system/periphery/jellyfin"
+    name: jellyfin-config
   jellyfin-media:
     driver: local
     driver_opts:

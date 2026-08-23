@@ -481,20 +481,13 @@ if ! command -v docker >/dev/null 2>&1; then
 fi
 
 # --- DATA_ROOT tree ---
-# mkdir -p "${DATA_ROOT}/system/core" "${DATA_ROOT}/system/periphery" "${DATA_ROOT}/shared/media" ...
+# Core app state under system/<app>. Periphery /config is local on the HTPC.
 mkdir -p \
-  "${DATA_ROOT}/system/core/authelia" \
-  "${DATA_ROOT}/system/core/vaultwarden" \
-  "${DATA_ROOT}/system/core/pihole" \
-  "${DATA_ROOT}/system/core/wireguard" \
-  "${DATA_ROOT}/system/core/restic" \
-  "${DATA_ROOT}/system/periphery/jellyfin" \
-  "${DATA_ROOT}/system/periphery/qbittorrent" \
-  "${DATA_ROOT}/system/periphery/sonarr" \
-  "${DATA_ROOT}/system/periphery/radarr" \
-  "${DATA_ROOT}/system/periphery/prowlarr" \
-  "${DATA_ROOT}/system/periphery/nextcloud" \
-  "${DATA_ROOT}/system/periphery/homeassistant" \
+  "${DATA_ROOT}/system/authelia" \
+  "${DATA_ROOT}/system/vaultwarden" \
+  "${DATA_ROOT}/system/pihole" \
+  "${DATA_ROOT}/system/wireguard" \
+  "${DATA_ROOT}/system/restic" \
   "${DATA_ROOT}/shared/media" \
   "${DATA_ROOT}/shared/downloads" \
   "${DATA_ROOT}/shared/files" \
@@ -626,7 +619,7 @@ done
 
 # --- Authelia users file (hash via official image) ---
 # docker run --rm authelia/authelia:4 authelia crypto hash generate argon2 --password '...'
-users_file="${DATA_ROOT}/system/core/authelia/users.yml"
+users_file="${DATA_ROOT}/system/authelia/users.yml"
 if [[ -d "${users_file}" ]]; then
   echo "Replacing directory ${users_file} (Docker created it when the file was missing)."
   rm -rf "${users_file}"

@@ -1,4 +1,4 @@
-# Bind mounts via DATA_ROOT (local disk, host NFS, or host SMB/CIFS).
+# /config is a local volume + catalog configuration.yaml bind (same as compose.nfs.yaml).
 # Docker-engine NFS (no host mount): deploy compose.nfs.yaml instead.
 services:
   homeassistant:
@@ -10,6 +10,9 @@ services:
     ports:
       - "8123:8123"
     volumes:
-      - ${DATA_ROOT}/system/periphery/homeassistant:/config
+      - ha-config:/config
       - ./configuration.yaml:/config/configuration.yaml:ro
     # wifi / integrations only; no USB radio passthrough
+
+volumes:
+  ha-config:

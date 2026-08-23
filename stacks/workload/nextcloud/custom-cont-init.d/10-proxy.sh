@@ -1,7 +1,6 @@
 #!/bin/bash
 # Nextcloud extra config (*.config.php). Git-bind, not an NFS overlay.
 # overwrite* so Caddy https://nextcloud.${DOMAIN} is the public URL.
-# filelocking off: SQLite + NFS locks hang the UI.
 set -e
 dest=/config/www/nextcloud/config
 mkdir -p "${dest}"
@@ -19,6 +18,5 @@ cat > "${dest}/zzz-infra.config.php" <<EOF
   'overwriteprotocol' => 'https',
   'overwritehost' => '${host}',
   'overwrite.cli.url' => 'https://${host}',
-  'filelocking.enabled' => false,
 );
 EOF

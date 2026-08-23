@@ -83,17 +83,17 @@ Public href: `https://<app>.{{HOMEPAGE_VAR_DOMAIN}}` (Caddy + Authelia). Interna
 ### 8. Storage and backup
 
 ```
-${DATA_ROOT}/system/core/             # authelia, vaultwarden, pihole, wireguard
-${DATA_ROOT}/system/periphery/        # jellyfin, arr, qbittorrent, nextcloud, HA
+${DATA_ROOT}/system/<app>/            # authelia, vaultwarden, pihole, wireguard, restic
 ${DATA_ROOT}/shared/{media,downloads,files,photos}
 ${DATA_ROOT}/users/<user>/{files,photos}
 ```
+HTPC `/config` is a local Docker volume, not under `DATA_ROOT`.
 
 - `nas` `DATA_ROOT` = OMV `/srv/dev-disk-by-uuid-*`
 - `htpc` app stacks = Docker NFS volumes of the same tree (`NAS_LAN_IP` + `NFS_EXPORT`)
 - SMB: household Explorer/Finder only; not the Docker bind path
 - `BACKUP_DRIVE` = HTPC 4TB USB; Restic REST lives there
-- NAS restic client → REST on `HTPC_UPSTREAM`; include `system/core/vaultwarden`
+- NAS restic client → REST on `HTPC_UPSTREAM`; include `system/vaultwarden`
 
 IronWolf swap = change `DATA_ROOT` on `nas` (and remount on HTPC), not a git commit.
 

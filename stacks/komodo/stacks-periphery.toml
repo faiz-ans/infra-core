@@ -2,9 +2,11 @@
 # Komodo does not interpolate [[VAR]] in server/repo — those must be literals.
 # Apply this file only after the periphery server is connected.
 # webhook_enabled is false; poll on-site.
-# Storage transport is per stack: compose.yaml + DATA_ROOT (local / host NFS / host SMB),
-# or compose.nfs.yaml + NAS_LAN_IP + NFS_EXPORT (Docker NFS driver). Do not list both files.
+# Storage: /config is always a local volume. Household data is either
+# compose.yaml + DATA_ROOT binds, or compose.nfs.yaml + NAS_LAN_IP + NFS_EXPORT.
+# Do not list both files.
 
+# compose.nfs.yaml: media on NFS; /config is local (survives Core down).
 [[stack]]
 name = "jellyfin"
 deploy = true
@@ -44,6 +46,7 @@ NAS_LAN_IP = [[NAS_LAN_IP]]
 NFS_EXPORT = [[NFS_EXPORT]]
 """
 
+# compose.nfs.yaml: downloads/media on NFS; /config is local (survives Core down).
 [[stack]]
 name = "qbittorrent"
 deploy = true
@@ -66,6 +69,7 @@ NAS_LAN_IP = [[NAS_LAN_IP]]
 NFS_EXPORT = [[NFS_EXPORT]]
 """
 
+# compose.nfs.yaml: files/photos/users on NFS; /config is local (SQLite).
 [[stack]]
 name = "nextcloud"
 deploy = true

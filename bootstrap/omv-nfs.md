@@ -1,6 +1,6 @@
 # OMV shares: NFS for apps, SMB for people
 
-Docker Desktop bind-mounts of a Windows SMB (or NFS) drive letter go through virtiofs and break pathing. This site’s media/HTPC stacks therefore use **`compose.nfs.yaml`** (Docker NFS volume driver). Exceptions that keep `/config` on a local Docker volume: Home Assistant (catalog `configuration.yaml` bind; NFS file overlays drop) and the Arr stack (SQLite cannot run on NFS). Catalog default remains **`compose.yaml`** (`${DATA_ROOT}` binds) for local disk or a host NFS/SMB mount. Pick one file per stack in ResourceSync; do not merge them.
+Docker Desktop bind-mounts of a Windows SMB (or NFS) drive letter go through virtiofs and break pathing. This site’s media/HTPC stacks therefore use **`compose.nfs.yaml`** (Docker NFS volume driver). This site’s `compose.nfs.yaml` stacks keep `/config` on a local Docker volume so the apps can start if Core/NFS is down (Home Assistant also needs that for the catalog `configuration.yaml` bind). Media, downloads, and Nextcloud user trees stay on NFS. Catalog default remains **`compose.yaml`** (`${DATA_ROOT}` binds) for local disk or a host NFS/SMB mount. Pick one file per stack in ResourceSync; do not merge them.
 
 Windows Explorer keeps using **SMB**. Do not point a `compose.yaml` stack’s `DATA_ROOT` at `Z:`. Core still uses the local uuid path as `DATA_ROOT`.
 
@@ -83,11 +83,11 @@ PowerShell (Docker Desktop running):
 
 ```text
 docker volume create --driver local --opt type=nfs --opt o=addr=<NAS_LAN_IP>,nfsvers=4,rw,nolock,hard --opt device=:/data nas-nfs-test
-docker run --rm -v nas-nfs-test:/data alpine ls /data/system/periphery /data/shared /data/users
+docker run --rm -v nas-nfs-test:/data alpine ls /data/shared /data/users
 docker volume rm nas-nfs-test
 ```
 
-You should see those three trees. `system/core` may also list because this export is the disk root and `no_root_squash` makes the engine root. Treat the HTPC as trusted; do not export NFS to the whole LAN.
+You should see those two trees. `system/` may also list because this export is the disk root and `no_root_squash` makes the engine root. Treat the HTPC as trusted; do not export NFS to the whole LAN. HTPC apps do not mount `system/`.
 
 If `ls` fails with `mount.nfs` / `permission denied`, the usual causes are: NFS not applied, client IP not the HTPC, missing `insecure`, or TCP 2049 blocked.
 
