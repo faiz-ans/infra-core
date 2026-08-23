@@ -57,19 +57,6 @@
     #      enableNowPlaying: true
 
 - Network:
-    - WireGuard:
-        href: https://vpn.{{HOMEPAGE_VAR_DOMAIN}}
-        siteMonitor: http://wireguard:51821
-        icon: wireguard.png
-        description: VPN
-        #widget:
-        #  type: wgeasy
-        #  url: http://wireguard:51821
-        #  version: 2
-        #  username: wg-admin
-        #  password: "{{HOMEPAGE_VAR_WGEASY_PASSWORD}}"
-        #  fields:
-        #    - connected
     - Pi-hole Core:
         href: https://dns.{{HOMEPAGE_VAR_DOMAIN}}/admin
         siteMonitor: http://pihole:80/admin
@@ -88,6 +75,19 @@
           type: pihole
           url: http://{{HOMEPAGE_VAR_HTPC_UPSTREAM}}:8083
           version: 6
+    - WireGuard:
+        href: https://vpn.{{HOMEPAGE_VAR_DOMAIN}}
+        siteMonitor: http://wireguard:51821
+        icon: wireguard.png
+        description: VPN
+        #widget:
+        #  type: wgeasy
+        #  url: http://wireguard:51821
+        #  version: 2
+        #  username: wg-admin
+        #  password: "{{HOMEPAGE_VAR_WGEASY_PASSWORD}}"
+        #  fields:
+        #    - connected
 
 - System:
     - Komodo:
