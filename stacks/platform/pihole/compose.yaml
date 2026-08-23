@@ -1,3 +1,4 @@
+# Core Pi-hole. HTPC spare is compose.periphery.yaml (local volume, HTPC_UPSTREAM:53).
 services:
   pihole:
     image: pihole/pihole:latest

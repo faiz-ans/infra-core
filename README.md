@@ -17,8 +17,8 @@ Komodo server names in ResourceSync TOML are literals **`core`** and **`peripher
 
 1. Copy `bootstrap/core.sh` plus `bootstrap/komodo/` to the Core host and run the script (or follow the commented commands). Storage is configured first; site prompts come after any OMV reboot.
 2. In Komodo, confirm the `core` server. Secrets from bootstrap live in `/etc/komodo/core.config.toml`. Create a ResourceSync (webhooks off) with resource path `stacks/komodo/stacks-core.toml` first, then apply.
-3. On Core, export DATA_ROOT over NFS if HTPC stacks will use `compose.nfs.yaml` (`bootstrap/omv-nfs.md`). Keep SMB for Explorer/Finder. On the remote host, follow `bootstrap/periphery.md`: Docker Desktop, choose bind (`compose.yaml` + `DATA_ROOT`) or Docker NFS (`compose.nfs.yaml` + `NAS_LAN_IP`/`NFS_EXPORT`), attach backup disk as `BACKUP_DRIVE`, start outbound Periphery with `PERIPHERY_CONNECT_AS=periphery`.
-4. Confirm that server in Komodo, add `stacks/komodo/stacks-periphery.toml` to the same ResourceSync (or a second one), and apply.
+3. On Core, export DATA_ROOT over NFS (`bootstrap/omv-nfs.md`). Keep SMB for Explorer/Finder. On the remote host, follow `bootstrap/periphery.md`: Docker Desktop, Komodo `NAS_LAN_IP` + `NFS_EXPORT`, outbound Periphery with `PERIPHERY_CONNECT_AS=periphery`. Leave `restic` / `restic-rest` off until the IronWolf is the backup disk (`BACKUP_DRIVE`).
+4. Confirm that server in Komodo, add `stacks/komodo/stacks-periphery.toml` to the same ResourceSync (or a second one), and apply. Home Assistant uses a local volume + git `configuration.yaml`; the other HTPC apps use NFS.
 
 Winget packages for later Windows apps are listed under `windows/` and are not required for GitOps.
 

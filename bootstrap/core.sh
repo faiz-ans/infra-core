@@ -584,6 +584,7 @@ TZ = "${TZ}"
 NAS_LAN_IP = "${NAS_LAN_IP}"
 HTPC_UPSTREAM = "${HTPC_UPSTREAM}"
 DATA_ROOT = "${DATA_ROOT}"
+NFS_EXPORT = "/data"
 CORE_SERVER = "${CORE_SERVER}"
 PERIPHERY_SERVER = "${PERIPHERY_SERVER}"
 PUID = "${PUID}"
@@ -670,5 +671,6 @@ echo "After the remote Periphery server is OK, add stacks/komodo/stacks-peripher
 echo
 echo "Komodo [secrets] were written to ${KOMODO_DIR}/core.config.toml"
 echo "Also add remaining keys from stacks/komodo/VARIABLES.md (widget tokens, BACKUP_DRIVE on the remote host)."
+echo "NFS_EXPORT defaults to /data (OMV share name). Override in Komodo if the folder name differs."
 echo
 echo "Done."

@@ -25,6 +25,12 @@ https://dns.{$DOMAIN} {
 	reverse_proxy pihole:80
 }
 
+https://dns2.{$DOMAIN} {
+	tls internal
+	redir / /admin
+	reverse_proxy {$HTPC_UPSTREAM}:8083
+}
+
 https://vpn.{$DOMAIN} {
 	tls internal
 	reverse_proxy wireguard:51821
@@ -65,8 +71,8 @@ https://jellyfin.{$DOMAIN} {
 
 https://ha.{$DOMAIN} {
 	tls internal
-	# Caddy always sends X-Forwarded-For; HA 400s unless trusted_proxies is in
-	# the NFS configuration.yaml (bootstrap/ha-trusted-proxies.sh / ensure-proxy.sh).
+	# trusted_proxies lives in stacks/workload/homeassistant/configuration.yaml
+	# (bind-mounted onto a local volume, not NFS).
 	reverse_proxy {$HTPC_UPSTREAM}:8123
 }
 

@@ -23,9 +23,11 @@ Workload compose is transport-agnostic. Komodo `file_paths` chooses one file (ne
 | `compose.yaml` | Local disk, or a host mount of NFS/SMB/CIFS at `DATA_ROOT` | `DATA_ROOT` |
 | `compose.nfs.yaml` | Docker engine mounts OMV NFS itself (this HTPC) | `NAS_LAN_IP`, `NFS_EXPORT` |
 
-This site’s `stacks-periphery.toml` uses `compose.nfs.yaml`. Follow `bootstrap/omv-nfs.md`, then set `NAS_LAN_IP` and `NFS_EXPORT=/data` (or `/<shared-folder-name>`). Do not set that stack’s `DATA_ROOT` to `Z:`.
+This site’s `stacks-periphery.toml` uses `compose.nfs.yaml` for Jellyfin, Arr, qBittorrent, and Nextcloud. Follow `bootstrap/omv-nfs.md`, then set `NAS_LAN_IP` and `NFS_EXPORT=/data` (or `/<shared-folder-name>`). Do not set those stacks’ `DATA_ROOT` to `Z:`.
 
-A future single-host or Linux engine can point the same stack at `compose.yaml` and a local/host `DATA_ROOT`.
+Home Assistant’s HTPC file is also named `compose.nfs.yaml`, but `/config` is a **local Docker volume** plus a bind of `configuration.yaml` (NFS file overlays break `trusted_proxies`). `.storage` is not on DATA_ROOT.
+
+A future single-host or Linux engine can point a stack at `compose.yaml` and a local/host `DATA_ROOT`.
 
 SMB stays for Explorer/Finder. Map those shares as you like; they are not required for `compose.nfs.yaml`.
 
@@ -37,6 +39,8 @@ Allow inbound TCP from the LAN (Caddy on Core) on the published ports:
 
 | Port | Stack |
 |---|---|
+| 53/tcp+udp | Pi-hole (bind `HTPC_UPSTREAM` only) |
+| 8083 | Pi-hole admin (`dns2.${DOMAIN}` via Caddy; LAN fallback if Core is up) |
 | 8096 | Jellyfin |
 | 8123 | Home Assistant |
 | 8080 | Nextcloud |
@@ -47,6 +51,8 @@ Allow inbound TCP from the LAN (Caddy on Core) on the published ports:
 | 3000 | Grafana |
 | 9090 | Prometheus (optional) |
 | 8000 | Restic REST |
+
+Router DHCP DNS: Core `NAS_LAN_IP` first, then `HTPC_UPSTREAM`. Do not add a public resolver as a third DHCP DNS. After deploy, Teleporter (or copy) Gravity from the Core Pi-hole so both filter the same. Windows may already use :53 (ICS / another DNS); if the stack cannot bind, stop that listener.
 
 ## 4. Periphery env (write on the box, do not commit)
 

@@ -1,0 +1,24 @@
+# Second Pi-hole on the HTPC. Local volume so DNS still starts if Core/NFS is down.
+# Wildcard still points at NAS_LAN_IP (Caddy). Bind :53 to the Windows LAN IP only.
+services:
+  pihole:
+    image: pihole/pihole:latest
+    container_name: pihole
+    restart: unless-stopped
+    ports:
+      - "${HTPC_UPSTREAM}:53:53/tcp"
+      - "${HTPC_UPSTREAM}:53:53/udp"
+      # LAN admin if Caddy/dns.home.lan is down. Not used by Core Caddy.
+      - "8083:80"
+    environment:
+      TZ: ${TZ}
+      FTLCONF_dns_listeningMode: ALL
+      FTLCONF_webserver_api_password: ""
+      FTLCONF_misc_dnsmasq_lines: "address=/${DOMAIN}/${NAS_LAN_IP}"
+    volumes:
+      - pihole-config:/etc/pihole
+    cap_add:
+      - NET_ADMIN
+
+volumes:
+  pihole-config:

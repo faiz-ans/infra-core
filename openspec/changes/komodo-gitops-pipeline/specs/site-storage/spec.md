@@ -42,8 +42,8 @@ The absolute `DATA_ROOT` path SHALL be a Komodo variable on `nas` (the OMV uuid 
 - **THEN** its repository path uses `BACKUP_DRIVE` (the USB volume), not `shared/media`
 
 ### Requirement: Permission boundaries
-NAS-only app state SHALL live under `${DATA_ROOT}/system/core`. HTPC app state SHALL live under `${DATA_ROOT}/system/periphery`. Household content SHALL live under `shared/` and `users/`. SMB MAY remain for interactive Explorer/Finder access to `shared/` and `users/`. The HTPC Docker engine SHALL use NFS, not SMB, and MUST NOT require a Windows drive-letter bind of `DATA_ROOT`.
+NAS-only app state SHALL live under `${DATA_ROOT}/system/core`. HTPC app state for Jellyfin, Arr, qBittorrent, and Nextcloud SHALL live under `${DATA_ROOT}/system/periphery` via NFS. Home Assistant `/config` on Docker Desktop SHALL be a local volume with the catalog `configuration.yaml` bind-mounted (NFS file overlays drop `trusted_proxies`). Household content SHALL live under `shared/` and `users/`. SMB MAY remain for interactive Explorer/Finder access.
 
 #### Scenario: HTPC NFS mount
 - **WHEN** the HTPC Docker engine mounts OMV NFS at `${NFS_EXPORT}/system/periphery` and `${NFS_EXPORT}/shared`
-- **THEN** it can persist Nextcloud, Jellyfin, Arr, qBittorrent, and Home Assistant config under `system/periphery` and write household data under `shared/` and `users/`
+- **THEN** it can persist Nextcloud, Jellyfin, Arr, and qBittorrent config under `system/periphery` and write household data under `shared/` and `users/`

@@ -90,6 +90,7 @@ NEXTCLOUD_ADMIN_PASSWORD = [[NEXTCLOUD_ADMIN_PASSWORD]]
 DOMAIN = [[DOMAIN]]
 """
 
+# HA compose.nfs.yaml is the HTPC file; /config is a local volume + catalog bind, not NFS.
 [[stack]]
 name = "homeassistant"
 deploy = true
@@ -106,8 +107,25 @@ webhook_enabled = false
 poll_for_updates = true
 environment = """
 TZ = [[TZ]]
+"""
+
+# Local volume. Same wildcard as Core (*.DOMAIN → NAS_LAN_IP / Caddy).
+[[stack]]
+name = "pihole"
+deploy = true
+[stack.config]
+server = "periphery"
+repo = "faiz-ans/infra-core"
+branch = "main"
+run_directory = "stacks/platform/pihole"
+file_paths = ["compose.periphery.yaml"]
+webhook_enabled = false
+poll_for_updates = true
+environment = """
+TZ = [[TZ]]
+DOMAIN = [[DOMAIN]]
 NAS_LAN_IP = [[NAS_LAN_IP]]
-NFS_EXPORT = [[NFS_EXPORT]]
+HTPC_UPSTREAM = [[HTPC_UPSTREAM]]
 """
 
 [[stack]]
@@ -128,9 +146,10 @@ NAS_LAN_IP = [[NAS_LAN_IP]]
 GRAFANA_ADMIN_PASSWORD = [[GRAFANA_ADMIN_PASSWORD]]
 """
 
+# Off until the 4TB IronWolf is the backup target. Do not apply this stack yet.
 [[stack]]
 name = "restic-rest"
-deploy = true
+deploy = false
 [stack.config]
 server = "periphery"
 repo = "faiz-ans/infra-core"

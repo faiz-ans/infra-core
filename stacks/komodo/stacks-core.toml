@@ -143,9 +143,10 @@ VAULTWARDEN_ADMIN_TOKEN = [[VAULTWARDEN_ADMIN_TOKEN]]
 SIGNUPS_ALLOWED = [[SIGNUPS_ALLOWED]]
 """
 
+# Off until restic-rest is on the IronWolf. Applying this now would crash-loop against :8000.
 [[stack]]
 name = "restic"
-deploy = true
+deploy = false
 after = ["vaultwarden"]
 [stack.config]
 server = "core"

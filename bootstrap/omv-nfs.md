@@ -1,6 +1,6 @@
 # OMV shares: NFS for apps, SMB for people
 
-Docker Desktop bind-mounts of a Windows SMB (or NFS) drive letter go through virtiofs and break pathing. This site’s HTPC stacks therefore use **`compose.nfs.yaml`** (Docker NFS volume driver). Catalog default remains **`compose.yaml`** (`${DATA_ROOT}` binds) for local disk or a host NFS/SMB mount. Pick one file per stack in ResourceSync; do not merge them.
+Docker Desktop bind-mounts of a Windows SMB (or NFS) drive letter go through virtiofs and break pathing. This site’s media/HTPC stacks therefore use **`compose.nfs.yaml`** (Docker NFS volume driver). Home Assistant is the exception: local volume + catalog `configuration.yaml` bind. Catalog default remains **`compose.yaml`** (`${DATA_ROOT}` binds) for local disk or a host NFS/SMB mount. Pick one file per stack in ResourceSync; do not merge them.
 
 Windows Explorer keeps using **SMB**. Do not point a `compose.yaml` stack’s `DATA_ROOT` at `Z:`. Core still uses the local uuid path as `DATA_ROOT`.
 

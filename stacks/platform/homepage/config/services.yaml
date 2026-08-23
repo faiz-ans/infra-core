@@ -57,14 +57,23 @@
     #      enableNowPlaying: true
 
 - Network:
-    - Pi-hole:
+    - Pi-hole Core:
         href: https://dns.{{HOMEPAGE_VAR_DOMAIN}}/admin
         siteMonitor: http://pihole:80/admin
         icon: pi-hole.png
-        description: DNS
+        description: DNS (Primary)
         widget:
           type: pihole
           url: http://pihole:80
+          version: 6
+    - Pi-hole Periphery:
+        href: https://dns2.{{HOMEPAGE_VAR_DOMAIN}}/admin
+        siteMonitor: http://{{HOMEPAGE_VAR_HTPC_UPSTREAM}}:8083/admin
+        icon: pi-hole.png
+        description: DNS (Secondary)
+        widget:
+          type: pihole
+          url: http://{{HOMEPAGE_VAR_HTPC_UPSTREAM}}:8083
           version: 6
     - WireGuard:
         href: https://vpn.{{HOMEPAGE_VAR_DOMAIN}}

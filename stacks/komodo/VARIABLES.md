@@ -13,10 +13,10 @@ Mark items tagged **secret** as secrets in Komodo.
 | `PERIPHERY_SERVER` | | Remote Periphery `connect_as`. Must match TOML `server = "periphery"` |
 | `DOMAIN` | | Caddy, Authelia, Pi-hole, Homepage, Vaultwarden public URL |
 | `TZ` | | Most containers |
-| `NAS_LAN_IP` | | Pi-hole wildcard, Homepage/Prometheus scrape, periphery NFS `addr=` |
+| `NAS_LAN_IP` | | Pi-hole wildcard (`*.DOMAIN` → Caddy), Homepage/Prometheus scrape, periphery NFS `addr=` |
 | `HTPC_UPSTREAM` | | Caddy upstreams, Homepage HTPC widgets, NAS restic client |
 | `DATA_ROOT` | | Bind-mount compose (`compose.yaml`). Local disk, host NFS, or host SMB/CIFS path of the DATA_ROOT tree. Core uses this. A stack that uses `compose.nfs.yaml` does not. |
-| `NFS_EXPORT` | | Docker-NFS compose (`compose.nfs.yaml`). NFSv4 export path (`/data` if the OMV folder is named `data`). No quotes, not a drive letter |
+| `NFS_EXPORT` | | Docker-NFS compose (`compose.nfs.yaml`) for Jellyfin, Arr, qBittorrent, Nextcloud. NFSv4 path (`/data` if the OMV folder is named `data`). Home Assistant does not use this. No quotes, not a drive letter |
 | `BACKUP_DRIVE` | | HTPC Restic REST data directory |
 | `PUID` | | linuxserver images on both hosts |
 | `PGID` | | linuxserver images on both hosts |

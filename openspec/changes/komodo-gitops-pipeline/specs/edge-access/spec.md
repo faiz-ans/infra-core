@@ -37,6 +37,13 @@ Pi-hole SHALL run on `nas` and SHALL answer name resolution for `*.{$DOMAIN}` (a
 - **WHEN** a LAN client resolves `jellyfin.{$DOMAIN}` using Pi-hole
 - **THEN** the answer is the NAS address that hosts Caddy
 
+### Requirement: Second Pi-hole on the HTPC
+A second Pi-hole SHALL run on `periphery` with DNS published on the HTPC LAN IP. Its config SHALL be a local Docker volume (not NFS) so it can start when Core is down. The `*.{$DOMAIN}` wildcard SHALL still resolve to the NAS LAN IP (Caddy). DHCP MAY list both Pi-holes; it MUST NOT list a public resolver as a third server. Caddy MAY expose the HTPC Pi-hole admin at `dns2.{$DOMAIN}` (this URL is unavailable if Core is down).
+
+#### Scenario: Core DNS is down
+- **WHEN** the NAS Pi-hole is unreachable and a client uses the HTPC Pi-hole
+- **THEN** the client still receives DNS answers, including `*.{$DOMAIN}` pointing at the NAS address
+
 ### Requirement: WireGuard on the NAS
 WireGuard SHALL run on `nas` so remote clients can reach `*.{$DOMAIN}` as if on LAN. Endpoint and keys SHALL be Komodo secrets.
 
