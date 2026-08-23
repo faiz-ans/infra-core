@@ -24,6 +24,7 @@ NAS_LAN_IP = [[NAS_LAN_IP]]
 NFS_EXPORT = [[NFS_EXPORT]]
 """
 
+# compose.nfs.yaml: media/downloads on NFS; Sonarr/Radarr/Prowlarr /config is local (SQLite).
 [[stack]]
 name = "arr"
 deploy = true

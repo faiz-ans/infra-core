@@ -1,4 +1,5 @@
-# Docker NFS volume driver. Same tree as compose.yaml; engine mounts OMV itself.
+# Media/downloads on Docker NFS. /config is a local volume: Sonarr/Radarr/Prowlarr
+# use SQLite, which is unusable on NFS (multi-minute starts, WAL/fsync over the LAN).
 # Deploy this file instead of compose.yaml (do not merge both).
 services:
   sonarr:
@@ -45,24 +46,13 @@ services:
       - prowlarr-config:/config
 
 volumes:
+  # New names so Compose does not reuse the old NFS volumes (arr_* -config).
   sonarr-config:
-    driver: local
-    driver_opts:
-      type: nfs
-      o: addr=${NAS_LAN_IP},nfsvers=4,rw,nolock,hard
-      device: ":${NFS_EXPORT}/system/periphery/sonarr"
+    name: sonarr-config
   radarr-config:
-    driver: local
-    driver_opts:
-      type: nfs
-      o: addr=${NAS_LAN_IP},nfsvers=4,rw,nolock,hard
-      device: ":${NFS_EXPORT}/system/periphery/radarr"
+    name: radarr-config
   prowlarr-config:
-    driver: local
-    driver_opts:
-      type: nfs
-      o: addr=${NAS_LAN_IP},nfsvers=4,rw,nolock,hard
-      device: ":${NFS_EXPORT}/system/periphery/prowlarr"
+    name: prowlarr-config
   arr-media:
     driver: local
     driver_opts:
