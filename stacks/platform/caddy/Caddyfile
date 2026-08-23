@@ -65,7 +65,15 @@ https://jellyfin.{$DOMAIN} {
 
 https://ha.{$DOMAIN} {
 	tls internal
-	reverse_proxy {$HTPC_UPSTREAM}:8123
+	# HA returns 400 if it sees X-Forwarded-For from a peer not in trusted_proxies.
+	# Docker Desktop SNATs Caddy, so the NFS configuration.yaml overlay never stuck.
+	# Strip the headers; client IP in HA will be the proxy hop.
+	reverse_proxy {$HTPC_UPSTREAM}:8123 {
+		header_up -X-Forwarded-For
+		header_up -X-Forwarded-Proto
+		header_up -X-Forwarded-Host
+		header_up -Forwarded
+	}
 }
 
 https://nextcloud.{$DOMAIN} {
@@ -92,11 +100,12 @@ https://prowlarr.{$DOMAIN} {
 	reverse_proxy {$HTPC_UPSTREAM}:9696
 }
 
-https://qbit.{$DOMAIN} {
+https://qbit.{$DOMAIN}, https://qbittorrent.{$DOMAIN} {
 	tls internal
 	reverse_proxy {$HTPC_UPSTREAM}:8081 {
+		header_up Host {http.reverse_proxy.upstream.hostport}
 		header_up X-Forwarded-Host {host}
-		header_up X-Real-IP {remote_host}
+		header_up X-Forwarded-Proto {scheme}
 	}
 }
 

@@ -18,7 +18,7 @@
     #      url: http://{{HOMEPAGE_VAR_HTPC_UPSTREAM}}:7878
     #      key: "{{HOMEPAGE_VAR_RADARR_KEY}}"
     - qBittorrent:
-        href: https://qbittorrent.{{HOMEPAGE_VAR_DOMAIN}}
+        href: https://qbit.{{HOMEPAGE_VAR_DOMAIN}}
         siteMonitor: http://{{HOMEPAGE_VAR_HTPC_UPSTREAM}}:8081
         icon: qbittorrent.png
         description: Downloads
