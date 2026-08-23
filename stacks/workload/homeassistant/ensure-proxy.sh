@@ -1,43 +1,40 @@
 #!/bin/sh
-# Runs before HA. Writes trusted_proxies into the persistent configuration.yaml.
-# Do not bind-mount that file over an NFS volume — the overlay is dropped.
+# Patch persistent configuration.yaml, then start HA if this is the container entrypoint.
+# HA_CONFIG overrides the path (Core can patch the NFS file without /init).
 set -e
-cfg=/config/configuration.yaml
-mkdir -p /config
+cfg="${HA_CONFIG:-/config/configuration.yaml}"
+mkdir -p "$(dirname "$cfg")"
 if [ ! -f "$cfg" ]; then
   printf '%s\n' 'default_config:' > "$cfg"
 fi
-if ! grep -q trusted_proxies "$cfg"; then
-  if grep -q '^http:[[:space:]]*$' "$cfg"; then
-    awk '
-      { print }
-      /^http:[[:space:]]*$/ && !done {
-        print "  use_x_forwarded_for: true"
-        print "  trusted_proxies:"
-        print "    - 192.168.0.0/16"
-        print "    - 10.0.0.0/8"
-        print "    - 172.16.0.0/12"
-        print "    - 192.168.65.0/24"
-        print "    - 169.254.0.0/16"
-        print "    - 0.0.0.0/0"
-        print "    - ::/0"
-        done = 1
-      }
-    ' "$cfg" > "${cfg}.tmp" && mv "${cfg}.tmp" "$cfg"
-  else
-    cat >> "$cfg" <<'EOF'
+python3 - "$cfg" <<'PY'
+from pathlib import Path
+import re
+import sys
 
-http:
-  use_x_forwarded_for: true
-  trusted_proxies:
-    - 192.168.0.0/16
-    - 10.0.0.0/8
-    - 172.16.0.0/12
-    - 192.168.65.0/24
-    - 169.254.0.0/16
-    - 0.0.0.0/0
-    - ::/0
-EOF
-  fi
+path = Path(sys.argv[1])
+text = path.read_text(encoding="utf-8", errors="replace")
+if re.search(r"(?m)^\s*trusted_proxies\s*:", text):
+    sys.exit(0)
+block = (
+    "  use_x_forwarded_for: true\n"
+    "  trusted_proxies:\n"
+    "    - 192.168.0.0/16\n"
+    "    - 10.0.0.0/8\n"
+    "    - 172.16.0.0/12\n"
+    "    - 192.168.65.0/24\n"
+    "    - 169.254.0.0/16\n"
+    "    - 0.0.0.0/0\n"
+    "    - ::/0\n"
+)
+m = re.search(r"(?m)^http:\s*$", text)
+if m:
+    text = text[: m.end()] + "\n" + block + text[m.end() :]
+else:
+    text = text.rstrip() + "\n\nhttp:\n" + block
+path.write_text(text, encoding="utf-8")
+print(f"wrote trusted_proxies in {path}", file=sys.stderr)
+PY
+if [ -x /init ]; then
+  exec /init "$@"
 fi
-exec /init "$@"

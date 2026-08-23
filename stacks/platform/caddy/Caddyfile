@@ -65,15 +65,9 @@ https://jellyfin.{$DOMAIN} {
 
 https://ha.{$DOMAIN} {
 	tls internal
-	# HA returns 400 if it sees X-Forwarded-For from a peer not in trusted_proxies.
-	# Docker Desktop SNATs Caddy, so the NFS configuration.yaml overlay never stuck.
-	# Strip the headers; client IP in HA will be the proxy hop.
-	reverse_proxy {$HTPC_UPSTREAM}:8123 {
-		header_up -X-Forwarded-For
-		header_up -X-Forwarded-Proto
-		header_up -X-Forwarded-Host
-		header_up -Forwarded
-	}
+	# Caddy always sends X-Forwarded-For; HA 400s unless trusted_proxies is in
+	# the NFS configuration.yaml (bootstrap/ha-trusted-proxies.sh / ensure-proxy.sh).
+	reverse_proxy {$HTPC_UPSTREAM}:8123
 }
 
 https://nextcloud.{$DOMAIN} {
