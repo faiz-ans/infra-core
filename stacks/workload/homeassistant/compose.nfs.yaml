@@ -7,12 +7,14 @@ services:
     restart: unless-stopped
     environment:
       TZ: ${TZ}
+    entrypoint: ["/bin/sh", "/infra/ensure-proxy.sh"]
     ports:
       - "8123:8123"
     volumes:
       - homeassistant-config:/config
-      - ./configuration.yaml:/config/configuration.yaml
+      - ./ensure-proxy.sh:/infra/ensure-proxy.sh:ro
     # wifi / integrations only; no USB radio passthrough
+    # Do not bind-mount configuration.yaml over the NFS /config — Docker drops that overlay.
 
 volumes:
   homeassistant-config:

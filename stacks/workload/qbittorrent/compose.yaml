@@ -19,3 +19,4 @@ services:
       - ${DATA_ROOT}/system/periphery/qbittorrent:/config
       - ${DATA_ROOT}/shared/downloads:/downloads
       - ${DATA_ROOT}/shared/media:/data/media
+      - ./custom-cont-init.d:/custom-cont-init.d:ro

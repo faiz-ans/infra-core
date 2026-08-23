@@ -52,6 +52,9 @@ repo = "faiz-ans/infra-core"
 branch = "main"
 run_directory = "stacks/workload/qbittorrent"
 file_paths = ["compose.nfs.yaml"]
+config_files = [
+  { path = "custom-cont-init.d/10-webui.sh", requires = "Redeploy" },
+]
 webhook_enabled = false
 poll_for_updates = true
 environment = """
@@ -71,6 +74,9 @@ repo = "faiz-ans/infra-core"
 branch = "main"
 run_directory = "stacks/workload/nextcloud"
 file_paths = ["compose.nfs.yaml"]
+config_files = [
+  { path = "custom-cont-init.d/10-proxy.sh", requires = "Redeploy" },
+]
 webhook_enabled = false
 poll_for_updates = true
 environment = """
@@ -94,7 +100,7 @@ branch = "main"
 run_directory = "stacks/workload/homeassistant"
 file_paths = ["compose.nfs.yaml"]
 config_files = [
-  { path = "configuration.yaml", requires = "Redeploy" },
+  { path = "ensure-proxy.sh", requires = "Redeploy" },
 ]
 webhook_enabled = false
 poll_for_updates = true

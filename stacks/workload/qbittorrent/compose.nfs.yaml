@@ -19,6 +19,7 @@ services:
       - qbittorrent-config:/config
       - qbittorrent-downloads:/downloads
       - qbittorrent-media:/data/media
+      - ./custom-cont-init.d:/custom-cont-init.d:ro
 
 volumes:
   qbittorrent-config:

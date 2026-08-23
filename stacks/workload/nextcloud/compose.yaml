@@ -12,6 +12,7 @@ services:
       NEXTCLOUD_ADMIN_USER: ${NEXTCLOUD_ADMIN_USER}
       NEXTCLOUD_ADMIN_PASSWORD: ${NEXTCLOUD_ADMIN_PASSWORD}
       NEXTCLOUD_TRUSTED_DOMAINS: nextcloud.${DOMAIN}
+      DOMAIN: ${DOMAIN}
     ports:
       # linuxserver Nextcloud listens on 443 inside the container, not 80.
       - "8080:443"
@@ -20,3 +21,4 @@ services:
       - ${DATA_ROOT}/shared/files:/data/shared/files
       - ${DATA_ROOT}/shared/photos:/data/shared/photos
       - ${DATA_ROOT}/users:/data/users
+      - ./custom-cont-init.d:/custom-cont-init.d:ro
