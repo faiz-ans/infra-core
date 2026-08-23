@@ -100,7 +100,7 @@ branch = "main"
 run_directory = "stacks/workload/homeassistant"
 file_paths = ["compose.nfs.yaml"]
 config_files = [
-  { path = "ensure-proxy.sh", requires = "Redeploy" },
+  { path = "configuration.yaml", requires = "Redeploy" },
 ]
 webhook_enabled = false
 poll_for_updates = true

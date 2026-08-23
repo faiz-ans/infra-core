@@ -1,5 +1,5 @@
-# Docker NFS volume driver. Same tree as compose.yaml; engine mounts OMV itself.
-# Deploy this file instead of compose.yaml (do not merge both).
+# Docker NFS for media stacks. HA /config stays a local volume so the catalog
+# configuration.yaml bind actually lands (NFS file overlays are dropped).
 services:
   homeassistant:
     image: ghcr.io/home-assistant/home-assistant:stable
@@ -7,19 +7,12 @@ services:
     restart: unless-stopped
     environment:
       TZ: ${TZ}
-    entrypoint: ["/bin/sh", "/infra/ensure-proxy.sh"]
     ports:
       - "8123:8123"
     volumes:
-      - homeassistant-config:/config
-      - ./ensure-proxy.sh:/infra/ensure-proxy.sh:ro
+      - ha-config:/config
+      - ./configuration.yaml:/config/configuration.yaml:ro
     # wifi / integrations only; no USB radio passthrough
-    # Do not bind-mount configuration.yaml over the NFS /config — Docker drops that overlay.
 
 volumes:
-  homeassistant-config:
-    driver: local
-    driver_opts:
-      type: nfs
-      o: addr=${NAS_LAN_IP},nfsvers=4,rw,nolock,hard
-      device: ":${NFS_EXPORT}/system/periphery/homeassistant"
+  ha-config:

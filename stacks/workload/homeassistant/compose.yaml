@@ -7,11 +7,9 @@ services:
     restart: unless-stopped
     environment:
       TZ: ${TZ}
-    entrypoint: ["/bin/sh", "/infra/ensure-proxy.sh"]
     ports:
       - "8123:8123"
     volumes:
       - ${DATA_ROOT}/system/periphery/homeassistant:/config
-      - ./ensure-proxy.sh:/infra/ensure-proxy.sh:ro
-      - ./configuration.yaml:/config/configuration.yaml
+      - ./configuration.yaml:/config/configuration.yaml:ro
     # wifi / integrations only; no USB radio passthrough
