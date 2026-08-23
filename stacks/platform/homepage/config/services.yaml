@@ -66,6 +66,10 @@
           type: pihole
           url: http://pihole:80
           version: 6
+          fields:
+            - queries
+            - blocked_percent
+            - gravity
     - Pi-hole Periphery:
         href: https://dns2.{{HOMEPAGE_VAR_DOMAIN}}/admin
         siteMonitor: http://{{HOMEPAGE_VAR_HTPC_UPSTREAM}}:8083/admin
