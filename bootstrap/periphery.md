@@ -52,7 +52,7 @@ Allow inbound TCP from the LAN (Caddy on Core) on the published ports:
 | 9090 | Prometheus (optional) |
 | 8000 | Restic REST |
 
-Router DHCP DNS: Core `NAS_LAN_IP` first, then `HTPC_UPSTREAM`. Do not add a public resolver as a third DHCP DNS. After deploy, Teleporter (or copy) Gravity from the Core Pi-hole so both filter the same. Windows may already use :53 (ICS / another DNS); if the stack cannot bind, stop that listener.
+Router DHCP DNS: Core `NAS_LAN_IP` first, then `HTPC_UPSTREAM`. Do not add a public resolver as a third DHCP DNS. Each Pi-hole fetches its own Gravity; Teleporter is optional if you later want custom lists or allow/deny copied. Windows may already use :53 (ICS / another DNS); if the stack cannot bind, stop that listener.
 
 ## 4. Periphery env (write on the box, do not commit)
 
