@@ -1,5 +1,5 @@
 - Apps:
-    - Apps:
+    - Local:
         - Nextcloud:
             href: https://nextcloud.{{HOMEPAGE_VAR_DOMAIN}}
             siteMonitor: http://{{HOMEPAGE_VAR_HTPC_UPSTREAM}}:8080
