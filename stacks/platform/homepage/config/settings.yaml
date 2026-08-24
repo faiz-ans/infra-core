@@ -10,7 +10,7 @@ background:
 
 layout:
   Apps:
-    style: column
+    style: row
   System:
     Platform:
       style: column
