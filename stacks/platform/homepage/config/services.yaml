@@ -23,17 +23,14 @@
     - Web:
         - Gmail:
             href: https://gmail.com
-            siteMonitor: http://gmail.com
             icon: gmail.png
             description: Gmail
         - YouTube:
             href: https://youtube.com
-            siteMonitor: http://youtube.com
             icon: youtube.png
             description: YouTube
         - Amazon Prime:
             href: https://amazon.com
-            siteMonitor: http://amazon.com
             icon: amazon.png
             description: Amazon Prime
 
