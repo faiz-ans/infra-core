@@ -52,11 +52,11 @@
             siteMonitor: http://{{HOMEPAGE_VAR_HTPC_UPSTREAM}}:8081
             icon: qbittorrent.png
             description: Downloads
-        #    widget:
-        #      type: qbittorrent
-        #      url: http://{{HOMEPAGE_VAR_HTPC_UPSTREAM}}:8081
-        #      username: "{{HOMEPAGE_VAR_QBIT_USERNAME}}"
-        #      password: "{{HOMEPAGE_VAR_QBIT_PASSWORD}}"
+            widget:
+              type: qbittorrent
+              url: http://{{HOMEPAGE_VAR_HTPC_UPSTREAM}}:8081
+              username: "{{HOMEPAGE_VAR_QBIT_USERNAME}}"
+              password: "{{HOMEPAGE_VAR_QBIT_PASSWORD}}"
     - Network:
         - Pi-hole Core:
             href: https://dns.{{HOMEPAGE_VAR_DOMAIN}}/admin

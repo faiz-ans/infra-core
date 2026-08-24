@@ -3,6 +3,7 @@ theme: dark
 headerStyle: clean
 hideVersion: true
 statusStyle: dot
+
 background:
   image: /images/background.png
   opacity: 80
@@ -16,16 +17,3 @@ layout:
     Platform:
     Network:
     Downloads:
-
-#  Platform:
-#    style: row
-#    columns: 4
-#  Media:
-#    style: row
-#    columns: 4
-#  Cloud:
-#    style: row
-#    columns: 2
-#  Monitor:
-#    style: row
-#    columns: 2
