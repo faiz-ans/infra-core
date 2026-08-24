@@ -1,5 +1,4 @@
- - Apps:
-    - "Apps":
+- Apps:
     - Local:
         - Nextcloud:
             href: https://nextcloud.{{HOMEPAGE_VAR_DOMAIN}}
@@ -37,8 +36,8 @@
             siteMonitor: http://amazon.com
             icon: amazon.png
             description: Amazon Prime
+
 - System:
-    - "System":
     - Downloads:
         - Sonarr:
             href: https://sonarr.{{HOMEPAGE_VAR_DOMAIN}}
@@ -62,10 +61,10 @@
             icon: pi-hole.png
             description: DNS (Primary)
             widget:
-            type: pihole
-            url: http://pihole:80
-            version: 6
-            fields:
+              type: pihole
+              url: http://pihole:80
+              version: 6
+              fields:
                 - queries
                 - blocked_percent
                 - gravity
