@@ -13,6 +13,7 @@ layout:
     style: column
     rows: 2
   System:
+    styled: row
     Platform:
       style: column
     Network:
