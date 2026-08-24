@@ -37,7 +37,6 @@
             siteMonitor: http://amazon.com
             icon: amazon.png
             description: Amazon Prime
-
 - System:
     - "System":
     - Downloads:
