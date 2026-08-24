@@ -11,6 +11,10 @@ background:
 
 layout:
   Apps:
+    style: row
+    columns: 2
+    Local:
+    Web:
   System:
     style: row
     columns: 3
