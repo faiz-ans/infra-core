@@ -10,8 +10,8 @@ background:
 
 layout:
   Apps:
-    style: row
-    columns: 2
+    style: colums
+    rows: 2
   System:
     Platform:
       style: column
