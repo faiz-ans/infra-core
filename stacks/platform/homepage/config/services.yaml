@@ -35,7 +35,22 @@
             description: Amazon Prime
 
 - System:
-    - Network:
+    - Platform:
+        - Komodo:
+            href: https://ops.{{HOMEPAGE_VAR_DOMAIN}}
+            siteMonitor: http://{{HOMEPAGE_VAR_NAS_LAN_IP}}:9120
+            icon: docker.png
+            description: Deployment
+        - OpenMediaVault:
+            href: https://nas.{{HOMEPAGE_VAR_DOMAIN}}
+            siteMonitor: http://{{HOMEPAGE_VAR_NAS_LAN_IP}}:81
+            icon: openmediavault.png
+            description: Storage
+        - Grafana:
+            href: https://grafana.{{HOMEPAGE_VAR_DOMAIN}}
+            siteMonitor: http://{{HOMEPAGE_VAR_HTPC_UPSTREAM}}:3000
+            icon: grafana.png
+            description: Monitoring
         - Pi-hole Core:
             href: https://dns.{{HOMEPAGE_VAR_DOMAIN}}/admin
             siteMonitor: http://pihole:80/admin
@@ -59,30 +74,6 @@
             siteMonitor: http://wireguard:51821
             icon: wireguard.png
             description: VPN
-            #widget:
-            #  type: wgeasy
-            #  url: http://wireguard:51821
-            #  version: 2
-            #  username: wg-admin
-            #  password: "{{HOMEPAGE_VAR_WGEASY_PASSWORD}}"
-            #  fields:
-            #    - connected
-    - Platform:
-        - Komodo:
-            href: https://ops.{{HOMEPAGE_VAR_DOMAIN}}
-            siteMonitor: http://{{HOMEPAGE_VAR_NAS_LAN_IP}}:9120
-            icon: docker.png
-            description: Deployment
-        - OpenMediaVault:
-            href: https://nas.{{HOMEPAGE_VAR_DOMAIN}}
-            siteMonitor: http://{{HOMEPAGE_VAR_NAS_LAN_IP}}:81
-            icon: openmediavault.png
-            description: Storage
-        - Grafana:
-            href: https://grafana.{{HOMEPAGE_VAR_DOMAIN}}
-            siteMonitor: http://{{HOMEPAGE_VAR_HTPC_UPSTREAM}}:3000
-            icon: grafana.png
-            description: Monitoring
         #    widget:
         #      type: grafana
         #      url: http://{{HOMEPAGE_VAR_HTPC_UPSTREAM}}:3000
