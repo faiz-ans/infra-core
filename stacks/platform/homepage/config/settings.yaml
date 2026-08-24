@@ -11,7 +11,7 @@ background:
 layout:
   Apps:
     style: colums
-    rows: 4
+    rows: 2
   System:
     Platform:
       style: column
