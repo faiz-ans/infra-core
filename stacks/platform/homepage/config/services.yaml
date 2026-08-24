@@ -57,6 +57,11 @@
               url: http://{{HOMEPAGE_VAR_HTPC_UPSTREAM}}:8081
               username: "{{HOMEPAGE_VAR_QBIT_USERNAME}}"
               password: "{{HOMEPAGE_VAR_QBIT_PASSWORD}}"
+            fields:
+                - download
+                - upload
+                - seed
+                - leech
     - Network:
         - Pi-hole Core:
             href: https://dns.{{HOMEPAGE_VAR_DOMAIN}}/admin
