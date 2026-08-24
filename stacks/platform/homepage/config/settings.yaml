@@ -13,4 +13,6 @@ layout:
   style: row
   columns: 2
   Apps:
+    header: false
   System:
+    header: false
