@@ -8,7 +8,21 @@ background:
   opacity: 80
   brightness: 50
 
-#layout:
+layout:
+  Apps:
+    style: column
+    rows: 2
+  System:
+    Platform:
+      style: column
+      rows: 2
+    Network:
+      style: column
+      rows: 2
+    Downloads:
+      style: column
+      rows: 2
+
 #  Platform:
 #    style: row
 #    columns: 4

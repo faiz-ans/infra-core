@@ -16,6 +16,8 @@ if [[ ${EUID:-0} -ne 0 ]]; then
 fi
 
 DATA_ROOT="${DATA_ROOT:-/srv/dev-disk-by-uuid-d6e267fd-109f-4971-bfb1-26b3d99e0d47}"
+PUID="${PUID:-1000}"
+PGID="${PGID:-1000}"
 HOUSEHOLD=(faiz diana)
 HTPC=periphery
 ADMIN=pilot
@@ -70,7 +72,11 @@ mkdir -p \
   "${DATA_ROOT}/system/wireguard" \
   "${DATA_ROOT}/system/restic" \
   "${DATA_ROOT}/shared/media" \
+  "${DATA_ROOT}/shared/media/movies" \
+  "${DATA_ROOT}/shared/media/tv" \
   "${DATA_ROOT}/shared/downloads" \
+  "${DATA_ROOT}/shared/downloads/complete" \
+  "${DATA_ROOT}/shared/downloads/incomplete" \
   "${DATA_ROOT}/shared/files" \
   "${DATA_ROOT}/shared/photos" \
   "${DATA_ROOT}/users"
@@ -88,7 +94,8 @@ chown root:root "${DATA_ROOT}/system"
 chmod 700 "${DATA_ROOT}/system"
 setfacl -b "${DATA_ROOT}/system" || true
 
-acl_shared="g:${SHARED_GROUP}:rwx"
+# linuxserver containers (Radarr/qBit/Jellyfin) write as PUID:PGID over NFS.
+acl_shared="g:${SHARED_GROUP}:rwx,u:${PUID}:rwx,g:${PGID}:rwx"
 for u in "${PRESENT_HOUSEHOLD[@]}"; do
   acl_shared+=",u:${u}:rwx"
 done
