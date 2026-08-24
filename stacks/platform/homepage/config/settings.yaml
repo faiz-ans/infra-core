@@ -10,16 +10,12 @@ background:
 
 layout:
   Apps:
-    style: column
-    rows: 2
   System:
     styled: row
+    columns: 3
     Platform:
-      style: column
     Network:
-      style: column
     Downloads:
-      style: column
 
 #  Platform:
 #    style: row
