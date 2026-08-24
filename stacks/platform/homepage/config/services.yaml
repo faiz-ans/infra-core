@@ -1,33 +1,3 @@
-- Downloads:
-    - Sonarr:
-        href: https://sonarr.{{HOMEPAGE_VAR_DOMAIN}}
-        siteMonitor: http://{{HOMEPAGE_VAR_HTPC_UPSTREAM}}:8989
-        icon: sonarr.png
-        description: Lookup TV Shows
-    #    widget:
-    #      type: sonarr
-    #      url: http://{{HOMEPAGE_VAR_HTPC_UPSTREAM}}:8989
-    #      key: "{{HOMEPAGE_VAR_SONARR_KEY}}"
-    - Radarr:
-        href: https://radarr.{{HOMEPAGE_VAR_DOMAIN}}
-        siteMonitor: http://{{HOMEPAGE_VAR_HTPC_UPSTREAM}}:7878
-        icon: radarr.png
-        description: Lookup Movies
-    #    widget:
-    #      type: radarr
-    #      url: http://{{HOMEPAGE_VAR_HTPC_UPSTREAM}}:7878
-    #      key: "{{HOMEPAGE_VAR_RADARR_KEY}}"
-    - qBittorrent:
-        href: https://qbit.{{HOMEPAGE_VAR_DOMAIN}}
-        siteMonitor: http://{{HOMEPAGE_VAR_HTPC_UPSTREAM}}:8081
-        icon: qbittorrent.png
-        description: Downloads
-    #    widget:
-    #      type: qbittorrent
-    #      url: http://{{HOMEPAGE_VAR_HTPC_UPSTREAM}}:8081
-    #      username: "{{HOMEPAGE_VAR_QBIT_USERNAME}}"
-    #      password: "{{HOMEPAGE_VAR_QBIT_PASSWORD}}"
-
 - Apps:
     - Nextcloud:
         href: https://nextcloud.{{HOMEPAGE_VAR_DOMAIN}}
@@ -56,60 +26,90 @@
     #      enableBlocks: true
     #      enableNowPlaying: true
 
-- Network:
-    - Pi-hole Core:
-        href: https://dns.{{HOMEPAGE_VAR_DOMAIN}}/admin
-        siteMonitor: http://pihole:80/admin
-        icon: pi-hole.png
-        description: DNS (Primary)
-        widget:
-          type: pihole
-          url: http://pihole:80
-          version: 6
-          fields:
-            - queries
-            - blocked_percent
-            - gravity
-    - Pi-hole Periphery:
-        href: https://dns2.{{HOMEPAGE_VAR_DOMAIN}}/admin
-        siteMonitor: http://{{HOMEPAGE_VAR_HTPC_UPSTREAM}}:8083/admin
-        icon: pi-hole.png
-        description: DNS (Secondary)
-    - WireGuard:
-        href: https://vpn.{{HOMEPAGE_VAR_DOMAIN}}
-        siteMonitor: http://wireguard:51821
-        icon: wireguard.png
-        description: VPN
-        #widget:
-        #  type: wgeasy
-        #  url: http://wireguard:51821
-        #  version: 2
-        #  username: wg-admin
-        #  password: "{{HOMEPAGE_VAR_WGEASY_PASSWORD}}"
-        #  fields:
-        #    - connected
-
-- Platform:
-    - Komodo:
-        href: https://ops.{{HOMEPAGE_VAR_DOMAIN}}
-        siteMonitor: http://{{HOMEPAGE_VAR_NAS_LAN_IP}}:9120
-        icon: docker.png
-        description: Deployment
-    - OpenMediaVault:
-        href: https://nas.{{HOMEPAGE_VAR_DOMAIN}}
-        siteMonitor: http://{{HOMEPAGE_VAR_NAS_LAN_IP}}:81
-        icon: openmediavault.png
-        description: Storage
-    - Grafana:
-        href: https://grafana.{{HOMEPAGE_VAR_DOMAIN}}
-        siteMonitor: http://{{HOMEPAGE_VAR_HTPC_UPSTREAM}}:3000
-        icon: grafana.png
-        description: Monitoring
-    #    widget:
-    #      type: grafana
-    #      url: http://{{HOMEPAGE_VAR_HTPC_UPSTREAM}}:3000
-    #      key: "{{HOMEPAGE_VAR_GRAFANA_KEY}}"
-    #- Prometheus:
-    #    href: https://prometheus.{{HOMEPAGE_VAR_DOMAIN}}
-    #    siteMonitor: http://{{HOMEPAGE_VAR_HTPC_UPSTREAM}}:9090
-    #    icon: prometheus.png
+- System:
+    - "System":
+    - Downloads:
+        - Sonarr:
+            href: https://sonarr.{{HOMEPAGE_VAR_DOMAIN}}
+            siteMonitor: http://{{HOMEPAGE_VAR_HTPC_UPSTREAM}}:8989
+            icon: sonarr.png
+            description: Lookup TV Shows
+        #    widget:
+        #      type: sonarr
+        #      url: http://{{HOMEPAGE_VAR_HTPC_UPSTREAM}}:8989
+        #      key: "{{HOMEPAGE_VAR_SONARR_KEY}}"
+        - Radarr:
+            href: https://radarr.{{HOMEPAGE_VAR_DOMAIN}}
+            siteMonitor: http://{{HOMEPAGE_VAR_HTPC_UPSTREAM}}:7878
+            icon: radarr.png
+            description: Lookup Movies
+        #    widget:
+        #      type: radarr
+        #      url: http://{{HOMEPAGE_VAR_HTPC_UPSTREAM}}:7878
+        #      key: "{{HOMEPAGE_VAR_RADARR_KEY}}"
+        - qBittorrent:
+            href: https://qbit.{{HOMEPAGE_VAR_DOMAIN}}
+            siteMonitor: http://{{HOMEPAGE_VAR_HTPC_UPSTREAM}}:8081
+            icon: qbittorrent.png
+            description: Downloads
+        #    widget:
+        #      type: qbittorrent
+        #      url: http://{{HOMEPAGE_VAR_HTPC_UPSTREAM}}:8081
+        #      username: "{{HOMEPAGE_VAR_QBIT_USERNAME}}"
+        #      password: "{{HOMEPAGE_VAR_QBIT_PASSWORD}}"
+    - Network:
+        - Pi-hole Core:
+            href: https://dns.{{HOMEPAGE_VAR_DOMAIN}}/admin
+            siteMonitor: http://pihole:80/admin
+            icon: pi-hole.png
+            description: DNS (Primary)
+            widget:
+            type: pihole
+            url: http://pihole:80
+            version: 6
+            fields:
+                - queries
+                - blocked_percent
+                - gravity
+        - Pi-hole Periphery:
+            href: https://dns2.{{HOMEPAGE_VAR_DOMAIN}}/admin
+            siteMonitor: http://{{HOMEPAGE_VAR_HTPC_UPSTREAM}}:8083/admin
+            icon: pi-hole.png
+            description: DNS (Secondary)
+        - WireGuard:
+            href: https://vpn.{{HOMEPAGE_VAR_DOMAIN}}
+            siteMonitor: http://wireguard:51821
+            icon: wireguard.png
+            description: VPN
+            #widget:
+            #  type: wgeasy
+            #  url: http://wireguard:51821
+            #  version: 2
+            #  username: wg-admin
+            #  password: "{{HOMEPAGE_VAR_WGEASY_PASSWORD}}"
+            #  fields:
+            #    - connected
+    - Platform:
+        - Komodo:
+            href: https://ops.{{HOMEPAGE_VAR_DOMAIN}}
+            siteMonitor: http://{{HOMEPAGE_VAR_NAS_LAN_IP}}:9120
+            icon: docker.png
+            description: Deployment
+        - OpenMediaVault:
+            href: https://nas.{{HOMEPAGE_VAR_DOMAIN}}
+            siteMonitor: http://{{HOMEPAGE_VAR_NAS_LAN_IP}}:81
+            icon: openmediavault.png
+            description: Storage
+        - Grafana:
+            href: https://grafana.{{HOMEPAGE_VAR_DOMAIN}}
+            siteMonitor: http://{{HOMEPAGE_VAR_HTPC_UPSTREAM}}:3000
+            icon: grafana.png
+            description: Monitoring
+        #    widget:
+        #      type: grafana
+        #      url: http://{{HOMEPAGE_VAR_HTPC_UPSTREAM}}:3000
+        #      key: "{{HOMEPAGE_VAR_GRAFANA_KEY}}"
+        #- Prometheus:
+        #    href: https://prometheus.{{HOMEPAGE_VAR_DOMAIN}}
+        #    siteMonitor: http://{{HOMEPAGE_VAR_HTPC_UPSTREAM}}:9090
+        #    icon: prometheus.png
