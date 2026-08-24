@@ -11,7 +11,7 @@ background:
 layout:
   Apps:
   System:
-    styled: row
+    style: row
     columns: 3
     Platform:
     Network:
