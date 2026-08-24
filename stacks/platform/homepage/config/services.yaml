@@ -35,22 +35,6 @@
             description: Amazon Prime
 
 - System:
-    - Downloads:
-        - Sonarr:
-            href: https://sonarr.{{HOMEPAGE_VAR_DOMAIN}}
-            siteMonitor: http://{{HOMEPAGE_VAR_HTPC_UPSTREAM}}:8989
-            icon: sonarr.png
-            description: Lookup TV Shows
-        - Radarr:
-            href: https://radarr.{{HOMEPAGE_VAR_DOMAIN}}
-            siteMonitor: http://{{HOMEPAGE_VAR_HTPC_UPSTREAM}}:7878
-            icon: radarr.png
-            description: Lookup Movies
-        - qBittorrent:
-            href: https://qbit.{{HOMEPAGE_VAR_DOMAIN}}
-            siteMonitor: http://{{HOMEPAGE_VAR_HTPC_UPSTREAM}}:8081
-            icon: qbittorrent.png
-            description: Downloads
     - Network:
         - Pi-hole Core:
             href: https://dns.{{HOMEPAGE_VAR_DOMAIN}}/admin
@@ -107,3 +91,19 @@
         #    href: https://prometheus.{{HOMEPAGE_VAR_DOMAIN}}
         #    siteMonitor: http://{{HOMEPAGE_VAR_HTPC_UPSTREAM}}:9090
         #    icon: prometheus.png
+    - Downloads:
+        - Sonarr:
+            href: https://sonarr.{{HOMEPAGE_VAR_DOMAIN}}
+            siteMonitor: http://{{HOMEPAGE_VAR_HTPC_UPSTREAM}}:8989
+            icon: sonarr.png
+            description: Lookup TV Shows
+        - Radarr:
+            href: https://radarr.{{HOMEPAGE_VAR_DOMAIN}}
+            siteMonitor: http://{{HOMEPAGE_VAR_HTPC_UPSTREAM}}:7878
+            icon: radarr.png
+            description: Lookup Movies
+        - qBittorrent:
+            href: https://qbit.{{HOMEPAGE_VAR_DOMAIN}}
+            siteMonitor: http://{{HOMEPAGE_VAR_HTPC_UPSTREAM}}:8081
+            icon: qbittorrent.png
+            description: Downloads

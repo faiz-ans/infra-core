@@ -10,14 +10,7 @@ background:
   brightness: 50
 
 layout:
+  style: row
+  columns: 2
   Apps:
-    style: row
-    columns: 2
-    Local:
-    Web:
   System:
-    style: row
-    columns: 3
-    Platform:
-    Network:
-    Downloads:
