@@ -1,11 +1,15 @@
 ## ADDED Requirements
 
 ### Requirement: Media and download stacks on htpc
-Jellyfin, the Arr stack, and qBittorrent SHALL deploy on server `htpc` via ResourceSync. They SHALL mount the OMV `shared/media` and `shared/downloads` trees over NFS (and shall not use the laptop internal SSD as the media library). They SHALL be reachable from Caddy on `nas` via `HTPC_UPSTREAM` and their published ports.
+Jellyfin, the Arr stack, and qBittorrent SHALL deploy on server `htpc` via ResourceSync. They SHALL mount the OMV `shared/media` and `shared/downloads` trees over NFS (and shall not use the laptop internal SSD as the media library). They SHALL be reachable from Caddy on `nas` via `HTPC_UPSTREAM` and their published ports. The Arr stack SHALL include FlareSolverr on the same Compose network as Prowlarr. FlareSolverr MUST NOT be published on the host or proxied by Caddy.
 
 #### Scenario: Jellyfin library on NAS
 - **WHEN** Jellyfin is deployed
 - **THEN** its library path is the OMV `shared/media` tree mounted over NFS
+
+#### Scenario: Prowlarr can reach FlareSolverr
+- **WHEN** the Arr stack is deployed
+- **THEN** Prowlarr can use `http://flaresolverr:8191` on the stack network and FlareSolverr is not published on the HTPC LAN
 
 ### Requirement: Nextcloud on htpc
 Nextcloud SHALL deploy on `htpc` and SHALL access both household and per-user trees over NFS: `shared/files`, `shared/photos`, and `users/<user>/{files,photos}`.

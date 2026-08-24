@@ -44,6 +44,15 @@ services:
     volumes:
       - prowlarr-config:/config
 
+  # Sidecar for Prowlarr Cloudflare indexers. Not published; use http://flaresolverr:8191
+  flaresolverr:
+    image: ghcr.io/flaresolverr/flaresolverr:latest
+    container_name: flaresolverr
+    restart: unless-stopped
+    environment:
+      TZ: ${TZ}
+      LOG_LEVEL: info
+
 volumes:
   sonarr-config:
     name: sonarr-config
