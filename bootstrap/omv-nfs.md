@@ -69,8 +69,6 @@ No quotes. Unix path, not `Z:`.
 
 NFSv4 path is `/<share-name>`. NFSv3 path would be `/export/<share-name>` — the catalog uses NFSv4.
 
-Existing Docker NFS volumes keep the old `device=` until you remove them. After changing exports, stop the stacks, `docker volume rm` the media/downloads/files/users volumes, then redeploy.
-
 ## 3. SMB stays for drag-and-drop
 
 Workbench: **Services → SMB/CIFS** — leave enabled.
@@ -97,4 +95,8 @@ You should see media/downloads/files/photos and the user homes. You should not s
 
 If `ls` fails with `mount.nfs` / `permission denied`, the usual causes are: NFS not applied, client IP not the HTPC, missing `insecure`, or TCP 2049 blocked.
 
-Then redeploy the periphery app stacks in Komodo so they recreate volumes (old `:/data/...` NFS volumes are not reused).
+Then apply `stacks-periphery.toml` in Komodo.
+
+## 5. If you previously exported the disk root
+
+Remove the old `data` (relative path `/`) NFS share. Docker NFS volumes remember `device=:/data/...` until you delete them: stop the HTPC stacks, `docker volume rm` the media/downloads/files/users volumes (not the local `*-config` volumes), then redeploy.

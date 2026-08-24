@@ -13,12 +13,28 @@ Layer 2  this repo      stacks/ + windows/
 
 Komodo server names in ResourceSync TOML are literals **`core`** and **`periphery`** (Komodo does not interpolate `[[VAR]]` on `server` or `repo`). Bootstrap `CORE_SERVER` / `PERIPHERY_SERVER` must match those names. Stack `repo` is this catalog (`faiz-ans/infra-core`). Environment values still use `[[VAR]]` at deploy.
 
+## Target state (after bootstrap + ResourceSync)
+
+A finished site matches this layout. Bootstrap creates it; do not reintroduce `system/core` or `system/periphery`, or an NFS export of the disk root.
+
+```
+${DATA_ROOT}/
+  system/{authelia,vaultwarden,pihole,wireguard,restic}   # Core bind-mounts only
+  shared/{media,downloads,files,photos}                   # NFS /shared
+  users/<user>/{files,photos}                             # NFS /users
+```
+
+- Komodo: `NFS_EXPORT=/shared`, `NFS_USERS=/users`. `restic` and `restic-rest` stay `deploy = false` until `BACKUP_DRIVE` is the IronWolf.
+- HTPC `/config` is a local Docker volume. Media, downloads, and Nextcloud files stay on NFS.
+- ResourceSync names are global: Core Pi-hole is `pihole`, HTPC is `pihole-periphery`.
+- Router DHCP DNS: Core LAN IP first, HTPC second. No public resolver as a third server. Each Pi-hole fetches its own Gravity.
+
 ## Bootstrap order
 
-1. Copy `bootstrap/core.sh` plus `bootstrap/komodo/` to the Core host and run the script (or follow the commented commands). Storage is configured first; site prompts come after any OMV reboot.
+1. Copy the `bootstrap/` directory (including `core.sh`, `omv-nfs.sh`, `data-root-perms.sh`, and `komodo/`) to the Core host and run `core.sh` as root (or follow the commented commands). Storage is configured first; site prompts come after any OMV reboot. With OMV present, the script exports `shared/` and `users/` to the HTPC IP and applies `data-root-perms.sh`.
 2. In Komodo, confirm the `core` server. Secrets from bootstrap live in `/etc/komodo/core.config.toml`. Create a ResourceSync (webhooks off) with resource path `stacks/komodo/stacks-core.toml` first, then apply.
-3. On Core, export `shared/` and `users/` over NFS (`bootstrap/omv-nfs.md`). Do not export the disk root or `system/`. Keep SMB for Explorer/Finder. On the remote host, follow `bootstrap/periphery.md`: Docker Desktop, Komodo `NAS_LAN_IP` + `NFS_EXPORT=/shared` + `NFS_USERS=/users`, outbound Periphery with `PERIPHERY_CONNECT_AS=periphery`. Leave `restic` / `restic-rest` off until the IronWolf is the backup disk (`BACKUP_DRIVE`).
-4. Confirm that server in Komodo, add `stacks/komodo/stacks-periphery.toml` to the same ResourceSync (or a second one), and apply. Home Assistant uses a local volume + git `configuration.yaml`; the other HTPC apps use NFS.
+3. Keep SMB for Explorer/Finder. If you skipped OMV (OS-disk `DATA_ROOT`), export `shared/` and `users/` yourself (`bootstrap/omv-nfs.md`). On the remote host, follow `bootstrap/periphery.md`: Docker Desktop, outbound Periphery with `PERIPHERY_CONNECT_AS=periphery`. Leave `restic` / `restic-rest` off until the IronWolf is the backup disk (`BACKUP_DRIVE`).
+4. Confirm that server in Komodo, add `stacks/komodo/stacks-periphery.toml` to the same ResourceSync (or a second one), and apply. Home Assistant uses a local volume + git `configuration.yaml`; the other HTPC apps use NFS for household data only.
 
 Winget packages for later Windows apps are listed under `windows/` and are not required for GitOps.
 

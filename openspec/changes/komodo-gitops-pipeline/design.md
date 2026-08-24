@@ -39,7 +39,7 @@ Komodo cannot install itself through ResourceSync on an empty Pi.
 
 ### 2. ResourceSync in git, servers onboarded not committed
 
-`stacks/komodo/*.toml` declares stacks with `server = "[[CORE_SERVER]]"` or `"[[PERIPHERY_SERVER]]"` (defaults `core` / `periphery`), `repo` + `run_directory`, and `environment` keys mapped to `[[VARS]]`. Server resources are created by onboarding (bootstrap / Periphery `connect_as`). IPs never appear in TOML.
+`stacks/komodo/*.toml` declares stacks with literal `server = "core"` or `"periphery"` (Komodo does not interpolate `[[VAR]]` on `server`/`repo`), `repo` + `run_directory`, and `environment` keys mapped to `[[VARS]]`. Bootstrap `CORE_SERVER` / `PERIPHERY_SERVER` must match those literals. Server resources are created by onboarding (bootstrap / Periphery `connect_as`). IPs never appear in TOML. Stack names are unique across both files (`pihole` vs `pihole-periphery`).
 
 **Alternative considered:** UI-only stacks pointing at git folders. Rejected: a dead Pi would lose topology; ResourceSync is the reproduce path.
 
@@ -129,7 +129,7 @@ Exact non-colliding host ports are an implementation detail; Caddyfile and Homep
 
 - **[Pi 4GB still busy with OMV + Core + edge]** → Keep HA/media off the Pi; monitor memory; avoid extra NAS stacks.
 - **[Windows Firewall blocks Caddy → Desktop ports]** → HTPC bootstrap documents/allows the published port list.
-- **[Docker Desktop file sharing vs SMB bind mounts]** → Do not bind SMB/NFS drive letters. HTPC app stacks use the Docker NFS volume driver (`NAS_LAN_IP` + `NFS_EXPORT`). SMB remains for Explorer/Finder.
+- **[Docker Desktop file sharing vs SMB bind mounts]** → Do not bind SMB/NFS drive letters. HTPC app stacks use the Docker NFS volume driver (`NAS_LAN_IP` + `NFS_EXPORT` + `NFS_USERS`). SMB remains for Explorer/Finder.
 - **[WSL2/Desktop not running]** → HTPC workloads and restic REST are down; Core on Pi still up. Acceptable for an always-on HTPC.
 - **[Authelia vs widgets]** → Internal URLs avoid SSO on scrapes; hrefs stay protected.
 - **[Public ResourceSync TOML shows topology]** → Acceptable; no secrets. Repo name `owner/infra-core` in TOML is catalog identity, not site secret.

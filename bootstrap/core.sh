@@ -1,10 +1,12 @@
 #!/usr/bin/env bash
-# Core host Layer 0 bootstrap. Copy to the Core machine (scp) and run as root:
+# Core host Layer 0 bootstrap. Copy the bootstrap/ directory to the Core machine
+# (core.sh, omv-nfs.sh, data-root-perms.sh, komodo/) and run as root:
 #   sudo bash core.sh
 # Every live command is also shown in a nearby comment for copy-paste.
 #
 # Order: apt → external disk? → (if yes: OMV with -n -r, mount uuid path)
-#        (if no: directory on OS disk) → site prompts → Docker → Komodo.
+#        (if no: directory on OS disk) → site prompts → Docker → DATA_ROOT tree
+#        (system/<app>, not system/core) → Komodo → NFS shared/+users/ → ACLs.
 
 set -euo pipefail
 
@@ -596,6 +598,15 @@ WG_UI_PASSWORD = "${WG_UI_PASSWORD}"
 GRAFANA_ADMIN_PASSWORD = "${GRAFANA_ADMIN_PASSWORD}"
 NEXTCLOUD_ADMIN_USER = "${NEXTCLOUD_ADMIN_USER}"
 NEXTCLOUD_ADMIN_PASSWORD = "${NEXTCLOUD_ADMIN_PASSWORD}"
+HOMEPAGE_VAR_PIHOLE_TOKEN = ""
+HOMEPAGE_VAR_JELLYFIN_KEY = ""
+HOMEPAGE_VAR_SONARR_KEY = ""
+HOMEPAGE_VAR_RADARR_KEY = ""
+HOMEPAGE_VAR_PROWLARR_KEY = ""
+HOMEPAGE_VAR_QBIT_USERNAME = ""
+HOMEPAGE_VAR_QBIT_PASSWORD = ""
+HOMEPAGE_VAR_GRAFANA_KEY = ""
+HOMEPAGE_VAR_WGEASY_PASSWORD = ""
 EOF
 chmod 600 "${KOMODO_DIR}/core.config.toml" "${KOMODO_DIR}/bootstrap/compose.env" "${ANSWERS}"
 # chmod 600 /etc/komodo/core.config.toml /etc/komodo/bootstrap/compose.env
@@ -617,6 +628,21 @@ for _ in $(seq 1 60); do
   fi
   sleep 2
 done
+
+# --- NFS: shared/ and users/ only (HTPC Docker). Do not export system/. ---
+if command -v omv-rpc >/dev/null 2>&1 && [[ -f "${REPO_BOOTSTRAP}/omv-nfs.sh" ]]; then
+  echo "Exporting shared/ and users/ over NFS to ${HTPC_UPSTREAM}."
+  # sudo HTPC_IP=<HTPC> DATA_ROOT=<DATA_ROOT> bash bootstrap/omv-nfs.sh
+  HTPC_IP="${HTPC_UPSTREAM}" DATA_ROOT="${DATA_ROOT}" bash "${REPO_BOOTSTRAP}/omv-nfs.sh"
+else
+  echo "OMV NFS skipped (no omv-rpc). For HTPC compose.nfs.yaml, follow bootstrap/omv-nfs.md."
+fi
+
+# --- POSIX/ACL on DATA_ROOT (system/ is root-only; household SMB on shared/ and users/) ---
+if [[ -f "${REPO_BOOTSTRAP}/data-root-perms.sh" ]]; then
+  # sudo DATA_ROOT=<DATA_ROOT> bash bootstrap/data-root-perms.sh
+  DATA_ROOT="${DATA_ROOT}" bash "${REPO_BOOTSTRAP}/data-root-perms.sh"
+fi
 
 # --- Authelia users file (hash via official image) ---
 # docker run --rm authelia/authelia:4 authelia crypto hash generate argon2 --password '...'
@@ -662,9 +688,21 @@ echo "  resource path:   stacks/komodo/stacks-core.toml"
 echo "  poll:            enabled"
 echo "  webhook_enabled: false"
 echo "After the remote Periphery server is OK, add stacks/komodo/stacks-periphery.toml."
+echo "Leave restic and restic-rest deploy=false until BACKUP_DRIVE is the IronWolf."
+echo
+echo "Target layout:"
+echo "  ${DATA_ROOT}/system/{authelia,vaultwarden,pihole,wireguard,restic}"
+echo "  ${DATA_ROOT}/shared/{media,downloads,files,photos}"
+echo "  ${DATA_ROOT}/users/<user>/{files,photos}"
+echo "  NFS exports /shared and /users to the HTPC IP only (not disk root, not system/)."
+echo "  Komodo NFS_EXPORT=/shared NFS_USERS=/users"
+echo "  HTPC /config is a local Docker volume; media/files stay on NFS."
+echo "  Pi-hole stack names: pihole (Core) and pihole-periphery (HTPC)."
+echo "  Router DHCP DNS: ${NAS_LAN_IP} first, then ${HTPC_UPSTREAM}. No public resolver as a third server."
+echo "  Each Pi-hole fetches its own Gravity."
 echo
 echo "Komodo [secrets] were written to ${KOMODO_DIR}/core.config.toml"
 echo "Also add remaining keys from stacks/komodo/VARIABLES.md (widget tokens, BACKUP_DRIVE on the remote host)."
-echo "NFS_EXPORT=/shared and NFS_USERS=/users (OMV share names). Override in Komodo if the folder names differ."
+echo "Follow bootstrap/periphery.md on the HTPC (firewall, Periphery env, Docker Desktop)."
 echo
 echo "Done."

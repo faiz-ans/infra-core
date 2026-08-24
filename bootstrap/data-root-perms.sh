@@ -1,10 +1,13 @@
 #!/usr/bin/env bash
 # POSIX + ACL layout for DATA_ROOT. Run on Core as root:
-#   sudo bash bootstrap/data-root-perms.sh
+#   sudo DATA_ROOT=/srv/dev-disk-by-uuid-… bash bootstrap/data-root-perms.sh
 #
-#   faiz, diana  — R/W shared/ and users/<self> only (cannot enter system/)
-#   periphery    — R/W shared/ and users/ (cannot enter system/)
-#   pilot        — SSH admin: list/enter users/* (system/ is root-only)
+# Unix users that exist get ACLs. Missing household names are skipped so a
+# fresh Pi (only the SSH admin) can still lock system/ and mode shared/.
+#
+#   household   — R/W shared/ and users/<self> only (cannot enter system/)
+#   periphery   — R/W shared/ and users/ (cannot enter system/)
+#   SSH admin   — list/enter users/* (system/ is root-only)
 set -euo pipefail
 
 if [[ ${EUID:-0} -ne 0 ]]; then
@@ -24,20 +27,41 @@ if [[ ! -d "${DATA_ROOT}" ]]; then
   exit 1
 fi
 
-for u in "${HOUSEHOLD[@]}" "${HTPC}" "${ADMIN}"; do
-  if ! id -u "${u}" >/dev/null 2>&1; then
-    echo "Missing Unix user: ${u}"
-    exit 1
+have_user() { id -u "$1" >/dev/null 2>&1; }
+
+PRESENT_HOUSEHOLD=()
+for u in "${HOUSEHOLD[@]}"; do
+  if have_user "${u}"; then
+    PRESENT_HOUSEHOLD+=("${u}")
+  else
+    echo "Skipping household user ${u} (does not exist yet)."
   fi
 done
+
+HAVE_HTPC=0
+if have_user "${HTPC}"; then
+  HAVE_HTPC=1
+else
+  echo "Skipping Unix user ${HTPC} (does not exist yet). NFS does not need it."
+fi
+
+HAVE_ADMIN=0
+if have_user "${ADMIN}"; then
+  HAVE_ADMIN=1
+else
+  echo "Skipping Unix user ${ADMIN} (does not exist yet)."
+fi
 
 getent group "${SHARED_GROUP}" >/dev/null || groupadd "${SHARED_GROUP}"
 getent group "${HTPC_GROUP}" >/dev/null || groupadd "${HTPC_GROUP}"
 
-for u in "${HOUSEHOLD[@]}" "${HTPC}"; do
+for u in "${PRESENT_HOUSEHOLD[@]}"; do
   usermod -aG "${SHARED_GROUP}" "${u}"
 done
-usermod -aG "${HTPC_GROUP}" "${HTPC}"
+if [[ "${HAVE_HTPC}" -eq 1 ]]; then
+  usermod -aG "${SHARED_GROUP}" "${HTPC}"
+  usermod -aG "${HTPC_GROUP}" "${HTPC}"
+fi
 
 mkdir -p \
   "${DATA_ROOT}/system/authelia" \
@@ -49,29 +73,48 @@ mkdir -p \
   "${DATA_ROOT}/shared/downloads" \
   "${DATA_ROOT}/shared/files" \
   "${DATA_ROOT}/shared/photos" \
-  "${DATA_ROOT}/users/faiz" \
-  "${DATA_ROOT}/users/diana"
+  "${DATA_ROOT}/users"
 
-chown root:"${HTPC_GROUP}" "${DATA_ROOT}"
-chmod 775 "${DATA_ROOT}"
+if [[ "${HAVE_HTPC}" -eq 1 ]]; then
+  chown root:"${HTPC_GROUP}" "${DATA_ROOT}"
+  chmod 775 "${DATA_ROOT}"
+else
+  chown root:root "${DATA_ROOT}"
+  chmod 755 "${DATA_ROOT}"
+fi
 
 # system/ is NAS-only Core app state. Do not recurse into app dirs (Docker owns them).
 chown root:root "${DATA_ROOT}/system"
 chmod 700 "${DATA_ROOT}/system"
 setfacl -b "${DATA_ROOT}/system" || true
 
+acl_shared="g:${SHARED_GROUP}:rwx"
+for u in "${PRESENT_HOUSEHOLD[@]}"; do
+  acl_shared+=",u:${u}:rwx"
+done
+if [[ "${HAVE_HTPC}" -eq 1 ]]; then
+  acl_shared+=",u:${HTPC}:rwx"
+fi
+
 chown root:"${SHARED_GROUP}" "${DATA_ROOT}/shared"
 find "${DATA_ROOT}/shared" -type d -exec chmod 2775 {} +
 find "${DATA_ROOT}/shared" -type f -exec chmod 664 {} +
 chgrp -R "${SHARED_GROUP}" "${DATA_ROOT}/shared"
-setfacl -R -m "g:${SHARED_GROUP}:rwx,u:${HTPC}:rwx,u:faiz:rwx,u:diana:rwx" "${DATA_ROOT}/shared"
-setfacl -R -d -m "g:${SHARED_GROUP}:rwx,u:${HTPC}:rwx,u:faiz:rwx,u:diana:rwx" "${DATA_ROOT}/shared"
+setfacl -R -m "${acl_shared}" "${DATA_ROOT}/shared"
+setfacl -R -d -m "${acl_shared}" "${DATA_ROOT}/shared"
 
 # Drop leftover OMV ACLs on users/ (they override chmod and block even 'other').
 setfacl -b "${DATA_ROOT}/users" || true
 chown root:root "${DATA_ROOT}/users"
 chmod 755 "${DATA_ROOT}/users"
-setfacl -m "u:${ADMIN}:rwx,u:${HTPC}:rwx,o::rx" "${DATA_ROOT}/users"
+users_acl="o::rx"
+if [[ "${HAVE_ADMIN}" -eq 1 ]]; then
+  users_acl="u:${ADMIN}:rwx,${users_acl}"
+fi
+if [[ "${HAVE_HTPC}" -eq 1 ]]; then
+  users_acl="u:${HTPC}:rwx,${users_acl}"
+fi
+setfacl -m "${users_acl}" "${DATA_ROOT}/users"
 
 apply_home() {
   local user="$1"
@@ -85,18 +128,27 @@ apply_home() {
   find "${home}" -type d -exec chmod 700 {} +
   find "${home}" -type f -exec chmod 600 {} +
   setfacl -R -b "${home}" || true
-  setfacl -R -m "u:${user}:rwx,u:${HTPC}:rwx,u:${ADMIN}:rwx" "${home}"
-  setfacl -R -d -m "u:${user}:rwx,u:${HTPC}:rwx,u:${ADMIN}:rwx" "${home}"
+  local home_acl="u:${user}:rwx"
+  if [[ "${HAVE_HTPC}" -eq 1 ]]; then
+    home_acl+=",u:${HTPC}:rwx"
+  fi
+  if [[ "${HAVE_ADMIN}" -eq 1 ]]; then
+    home_acl+=",u:${ADMIN}:rwx"
+  fi
+  setfacl -R -m "${home_acl}" "${home}"
+  setfacl -R -d -m "${home_acl}" "${home}"
 }
 
-apply_home faiz
-apply_home diana
+for u in "${PRESENT_HOUSEHOLD[@]}"; do
+  apply_home "${u}"
+done
 
 echo "Done. Reconnect household SMB sessions. HTPC apps use NFS; remount/redeploy those stacks if needed."
 echo
-echo "Admin (pilot) uses:  sudo ls ${DATA_ROOT}/users/faiz"
-echo "  (sudo cd does not work; cd is a shell builtin.)"
-echo
-echo "sudo -u faiz rm -f ${DATA_ROOT}/shared/_t; sudo -u faiz touch ${DATA_ROOT}/shared/_t && sudo -u faiz rm -f ${DATA_ROOT}/shared/_t"
-echo "sudo -u ${HTPC} ls ${DATA_ROOT}/system && echo FAIL || echo system_blocked"
-echo "sudo ls ${DATA_ROOT}/users/faiz"
+if [[ "${HAVE_ADMIN}" -eq 1 && ${#PRESENT_HOUSEHOLD[@]} -gt 0 ]]; then
+  echo "Admin (${ADMIN}) uses:  sudo ls ${DATA_ROOT}/users/${PRESENT_HOUSEHOLD[0]}"
+  echo "  (sudo cd does not work; cd is a shell builtin.)"
+fi
+if [[ "${HAVE_HTPC}" -eq 1 ]]; then
+  echo "sudo -u ${HTPC} ls ${DATA_ROOT}/system && echo FAIL || echo system_blocked"
+fi

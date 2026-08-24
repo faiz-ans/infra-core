@@ -8,7 +8,7 @@ services:
     ports:
       - "${HTPC_UPSTREAM}:53:53/tcp"
       - "${HTPC_UPSTREAM}:53:53/udp"
-      # LAN admin if Caddy/dns.home.lan is down. Not used by Core Caddy.
+      # LAN admin if Caddy is down. Not used by Core Caddy.
       - "8083:80"
     environment:
       TZ: ${TZ}

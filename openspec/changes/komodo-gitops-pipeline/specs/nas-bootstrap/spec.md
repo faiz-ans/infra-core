@@ -12,11 +12,11 @@ The catalog SHALL include a bootstrap script intended to be copied onto the Core
 - **THEN** the same install and write steps are available as comments inside the script
 
 ### Requirement: Pre-GitOps software on the Pi
-Bootstrap SHALL install OpenMediaVault (when using an external data disk), Docker, Komodo Core, and a local Komodo Periphery, then onboard a Komodo server named `CORE_SERVER` (default `core`). When using an external disk it SHALL mount it at the OMV uuid path and use that as `DATA_ROOT`. When using the OS disk it SHALL use a directory such as `/srv/core`. It SHALL create the `DATA_ROOT` directory contract. After Core is up, it SHALL enable ResourceSync against this public repo with webhooks off.
+Bootstrap SHALL install OpenMediaVault (when using an external data disk), Docker, Komodo Core, and a local Komodo Periphery, then onboard a Komodo server named `CORE_SERVER` (default `core`). When using an external disk it SHALL mount it at the OMV uuid path and use that as `DATA_ROOT`. When using the OS disk it SHALL use a directory such as `/srv/core`. It SHALL create the `DATA_ROOT` directory contract (`system/<app>` for Core app state, `shared/{media,downloads,files,photos}`, `users/`). It MUST NOT create `system/core` or `system/periphery`. When OMV is installed it SHALL export `shared/` and `users/` over NFS to the HTPC LAN IP and MUST NOT export the disk root or `system/`. After Core is up, it SHALL print ResourceSync setup for this public repo with webhooks off.
 
 #### Scenario: Fresh Pi OS Lite
 - **WHEN** bootstrap completes on Raspberry Pi OS Lite 64-bit with an OMV data disk attached
-- **THEN** Docker, Komodo Core, and Periphery are installed, the Core server resource exists under `CORE_SERVER` (default `core`), `DATA_ROOT` is set, and ResourceSync is configured to poll the catalog
+- **THEN** Docker, Komodo Core, and Periphery are installed, the Core server resource exists under `CORE_SERVER` (default `core`), `DATA_ROOT` uses `system/<app>` (not `system/core`), NFS exports `shared/` and `users/` to the HTPC IP, and ResourceSync poll instructions are available
 
 ### Requirement: OMV owns the data disk mount
 When using an external data disk, bootstrap SHALL register the ext4 filesystem with OpenMediaVault (`FileSystemMgmt.setMountPoint`) and apply the fstab module so the volume appears in Storage → File Systems. Bootstrap MUST NOT leave only a Debian `/etc/fstab` UUID line: that hides the disk from the OMV Mount UI and blocks shared folders. A plain fstab mount is allowed only if the OMV RPC is unavailable or fails.

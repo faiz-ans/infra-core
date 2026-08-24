@@ -11,7 +11,7 @@ bootstrap/
 windows/
 ```
 
-ResourceSync TOML SHALL assign stacks to Komodo server names via `[[CORE_SERVER]]` and `[[PERIPHERY_SERVER]]` (not hostnames or IPs). Bootstrap defaults those names to `core` and `periphery`; a site MAY override them (for example `nas` and `htpc`). Stacks SHALL point at this git repo and a `run_directory` inside `stacks/`.
+ResourceSync TOML SHALL assign stacks with literal Komodo server names `core` and `periphery` (Komodo does not interpolate `[[VAR]]` on `server` or `repo`). Bootstrap `CORE_SERVER` / `PERIPHERY_SERVER` MUST match those names. Stacks SHALL point at this git repo and a `run_directory` inside `stacks/`. ResourceSync stack `name` is global across sync files; two hosts MUST NOT share a stack name (Core Pi-hole is `pihole`, HTPC Pi-hole is `pihole-periphery`).
 
 #### Scenario: Clone is deployable as a catalog
 - **WHEN** a host clones the default branch
