@@ -30,10 +30,10 @@ volumes:
     driver_opts:
       type: nfs
       o: addr=${NAS_LAN_IP},nfsvers=4,rw,nolock,hard
-      device: ":${NFS_EXPORT}/shared/downloads"
+      device: ":${NFS_EXPORT}/downloads"
   qbittorrent-media:
     driver: local
     driver_opts:
       type: nfs
       o: addr=${NAS_LAN_IP},nfsvers=4,rw,nolock,hard
-      device: ":${NFS_EXPORT}/shared/media"
+      device: ":${NFS_EXPORT}/media"

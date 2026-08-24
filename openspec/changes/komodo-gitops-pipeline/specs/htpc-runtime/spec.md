@@ -15,8 +15,8 @@ A thin remote bootstrap SHALL start Komodo Periphery (typically as a Docker Desk
 - **THEN** Komodo shows the `PERIPHERY_SERVER` (default `periphery`) connected without exposing Periphery’s listen port through Windows NAT
 
 ### Requirement: NAS data visible to Desktop
-HTPC app stacks SHALL mount the OMV DATA_ROOT tree using either catalog `compose.yaml` (`DATA_ROOT` bind: local disk or a host NFS/SMB mount) or `compose.nfs.yaml` (Docker NFS driver: `NAS_LAN_IP` + `NFS_EXPORT`). They MUST NOT bind a Windows SMB or NFS drive letter as `DATA_ROOT`. SMB MAY remain for interactive file copy. `BACKUP_DRIVE` SHALL be the 4TB USB volume used by Restic REST and MUST be a separate variable from the NAS tree.
+HTPC app stacks SHALL mount household data using either catalog `compose.yaml` (`DATA_ROOT` bind: local disk or a host NFS/SMB mount) or `compose.nfs.yaml` (Docker NFS driver: `NAS_LAN_IP` + `NFS_EXPORT` + `NFS_USERS`). They MUST NOT bind a Windows SMB or NFS drive letter as `DATA_ROOT`. SMB MAY remain for interactive file copy. `BACKUP_DRIVE` SHALL be the 4TB USB volume used by Restic REST and MUST be a separate variable from the NAS tree.
 
 #### Scenario: Same tree, two transports
-- **WHEN** Jellyfin on `htpc` mounts `${NFS_EXPORT}/shared/media` over NFS
+- **WHEN** Jellyfin on `htpc` mounts `${NFS_EXPORT}/media` over NFS
 - **THEN** that path is the household media tree from OMV, not a directory on the laptop’s internal SSD

@@ -3,7 +3,7 @@
 # Apply this file only after the periphery server is connected.
 # webhook_enabled is false; poll on-site.
 # Storage: /config is always a local volume. Household data is either
-# compose.yaml + DATA_ROOT binds, or compose.nfs.yaml + NAS_LAN_IP + NFS_EXPORT.
+# compose.yaml + DATA_ROOT binds, or compose.nfs.yaml + NAS_LAN_IP + NFS_EXPORT (+ NFS_USERS for Nextcloud).
 # Do not list both files.
 
 # compose.nfs.yaml: media on NFS; /config is local (survives Core down).
@@ -90,6 +90,7 @@ PUID = [[PUID]]
 PGID = [[PGID]]
 NAS_LAN_IP = [[NAS_LAN_IP]]
 NFS_EXPORT = [[NFS_EXPORT]]
+NFS_USERS = [[NFS_USERS]]
 NEXTCLOUD_ADMIN_USER = [[NEXTCLOUD_ADMIN_USER]]
 NEXTCLOUD_ADMIN_PASSWORD = [[NEXTCLOUD_ADMIN_PASSWORD]]
 DOMAIN = [[DOMAIN]]

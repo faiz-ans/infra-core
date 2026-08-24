@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# Enable OMV NFS for the HTPC app mount. Does not modify SMB.
+# Enable OMV NFS for the HTPC: export shared/ and users/ only. Does not modify SMB.
 # Run on Core as root (after DATA_ROOT exists):
 #   sudo HTPC_IP=192.168.1.111 bash bootstrap/omv-nfs.sh
 set -euo pipefail
@@ -11,7 +11,6 @@ fi
 
 DATA_ROOT="${DATA_ROOT:-/srv/dev-disk-by-uuid-d6e267fd-109f-4971-bfb1-26b3d99e0d47}"
 DATA_ROOT="${DATA_ROOT%/}"
-SHARE_NAME="${SHARE_NAME:-data}"
 HTPC_IP="${HTPC_IP:-}"
 # OMV "new object" UUID (same as the workbench Create form).
 OMV_NEW_UUID="fa4b1c66-ef79-11e5-87a0-0002b3a176b4"
@@ -30,11 +29,10 @@ if ! command -v omv-rpc >/dev/null 2>&1; then
   exit 1
 fi
 
-eval "$(python3 - "${DATA_ROOT}" "${SHARE_NAME}" <<'PY'
+eval "$(python3 - "${DATA_ROOT}" <<'PY'
 import json, subprocess, sys
 
 data_root = sys.argv[1].rstrip("/")
-want_name = sys.argv[2]
 
 
 def conf(key):
@@ -56,12 +54,32 @@ if not mntent:
     sys.stderr.write(f"No OMV mountpoint for {data_root}\n")
     sys.exit(1)
 print(f"MNTENT_UUID={mntent['uuid']}")
+PY
+)"
 
-folders = conf("conf.system.sharedfolder")
+ensure_share() {
+  local name="$1"
+  local rel="$2"
+  eval "$(python3 - "${MNTENT_UUID}" "${name}" "${rel}" <<'PY'
+import json, subprocess, sys
+
+mntent_uuid, want_name, rel_want = sys.argv[1], sys.argv[2], sys.argv[3].strip("/")
+
+
+def conf(key):
+    out = subprocess.check_output(["omv-confdbadm", "read", key], text=True)
+    data = json.loads(out)
+    if isinstance(data, dict) and isinstance(data.get("data"), list):
+        return data["data"]
+    if isinstance(data, list):
+        return data
+    return [data] if data else []
+
+
 share = None
-for folder in folders:
+for folder in conf("conf.system.sharedfolder"):
     rel = str(folder.get("reldirpath", "")).replace("\\", "/").strip("/")
-    if folder.get("mntentref") == mntent["uuid"] and rel == "":
+    if folder.get("mntentref") == mntent_uuid and rel == rel_want:
         share = folder
         break
 if share:
@@ -72,28 +90,23 @@ else:
     print(f"SHARE_NAME={want_name}")
 PY
 )"
+  if [[ -z "${SHARE_UUID}" ]]; then
+    echo "Creating shared folder ${name} at ${DATA_ROOT}/${rel}"
+    created=$(omv-rpc -u admin ShareMgmt set "$(python3 -c "import json; print(json.dumps({
+      'uuid': '${OMV_NEW_UUID}',
+      'name': '${name}',
+      'reldirpath': '${rel}/',
+      'comment': 'HTPC NFS (not system/)',
+      'mntentref': '${MNTENT_UUID}',
+    }))")")
+    SHARE_UUID=$(python3 -c "import json,sys; print(json.load(sys.stdin)['uuid'])" <<<"${created}")
+    SHARE_NAME="${name}"
+  fi
+  echo "Shared folder ${SHARE_NAME} uuid=${SHARE_UUID}"
 
-if [[ -z "${SHARE_UUID}" ]]; then
-  echo "Creating shared folder ${SHARE_NAME} at ${DATA_ROOT}/"
-  # omv-rpc -u admin ShareMgmt set '{"uuid":"fa4b1c66-…","name":"data","reldirpath":"/","comment":"","mntentref":"<fs>"}'
-  created=$(omv-rpc -u admin ShareMgmt set "$(python3 -c "import json; print(json.dumps({
-    'uuid': '${OMV_NEW_UUID}',
-    'name': '${SHARE_NAME}',
-    'reldirpath': '/',
-    'comment': 'DATA_ROOT for NFS and optional SMB',
-    'mntentref': '${MNTENT_UUID}',
-  }))")")
-  SHARE_UUID=$(python3 -c "import json,sys; print(json.load(sys.stdin)['uuid'])" <<<"${created}")
-fi
-
-echo "Shared folder ${SHARE_NAME} uuid=${SHARE_UUID}"
-
-# omv-rpc -u admin NFS setSettings '{"enable":true,"versions":["3","4","4.1","4.2"]}'
-omv-rpc -u admin NFS setSettings '{"enable":true,"versions":["3","4","4.1","4.2"]}' >/dev/null
-
-already=$(omv-rpc -u admin NFS getShareList \
-  '{"start":0,"limit":500,"sortfield":"sharedfoldername","sortdir":"ASC"}' \
-  | python3 -c '
+  already=$(omv-rpc -u admin NFS getShareList \
+    '{"start":0,"limit":500,"sortfield":"sharedfoldername","sortdir":"ASC"}' \
+    | python3 -c '
 import json, sys
 share_uuid, client = sys.argv[1], sys.argv[2]
 payload = json.load(sys.stdin)
@@ -105,21 +118,27 @@ for row in rows:
         break
 ' "${SHARE_UUID}" "${HTPC_IP}")
 
-if [[ -n "${already}" ]]; then
-  echo "NFS export for ${HTPC_IP} already exists."
-else
-  echo "Creating NFS export for ${HTPC_IP}"
-  # omv-rpc -u admin NFS setShare '{...}'
-  omv-rpc -u admin NFS setShare "$(python3 -c "import json; print(json.dumps({
-    'uuid': '${OMV_NEW_UUID}',
-    'sharedfolderref': '${SHARE_UUID}',
-    'mntentref': '${MNTENT_UUID}',
-    'client': '${HTPC_IP}',
-    'options': 'rw',
-    'extraoptions': '${EXTRA_OPTIONS}',
-    'comment': 'HTPC Docker NFS',
-  }))")" >/dev/null
-fi
+  if [[ -n "${already}" ]]; then
+    echo "NFS export of ${SHARE_NAME} for ${HTPC_IP} already exists."
+  else
+    echo "Creating NFS export of ${SHARE_NAME} for ${HTPC_IP}"
+    omv-rpc -u admin NFS setShare "$(python3 -c "import json; print(json.dumps({
+      'uuid': '${OMV_NEW_UUID}',
+      'sharedfolderref': '${SHARE_UUID}',
+      'mntentref': '${MNTENT_UUID}',
+      'client': '${HTPC_IP}',
+      'options': 'rw',
+      'extraoptions': '${EXTRA_OPTIONS}',
+      'comment': 'HTPC Docker NFS',
+    }))")" >/dev/null
+  fi
+}
+
+# omv-rpc -u admin NFS setSettings '{"enable":true,"versions":["3","4","4.1","4.2"]}'
+omv-rpc -u admin NFS setSettings '{"enable":true,"versions":["3","4","4.1","4.2"]}' >/dev/null
+
+ensure_share shared shared
+ensure_share users users
 
 # omv-salt deploy run fstab
 omv-salt deploy run fstab
@@ -127,6 +146,8 @@ omv-salt deploy run fstab
 omv-salt deploy run nfs
 
 echo
-echo "NFS_EXPORT=/${SHARE_NAME}"
-echo "Set that and NAS_LAN_IP in Komodo. SMB is unchanged."
+echo "NFS_EXPORT=/shared"
+echo "NFS_USERS=/users"
+echo "Set those and NAS_LAN_IP in Komodo. SMB is unchanged."
+echo "Remove any NFS export of a disk-root share (old name: data)."
 echo "showmount -e \$(hostname -I | awk '{print \$1}')"

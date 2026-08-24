@@ -21,9 +21,9 @@ Workload compose is transport-agnostic. Komodo `file_paths` chooses one file (ne
 | File | When | Komodo env |
 |---|---|---|
 | `compose.yaml` | Local disk, or a host mount of NFS/SMB/CIFS at `DATA_ROOT` | `DATA_ROOT` |
-| `compose.nfs.yaml` | Docker engine mounts OMV NFS itself (this HTPC) | `NAS_LAN_IP`, `NFS_EXPORT` |
+| `compose.nfs.yaml` | Docker engine mounts OMV NFS itself (this HTPC) | `NAS_LAN_IP`, `NFS_EXPORT`, `NFS_USERS` (Nextcloud) |
 
-This site’s `stacks-periphery.toml` uses `compose.nfs.yaml` for Jellyfin, Arr, qBittorrent, and Nextcloud. Follow `bootstrap/omv-nfs.md`, then set `NAS_LAN_IP` and `NFS_EXPORT=/data` (or `/<shared-folder-name>`). Do not set those stacks’ `DATA_ROOT` to `Z:`.
+This site’s `stacks-periphery.toml` uses `compose.nfs.yaml` for Jellyfin, Arr, qBittorrent, and Nextcloud. Follow `bootstrap/omv-nfs.md`, then set `NAS_LAN_IP`, `NFS_EXPORT=/shared`, and `NFS_USERS=/users`. Do not set those stacks’ `DATA_ROOT` to `Z:`.
 
 Home Assistant’s HTPC file is also named `compose.nfs.yaml`, but `/config` is a **local Docker volume** plus a bind of `configuration.yaml` (NFS file overlays break `trusted_proxies`). `.storage` is not on DATA_ROOT.
 

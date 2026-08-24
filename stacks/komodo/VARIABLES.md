@@ -16,7 +16,8 @@ Mark items tagged **secret** as secrets in Komodo.
 | `NAS_LAN_IP` | | Pi-hole wildcard (`*.DOMAIN` → Caddy), Homepage/Prometheus scrape, periphery NFS `addr=` |
 | `HTPC_UPSTREAM` | | Caddy upstreams, Homepage HTPC widgets, NAS restic client |
 | `DATA_ROOT` | | Bind-mount compose (`compose.yaml`). Core app state is `${DATA_ROOT}/system/<app>`. Periphery `/config` is a local volume; household data uses `${DATA_ROOT}/shared` and `${DATA_ROOT}/users`. A stack that uses `compose.nfs.yaml` does not set this. |
-| `NFS_EXPORT` | | Docker-NFS compose (`compose.nfs.yaml`) for Jellyfin, Arr, qBittorrent, Nextcloud. NFSv4 path (`/data` if the OMV folder is named `data`). Home Assistant does not use this. No quotes, not a drive letter |
+| `NFS_EXPORT` | | Docker-NFS path of the OMV `shared` share (`/shared`). Used as `:${NFS_EXPORT}/media` etc. No quotes, not a drive letter |
+| `NFS_USERS` | | Docker-NFS path of the OMV `users` share (`/users`). Nextcloud only. No quotes |
 | `BACKUP_DRIVE` | | HTPC Restic REST data directory |
 | `PUID` | | linuxserver images on both hosts |
 | `PGID` | | linuxserver images on both hosts |

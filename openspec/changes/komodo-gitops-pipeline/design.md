@@ -90,7 +90,7 @@ ${DATA_ROOT}/users/<user>/{files,photos}
 HTPC `/config` is a local Docker volume, not under `DATA_ROOT`.
 
 - `nas` `DATA_ROOT` = OMV `/srv/dev-disk-by-uuid-*`
-- `htpc` app stacks = Docker NFS volumes of the same tree (`NAS_LAN_IP` + `NFS_EXPORT`)
+- `htpc` app stacks = Docker NFS volumes of `shared/` and `users/` (`NAS_LAN_IP` + `NFS_EXPORT` + `NFS_USERS`)
 - SMB: household Explorer/Finder only; not the Docker bind path
 - `BACKUP_DRIVE` = HTPC 4TB USB; Restic REST lives there
 - NAS restic client → REST on `HTPC_UPSTREAM`; include `system/vaultwarden`
