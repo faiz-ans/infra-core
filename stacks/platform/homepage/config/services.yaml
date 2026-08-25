@@ -89,11 +89,11 @@
             description: Request TV Shows
 
     - Network:
-        - Pi-hole Core:
+        - Pi-hole:
             href: https://dns.{{HOMEPAGE_VAR_DOMAIN}}/admin
             siteMonitor: http://pihole:80/admin
             icon: pi-hole.png
-            description: DNS (Primary)
+            description: DNS
             widget:
               type: pihole
               url: http://pihole:80
@@ -102,11 +102,11 @@
                 - queries
                 - blocked_percent
                 - gravity
-        - Pi-hole Periphery:
-            href: https://dns2.{{HOMEPAGE_VAR_DOMAIN}}/admin
-            siteMonitor: http://{{HOMEPAGE_VAR_HTPC_UPSTREAM}}:8083/admin
-            icon: pi-hole.png
-            description: DNS (Secondary)
+       # - Pi-hole Periphery:
+       #    href: https://dns2.{{HOMEPAGE_VAR_DOMAIN}}/admin
+       #    siteMonitor: http://{{HOMEPAGE_VAR_HTPC_UPSTREAM}}:8083/admin
+       #    icon: pi-hole.png
+       #    description: DNS (Secondary)
         - WireGuard:
             href: https://vpn.{{HOMEPAGE_VAR_DOMAIN}}
             siteMonitor: http://wireguard:51821
