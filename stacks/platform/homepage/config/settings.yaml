@@ -21,7 +21,7 @@ layout:
       columns: 2
     Web:
       style: row
-      columns: 2
+      columns: 3
 
   System:
     tab: System
