@@ -12,6 +12,19 @@ services:
     volumes:
       - ha-config:/config
       - ./configuration.yaml:/config/configuration.yaml:ro
+    # Official image healthcheck uses HTTP to localhost. Docker Desktop often
+    # injects HTTP_PROXY, which makes that probe fail while the UI still works.
+    # Homepage maps Docker "unhealthy" to an orange status dot.
+    healthcheck:
+      test:
+        [
+          "CMD-SHELL",
+          "HTTP_PROXY= HTTPS_PROXY= http_proxy= https_proxy= python3 -c \"from urllib.request import urlopen; urlopen('http://127.0.0.1:8123/', timeout=8)\"",
+        ]
+      interval: 30s
+      timeout: 10s
+      retries: 5
+      start_period: 180s
     # wifi / integrations only; no USB radio passthrough
 
 volumes:
