@@ -62,7 +62,7 @@
             description: Discord
         - Bank of America:
             href: https://online.bankofamerica.com
-            icon: si-bankofamerica-#0C2340
+            icon: bank-of-america-dark.png
             description: Bank of America
         - Fidelity:
             href: https://www.fidelity.com
