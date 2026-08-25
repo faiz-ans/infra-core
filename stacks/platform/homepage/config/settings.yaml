@@ -8,6 +8,7 @@ background:
   image: /images/background.png
   opacity: 80
   brightness: 50
+  saturate: 50
 
 layout:
 
