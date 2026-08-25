@@ -21,6 +21,8 @@
             siteMonitor: http://{{HOMEPAGE_VAR_HTPC_UPSTREAM}}:8096
             icon: jellyfin.png
             description: Watch Movies & TV
+            server: http://{{HOMEPAGE_VAR_HTPC_UPSTREAM}}
+            container: jellyfin
         - Seerr:
             href: https://request.{{HOMEPAGE_VAR_DOMAIN}}
             siteMonitor: http://{{HOMEPAGE_VAR_HTPC_UPSTREAM}}:5055
@@ -55,7 +57,7 @@
         - Fidelity:
             href: https://www.fidelity.com
             icon: fidelity.png
-            
+
 - System:
 
     - Media:
