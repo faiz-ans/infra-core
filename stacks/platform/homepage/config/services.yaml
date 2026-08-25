@@ -16,7 +16,7 @@
             siteMonitor: http://vaultwarden:80
             icon: bitwarden.png
             description: Passwords
-        - Jellyfin (Client):
+        - Jellyfin (client):
             href: jellyfin://watch.{{HOMEPAGE_VAR_DOMAIN}}
             siteMonitor: http://{{HOMEPAGE_VAR_HTPC_UPSTREAM}}:8096
             icon: jellyfin.png
