@@ -1,8 +1,27 @@
 services:
+  dockerproxy:
+    image: lscr.io/linuxserver/socket-proxy:latest
+    container_name: homepage-dockerproxy
+    restart: unless-stopped
+    environment:
+      TZ: ${TZ}
+      CONTAINERS: 1
+      INFO: 1
+      POST: 0
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock:ro
+    read_only: true
+    tmpfs:
+      - /run
+    networks:
+      - edge
+
   homepage:
     image: ghcr.io/gethomepage/homepage:latest
     container_name: homepage
     restart: unless-stopped
+    depends_on:
+      - dockerproxy
     environment:
       TZ: ${TZ}
       HOMEPAGE_ALLOWED_HOSTS: ${HOMEPAGE_ALLOWED_HOSTS}

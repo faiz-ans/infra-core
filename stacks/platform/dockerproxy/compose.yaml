@@ -1,0 +1,19 @@
+# Read-only Docker API for Homepage on Core. Do not put this behind Caddy.
+# Bind to the HTPC LAN IP only (same pattern as pihole-periphery DNS).
+services:
+  dockerproxy:
+    image: lscr.io/linuxserver/socket-proxy:latest
+    container_name: dockerproxy
+    restart: unless-stopped
+    environment:
+      TZ: ${TZ}
+      CONTAINERS: 1
+      INFO: 1
+      POST: 0
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock:ro
+    ports:
+      - "${HTPC_UPSTREAM}:2375:2375"
+    read_only: true
+    tmpfs:
+      - /run

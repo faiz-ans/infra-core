@@ -1,1 +1,10 @@
----
+# Read-only Docker API via socket-proxy (not docker.sock).
+# core: sidecar in this stack on the edge network.
+# periphery: stacks/platform/dockerproxy on the HTPC, bound to HTPC_UPSTREAM:2375.
+core:
+  host: homepage-dockerproxy
+  port: 2375
+
+periphery:
+  host: "{{HOMEPAGE_VAR_HTPC_UPSTREAM}}"
+  port: 2375

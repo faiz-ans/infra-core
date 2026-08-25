@@ -4,28 +4,36 @@
         - Nextcloud:
             href: https://nextcloud.{{HOMEPAGE_VAR_DOMAIN}}
             siteMonitor: http://{{HOMEPAGE_VAR_HTPC_UPSTREAM}}:8080
+            server: periphery
+            container: nextcloud
             icon: nextcloud.png
             description: Docs / Photos
         - Home Assistant:
             href: https://ha.{{HOMEPAGE_VAR_DOMAIN}}
             siteMonitor: http://{{HOMEPAGE_VAR_HTPC_UPSTREAM}}:8123
+            server: periphery
+            container: homeassistant
             icon: home-assistant.png
             description: Home Automation
         - Vaultwarden:
             href: https://pw.{{HOMEPAGE_VAR_DOMAIN}}
             siteMonitor: http://vaultwarden:80
+            server: core
+            container: vaultwarden
             icon: bitwarden.png
             description: Passwords
         - Jellyfin (client):
             href: jellyfin://watch.{{HOMEPAGE_VAR_DOMAIN}}
             siteMonitor: http://{{HOMEPAGE_VAR_HTPC_UPSTREAM}}:8096
+            server: periphery
+            container: jellyfin
             icon: jellyfin.png
             description: Watch Movies & TV
-            server: http://{{HOMEPAGE_VAR_HTPC_UPSTREAM}}
-            container: jellyfin
         - Seerr:
             href: https://request.{{HOMEPAGE_VAR_DOMAIN}}
             siteMonitor: http://{{HOMEPAGE_VAR_HTPC_UPSTREAM}}:5055
+            server: periphery
+            container: seerr
             icon: seerr.png
             description: Request Movies & TV
 
@@ -57,33 +65,43 @@
         - Fidelity:
             href: https://www.fidelity.com
             icon: fidelity.png
-
+            
 - System:
 
     - Media:
         - Jellyfin:
             href: https://watch.{{HOMEPAGE_VAR_DOMAIN}}
             siteMonitor: http://{{HOMEPAGE_VAR_HTPC_UPSTREAM}}:8096
+            server: periphery
+            container: jellyfin
             icon: jellyfin.png
             description: Library
         - qBittorrent:
             href: https://qbit.{{HOMEPAGE_VAR_DOMAIN}}
             siteMonitor: http://{{HOMEPAGE_VAR_HTPC_UPSTREAM}}:8081
+            server: periphery
+            container: qbittorrent
             icon: qbittorrent.png
             description: Downloads      
         - Prowlarr:
             href: https://prowlarr.{{HOMEPAGE_VAR_DOMAIN}}
             siteMonitor: http://{{HOMEPAGE_VAR_HTPC_UPSTREAM}}:9696
+            server: periphery
+            container: prowlarr
             icon: prowlarr.png
             description: Indices      
         - Radarr:
             href: https://radarr.{{HOMEPAGE_VAR_DOMAIN}}
             siteMonitor: http://{{HOMEPAGE_VAR_HTPC_UPSTREAM}}:7878
+            server: periphery
+            container: radarr
             icon: radarr.png
             description: Request Movies    
         - Sonarr:
             href: https://sonarr.{{HOMEPAGE_VAR_DOMAIN}}
             siteMonitor: http://{{HOMEPAGE_VAR_HTPC_UPSTREAM}}:8989
+            server: periphery
+            container: sonarr
             icon: sonarr.png
             description: Request TV Shows
 
@@ -101,6 +119,8 @@
         - Grafana:
             href: https://grafana.{{HOMEPAGE_VAR_DOMAIN}}
             siteMonitor: http://{{HOMEPAGE_VAR_HTPC_UPSTREAM}}:3000
+            server: periphery
+            container: grafana
             icon: grafana.png
             description: Monitoring
         #    widget:
@@ -110,11 +130,15 @@
         - Prometheus:
             href: https://prometheus.{{HOMEPAGE_VAR_DOMAIN}}
             siteMonitor: http://{{HOMEPAGE_VAR_HTPC_UPSTREAM}}:9090
+            server: periphery
+            container: prometheus
             icon: prometheus.png
             description: Metrics
         - Authelia:
             href: https://auth.{{HOMEPAGE_VAR_DOMAIN}}
             siteMonitor: http://authelia:9091/api/health
+            server: core
+            container: authelia
             icon: authelia.png
             description: Authentication
 
@@ -122,6 +146,8 @@
         - Pi-hole:
             href: https://dns.{{HOMEPAGE_VAR_DOMAIN}}/admin
             siteMonitor: http://pihole:80/admin
+            server: core
+            container: pihole
             icon: pi-hole.png
             description: DNS
             widget:
@@ -140,5 +166,7 @@
         - WireGuard:
             href: https://vpn.{{HOMEPAGE_VAR_DOMAIN}}
             siteMonitor: http://wireguard:51821
+            server: core
+            container: wireguard
             icon: wireguard.png
             description: VPN

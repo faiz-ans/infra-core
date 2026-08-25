@@ -151,6 +151,23 @@ NAS_LAN_IP = [[NAS_LAN_IP]]
 HTPC_UPSTREAM = [[HTPC_UPSTREAM]]
 """
 
+# Read-only Docker API for Homepage. LAN bind only; not in Caddy.
+[[stack]]
+name = "dockerproxy"
+deploy = true
+[stack.config]
+server = "periphery"
+repo = "faiz-ans/infra-core"
+branch = "main"
+run_directory = "stacks/platform/dockerproxy"
+file_paths = ["compose.yaml"]
+webhook_enabled = false
+poll_for_updates = true
+environment = """
+TZ = [[TZ]]
+HTPC_UPSTREAM = [[HTPC_UPSTREAM]]
+"""
+
 [[stack]]
 name = "monitoring"
 deploy = true
