@@ -101,17 +101,18 @@
             siteMonitor: http://{{HOMEPAGE_VAR_HTPC_UPSTREAM}}:3000
             icon: grafana.png
             description: Monitoring
+        #    widget:
+        #      type: grafana
+        #      url: http://{{HOMEPAGE_VAR_HTPC_UPSTREAM}}:3000
+        #      key: "{{HOMEPAGE_VAR_GRAFANA_KEY}}"
+        - Prometheus:
+            href: https://prometheus.{{HOMEPAGE_VAR_DOMAIN}}
+            siteMonitor: http://{{HOMEPAGE_VAR_HTPC_UPSTREAM}}:9090
+            icon: prometheus.png
+            description: Metrics
         - Authelia:
             href: https://auth.{{HOMEPAGE_VAR_DOMAIN}}
             siteMonitor: http://{{HOMEPAGE_VAR_HTPC_UPSTREAM}}:9091
             icon: authelia.png
             description: Authentication
-        #    widget:
-        #      type: grafana
-        #      url: http://{{HOMEPAGE_VAR_HTPC_UPSTREAM}}:3000
-        #      key: "{{HOMEPAGE_VAR_GRAFANA_KEY}}"
-        #- Prometheus:
-        #    href: https://prometheus.{{HOMEPAGE_VAR_DOMAIN}}
-        #    siteMonitor: http://{{HOMEPAGE_VAR_HTPC_UPSTREAM}}:9090
-        #    icon: prometheus.png
 
