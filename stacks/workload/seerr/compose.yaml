@@ -1,6 +1,6 @@
-# Request UI for Jellyfin (Seerr, successor to Jellyseerr). Config is local.
-# Image: https://github.com/seerr-team/seerr/pkgs/container/seerr
-# This site’s ResourceSync uses this file (no NFS). Do not merge a second compose file.
+# Request UI for Jellyfin (Seerr). Config is a local named volume (required on
+# Docker Desktop; bind-mounts on Windows corrupt SQLite). The image runs as
+# UID 1000. After copying from another volume: chown -R 1000:1000 /app/config.
 services:
   seerr:
     image: ghcr.io/seerr-team/seerr:latest
