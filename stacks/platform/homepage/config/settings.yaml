@@ -9,24 +9,13 @@ background:
   opacity: 80
   brightness: 50
 
-#layout:
-#  style: row
-#  columns: 2
-#  Apps:
-#  System:
-
 layout:
 
   Apps:
     tab: Apps
     header: false
     style: row
-    Local:
-      style: row
-      columns: 1
-    Web:
-      style: row
-      columns: 2
+    columns: 3
 
   System:
     tab: System
