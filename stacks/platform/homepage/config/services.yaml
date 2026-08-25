@@ -40,24 +40,21 @@
         - Spotify:
             href: https://open.spotify.com
             icon: spotify.png
-        - Amazon:
-            href: https://amazon.com/gp/css/order-history
-            icon: amazon.png
         - ChatGPT:
             href: https://chatgpt.com
             icon: chatgpt.png
-        - WhatsApp:
-            href: https://web.whatsapp.com
-            icon: whatsapp.png
-        - Discord:
-            href: https://discord.com/channels/@me
-            icon: discord.png
-        - Bank of America:
-            href: https://www.bankofamerica.com
-            icon: sh-bank-of-america
+        - Amazon:
+            href: https://amazon.com/gp/css/order-history
+            icon: amazon.png
         - Fidelity:
             href: https://www.fidelity.com
             icon: fidelity.png
+        - Discord:
+            href: https://discord.com/channels/@me
+            icon: discord.png
+        - WhatsApp:
+            href: https://web.whatsapp.com
+            icon: whatsapp.png
 
 - System:
 
