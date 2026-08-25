@@ -46,16 +46,16 @@
         - Amazon:
             href: https://amazon.com/gp/css/order-history
             icon: amazon.png
-        - Fidelity:
-            href: https://www.fidelity.com
-            icon: fidelity.png
         - Discord:
             href: https://discord.com/channels/@me
             icon: discord.png
         - WhatsApp:
             href: https://web.whatsapp.com
             icon: whatsapp.png
-
+        - Fidelity:
+            href: https://www.fidelity.com
+            icon: fidelity.png
+            
 - System:
 
     - Media:
