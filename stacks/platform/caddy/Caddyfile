@@ -76,8 +76,8 @@ https://request.{$DOMAIN}, https://seerr.{$DOMAIN}, https://jellyseerr.{$DOMAIN}
 
 https://auto.{$DOMAIN}, https://ha.{$DOMAIN}, https://homeassistant.{$DOMAIN} {
 	tls internal
-	# trusted_proxies lives in stacks/workload/homeassistant/configuration.yaml
-	# (bind-mounted onto a local volume, not NFS).
+	# HA 400 = missing trusted_proxies on the HTPC volume. Written at container start
+	# by stacks/workload/homeassistant/ensure-http (not a configuration.yaml file bind).
 	reverse_proxy {$HTPC_UPSTREAM}:8123
 }
 

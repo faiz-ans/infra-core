@@ -1,4 +1,4 @@
-# /config is a local volume + catalog configuration.yaml bind (same as compose.nfs.yaml).
+# /config is a local volume. trusted_proxies is written at start (same as compose.nfs.yaml).
 # Docker-engine NFS (no host mount): deploy compose.nfs.yaml instead.
 services:
   homeassistant:
@@ -7,11 +7,13 @@ services:
     restart: unless-stopped
     environment:
       TZ: ${TZ}
+    entrypoint: ["/bin/sh", "-c"]
+    command: ["python3 /ensure-http/patch.py && exec /init"]
     ports:
       - "8123:8123"
     volumes:
       - ha-config:/config
-      - ./configuration.yaml:/config/configuration.yaml:ro
+      - ./ensure-http:/ensure-http:ro
     # Official image healthcheck uses HTTP to localhost. Docker Desktop often
     # injects HTTP_PROXY, which makes that probe fail while the UI still works.
     # Homepage maps Docker "unhealthy" to an orange status dot.

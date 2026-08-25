@@ -112,7 +112,7 @@ NEXTCLOUD_ADMIN_PASSWORD = [[NEXTCLOUD_ADMIN_PASSWORD]]
 DOMAIN = [[DOMAIN]]
 """
 
-# HA compose.nfs.yaml is the HTPC file; /config is a local volume + catalog bind, not NFS.
+# HA /config is a local volume. trusted_proxies is written at container start (ensure-http/).
 [[stack]]
 name = "homeassistant"
 deploy = true
@@ -123,7 +123,8 @@ branch = "main"
 run_directory = "stacks/workload/homeassistant"
 file_paths = ["compose.nfs.yaml"]
 config_files = [
-  { path = "configuration.yaml", requires = "Redeploy" },
+  { path = "ensure-http/http.yaml", requires = "Redeploy" },
+  { path = "ensure-http/patch.py", requires = "Redeploy" },
 ]
 webhook_enabled = false
 poll_for_updates = true

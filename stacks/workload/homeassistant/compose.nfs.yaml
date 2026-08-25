@@ -1,5 +1,6 @@
-# Docker NFS for media stacks. HA /config stays a local volume so the catalog
-# configuration.yaml bind actually lands (NFS file overlays are dropped).
+# Docker NFS for media stacks. HA /config is a local volume (not NFS).
+# trusted_proxies is written into that volume at start (Docker Desktop drops
+# single-file binds of configuration.yaml, which is why Caddy then gets 400).
 services:
   homeassistant:
     image: ghcr.io/home-assistant/home-assistant:stable
@@ -7,11 +8,13 @@ services:
     restart: unless-stopped
     environment:
       TZ: ${TZ}
+    entrypoint: ["/bin/sh", "-c"]
+    command: ["python3 /ensure-http/patch.py && exec /init"]
     ports:
       - "8123:8123"
     volumes:
       - ha-config:/config
-      - ./configuration.yaml:/config/configuration.yaml:ro
+      - ./ensure-http:/ensure-http:ro
     # Official image healthcheck uses HTTP to localhost. Docker Desktop often
     # injects HTTP_PROXY, which makes that probe fail while the UI still works.
     # Homepage maps Docker "unhealthy" to an orange status dot.

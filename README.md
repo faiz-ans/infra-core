@@ -34,7 +34,7 @@ ${DATA_ROOT}/
 1. Copy the `bootstrap/` directory (including `core.sh`, `omv-nfs.sh`, `data-root-perms.sh`, and `komodo/`) to the Core host and run `core.sh` as root (or follow the commented commands). Storage is configured first; site prompts come after any OMV reboot. With OMV present, the script exports `shared/` and `users/` to the HTPC IP and applies `data-root-perms.sh`.
 2. In Komodo, confirm the `core` server. Secrets from bootstrap live in `/etc/komodo/core.config.toml`. Create a ResourceSync (webhooks off) with resource path `stacks/komodo/stacks-core.toml` first, then apply.
 3. Keep SMB for Explorer/Finder. If you skipped OMV (OS-disk `DATA_ROOT`), export `shared/` and `users/` yourself (`bootstrap/omv-nfs.md`). On the remote host, follow `bootstrap/periphery.md`: Docker Desktop, outbound Periphery with `PERIPHERY_CONNECT_AS=periphery`. Leave `restic` / `restic-rest` off until the IronWolf is the backup disk (`BACKUP_DRIVE`).
-4. Confirm that server in Komodo, add `stacks/komodo/stacks-periphery.toml` to the same ResourceSync (or a second one), and apply. Home Assistant uses a local volume + git `configuration.yaml`; the other HTPC apps use NFS for household data only.
+4. Confirm that server in Komodo, add `stacks/komodo/stacks-periphery.toml` to the same ResourceSync (or a second one), and apply. Home Assistant uses a local volume; `trusted_proxies` is written at start. The other HTPC apps use NFS for household data only.
 
 Winget packages for later Windows apps are listed under `windows/` and are not required for GitOps.
 
