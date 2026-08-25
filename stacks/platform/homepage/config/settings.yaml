@@ -20,7 +20,11 @@ layout:
   Apps:
     tab: Apps
     header: false
+    style: row
+    columns: 2
 
   System:
     tab: System
     header: false
+    style: row
+    columns: 3
