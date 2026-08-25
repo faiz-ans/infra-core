@@ -15,8 +15,8 @@
             siteMonitor: http://vaultwarden:80
             icon: bitwarden.png
             description: Passwords
-        - Jellyfin:
-            href: https://watch.{{HOMEPAGE_VAR_DOMAIN}}
+        - Jellyfin (Client App):
+            href: jellyfin://watch.{{HOMEPAGE_VAR_DOMAIN}}
             siteMonitor: http://{{HOMEPAGE_VAR_HTPC_UPSTREAM}}:8096
             icon: jellyfin.png
             description: Watch Movies & TV
@@ -41,6 +41,11 @@
 
 - System:
     - Downloads:
+        - Jellyfin:
+            href: https://watch.{{HOMEPAGE_VAR_DOMAIN}}
+            siteMonitor: http://{{HOMEPAGE_VAR_HTPC_UPSTREAM}}:8096
+            icon: jellyfin.png
+            description: Manage Media Library
         - Radarr:
             href: https://radarr.{{HOMEPAGE_VAR_DOMAIN}}
             siteMonitor: http://{{HOMEPAGE_VAR_HTPC_UPSTREAM}}:7878
