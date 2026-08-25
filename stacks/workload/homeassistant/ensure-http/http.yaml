@@ -1,8 +1,11 @@
 # Caddy always sends X-Forwarded-For. Homepage's healthcheck does not, so a
 # green Docker dot can still mean the UI returns 400 through the proxy.
+# ::ffff:0.0.0.0/96 covers IPv4-mapped peers (Docker Desktop / Caddy on another host).
+# __NAS_LAN_IP__ is replaced at start with the Core LAN IP when that env is set.
 http:
   use_x_forwarded_for: true
   trusted_proxies:
+    - __NAS_LAN_IP__
     - 172.16.0.0/12
     - 192.168.0.0/16
     - 10.0.0.0/8
@@ -10,5 +13,6 @@ http:
     - 169.254.0.0/16
     - 127.0.0.1
     - ::1
+    - ::ffff:0.0.0.0/96
     - 0.0.0.0/0
     - ::/0

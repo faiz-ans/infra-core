@@ -76,9 +76,15 @@ https://request.{$DOMAIN}, https://seerr.{$DOMAIN}, https://jellyseerr.{$DOMAIN}
 
 https://auto.{$DOMAIN}, https://ha.{$DOMAIN}, https://homeassistant.{$DOMAIN} {
 	tls internal
-	# HA 400 = missing trusted_proxies on the HTPC volume. Written at container start
-	# by stacks/workload/homeassistant/ensure-http (not a configuration.yaml file bind).
-	reverse_proxy {$HTPC_UPSTREAM}:8123
+	# HA 400s if X-Forwarded-For is present and the TCP peer is not in trusted_proxies.
+	# Caddy is on Core, HA is on Docker Desktop: the peer is often an IPv4-mapped
+	# address that 0.0.0.0/0 does not match. Do not send For; keep Proto/Host for https.
+	reverse_proxy {$HTPC_UPSTREAM}:8123 {
+		header_up Host {host}
+		header_up X-Forwarded-Host {host}
+		header_up X-Forwarded-Proto {scheme}
+		header_up -X-Forwarded-For
+	}
 }
 
 https://cloud.{$DOMAIN}, https://nc.{$DOMAIN}, https://nextcloud.{$DOMAIN} {

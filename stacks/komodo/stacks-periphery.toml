@@ -130,6 +130,7 @@ webhook_enabled = false
 poll_for_updates = true
 environment = """
 TZ = [[TZ]]
+NAS_LAN_IP = [[NAS_LAN_IP]]
 """
 
 # Local volume. Same wildcard as Core (*.DOMAIN → NAS_LAN_IP / Caddy).

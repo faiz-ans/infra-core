@@ -8,6 +8,7 @@ services:
     restart: unless-stopped
     environment:
       TZ: ${TZ}
+      NAS_LAN_IP: ${NAS_LAN_IP}
     entrypoint: ["/bin/sh", "-c"]
     command: ["python3 /ensure-http/patch.py && exec /init"]
     ports:
