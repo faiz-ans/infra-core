@@ -22,6 +22,8 @@ layout:
       columns: 2
     Web:
       header: false
+      style: row
+      columns: 2
       Apps:
         header: false
         style: row
