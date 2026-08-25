@@ -1,4 +1,51 @@
 - Apps:
+
+    - Web:
+        - Gmail:
+            href: https://gmail.com
+            icon: gmail.png
+            description: Gmail
+        - Google Drive:
+            href: https://drive.google.com
+            icon: google-drive.png
+            description: Google Drive
+        - YouTube:
+            href: https://youtube.com
+            icon: youtube.png
+            description: YouTube
+        - Spotify:
+            href: https://open.spotify.com
+            icon: spotify.png
+            description: Spotify
+        - Amazon Prime:
+            href: https://amazon.com/gp/css/order-history
+            icon: amazon.png
+            description: Amazon Prime
+        - ChatGPT:
+            href: https://chatgpt.com
+            icon: chatgpt.png
+            description: ChatGPT
+        - Whatsapp:
+            href: https://web.whatsapp.com
+            icon: whatsapp.png
+            description: Whatsapp
+        - Discord:
+            href: https://discord.com/channels/@me
+            icon: discord.png
+            description: Discord
+        - Bank of America:
+            href: https://online.bankofamerica.com
+            icon: bank-of-america.png
+            description: Bank of America
+        - Fidelity:
+            href: https://www.fidelity.com
+            icon: fidelity.png
+            description: Fidelity
+        - Craigslist:
+            href: https://craigslist.org
+            icon: craigslist.png
+            description: Craigslist
+
     - Local:
         - Nextcloud:
             href: https://nextcloud.{{HOMEPAGE_VAR_DOMAIN}}
@@ -15,7 +62,7 @@
             siteMonitor: http://vaultwarden:80
             icon: bitwarden.png
             description: Passwords
-        - Jellyfin (Client App):
+        - Jellyfin (Client):
             href: jellyfin://watch.{{HOMEPAGE_VAR_DOMAIN}}
             siteMonitor: http://{{HOMEPAGE_VAR_HTPC_UPSTREAM}}:8096
             icon: jellyfin.png
@@ -25,21 +72,9 @@
             siteMonitor: http://{{HOMEPAGE_VAR_HTPC_UPSTREAM}}:5055
             icon: seerr.png
             description: Request Movies & TV
-    - Web:
-        - Gmail:
-            href: https://gmail.com
-            icon: gmail.png
-            description: Gmail
-        - YouTube:
-            href: https://youtube.com
-            icon: youtube.png
-            description: YouTube
-        - Amazon Prime:
-            href: https://amazon.com
-            icon: amazon.png
-            description: Amazon Prime
 
 - System:
+
     - Downloads:
         - Jellyfin:
             href: https://watch.{{HOMEPAGE_VAR_DOMAIN}}
@@ -66,6 +101,7 @@
             siteMonitor: http://{{HOMEPAGE_VAR_HTPC_UPSTREAM}}:8081
             icon: qbittorrent.png
             description: Downloads
+
     - Network:
         - Pi-hole Core:
             href: https://dns.{{HOMEPAGE_VAR_DOMAIN}}/admin
@@ -90,6 +126,7 @@
             siteMonitor: http://wireguard:51821
             icon: wireguard.png
             description: VPN
+
     - Platform:
         - Komodo:
             href: https://ops.{{HOMEPAGE_VAR_DOMAIN}}
