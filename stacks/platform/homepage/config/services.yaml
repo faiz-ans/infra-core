@@ -88,31 +88,6 @@
             icon: sonarr.png
             description: Request TV Shows
 
-    - Network:
-        - Pi-hole:
-            href: https://dns.{{HOMEPAGE_VAR_DOMAIN}}/admin
-            siteMonitor: http://pihole:80/admin
-            icon: pi-hole.png
-            description: DNS
-            widget:
-              type: pihole
-              url: http://pihole:80
-              version: 6
-              fields:
-                - queries
-                - blocked_percent
-                - gravity
-       # - Pi-hole Periphery:
-       #    href: https://dns2.{{HOMEPAGE_VAR_DOMAIN}}/admin
-       #    siteMonitor: http://{{HOMEPAGE_VAR_HTPC_UPSTREAM}}:8083/admin
-       #    icon: pi-hole.png
-       #    description: DNS (Secondary)
-        - WireGuard:
-            href: https://vpn.{{HOMEPAGE_VAR_DOMAIN}}
-            siteMonitor: http://wireguard:51821
-            icon: wireguard.png
-            description: VPN
-
     - Platform:
         - Komodo:
             href: https://ops.{{HOMEPAGE_VAR_DOMAIN}}
@@ -144,3 +119,27 @@
             icon: authelia.png
             description: Authentication
 
+    - Network:
+        - Pi-hole:
+            href: https://dns.{{HOMEPAGE_VAR_DOMAIN}}/admin
+            siteMonitor: http://pihole:80/admin
+            icon: pi-hole.png
+            description: DNS
+            widget:
+              type: pihole
+              url: http://pihole:80
+              version: 6
+              fields:
+                - queries
+                - blocked_percent
+                - gravity
+       # - Pi-hole Periphery:
+       #    href: https://dns2.{{HOMEPAGE_VAR_DOMAIN}}/admin
+       #    siteMonitor: http://{{HOMEPAGE_VAR_HTPC_UPSTREAM}}:8083/admin
+       #    icon: pi-hole.png
+       #    description: DNS (Secondary)
+        - WireGuard:
+            href: https://vpn.{{HOMEPAGE_VAR_DOMAIN}}
+            siteMonitor: http://wireguard:51821
+            icon: wireguard.png
+            description: VPN
