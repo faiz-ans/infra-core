@@ -20,6 +20,8 @@ layout:
   Apps:
     tab: Apps
     header: false
+    style: row
+    columns: 2
     Local:
       style: row
       columns: 1
