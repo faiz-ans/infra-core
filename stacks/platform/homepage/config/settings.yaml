@@ -12,7 +12,9 @@ background:
 layout:
   Apps:
     Local:
+      header: false
     Web:
+      header: false
       style: row
       columns: 2
   Media:
