@@ -1,71 +1,73 @@
 - Apps:
 
-    - Nextcloud:
-        href: https://nextcloud.{{HOMEPAGE_VAR_DOMAIN}}
-        siteMonitor: http://{{HOMEPAGE_VAR_HTPC_UPSTREAM}}:8080
-        icon: nextcloud.png
-        description: Docs / Photos
-    - Home Assistant:
-        href: https://ha.{{HOMEPAGE_VAR_DOMAIN}}
-        siteMonitor: http://{{HOMEPAGE_VAR_HTPC_UPSTREAM}}:8123
-        icon: home-assistant.png
-        description: Home Automation
-    - Vaultwarden:
-        href: https://pw.{{HOMEPAGE_VAR_DOMAIN}}
-        siteMonitor: http://vaultwarden:80
-        icon: bitwarden.png
-        description: Passwords
-    - Jellyfin (Client):
-        href: jellyfin://watch.{{HOMEPAGE_VAR_DOMAIN}}
-        siteMonitor: http://{{HOMEPAGE_VAR_HTPC_UPSTREAM}}:8096
-        icon: jellyfin.png
-        description: Watch Movies & TV
-    - Seerr:
-        href: https://request.{{HOMEPAGE_VAR_DOMAIN}}
-        siteMonitor: http://{{HOMEPAGE_VAR_HTPC_UPSTREAM}}:5055
-        icon: seerr.png
-        description: Request Movies & TV
+    - Local:
+        - Nextcloud:
+            href: https://nextcloud.{{HOMEPAGE_VAR_DOMAIN}}
+            siteMonitor: http://{{HOMEPAGE_VAR_HTPC_UPSTREAM}}:8080
+            icon: nextcloud.png
+            description: Docs / Photos
+        - Home Assistant:
+            href: https://ha.{{HOMEPAGE_VAR_DOMAIN}}
+            siteMonitor: http://{{HOMEPAGE_VAR_HTPC_UPSTREAM}}:8123
+            icon: home-assistant.png
+            description: Home Automation
+        - Vaultwarden:
+            href: https://pw.{{HOMEPAGE_VAR_DOMAIN}}
+            siteMonitor: http://vaultwarden:80
+            icon: bitwarden.png
+            description: Passwords
+        - Jellyfin (Client):
+            href: jellyfin://watch.{{HOMEPAGE_VAR_DOMAIN}}
+            siteMonitor: http://{{HOMEPAGE_VAR_HTPC_UPSTREAM}}:8096
+            icon: jellyfin.png
+            description: Watch Movies & TV
+        - Seerr:
+            href: https://request.{{HOMEPAGE_VAR_DOMAIN}}
+            siteMonitor: http://{{HOMEPAGE_VAR_HTPC_UPSTREAM}}:5055
+            icon: seerr.png
+            description: Request Movies & TV
 
-    - Gmail:
-        href: https://gmail.com
-        icon: gmail.png
-        description: Gmail
-    - Google Drive:
-        href: https://drive.google.com
-        icon: google-drive.png
-        description: Google Drive
-    - YouTube:
-        href: https://youtube.com
-        icon: youtube.png
-        description: YouTube
-    - Spotify:
-        href: https://open.spotify.com
-        icon: spotify.png
-        description: Spotify
-    - Amazon Prime:
-        href: https://amazon.com/gp/css/order-history
-        icon: amazon.png
-        description: Amazon Prime
-    - ChatGPT:
-        href: https://chatgpt.com
-        icon: chatgpt.png
-        description: ChatGPT
-    - Whatsapp:
-        href: https://web.whatsapp.com
-        icon: whatsapp.png
-        description: Whatsapp
-    - Discord:
-        href: https://discord.com/channels/@me
-        icon: discord.png
-        description: Discord
-    - Bank of America:
-        href: https://www.bankofamerica.com
-        icon: bank-of-america.png
-        description: Bank of America
-    - Fidelity:
-        href: https://www.fidelity.com
-        icon: fidelity.png
-        description: Fidelity
+    - Web:
+        - Gmail:
+            href: https://gmail.com
+            icon: gmail.png
+            description: Gmail
+        - Google Drive:
+            href: https://drive.google.com
+            icon: google-drive.png
+            description: Google Drive
+        - YouTube:
+            href: https://youtube.com
+            icon: youtube.png
+            description: YouTube
+        - Spotify:
+            href: https://open.spotify.com
+            icon: spotify.png
+            description: Spotify
+        - Amazon Prime:
+            href: https://amazon.com/gp/css/order-history
+            icon: amazon.png
+            description: Amazon Prime
+        - ChatGPT:
+            href: https://chatgpt.com
+            icon: chatgpt.png
+            description: ChatGPT
+        - Whatsapp:
+            href: https://web.whatsapp.com
+            icon: whatsapp.png
+            description: Whatsapp
+        - Discord:
+            href: https://discord.com/channels/@me
+            icon: discord.png
+            description: Discord
+        - Bank of America:
+            href: https://www.bankofamerica.com
+            icon: bank-of-america.png
+            description: Bank of America
+        - Fidelity:
+            href: https://www.fidelity.com
+            icon: fidelity.png
+            description: Fidelity
 
 - System:
 
