@@ -14,12 +14,14 @@ layout:
   Apps:
     tab: Apps
     header: false
+    style: row
+    columns: 2
     Local:
       style: row
-      columns: 4
+      columns: 2
     Web:
       style: row
-      columns: 4
+      columns: 2
 
   System:
     tab: System
