@@ -9,44 +9,44 @@
 	}
 }
 
-https://auth.{$DOMAIN} {
+https://auth.{$DOMAIN}, https://authelia.{$DOMAIN} {
 	tls internal
 	reverse_proxy authelia:9091
 }
 
-https://dash.{$DOMAIN} {
+https://dash.{$DOMAIN}, https://homepage.{$DOMAIN} {
 	tls internal
 	reverse_proxy homepage:3000
 }
 
-https://dns.{$DOMAIN} {
+https://dns.{$DOMAIN}, https://pihole.{$DOMAIN} {
 	tls internal
 	redir / /admin
 	reverse_proxy pihole:80
 }
 
-https://dns2.{$DOMAIN} {
+https://dns2.{$DOMAIN}, https://pihole2.{$DOMAIN} {
 	tls internal
 	redir / /admin
 	reverse_proxy {$HTPC_UPSTREAM}:8083
 }
 
-https://vpn.{$DOMAIN} {
+https://vpn.{$DOMAIN}, https://wireguard.{$DOMAIN} {
 	tls internal
 	reverse_proxy wireguard:51821
 }
 
-https://ops.{$DOMAIN} {
+https://ops.{$DOMAIN}, https://komodo.{$DOMAIN} {
 	tls internal
 	reverse_proxy host.docker.internal:9120
 }
 
-https://nas.{$DOMAIN} {
+https://nas.{$DOMAIN}, https://openmediavault.{$DOMAIN} {
 	tls internal
 	reverse_proxy host.docker.internal:81
 }
 
-https://pw.{$DOMAIN} {
+https://pw.{$DOMAIN}, https://vaultwarden.{$DOMAIN} {
 	tls internal
 
 	@admin path /admin /admin/*
@@ -64,19 +64,24 @@ https://pw.{$DOMAIN} {
 	}
 }
 
-https://jellyfin.{$DOMAIN} {
+https://watch.{$DOMAIN}, https://jellyfin.{$DOMAIN} {
 	tls internal
 	reverse_proxy {$HTPC_UPSTREAM}:8096
 }
 
-https://ha.{$DOMAIN} {
+https://request.{$DOMAIN}, https://jellyseerr.{$DOMAIN} {
+	tls internal
+	reverse_proxy {$HTPC_UPSTREAM}:5055
+}
+
+https://ha.{$DOMAIN}, https://homeassistant.{$DOMAIN} {
 	tls internal
 	# trusted_proxies lives in stacks/workload/homeassistant/configuration.yaml
 	# (bind-mounted onto a local volume, not NFS).
 	reverse_proxy {$HTPC_UPSTREAM}:8123
 }
 
-https://nextcloud.{$DOMAIN} {
+https://nc.{$DOMAIN}, https://nextcloud.{$DOMAIN} {
 	tls internal
 	reverse_proxy https://{$HTPC_UPSTREAM}:8080 {
 		transport http {

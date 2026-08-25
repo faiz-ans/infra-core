@@ -8,7 +8,7 @@ Caddy SHALL run only on server `nas`. It SHALL bind host ports 80 and 443, termi
 - **THEN** Caddy serves that vhost, not the OMV workbench on port 80
 
 #### Scenario: Jellyfin through Pi Caddy
-- **WHEN** a client requests `jellyfin.{$DOMAIN}`
+- **WHEN** a client requests `watch.{$DOMAIN}`
 - **THEN** Caddy on `nas` proxies to `{$HTPC_UPSTREAM}` on Jellyfin’s published port
 
 #### Scenario: Vaultwarden local
@@ -34,7 +34,7 @@ Authelia SHALL run on `nas` and SHALL protect Caddy sites via forward auth, exce
 Pi-hole SHALL run on `nas` and SHALL answer name resolution for `*.{$DOMAIN}` (and the domain apex as needed) to the NAS LAN IP so clients reach Caddy. The live domain value SHALL come from Komodo, not from git.
 
 #### Scenario: Wildcard to Caddy
-- **WHEN** a LAN client resolves `jellyfin.{$DOMAIN}` using Pi-hole
+- **WHEN** a LAN client resolves `watch.{$DOMAIN}` using Pi-hole
 - **THEN** the answer is the NAS address that hosts Caddy
 
 ### Requirement: Second Pi-hole on the HTPC

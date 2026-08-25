@@ -26,6 +26,22 @@ NAS_LAN_IP = [[NAS_LAN_IP]]
 NFS_EXPORT = [[NFS_EXPORT]]
 """
 
+# Local volume only. Setup wizard talks to Jellyfin/Radarr/Sonarr over HTPC published ports.
+[[stack]]
+name = "jellyseerr"
+deploy = true
+[stack.config]
+server = "periphery"
+repo = "faiz-ans/infra-core"
+branch = "main"
+run_directory = "stacks/workload/jellyseerr"
+file_paths = ["compose.yaml"]
+webhook_enabled = false
+poll_for_updates = true
+environment = """
+TZ = [[TZ]]
+"""
+
 # compose.nfs.yaml: media/downloads on NFS; Sonarr/Radarr/Prowlarr /config is local (SQLite).
 [[stack]]
 name = "arr"

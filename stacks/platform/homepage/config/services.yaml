@@ -16,10 +16,15 @@
             icon: bitwarden.png
             description: Passwords
         - Jellyfin:
-            href: https://jellyfin.{{HOMEPAGE_VAR_DOMAIN}}
+            href: https://watch.{{HOMEPAGE_VAR_DOMAIN}}
             siteMonitor: http://{{HOMEPAGE_VAR_HTPC_UPSTREAM}}:8096
             icon: jellyfin.png
-            description: Movies & TV
+            description: Watch Movies & TV
+        - Jellyseerr:
+            href: https://request.{{HOMEPAGE_VAR_DOMAIN}}
+            siteMonitor: http://{{HOMEPAGE_VAR_HTPC_UPSTREAM}}:5055
+            icon: jellyseerr.png
+            description: Request Movies & TV
     - Web:
         - Gmail:
             href: https://gmail.com
@@ -36,16 +41,21 @@
 
 - System:
     - Downloads:
-        - Sonarr:
-            href: https://sonarr.{{HOMEPAGE_VAR_DOMAIN}}
-            siteMonitor: http://{{HOMEPAGE_VAR_HTPC_UPSTREAM}}:8989
-            icon: sonarr.png
-            description: Lookup TV Shows
         - Radarr:
             href: https://radarr.{{HOMEPAGE_VAR_DOMAIN}}
             siteMonitor: http://{{HOMEPAGE_VAR_HTPC_UPSTREAM}}:7878
             icon: radarr.png
-            description: Lookup Movies
+            description: Request Movies    
+        - Sonarr:
+            href: https://sonarr.{{HOMEPAGE_VAR_DOMAIN}}
+            siteMonitor: http://{{HOMEPAGE_VAR_HTPC_UPSTREAM}}:8989
+            icon: sonarr.png
+            description: Request TV Shows
+        - Prowlarr:
+            href: https://prowlarr.{{HOMEPAGE_VAR_DOMAIN}}
+            siteMonitor: http://{{HOMEPAGE_VAR_HTPC_UPSTREAM}}:9696
+            icon: prowlarr.png
+            description: Indexer
         - qBittorrent:
             href: https://qbit.{{HOMEPAGE_VAR_DOMAIN}}
             siteMonitor: http://{{HOMEPAGE_VAR_HTPC_UPSTREAM}}:8081

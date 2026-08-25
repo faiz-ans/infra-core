@@ -11,6 +11,13 @@ Jellyfin, the Arr stack, and qBittorrent SHALL deploy on server `htpc` via Resou
 - **WHEN** the Arr stack is deployed
 - **THEN** Prowlarr can use `http://flaresolverr:8191` on the stack network and FlareSolverr is not published on the HTPC LAN
 
+### Requirement: Jellyseerr on htpc
+Jellyseerr SHALL deploy on `htpc` with a local Docker volume for `/app/config`. It SHALL be proxied by Caddy on `nas`. It MUST NOT mount `shared/media`.
+
+#### Scenario: Requests through Caddy
+- **WHEN** a client opens the Jellyseerr public hostname on `{$DOMAIN}`
+- **THEN** Caddy on `nas` proxies to Jellyseerr’s published port on `HTPC_UPSTREAM`
+
 ### Requirement: Nextcloud on htpc
 Nextcloud SHALL deploy on `htpc` and SHALL access both household and per-user trees over NFS: `shared/files`, `shared/photos`, and `users/<user>/{files,photos}`.
 

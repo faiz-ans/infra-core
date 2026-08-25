@@ -42,6 +42,7 @@ Allow inbound TCP from the LAN (Caddy on Core) on the published ports:
 | 53/tcp+udp | Pi-hole (bind `HTPC_UPSTREAM` only) |
 | 8083 | Pi-hole admin (`dns2.${DOMAIN}` via Caddy; LAN fallback if Core is up) |
 | 8096 | Jellyfin |
+| 5055 | Jellyseerr (`request.${DOMAIN}` via Caddy) |
 | 8123 | Home Assistant |
 | 8080 | Nextcloud |
 | 8081 | qBittorrent |
