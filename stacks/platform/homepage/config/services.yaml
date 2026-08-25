@@ -28,37 +28,40 @@
             description: Request Movies & TV
 
     - Web:
-        - Gmail:
-            href: https://gmail.com
-            icon: gmail.png
-        - Drive:
-            href: https://drive.google.com
-            icon: google-drive.png
-        - YouTube:
-            href: https://youtube.com
-            icon: youtube.png
-        - Spotify:
-            href: https://open.spotify.com
-            icon: spotify.png
-        - ChatGPT:
-            href: https://chatgpt.com
-            icon: chatgpt.png
-        - Amazon:
-            href: https://amazon.com/gp/css/order-history
-            icon: amazon.png
-        - Fidelity:
-            href: https://www.fidelity.com
-            icon: fidelity.png
-        - Discord:
-            href: https://discord.com/channels/@me
-            icon: discord.png
-        - Bank of America:
-            href: https://www.bankofamerica.com
-            icon: sh-bank-of-america
-        - WhatsApp:
-            href: https://web.whatsapp.com
-            icon: whatsapp.png
+        - Apps:
+            - Gmail:
+                href: https://gmail.com
+                icon: gmail.png
+            - Drive:
+                href: https://drive.google.com
+                icon: google-drive.png
+            - YouTube:
+                href: https://youtube.com
+                icon: youtube.png
+            - Spotify:
+                href: https://open.spotify.com
+                icon: spotify.png
+            - ChatGPT:
+                href: https://chatgpt.com
+                icon: chatgpt.png
+            - Amazon:
+                href: https://amazon.com/gp/css/order-history
+                icon: amazon.png
+            - Fidelity:
+                href: https://www.fidelity.com
+                icon: fidelity.png
+            - Discord:
+                href: https://discord.com/channels/@me
+                icon: discord.png
+            - Bank of America:
+                href: https://www.bankofamerica.com
+                icon: sh-bank-of-america
+            - WhatsApp:
+                href: https://web.whatsapp.com
+                icon: whatsapp.png
+        - Space:
 
+        
 - System:
 
     - Media:

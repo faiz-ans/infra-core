@@ -15,14 +15,15 @@ layout:
     tab: Apps
     header: false
     style: row
-    columns: 4
+    columns: 2
     Local:
       style: row
       columns: 2
     Web:
-      style: row
-      columns: 2
-
+      Apps:
+        style: row
+        columns: 2
+      Space:
   System:
     tab: System
     header: false
