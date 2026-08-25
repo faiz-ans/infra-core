@@ -20,8 +20,12 @@ layout:
   Apps:
     tab: Apps
     header: false
-    style: row
-    columns: 2
+    Local:
+      style: row
+      columns: 1
+    Web:
+      style: row
+      columns: 2
 
   System:
     tab: System
