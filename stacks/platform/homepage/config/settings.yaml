@@ -19,6 +19,8 @@ layout:
 
   Apps:
     tab: Apps
+    header: false
 
   System:
     tab: System
+    header: false
