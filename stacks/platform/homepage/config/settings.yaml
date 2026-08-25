@@ -23,13 +23,7 @@ layout:
     Web:
       header: false
       style: row
-      columns: 2
-      Apps:
-        header: false
-        style: row
-        columns: 2
-      Space:
-        header: false
+      columns: 4
   System:
     tab: System
     header: false
