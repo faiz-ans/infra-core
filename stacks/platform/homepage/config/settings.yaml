@@ -3,7 +3,6 @@ theme: dark
 headerStyle: clean
 hideVersion: true
 statusStyle: dot
-showStats: true
 
 background:
   image: /images/background.png
