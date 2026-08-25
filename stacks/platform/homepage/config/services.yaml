@@ -31,7 +31,7 @@
         - Gmail:
             href: https://gmail.com
             icon: gmail.png
-        - Google Drive:
+        - Drive:
             href: https://drive.google.com
             icon: google-drive.png
         - YouTube:
@@ -40,13 +40,13 @@
         - Spotify:
             href: https://open.spotify.com
             icon: spotify.png
-        - Amazon Prime:
+        - Amazon:
             href: https://amazon.com/gp/css/order-history
             icon: amazon.png
         - ChatGPT:
             href: https://chatgpt.com
             icon: chatgpt.png
-        - Whatsapp:
+        - WhatsApp:
             href: https://web.whatsapp.com
             icon: whatsapp.png
         - Discord:
@@ -61,12 +61,22 @@
 
 - System:
 
-    - Downloads:
+    - Media:
         - Jellyfin:
             href: https://watch.{{HOMEPAGE_VAR_DOMAIN}}
             siteMonitor: http://{{HOMEPAGE_VAR_HTPC_UPSTREAM}}:8096
             icon: jellyfin.png
             description: Manage Media Library
+        - qBittorrent:
+            href: https://qbit.{{HOMEPAGE_VAR_DOMAIN}}
+            siteMonitor: http://{{HOMEPAGE_VAR_HTPC_UPSTREAM}}:8081
+            icon: qbittorrent.png
+            description: Downloads      
+        - Prowlarr:
+            href: https://prowlarr.{{HOMEPAGE_VAR_DOMAIN}}
+            siteMonitor: http://{{HOMEPAGE_VAR_HTPC_UPSTREAM}}:9696
+            icon: prowlarr.png
+            description: Indexer      
         - Radarr:
             href: https://radarr.{{HOMEPAGE_VAR_DOMAIN}}
             siteMonitor: http://{{HOMEPAGE_VAR_HTPC_UPSTREAM}}:7878
@@ -77,16 +87,6 @@
             siteMonitor: http://{{HOMEPAGE_VAR_HTPC_UPSTREAM}}:8989
             icon: sonarr.png
             description: Request TV Shows
-        - Prowlarr:
-            href: https://prowlarr.{{HOMEPAGE_VAR_DOMAIN}}
-            siteMonitor: http://{{HOMEPAGE_VAR_HTPC_UPSTREAM}}:9696
-            icon: prowlarr.png
-            description: Indexer
-        - qBittorrent:
-            href: https://qbit.{{HOMEPAGE_VAR_DOMAIN}}
-            siteMonitor: http://{{HOMEPAGE_VAR_HTPC_UPSTREAM}}:8081
-            icon: qbittorrent.png
-            description: Downloads
 
     - Network:
         - Pi-hole Core:
