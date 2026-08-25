@@ -31,23 +31,18 @@
         - Gmail:
             href: https://gmail.com
             icon: gmail.png
-            description: Gmail
         - Google Drive:
             href: https://drive.google.com
             icon: google-drive.png
-            description: Google Drive
         - YouTube:
             href: https://youtube.com
             icon: youtube.png
-            description: YouTube
         - Spotify:
             href: https://open.spotify.com
             icon: spotify.png
-            description: Spotify
         - Amazon Prime:
             href: https://amazon.com/gp/css/order-history
             icon: amazon.png
-            description: Amazon Prime
         - ChatGPT:
             href: https://chatgpt.com
             icon: chatgpt.png
@@ -55,19 +50,15 @@
         - Whatsapp:
             href: https://web.whatsapp.com
             icon: whatsapp.png
-            description: Whatsapp
         - Discord:
             href: https://discord.com/channels/@me
             icon: discord.png
-            description: Discord
         - Bank of America:
             href: https://www.bankofamerica.com
             icon: sh-bank-of-america
-            description: Bank of America
         - Fidelity:
             href: https://www.fidelity.com
             icon: fidelity.png
-            description: Fidelity
 
 - System:
 
