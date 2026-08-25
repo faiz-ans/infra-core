@@ -17,13 +17,17 @@ layout:
     style: row
     columns: 2
     Local:
+      header: false
       style: row
       columns: 2
     Web:
+      header: false
       Apps:
+        header: false
         style: row
         columns: 2
       Space:
+        header: false
   System:
     tab: System
     header: false
