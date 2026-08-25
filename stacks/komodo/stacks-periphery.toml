@@ -28,13 +28,13 @@ NFS_EXPORT = [[NFS_EXPORT]]
 
 # Local volume only. Setup wizard talks to Jellyfin/Radarr/Sonarr over HTPC published ports.
 [[stack]]
-name = "jellyseerr"
+name = "seerr"
 deploy = true
 [stack.config]
 server = "periphery"
 repo = "faiz-ans/infra-core"
 branch = "main"
-run_directory = "stacks/workload/jellyseerr"
+run_directory = "stacks/workload/seerr"
 file_paths = ["compose.yaml"]
 webhook_enabled = false
 poll_for_updates = true

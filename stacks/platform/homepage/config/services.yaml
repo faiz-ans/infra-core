@@ -20,10 +20,10 @@
             siteMonitor: http://{{HOMEPAGE_VAR_HTPC_UPSTREAM}}:8096
             icon: jellyfin.png
             description: Watch Movies & TV
-        - Jellyseerr:
+        - Seerr:
             href: https://request.{{HOMEPAGE_VAR_DOMAIN}}
             siteMonitor: http://{{HOMEPAGE_VAR_HTPC_UPSTREAM}}:5055
-            icon: jellyseerr.png
+            icon: seerr.png
             description: Request Movies & TV
     - Web:
         - Gmail:

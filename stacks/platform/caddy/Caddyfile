@@ -69,7 +69,7 @@ https://watch.{$DOMAIN}, https://jellyfin.{$DOMAIN} {
 	reverse_proxy {$HTPC_UPSTREAM}:8096
 }
 
-https://request.{$DOMAIN}, https://jellyseerr.{$DOMAIN} {
+https://request.{$DOMAIN}, https://seerr.{$DOMAIN}, https://jellyseerr.{$DOMAIN} {
 	tls internal
 	reverse_proxy {$HTPC_UPSTREAM}:5055
 }

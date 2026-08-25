@@ -103,7 +103,7 @@ IronWolf swap = change `DATA_ROOT` on `nas` (and remount on HTPC), not a git com
 bootstrap/core.sh
 bootstrap/periphery.md + periphery.compose.yaml
 stacks/platform/{caddy,authelia,pihole,wireguard,homepage,restic,restic-rest,monitoring}/
-stacks/workload/{vaultwarden,jellyfin,jellyseerr,arr,qbittorrent,nextcloud,homeassistant}/
+stacks/workload/{vaultwarden,jellyfin,seerr,arr,qbittorrent,nextcloud,homeassistant}/
 stacks/komodo/{stacks-core.toml,stacks-periphery.toml}
 windows/winget.json                     # stub
 ```

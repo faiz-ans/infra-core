@@ -1,0 +1,20 @@
+# Request UI for Jellyfin (Seerr, successor to Jellyseerr). Config is local.
+# Image: https://github.com/seerr-team/seerr/pkgs/container/seerr
+# This site’s ResourceSync uses this file (no NFS). Do not merge a second compose file.
+services:
+  seerr:
+    image: ghcr.io/seerr-team/seerr:latest
+    container_name: seerr
+    init: true
+    restart: unless-stopped
+    environment:
+      TZ: ${TZ}
+      LOG_LEVEL: info
+    ports:
+      - "5055:5055"
+    volumes:
+      - seerr-config:/app/config
+
+volumes:
+  seerr-config:
+    name: seerr-config
