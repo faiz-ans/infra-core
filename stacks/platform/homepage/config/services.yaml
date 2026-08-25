@@ -150,7 +150,7 @@
             description: Metrics
         - Authelia:
             href: https://auth.{{HOMEPAGE_VAR_DOMAIN}}
-            siteMonitor: http://{{HOMEPAGE_VAR_HTPC_UPSTREAM}}:9091
+            siteMonitor: http://{{HOMEPAGE_VAR_NAS_LAN_IP}}:9091
             icon: authelia.png
             description: Authentication
 
