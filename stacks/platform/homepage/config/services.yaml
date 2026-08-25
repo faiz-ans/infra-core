@@ -62,16 +62,12 @@
             description: Discord
         - Bank of America:
             href: https://online.bankofamerica.com
-            icon: bank-of-america.png
+            icon: bankofamerica.png
             description: Bank of America
         - Fidelity:
             href: https://www.fidelity.com
             icon: fidelity.png
             description: Fidelity
-        - Craigslist:
-            href: https://craigslist.org
-            icon: craigslist.png
-            description: Craigslist
 
 - System:
 
