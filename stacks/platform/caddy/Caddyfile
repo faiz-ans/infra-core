@@ -31,7 +31,7 @@ https://dns2.{$DOMAIN}, https://pihole2.{$DOMAIN} {
 	reverse_proxy {$HTPC_UPSTREAM}:8083
 }
 
-https://vpn.{$DOMAIN}, https://wireguard.{$DOMAIN} {
+https://vpn.{$DOMAIN}, https://wg.{$DOMAIN}, https://wireguard.{$DOMAIN} {
 	tls internal
 	reverse_proxy wireguard:51821
 }
@@ -41,12 +41,12 @@ https://ops.{$DOMAIN}, https://komodo.{$DOMAIN} {
 	reverse_proxy host.docker.internal:9120
 }
 
-https://nas.{$DOMAIN}, https://openmediavault.{$DOMAIN} {
+https://nas.{$DOMAIN}, https://omv.{$DOMAIN}, https://openmediavault.{$DOMAIN} {
 	tls internal
 	reverse_proxy host.docker.internal:81
 }
 
-https://pw.{$DOMAIN}, https://vaultwarden.{$DOMAIN} {
+https://pw.{$DOMAIN}, https://pass.{$DOMAIN}, https://vaultwarden.{$DOMAIN} {
 	tls internal
 
 	@admin path /admin /admin/*
@@ -74,14 +74,14 @@ https://request.{$DOMAIN}, https://seerr.{$DOMAIN}, https://jellyseerr.{$DOMAIN}
 	reverse_proxy {$HTPC_UPSTREAM}:5055
 }
 
-https://ha.{$DOMAIN}, https://homeassistant.{$DOMAIN} {
+https://auto.{$DOMAIN}, https://ha.{$DOMAIN}, https://homeassistant.{$DOMAIN} {
 	tls internal
 	# trusted_proxies lives in stacks/workload/homeassistant/configuration.yaml
 	# (bind-mounted onto a local volume, not NFS).
 	reverse_proxy {$HTPC_UPSTREAM}:8123
 }
 
-https://nc.{$DOMAIN}, https://nextcloud.{$DOMAIN} {
+https://cloud.{$DOMAIN}, https://nc.{$DOMAIN}, https://nextcloud.{$DOMAIN} {
 	tls internal
 	reverse_proxy https://{$HTPC_UPSTREAM}:8080 {
 		transport http {
@@ -105,7 +105,7 @@ https://prowlarr.{$DOMAIN} {
 	reverse_proxy {$HTPC_UPSTREAM}:9696
 }
 
-https://qbit.{$DOMAIN}, https://qbittorrent.{$DOMAIN} {
+https://down.{$DOMAIN}, https://qbit.{$DOMAIN}, https://qbittorrent.{$DOMAIN} {
 	tls internal
 	reverse_proxy {$HTPC_UPSTREAM}:8081 {
 		header_up Host {http.reverse_proxy.upstream.hostport}
@@ -114,12 +114,12 @@ https://qbit.{$DOMAIN}, https://qbittorrent.{$DOMAIN} {
 	}
 }
 
-https://grafana.{$DOMAIN} {
+https://stats.{$DOMAIN}, https://monitoring.{$DOMAIN}, https://grafana.{$DOMAIN} {
 	tls internal
 	reverse_proxy {$HTPC_UPSTREAM}:3000
 }
 
-https://prometheus.{$DOMAIN} {
+https://metrics.{$DOMAIN}, https://prometheus.{$DOMAIN} {
 	tls internal
 	reverse_proxy {$HTPC_UPSTREAM}:9090
 }

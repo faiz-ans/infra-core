@@ -2,19 +2,19 @@
 
     - Local:
         - Nextcloud:
-            href: https://nextcloud.{{HOMEPAGE_VAR_DOMAIN}}
+            href: https://cloud.{{HOMEPAGE_VAR_DOMAIN}}
             server: periphery
             container: nextcloud
             icon: nextcloud.png
             description: Docs / Photos
         - Home Assistant:
-            href: https://ha.{{HOMEPAGE_VAR_DOMAIN}}
+            href: https://auto.{{HOMEPAGE_VAR_DOMAIN}}
             server: periphery
             container: homeassistant
             icon: home-assistant.png
             description: Home Automation
         - Vaultwarden:
-            href: https://pw.{{HOMEPAGE_VAR_DOMAIN}}
+            href: https://pass.{{HOMEPAGE_VAR_DOMAIN}}
             server: core
             container: vaultwarden
             icon: bitwarden.png
@@ -71,7 +71,7 @@
             icon: jellyfin.png
             description: Library
         - qBittorrent:
-            href: https://qbit.{{HOMEPAGE_VAR_DOMAIN}}
+            href: https://down.{{HOMEPAGE_VAR_DOMAIN}}
             server: periphery
             container: qbittorrent
             icon: qbittorrent.png
@@ -107,7 +107,7 @@
             icon: openmediavault.png
             description: Storage
         - Grafana:
-            href: https://grafana.{{HOMEPAGE_VAR_DOMAIN}}
+            href: https://stats.{{HOMEPAGE_VAR_DOMAIN}}
             server: periphery
             container: grafana
             icon: grafana.png
@@ -117,7 +117,7 @@
         #      url: http://{{HOMEPAGE_VAR_HTPC_UPSTREAM}}:3000
         #      key: "{{HOMEPAGE_VAR_GRAFANA_KEY}}"
         - Prometheus:
-            href: https://prometheus.{{HOMEPAGE_VAR_DOMAIN}}
+            href: https://metrics.{{HOMEPAGE_VAR_DOMAIN}}
             server: periphery
             container: prometheus
             icon: prometheus.png
