@@ -16,9 +16,6 @@ background:
 #  System:
 
 layout:
-  ...
-  Bookmark Group on First Tab:
-    tab: Apps
 
   Apps:
     tab: Apps
