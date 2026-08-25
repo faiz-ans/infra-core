@@ -21,7 +21,7 @@ layout:
     tab: Apps
     header: false
     style: row
-    columns: 2
+    columns: 3
     Local:
       style: row
       columns: 1
