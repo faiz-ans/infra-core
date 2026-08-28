@@ -104,10 +104,6 @@
             description: Request TV Shows
 
     - Platform:
-        - GitHub Repo:
-            href: https://github.com/the-left-click/infra-core
-            icon: github-light.png
-            description: the-left-click/infra-core
         - Komodo:
             href: https://ops.{{HOMEPAGE_VAR_DOMAIN}}
             siteMonitor: http://{{HOMEPAGE_VAR_NAS_LAN_IP}}:9120
@@ -140,6 +136,10 @@
             container: authelia
             icon: authelia.png
             description: Authentication
+        - GitHub:
+            href: https://github.com/the-left-click/infra-core
+            icon: github-light.png
+            description: Infrastructure
 
     - Network:
         - Pi-hole:
