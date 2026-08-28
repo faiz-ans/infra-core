@@ -2,25 +2,29 @@
 
     - Local:
         - Nextcloud:
+            id: nextcloud
             href: https://cloud.{{HOMEPAGE_VAR_DOMAIN}}
             server: periphery
             container: nextcloud
             icon: nextcloud.png
             description: Docs / Photos
         - Home Assistant:
+            id: homeassistant
             href: https://auto.{{HOMEPAGE_VAR_DOMAIN}}
             server: periphery
             container: homeassistant
             icon: home-assistant.png
             description: Home Automation
         - Vaultwarden:
+            id: vaultwarden
             href: https://pass.{{HOMEPAGE_VAR_DOMAIN}}
             server: core
             container: vaultwarden
             icon: bitwarden.png
             description: Passwords
-        - Jellyfin (client):
-            href: jellyfin://watch.{{HOMEPAGE_VAR_DOMAIN}}
+        - Jellyfin:
+            id: jellyfin
+            href: https://watch.{{HOMEPAGE_VAR_DOMAIN}}
             server: periphery
             container: jellyfin
             icon: jellyfin.png
@@ -55,11 +59,15 @@
             href: https://discord.com/channels/@me
             icon: discord.png
         - WhatsApp:
+            id: whatsapp
             href: https://web.whatsapp.com
             icon: whatsapp.png
         - Fidelity:
             href: https://www.fidelity.com
             icon: fidelity.png
+        - GitHub:
+            href: https://github.com
+            icon: github.png
             
 - System:
 
@@ -96,6 +104,9 @@
             description: Request TV Shows
 
     - Platform:
+        - GitHub Repo:
+            href: https://github.com/faiz-ans/infra-core
+            icon: github.png
         - Komodo:
             href: https://ops.{{HOMEPAGE_VAR_DOMAIN}}
             siteMonitor: http://{{HOMEPAGE_VAR_NAS_LAN_IP}}:9120
