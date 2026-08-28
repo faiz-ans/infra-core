@@ -3,7 +3,7 @@ theme: dark
 headerStyle: clean
 hideVersion: true
 statusStyle: dot
-target: _self
+target: _top
 
 background:
   image: /images/background.png
