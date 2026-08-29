@@ -109,6 +109,12 @@
             siteMonitor: http://{{HOMEPAGE_VAR_NAS_LAN_IP}}:9120
             icon: docker.png
             description: Deployment
+        - Gitea:
+            href: https://git.{{HOMEPAGE_VAR_DOMAIN}}
+            server: core
+            container: gitea
+            icon: gitea.png
+            description: Git
         - OpenMediaVault:
             href: https://nas.{{HOMEPAGE_VAR_DOMAIN}}
             siteMonitor: http://{{HOMEPAGE_VAR_NAS_LAN_IP}}:81
@@ -136,10 +142,6 @@
             container: authelia
             icon: authelia.png
             description: Authentication
-        - GitHub:
-            href: https://github.com/the-left-click/infra-core
-            icon: github-light.png
-            description: Infrastructure
 
     - Network:
         - Pi-hole:

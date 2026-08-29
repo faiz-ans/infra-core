@@ -1,6 +1,6 @@
 # infra-core
 
-Public, environment-agnostic app catalog for a two-host homelab. Site values (domain, IPs, disk paths, secrets, server names) live only in Komodo on-site. This git repo has compose files, config templates, and ResourceSync TOML.
+Public catalog, environment-agnostic, for a two-host homelab. Site values (domain, IPs, disk paths, secrets, server names) live only in Komodo on-site. This git repo has compose files, config templates, and ResourceSync TOML. **Gitea on Core is origin**; GitHub is a push mirror (see [`bootstrap/gitea.md`](bootstrap/gitea.md)).
 
 ## Layers
 
@@ -11,7 +11,7 @@ Layer 1  Komodo         Variables and secrets; polls git; no GitHub webhooks
 Layer 2  this repo      stacks/ + windows/
 ```
 
-Komodo server names in ResourceSync TOML are literals **`core`** and **`periphery`** (Komodo does not interpolate `[[VAR]]` on `server` or `repo`). Bootstrap `CORE_SERVER` / `PERIPHERY_SERVER` must match those names. Stack `repo` is this catalog (`faiz-ans/infra-core`). Environment values still use `[[VAR]]` at deploy.
+Komodo server names in ResourceSync TOML are literals **`core`** and **`periphery`** (Komodo does not interpolate `[[VAR]]` on `server` or `repo`). Bootstrap `CORE_SERVER` / `PERIPHERY_SERVER` must match those names. Stack `repo` is the catalog path `faiz-ans/infra-core` (Gitea; GitHub mirror keeps the same name). After Gitea exists, set `git_provider = "gitea:3000"` (see `bootstrap/gitea.md`). Environment values still use `[[VAR]]` at deploy.
 
 ## Target state (after bootstrap + ResourceSync)
 
@@ -19,7 +19,7 @@ A finished site matches this layout. Bootstrap creates it; do not reintroduce `s
 
 ```
 ${DATA_ROOT}/
-  system/{authelia,vaultwarden,pihole,wireguard,restic}   # Core bind-mounts only
+  system/{authelia,vaultwarden,gitea,pihole,wireguard,restic}   # Core bind-mounts only
   shared/{media,downloads,files,photos}                   # NFS /shared
   users/<user>/{files,photos}                             # NFS /users
 ```
@@ -32,7 +32,7 @@ ${DATA_ROOT}/
 ## Bootstrap order
 
 1. Copy the `bootstrap/` directory (including `core.sh`, `omv-nfs.sh`, `data-root-perms.sh`, and `komodo/`) to the Core host and run `core.sh` as root (or follow the commented commands). Storage is configured first; site prompts come after any OMV reboot. With OMV present, the script exports `shared/` and `users/` to the HTPC IP and applies `data-root-perms.sh`.
-2. In Komodo, confirm the `core` server. Secrets from bootstrap live in `/etc/komodo/core.config.toml`. Create a ResourceSync (webhooks off) with resource path `stacks/komodo/stacks-core.toml` first, then apply.
+2. In Komodo, confirm the `core` server. Secrets from bootstrap live in `/etc/komodo/core.config.toml`. Create a ResourceSync (webhooks off) with resource path `stacks/komodo/stacks-core.toml` first, then apply. After Gitea is up, follow [`bootstrap/gitea.md`](bootstrap/gitea.md) so polls use `gitea:3000` and GitHub is only a mirror.
 3. Keep SMB for Explorer/Finder. If you skipped OMV (OS-disk `DATA_ROOT`), export `shared/` and `users/` yourself (`bootstrap/omv-nfs.md`). On the remote host, follow `bootstrap/periphery.md`: Docker Desktop, outbound Periphery with `PERIPHERY_CONNECT_AS=periphery`. Leave `restic` / `restic-rest` off until the IronWolf is the backup disk (`BACKUP_DRIVE`).
 4. Confirm that server in Komodo, add `stacks/komodo/stacks-periphery.toml` to the same ResourceSync (or a second one), and apply. Home Assistant uses a local volume; `trusted_proxies` is written at start. The other HTPC apps use NFS for household data only.
 

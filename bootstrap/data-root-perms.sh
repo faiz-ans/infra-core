@@ -68,6 +68,7 @@ fi
 mkdir -p \
   "${DATA_ROOT}/system/authelia" \
   "${DATA_ROOT}/system/vaultwarden" \
+  "${DATA_ROOT}/system/gitea" \
   "${DATA_ROOT}/system/pihole" \
   "${DATA_ROOT}/system/wireguard" \
   "${DATA_ROOT}/system/restic" \

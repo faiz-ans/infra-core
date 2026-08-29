@@ -2,6 +2,8 @@
 # Komodo does not interpolate [[VAR]] in server/repo — those must be literals.
 # Environment [[VAR]] still interpolates at deploy from Core [secrets] / Variables.
 # webhook_enabled is false; poll on-site.
+# repo path stays faiz-ans/infra-core. After Gitea is up, point the Komodo git
+# provider at gitea:3000 (HTTP, Core on the edge network). GitHub is a push mirror.
 
 [[stack]]
 name = "caddy"
@@ -22,6 +24,25 @@ DOMAIN = [[DOMAIN]]
 HTPC_UPSTREAM = [[HTPC_UPSTREAM]]
 NAS_LAN_IP = [[NAS_LAN_IP]]
 TZ = [[TZ]]
+"""
+
+[[stack]]
+name = "gitea"
+deploy = true
+after = ["caddy"]
+[stack.config]
+server = "core"
+repo = "faiz-ans/infra-core"
+branch = "main"
+run_directory = "stacks/platform/gitea"
+file_paths = ["compose.yaml"]
+webhook_enabled = false
+poll_for_updates = true
+environment = """
+DOMAIN = [[DOMAIN]]
+TZ = [[TZ]]
+DATA_ROOT = [[DATA_ROOT]]
+NAS_LAN_IP = [[NAS_LAN_IP]]
 """
 
 [[stack]]

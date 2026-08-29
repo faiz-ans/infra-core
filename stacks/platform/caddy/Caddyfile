@@ -19,6 +19,11 @@ https://dash.{$DOMAIN}, https://homepage.{$DOMAIN} {
 	reverse_proxy homepage:3000
 }
 
+https://git.{$DOMAIN}, https://gitea.{$DOMAIN} {
+	tls internal
+	reverse_proxy gitea:3000
+}
+
 https://dns.{$DOMAIN}, https://pihole.{$DOMAIN} {
 	tls internal
 	redir / /admin

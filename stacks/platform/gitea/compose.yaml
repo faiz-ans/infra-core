@@ -1,0 +1,33 @@
+# Gitea on Core. SQLite is enough for this catalog. HTTP is Caddy-only (no Authelia:
+# git clone/push and Komodo must not hit a login wall). SSH is LAN-only on 2222.
+services:
+  gitea:
+    image: gitea/gitea:latest
+    container_name: gitea
+    restart: unless-stopped
+    environment:
+      TZ: ${TZ}
+      USER_UID: "1000"
+      USER_GID: "1000"
+      GITEA__database__DB_TYPE: sqlite3
+      GITEA__server__DOMAIN: git.${DOMAIN}
+      GITEA__server__SSH_DOMAIN: git.${DOMAIN}
+      GITEA__server__ROOT_URL: https://git.${DOMAIN}/
+      GITEA__server__HTTP_PORT: "3000"
+      GITEA__server__START_SSH_SERVER: "true"
+      GITEA__server__SSH_LISTEN_PORT: "22"
+      GITEA__server__SSH_PORT: "2222"
+      GITEA__service__DISABLE_REGISTRATION: "true"
+      GITEA__actions__ENABLED: "false"
+      GITEA__mirror__INTERVAL: 10m
+    volumes:
+      - ${DATA_ROOT}/system/gitea:/data
+    ports:
+      - "${NAS_LAN_IP}:2222:22"
+    networks:
+      - edge
+
+networks:
+  edge:
+    external: true
+    name: edge

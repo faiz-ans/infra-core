@@ -446,7 +446,7 @@ if [[ -f "${ANSWERS}" ]]; then
 else
   # Default domain for the prompt only. Not written to git.
   prompt DOMAIN "Domain" "home.lan"
-  prompt CATALOG_REPO "GitHub catalog owner/repo (public)"
+  prompt CATALOG_REPO "Catalog owner/repo path (Gitea; same name as the GitHub mirror)"
   prompt TZ "Timezone" "America/Los_Angeles"
   prompt PUID "PUID" "1000"
   prompt PGID "PGID" "1000"
@@ -487,6 +487,7 @@ fi
 mkdir -p \
   "${DATA_ROOT}/system/authelia" \
   "${DATA_ROOT}/system/vaultwarden" \
+  "${DATA_ROOT}/system/gitea" \
   "${DATA_ROOT}/system/pihole" \
   "${DATA_ROOT}/system/wireguard" \
   "${DATA_ROOT}/system/restic" \
@@ -683,6 +684,7 @@ echo "Remote Periphery should connect_as '${PERIPHERY_SERVER}'."
 echo
 echo "Create a ResourceSync (webhooks disabled):"
 echo "  repo:            faiz-ans/infra-core"
+echo "  git provider:    GitHub until Gitea exists, then gitea:3000 (see bootstrap/gitea.md)"
 echo "  branch:          main"
 echo "  resource path:   stacks/komodo/stacks-core.toml"
 echo "  poll:            enabled"
@@ -691,7 +693,7 @@ echo "After the remote Periphery server is OK, add stacks/komodo/stacks-peripher
 echo "Leave restic and restic-rest deploy=false until BACKUP_DRIVE is the IronWolf."
 echo
 echo "Target layout:"
-echo "  ${DATA_ROOT}/system/{authelia,vaultwarden,pihole,wireguard,restic}"
+echo "  ${DATA_ROOT}/system/{authelia,vaultwarden,gitea,pihole,wireguard,restic}"
 echo "  ${DATA_ROOT}/shared/{media,downloads,files,photos}"
 echo "  ${DATA_ROOT}/users/<user>/{files,photos}"
 echo "  NFS exports /shared and /users to the HTPC IP only (not disk root, not system/)."

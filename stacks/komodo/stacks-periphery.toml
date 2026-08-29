@@ -2,6 +2,8 @@
 # Komodo does not interpolate [[VAR]] in server/repo — those must be literals.
 # Apply this file only after the periphery server is connected.
 # webhook_enabled is false; poll on-site.
+# repo path stays faiz-ans/infra-core. After Gitea is up, the same Komodo git
+# provider (gitea:3000) is used here; GitHub is a push mirror.
 # Storage: /config is always a local volume. Household data is either
 # compose.yaml + DATA_ROOT binds, or compose.nfs.yaml + NAS_LAN_IP + NFS_EXPORT (+ NFS_USERS for Nextcloud).
 # Do not list both files.

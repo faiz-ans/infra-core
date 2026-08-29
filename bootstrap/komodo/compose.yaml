@@ -44,6 +44,9 @@ services:
       - keys:/config/keys
       - ${COMPOSE_KOMODO_BACKUPS_PATH}:/backups
       - ${KOMODO_CORE_CONFIG_TOML}:/config/config.toml:ro
+    networks:
+      - default
+      - edge
 
   periphery:
     image: ghcr.io/moghtech/komodo-periphery:${COMPOSE_KOMODO_IMAGE_TAG:-2}
@@ -62,3 +65,9 @@ volumes:
   postgres-data:
   ferretdb-state:
   keys:
+
+# HTTP clone of Gitea as gitea:3000 (no live domain in ResourceSync TOML).
+networks:
+  edge:
+    external: true
+    name: edge
