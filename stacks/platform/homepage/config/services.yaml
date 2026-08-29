@@ -169,3 +169,13 @@
             container: wireguard
             icon: wireguard.png
             description: VPN
+        - Linksys EA8300:
+            href: https://wifi.{{HOMEPAGE_VAR_DOMAIN}}
+            siteMonitor: https://192.168.1.1/
+            icon: router.png
+            description: Router
+        - HP LaserJet M29w:
+            href: https://print.{{HOMEPAGE_VAR_DOMAIN}}
+            siteMonitor: https://192.168.1.113/
+            icon: printer.png
+            description: Printer

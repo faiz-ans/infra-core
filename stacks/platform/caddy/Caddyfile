@@ -146,3 +146,13 @@ https://metrics.{$DOMAIN}, https://prometheus.{$DOMAIN} {
 	tls internal
 	reverse_proxy {$HTPC_UPSTREAM}:9090
 }
+
+https://wifi.{$DOMAIN}, https://router.{$DOMAIN} {
+	tls internal
+	reverse_proxy 192.168.1.1
+}
+
+https://print.{$DOMAIN}, https://printer.{$DOMAIN} {
+	tls internal
+	reverse_proxy 192.168.1.113
+}
