@@ -104,17 +104,17 @@
             description: Request TV Shows
 
     - Platform:
-        - Komodo:
-            href: https://ops.{{HOMEPAGE_VAR_DOMAIN}}
-            siteMonitor: http://{{HOMEPAGE_VAR_NAS_LAN_IP}}:9120
-            icon: docker.png
-            description: Deployment
         - Gitea:
             href: https://git.{{HOMEPAGE_VAR_DOMAIN}}
             server: core
             container: gitea
             icon: gitea.png
-            description: Git
+            description: Version Control
+        - Komodo:
+            href: https://ops.{{HOMEPAGE_VAR_DOMAIN}}
+            siteMonitor: http://{{HOMEPAGE_VAR_NAS_LAN_IP}}:9120
+            icon: docker.png
+            description: Deployment
         - OpenMediaVault:
             href: https://nas.{{HOMEPAGE_VAR_DOMAIN}}
             siteMonitor: http://{{HOMEPAGE_VAR_NAS_LAN_IP}}:81
