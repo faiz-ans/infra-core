@@ -6,68 +6,68 @@
             href: https://cloud.{{HOMEPAGE_VAR_DOMAIN}}
             server: periphery
             container: nextcloud
-            icon: nextcloud.png
+            icon: nextcloud.svg
             description: Docs / Photos
         - Home Assistant:
             id: homeassistant
             href: https://auto.{{HOMEPAGE_VAR_DOMAIN}}
             server: periphery
             container: homeassistant
-            icon: home-assistant.png
+            icon: home-assistant.svg
             description: Home Automation
         - Vaultwarden:
             id: vaultwarden
             href: https://pass.{{HOMEPAGE_VAR_DOMAIN}}
             server: core
             container: vaultwarden
-            icon: bitwarden.png
+            icon: bitwarden.svg
             description: Passwords
         - Jellyfin:
             id: jellyfin
             href: https://watch.{{HOMEPAGE_VAR_DOMAIN}}
             server: periphery
             container: jellyfin
-            icon: jellyfin.png
+            icon: jellyfin.svg
             description: Watch Movies & TV
         - Seerr:
             href: https://request.{{HOMEPAGE_VAR_DOMAIN}}
             server: periphery
             container: seerr
-            icon: seerr.png
+            icon: seerr.svg
             description: Request Movies & TV
 
     - Web:
         - Gmail:
             href: https://gmail.com
-            icon: gmail.png
+            icon: gmail.svg
         - Drive:
             href: https://drive.google.com
-            icon: google-drive.png
+            icon: google-drive.svg
         - YouTube:
             href: https://youtube.com
-            icon: youtube.png
+            icon: youtube.svg
         - Spotify:
             href: https://open.spotify.com
-            icon: spotify.png
+            icon: spotify.svg
         - ChatGPT:
             href: https://chatgpt.com
-            icon: chatgpt.png
+            icon: chatgpt.svg
         - Amazon:
             href: https://amazon.com/gp/css/order-history
-            icon: amazon.png
+            icon: amazon.svg
         - Discord:
             href: https://discord.com/channels/@me
-            icon: discord.png
+            icon: discord.svg
         - WhatsApp:
             id: whatsapp
             href: https://web.whatsapp.com
-            icon: whatsapp.png
+            icon: whatsapp.svg
         - Fidelity:
             href: https://www.fidelity.com
-            icon: fidelity.png
+            icon: fidelity.svg
         - GitHub:
             href: https://github.com
-            icon: github-light.png
+            icon: github-light.svg
             
 - System:
 
@@ -76,31 +76,31 @@
             href: https://watch.{{HOMEPAGE_VAR_DOMAIN}}
             server: periphery
             container: jellyfin
-            icon: jellyfin.png
+            icon: jellyfin.svg
             description: Library
         - qBittorrent:
             href: https://down.{{HOMEPAGE_VAR_DOMAIN}}
             server: periphery
             container: qbittorrent
-            icon: qbittorrent.png
+            icon: qbittorrent.svg
             description: Downloads      
         - Prowlarr:
             href: https://prowlarr.{{HOMEPAGE_VAR_DOMAIN}}
             server: periphery
             container: prowlarr
-            icon: prowlarr.png
+            icon: prowlarr.svg
             description: Indices      
         - Radarr:
             href: https://radarr.{{HOMEPAGE_VAR_DOMAIN}}
             server: periphery
             container: radarr
-            icon: radarr.png
+            icon: radarr.svg
             description: Request Movies    
         - Sonarr:
             href: https://sonarr.{{HOMEPAGE_VAR_DOMAIN}}
             server: periphery
             container: sonarr
-            icon: sonarr.png
+            icon: sonarr.svg
             description: Request TV Shows
 
     - Platform:
@@ -108,23 +108,23 @@
             href: https://git.{{HOMEPAGE_VAR_DOMAIN}}
             server: core
             container: gitea
-            icon: gitea.png
+            icon: gitea.svg
             description: Version Control
         - Komodo:
             href: https://ops.{{HOMEPAGE_VAR_DOMAIN}}
             siteMonitor: http://{{HOMEPAGE_VAR_NAS_LAN_IP}}:9120
-            icon: docker.png
+            icon: docker.svg
             description: Deployment
         - OpenMediaVault:
             href: https://nas.{{HOMEPAGE_VAR_DOMAIN}}
             siteMonitor: http://{{HOMEPAGE_VAR_NAS_LAN_IP}}:81
-            icon: openmediavault.png
+            icon: openmediavault.svg
             description: Storage
         - Grafana:
             href: https://stats.{{HOMEPAGE_VAR_DOMAIN}}
             server: periphery
             container: grafana
-            icon: grafana.png
+            icon: grafana.svg
             description: Monitoring
         #    widget:
         #      type: grafana
@@ -134,13 +134,13 @@
             href: https://metrics.{{HOMEPAGE_VAR_DOMAIN}}
             server: periphery
             container: prometheus
-            icon: prometheus.png
+            icon: prometheus.svg
             description: Metrics
         - Authelia:
             href: https://auth.{{HOMEPAGE_VAR_DOMAIN}}
             server: core
             container: authelia
-            icon: authelia.png
+            icon: authelia.svg
             description: Authentication
 
     - Network:
@@ -148,7 +148,7 @@
             href: https://dns.{{HOMEPAGE_VAR_DOMAIN}}/admin
             server: core
             container: pihole
-            icon: pi-hole.png
+            icon: pi-hole.svg
             description: DNS
             widget:
                 type: pihole
@@ -161,13 +161,13 @@
         # - Pi-hole Periphery:
         #    href: https://dns2.{{HOMEPAGE_VAR_DOMAIN}}/admin
         #    siteMonitor: http://{{HOMEPAGE_VAR_HTPC_UPSTREAM}}:8083/admin
-        #    icon: pi-hole.png
+        #    icon: pi-hole.svg
         #    description: DNS (Secondary)
         - WireGuard:
             href: https://vpn.{{HOMEPAGE_VAR_DOMAIN}}
             server: core
             container: wireguard
-            icon: wireguard.png
+            icon: wireguard.svg
             description: VPN
         - Linksys EA8300:
             href: https://wifi.{{HOMEPAGE_VAR_DOMAIN}}
@@ -177,5 +177,5 @@
         - HP LaserJet M29w:
             href: https://print.{{HOMEPAGE_VAR_DOMAIN}}
             siteMonitor: https://192.168.1.113/
-            icon: hp.png
+            icon: hp.svg
             description: Printer
