@@ -20,7 +20,7 @@ sudo rm -rf "${DATA_ROOT}/system/gitea/"*
 docker start gitea
 ```
 
-Wait until `docker ps` shows `gitea` healthy/up, then create the admin (pick username/password yourself; not stored in git):
+Wait until `docker ps` shows `gitea` up **and** `docker inspect -f '{{.State.Health.Status}}' gitea` is `healthy` (not `starting`). Then create the admin:
 
 ```text
 docker exec -u git gitea gitea admin user create --admin \
@@ -55,13 +55,11 @@ git remote add gitea https://git.<DOMAIN>/faiz-ans/infra-core.git
 git push -u gitea main
 ```
 
-Trust the Caddy internal CA for HTTPS git, or use SSH:
+Trust the Caddy internal CA for HTTPS git:
 
 ```text
-git remote add gitea ssh://git@git.<DOMAIN>:2222/faiz-ans/infra-core.git
+git remote add gitea https://git.<DOMAIN>/faiz-ans/infra-core.git
 ```
-
-SSH is published on the Core LAN IP only (`NAS_LAN_IP:2222`).
 
 ## 3. Push mirror to GitHub (backup)
 
@@ -76,7 +74,7 @@ Store the PAT only in Gitea, not in this catalog. After this, `git push` to Gite
 ## 4. Laptop origin
 
 ```text
-git remote set-url origin ssh://git@git.<DOMAIN>:2222/faiz-ans/infra-core.git
+git remote set-url origin https://git.<DOMAIN>/faiz-ans/infra-core.git
 git remote add github https://github.com/faiz-ans/infra-core.git
 ```
 

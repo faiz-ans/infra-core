@@ -19,9 +19,16 @@ https://dash.{$DOMAIN}, https://homepage.{$DOMAIN} {
 	reverse_proxy homepage:3000
 }
 
-https://git.{$DOMAIN}, https://gitea.{$DOMAIN} {
+https://gitea.{$DOMAIN} {
+	tls internal
+	redir https://git.{$DOMAIN}{uri} permanent
+}
+
+https://git.{$DOMAIN} {
 	tls internal
 	reverse_proxy gitea:3000 {
+		header_up Host {host}
+		header_up X-Real-IP {remote_host}
 		transport http {
 			read_timeout 3600s
 			write_timeout 3600s

@@ -1,5 +1,6 @@
 # Gitea on Core. SQLite is enough for this catalog. HTTP is Caddy-only (no Authelia:
-# git clone/push and Komodo must not hit a login wall). SSH is LAN-only on 2222.
+# git clone/push and Komodo must not hit a login wall). Git over HTTPS via Caddy;
+# in-container SSH is off (it crash-loops on this host and whites out Homepage).
 services:
   gitea:
     image: gitea/gitea:latest
@@ -11,25 +12,28 @@ services:
       USER_GID: "1000"
       GITEA__database__DB_TYPE: sqlite3
       GITEA__server__DOMAIN: git.${DOMAIN}
-      GITEA__server__SSH_DOMAIN: git.${DOMAIN}
       GITEA__server__ROOT_URL: https://git.${DOMAIN}/
+      GITEA__server__HTTP_ADDR: 0.0.0.0
       GITEA__server__HTTP_PORT: "3000"
-      GITEA__server__START_SSH_SERVER: "true"
-      GITEA__server__SSH_LISTEN_PORT: "22"
-      GITEA__server__SSH_PORT: "2222"
-      # Web installer behind Caddy often hangs (proxy timeout) and leaves
-      # app.ini/sqlite half-written. Lock install from env; create the admin with
-      # `gitea admin user create` (bootstrap/gitea.md).
+      GITEA__server__START_SSH_SERVER: "false"
       GITEA__security__INSTALL_LOCK: "true"
       GITEA__service__DISABLE_REGISTRATION: "true"
       GITEA__actions__ENABLED: "false"
       GITEA__mirror__INTERVAL: 10m
     volumes:
       - ${DATA_ROOT}/system/gitea:/data
-    ports:
-      - "${NAS_LAN_IP}:2222:22"
     networks:
       - edge
+    healthcheck:
+      test:
+        [
+          "CMD-SHELL",
+          "wget --no-verbose --tries=1 --spider http://127.0.0.1:3000/ || exit 1",
+        ]
+      interval: 15s
+      timeout: 5s
+      retries: 5
+      start_period: 60s
 
 networks:
   edge:
