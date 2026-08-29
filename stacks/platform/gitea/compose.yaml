@@ -17,6 +17,10 @@ services:
       GITEA__server__START_SSH_SERVER: "true"
       GITEA__server__SSH_LISTEN_PORT: "22"
       GITEA__server__SSH_PORT: "2222"
+      # Web installer behind Caddy often hangs (proxy timeout) and leaves
+      # app.ini/sqlite half-written. Lock install from env; create the admin with
+      # `gitea admin user create` (bootstrap/gitea.md).
+      GITEA__security__INSTALL_LOCK: "true"
       GITEA__service__DISABLE_REGISTRATION: "true"
       GITEA__actions__ENABLED: "false"
       GITEA__mirror__INTERVAL: 10m

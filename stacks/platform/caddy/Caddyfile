@@ -21,7 +21,12 @@ https://dash.{$DOMAIN}, https://homepage.{$DOMAIN} {
 
 https://git.{$DOMAIN}, https://gitea.{$DOMAIN} {
 	tls internal
-	reverse_proxy gitea:3000
+	reverse_proxy gitea:3000 {
+		transport http {
+			read_timeout 3600s
+			write_timeout 3600s
+		}
+	}
 }
 
 https://dns.{$DOMAIN}, https://pihole.{$DOMAIN} {

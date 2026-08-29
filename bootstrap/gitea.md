@@ -10,7 +10,27 @@ On Core:
 sudo mkdir -p "${DATA_ROOT}/system/gitea"
 ```
 
-Apply ResourceSync so the **gitea** and **caddy** stacks update. Open `https://git.<DOMAIN>` and complete the installer (SQLite is already set). Create the first admin. Registration is disabled in compose.
+Apply ResourceSync so the **gitea** and **caddy** stacks update. The web installer is **off** (`INSTALL_LOCK`); it hangs behind Caddy and can leave a broken data dir (Homepage then shows a white/unknown Docker dot).
+
+If you already opened the installer and closed it, wipe and recreate **on Core**:
+
+```text
+docker stop gitea
+sudo rm -rf "${DATA_ROOT}/system/gitea/"*
+docker start gitea
+```
+
+Wait until `docker ps` shows `gitea` healthy/up, then create the admin (pick username/password yourself; not stored in git):
+
+```text
+docker exec -u git gitea gitea admin user create --admin \
+  --username admin \
+  --password 'YOUR_PASSWORD' \
+  --email admin@localhost \
+  --must-change-password=false
+```
+
+Then log in at `https://git.<DOMAIN>`.
 
 Connect Komodo Core to `edge` if it is not already (needed later for `gitea:3000`):
 
