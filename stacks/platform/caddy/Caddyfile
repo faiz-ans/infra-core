@@ -153,12 +153,7 @@ https://wifi.{$DOMAIN}, https://router.{$DOMAIN} {
 }
 
 https://print.{$DOMAIN}, https://printer.{$DOMAIN} {
-	redir / /hp/device/index.html 308
-
 	reverse_proxy 192.168.1.113 {
         header_up Host {upstream_hostport}
-        transport http {
-            tls_insecure_skip_verify
-        }
     }
 }
