@@ -50,7 +50,7 @@ https://dns2.{$DOMAIN}, https://pihole2.{$DOMAIN} {
 
 https://vpn.{$DOMAIN}, https://wg.{$DOMAIN}, https://wireguard.{$DOMAIN} {
 	tls internal
-	reverse_proxy wireguard:51821
+	reverse_proxy host.docker.internal:51821
 }
 
 https://ops.{$DOMAIN}, https://komodo.{$DOMAIN} {

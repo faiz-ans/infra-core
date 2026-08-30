@@ -1,6 +1,8 @@
+# Host network: VPN uses Core's NIC (DNS at NAS_LAN_IP, NAT on the real
+# uplink). Caddy stays on edge and reaches the UI at host.docker.internal:51821.
+# Do not attach this container to edge. Cellular clients: Interface MTU 1280
+# in the wg-easy UI (not an env; survives in the data volume).
 # wg-easy v15 ignores v14 PASSWORD_HASH / WG_HOST env.
-# Dedicated 10.42.42.0/24 network, INSECURE=true behind Caddy.
-# edge + wg: pin wg as eth0 or PostUp NAT and wg-quick fail (no wg0).
 
 services:
   wireguard:
@@ -8,6 +10,7 @@ services:
     container_name: wireguard
     restart: unless-stopped
     privileged: true
+    network_mode: host
     entrypoint: ["/bin/sh", "/entrypoint.sh"]
     environment:
       TZ: ${TZ}
@@ -20,8 +23,6 @@ services:
       INIT_HOST: ${WG_HOST}
       INIT_PORT: "51820"
       INIT_DNS: ${NAS_LAN_IP}
-    ports:
-      - "51820:51820/udp"
     volumes:
       - ${DATA_ROOT}/system/wireguard:/etc/wireguard
       - /lib/modules:/lib/modules:ro
@@ -31,27 +32,3 @@ services:
     cap_add:
       - NET_ADMIN
       - SYS_MODULE
-    sysctls:
-      - net.ipv4.ip_forward=1
-      - net.ipv4.conf.all.src_valid_mark=1
-      - net.ipv6.conf.all.disable_ipv6=0
-      - net.ipv6.conf.all.forwarding=1
-      - net.ipv6.conf.default.forwarding=1
-    networks:
-      wg:
-        interface_name: eth0
-        gw_priority: 1
-        ipv4_address: 10.42.42.42
-      edge:
-        interface_name: eth1
-        gw_priority: 0
-
-networks:
-  edge:
-    external: true
-    name: edge
-  wg:
-    driver: bridge
-    ipam:
-      config:
-        - subnet: 10.42.42.0/24
