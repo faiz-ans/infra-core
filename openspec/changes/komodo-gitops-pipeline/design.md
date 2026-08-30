@@ -63,12 +63,15 @@ HTPC Periphery runs as a Desktop container (docker.sock mounted) in **outbound**
 
 ### 5. One Caddy, shared `edge` network, Pi-hole wildcard
 
-On `nas`, external network `edge` attaches Caddy, Authelia, Homepage, Pi-hole, WireGuard, Vaultwarden. Caddy routes:
+On `nas`, external network `edge` attaches Caddy, Authelia, Homepage, Pi-hole, Gitea, Vaultwarden. Caddy routes:
 
 - local: `vaultwarden:80`, Homepage, Pi-hole admin, Komodo, OMV as applicable
+- host: Komodo and WireGuard UI via `host.docker.internal` (WireGuard uses host networking; not on `edge`)
 - remote: `{$HTPC_UPSTREAM}:<published port>` for Jellyfin, HA, Nextcloud, Arr, Grafana, Restic REST (if exposed)
 
-Pi-hole: `*.{$DOMAIN}` → NAS LAN IP. WireGuard on NAS for remote access to that same DNS/Caddy path.
+Pi-hole: `*.{$DOMAIN}` → NAS LAN IP. WireGuard on the NAS host stack for remote access to that same DNS/Caddy path. Client endpoint is Komodo `WG_HOST`; DNS is `NAS_LAN_IP`; default MTU 1280 (not 1420).
+
+**Alternative considered:** WireGuard on `edge` plus a dedicated `10.42.42.0/24` bridge. Rejected: PostUp/NAT and client DNS hairpins are fragile; host network matches LAN DNS/NAT.
 
 **Alternative considered:** second Caddy on HTPC. Rejected: splits Authelia. **Alternative considered:** Homepage Docker label discovery. Rejected: Homepage cannot see HTPC sockets; templated YAML is required.
 

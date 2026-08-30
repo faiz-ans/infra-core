@@ -45,3 +45,10 @@ Komodo Core (and the first local Periphery) SHALL be brought up by bootstrap, no
 #### Scenario: Empty box
 - **WHEN** Komodo is not yet running on the Pi
 - **THEN** bootstrap can still install and start Core without pulling a stack through ResourceSync
+
+### Requirement: Host forwarding and WireGuard operator hints
+Bootstrap SHALL persist IPv4 forwarding on Core (`net.ipv4.ip_forward=1`) so host-network WireGuard can NAT. It SHALL prompt for `WG_HOST` as a public endpoint name (not a LAN name) and SHALL print operator steps for UDP 51820-only forwarding, keeping `DOMAIN` from swallowing `WG_HOST` in Pi-hole, and confirming client MTU 1280 after the first WireGuard deploy. Live values SHALL stay on-box.
+
+#### Scenario: Printed WireGuard steps
+- **WHEN** bootstrap finishes
+- **THEN** the operator is told to forward only the WireGuard UDP port to Core, use a public `WG_HOST`, and confirm MTU 1280 before issuing peers

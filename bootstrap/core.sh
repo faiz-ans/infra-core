@@ -466,7 +466,7 @@ else
   prompt_secret RESTIC_PASSWORD "Restic repo password"
   prompt RESTIC_REST_USER "Restic REST username" "restic"
   prompt_secret RESTIC_REST_PASSWORD "Restic REST password"
-  prompt WG_HOST "WireGuard endpoint host (clients dial this)"
+  prompt WG_HOST "WireGuard public endpoint host (off-LAN DNS name, not a LAN name)"
   prompt_secret GRAFANA_ADMIN_PASSWORD "Grafana admin password"
   prompt NEXTCLOUD_ADMIN_USER "Nextcloud admin user" "admin"
   prompt_secret NEXTCLOUD_ADMIN_PASSWORD "Nextcloud admin password"
@@ -481,6 +481,13 @@ if ! command -v docker >/dev/null 2>&1; then
   # systemctl enable --now docker
   systemctl enable --now docker
 fi
+
+# Host-network WireGuard NATs on the real NIC. Persist forwarding (Docker
+# often sets this already; required if Core starts WG before Docker does).
+# echo net.ipv4.ip_forward=1 > /etc/sysctl.d/99-ip-forward.conf
+# sysctl -w net.ipv4.ip_forward=1
+echo 'net.ipv4.ip_forward=1' > /etc/sysctl.d/99-ip-forward.conf
+sysctl -w net.ipv4.ip_forward=1
 
 # --- DATA_ROOT tree ---
 # Core app state under system/<app>. Periphery /config is local on the HTPC.
@@ -674,6 +681,12 @@ EOF
 fi
 
 echo "WireGuard UI is user wg-admin; password is Komodo secret WG_UI_PASSWORD."
+echo "After ResourceSync deploys the wireguard stack (host network; Caddy vpn.${DOMAIN} → Core :51821):"
+echo "  Router: UDP 51820 only → ${NAS_LAN_IP} (not 51821, not 80/443)."
+echo "  WG_HOST must resolve on the public internet to this site's WAN IPv4 (Dynamic DNS if the WAN moves)."
+echo "  Do not set DOMAIN to a public zone that would make Pi-hole answer the WG_HOST name as the LAN IP."
+echo "  Redeploy wireguard once after first start (or set Interface MTU 1280 in the UI) before adding phones."
+echo "  Client DNS is the Core LAN IP (INIT_DNS). Test HTTPS on cellular after handshake."
 
 echo
 echo "DATA_ROOT=${DATA_ROOT}"

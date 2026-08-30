@@ -25,11 +25,11 @@
 
 ## 5. Edge on nas
 
-- [x] 5.1 Define external Docker network `edge` and attach Caddy, Authelia, Pi-hole, WireGuard, Homepage, Vaultwarden
+- [x] 5.1 Define external Docker network `edge` and attach Caddy, Authelia, Pi-hole, Homepage, Vaultwarden (WireGuard is host-network)
 - [x] 5.2 Add `stacks/platform/caddy/` compose + Caddyfile using `{$DOMAIN}` and `{$HTPC_UPSTREAM}`; include Vaultwarden site with Authelia only on `/admin` and `/admin/*`
 - [x] 5.3 Add `stacks/platform/authelia/` compose and config templates with Komodo-injected secrets (no users/passwords in git)
 - [x] 5.4 Add `stacks/platform/pihole/` compose; local DNS for `*.{$DOMAIN}` via env, not committed IPs
-- [x] 5.5 Add `stacks/platform/wireguard/` compose with keys/endpoint from Komodo
+- [x] 5.5 Add `stacks/platform/wireguard/` compose with keys/endpoint from Komodo; host network; Caddy UI via host gateway; seed MTU 1280
 
 ## 6. Homepage and Vaultwarden
 

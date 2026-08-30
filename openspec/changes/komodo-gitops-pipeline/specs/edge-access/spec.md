@@ -45,14 +45,18 @@ A second Pi-hole SHALL run on `periphery` with DNS published on the HTPC LAN IP.
 - **THEN** the client still receives DNS answers, including `*.{$DOMAIN}` pointing at the NAS address
 
 ### Requirement: WireGuard on the NAS
-WireGuard SHALL run on `nas` so remote clients can reach `*.{$DOMAIN}` as if on LAN. Endpoint and keys SHALL be Komodo secrets.
+WireGuard SHALL run on `nas` with host networking so remote clients reach `*.{$DOMAIN}` as if on LAN. It SHALL NOT attach to the `edge` Docker network. The client endpoint host SHALL be Komodo `WG_HOST` (a name that resolves off-LAN to the site WAN IPv4). Client DNS SHALL be `NAS_LAN_IP`. Factory MTU 1420 SHALL be replaced with 1280 before peers are issued (catalog seed and/or UI). Caddy SHALL reverse-proxy `vpn`/`wg`/`wireguard` on `{$DOMAIN}` to the host WireGuard UI (`host.docker.internal:51821`), not to a container name on `edge`. Site values SHALL stay in Komodo, not git.
 
 #### Scenario: Remote client
 - **WHEN** a peer is connected to the NAS WireGuard service
 - **THEN** that peer can resolve and use `*.{$DOMAIN}` through Caddy
 
+#### Scenario: UI through Caddy on edge
+- **WHEN** a LAN client opens the catalogued VPN hostname on `{$DOMAIN}`
+- **THEN** Caddy on `edge` proxies to the host-published WireGuard UI
+
 ### Requirement: Shared edge network
-Caddy, Authelia, Homepage, Pi-hole, WireGuard, and Vaultwarden SHALL attach to a shared external Docker network on `nas` so they can reach each other by Compose service or container name.
+Caddy, Authelia, Homepage, Pi-hole, Gitea, and Vaultwarden SHALL attach to a shared external Docker network on `nas` so they can reach each other by Compose service or container name. WireGuard SHALL NOT be on that network.
 
 #### Scenario: Homepage reaches Vaultwarden by name
 - **WHEN** Homepage scrapes `http://vaultwarden:80`

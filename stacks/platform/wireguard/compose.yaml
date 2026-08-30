@@ -1,7 +1,7 @@
 # Host network: VPN uses Core's NIC (DNS at NAS_LAN_IP, NAT on the real
 # uplink). Caddy stays on edge and reaches the UI at host.docker.internal:51821.
-# Do not attach this container to edge. Cellular clients: Interface MTU 1280
-# in the wg-easy UI (not an env; survives in the data volume).
+# Do not attach this container to edge. seed-mtu.mjs rewrites factory MTU
+# 1420 → 1280 in the data volume (operator-chosen MTU is left alone).
 # wg-easy v15 ignores v14 PASSWORD_HASH / WG_HOST env.
 
 services:
@@ -27,6 +27,7 @@ services:
       - ${DATA_ROOT}/system/wireguard:/etc/wireguard
       - /lib/modules:/lib/modules:ro
       - ./entrypoint.sh:/entrypoint.sh:ro
+      - ./seed-mtu.mjs:/seed-mtu.mjs:ro
     devices:
       - /dev/net/tun:/dev/net/tun
     cap_add:

@@ -28,6 +28,7 @@ ${DATA_ROOT}/
 - HTPC `/config` is a local Docker volume. Media, downloads, and Nextcloud files stay on NFS.
 - ResourceSync names are global: Core Pi-hole is `pihole`, HTPC is `pihole-periphery`.
 - Router DHCP DNS: Core LAN IP first, HTPC second. No public resolver as a third server. Each Pi-hole fetches its own Gravity.
+- WireGuard is host-network on Core. Caddy (`edge`) proxies the VPN UI to the host. Router: UDP 51820 to Core only. `WG_HOST` is a public DNS name (not `DOMAIN` if that would make Pi-hole steal the endpoint). Client MTU 1280 (catalog rewrites wg-easy’s factory 1420).
 
 ## Bootstrap order
 

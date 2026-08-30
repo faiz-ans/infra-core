@@ -98,6 +98,7 @@ run_directory = "stacks/platform/wireguard"
 file_paths = ["compose.yaml"]
 config_files = [
   { path = "entrypoint.sh", requires = "Redeploy" },
+  { path = "seed-mtu.mjs", requires = "Redeploy" },
 ]
 webhook_enabled = false
 poll_for_updates = true
