@@ -87,7 +87,7 @@ NAS_LAN_IP = [[NAS_LAN_IP]]
 NFS_EXPORT = [[NFS_EXPORT]]
 """
 
-# compose.nfs.yaml: files/photos/users on NFS; /config is local (SQLite).
+# compose.nfs.yaml: files/photos/users on NFS; /config and Postgres are local.
 [[stack]]
 name = "nextcloud"
 deploy = true
@@ -111,6 +111,7 @@ NFS_EXPORT = [[NFS_EXPORT]]
 NFS_USERS = [[NFS_USERS]]
 NEXTCLOUD_ADMIN_USER = [[NEXTCLOUD_ADMIN_USER]]
 NEXTCLOUD_ADMIN_PASSWORD = [[NEXTCLOUD_ADMIN_PASSWORD]]
+NEXTCLOUD_DB_PASSWORD = [[NEXTCLOUD_DB_PASSWORD]]
 DOMAIN = [[DOMAIN]]
 """
 

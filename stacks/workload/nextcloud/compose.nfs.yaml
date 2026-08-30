@@ -1,10 +1,30 @@
-# User data on Docker NFS. /config is a local volume (SQLite + app code).
+# User data on Docker NFS. /config and Postgres are local volumes.
 # Deploy this file instead of compose.yaml (do not merge both).
 services:
+  postgres:
+    image: postgres:16-alpine
+    container_name: nextcloud-db
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: nextcloud
+      POSTGRES_USER: nextcloud
+      POSTGRES_PASSWORD: ${NEXTCLOUD_DB_PASSWORD}
+    volumes:
+      - nextcloud-postgres:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U nextcloud -d nextcloud"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+    # Do not publish 5432. Installer host is Compose DNS `postgres`.
+
   nextcloud:
     image: lscr.io/linuxserver/nextcloud:latest
     container_name: nextcloud
     restart: unless-stopped
+    depends_on:
+      postgres:
+        condition: service_healthy
     environment:
       TZ: ${TZ}
       PUID: ${PUID}
@@ -27,6 +47,8 @@ volumes:
   # New name so Compose does not reuse the old NFS volume (nextcloud_nextcloud-config).
   nextcloud-config:
     name: nextcloud-config
+  nextcloud-postgres:
+    name: nextcloud-postgres
   nextcloud-files:
     driver: local
     driver_opts:

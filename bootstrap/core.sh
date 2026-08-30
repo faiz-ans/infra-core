@@ -80,6 +80,7 @@ WG_HOST='$(quote_s "${WG_HOST}")'
 GRAFANA_ADMIN_PASSWORD='$(quote_s "${GRAFANA_ADMIN_PASSWORD}")'
 NEXTCLOUD_ADMIN_USER='$(quote_s "${NEXTCLOUD_ADMIN_USER}")'
 NEXTCLOUD_ADMIN_PASSWORD='$(quote_s "${NEXTCLOUD_ADMIN_PASSWORD}")'
+NEXTCLOUD_DB_PASSWORD='$(quote_s "${NEXTCLOUD_DB_PASSWORD}")'
 DATA_ROOT='$(quote_s "${DATA_ROOT:-}")'
 EOF
   umask "${old}"
@@ -443,6 +444,11 @@ if [[ -f "${ANSWERS}" ]]; then
   # shellcheck disable=SC1090
   source "${ANSWERS}"
   echo "Loaded saved site answers from ${ANSWERS}."
+  if [[ -z "${NEXTCLOUD_DB_PASSWORD:-}" ]]; then
+    NEXTCLOUD_DB_PASSWORD=$(rand)
+    echo "Generated NEXTCLOUD_DB_PASSWORD (save now; add in Komodo if Core is already running)."
+    save_answers
+  fi
 else
   # Default domain for the prompt only. Not written to git.
   prompt DOMAIN "Domain" "home.lan"
@@ -470,6 +476,7 @@ else
   prompt_secret GRAFANA_ADMIN_PASSWORD "Grafana admin password"
   prompt NEXTCLOUD_ADMIN_USER "Nextcloud admin user" "admin"
   prompt_secret NEXTCLOUD_ADMIN_PASSWORD "Nextcloud admin password"
+  prompt_secret NEXTCLOUD_DB_PASSWORD "Nextcloud PostgreSQL password (role nextcloud)"
   save_answers
 fi
 
@@ -606,6 +613,7 @@ WG_UI_PASSWORD = "${WG_UI_PASSWORD}"
 GRAFANA_ADMIN_PASSWORD = "${GRAFANA_ADMIN_PASSWORD}"
 NEXTCLOUD_ADMIN_USER = "${NEXTCLOUD_ADMIN_USER}"
 NEXTCLOUD_ADMIN_PASSWORD = "${NEXTCLOUD_ADMIN_PASSWORD}"
+NEXTCLOUD_DB_PASSWORD = "${NEXTCLOUD_DB_PASSWORD}"
 HOMEPAGE_VAR_PIHOLE_TOKEN = ""
 HOMEPAGE_VAR_JELLYFIN_KEY = ""
 HOMEPAGE_VAR_SONARR_KEY = ""

@@ -74,5 +74,6 @@ Authelia user hashes live in `${DATA_ROOT}/system/authelia/users.yml` on the NAS
 | `GRAFANA_ADMIN_PASSWORD` | secret | Grafana |
 | `NEXTCLOUD_ADMIN_USER` | | Nextcloud first-run |
 | `NEXTCLOUD_ADMIN_PASSWORD` | secret | Nextcloud first-run |
+| `NEXTCLOUD_DB_PASSWORD` | secret | Nextcloud Postgres (`nextcloud` role). Not the admin login |
 | `SMB_USERNAME` | | Unused by catalog stacks. SMB is for Explorer/Finder only |
 | `SMB_PASSWORD` | secret | Unused by catalog stacks |

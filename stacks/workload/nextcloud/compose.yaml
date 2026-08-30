@@ -1,10 +1,30 @@
-# Household data via DATA_ROOT binds. /config is a local volume (same as compose.nfs.yaml).
-# Docker-engine NFS (no host mount): deploy compose.nfs.yaml instead.
+# Household data via DATA_ROOT binds. /config and Postgres are local volumes
+# (same as compose.nfs.yaml). Docker-engine NFS: deploy compose.nfs.yaml instead.
 services:
+  postgres:
+    image: postgres:16-alpine
+    container_name: nextcloud-db
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: nextcloud
+      POSTGRES_USER: nextcloud
+      POSTGRES_PASSWORD: ${NEXTCLOUD_DB_PASSWORD}
+    volumes:
+      - nextcloud-postgres:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U nextcloud -d nextcloud"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+    # Do not publish 5432. Installer host is Compose DNS `postgres`.
+
   nextcloud:
     image: lscr.io/linuxserver/nextcloud:latest
     container_name: nextcloud
     restart: unless-stopped
+    depends_on:
+      postgres:
+        condition: service_healthy
     environment:
       TZ: ${TZ}
       PUID: ${PUID}
@@ -26,3 +46,5 @@ services:
 volumes:
   nextcloud-config:
     name: nextcloud-config
+  nextcloud-postgres:
+    name: nextcloud-postgres
