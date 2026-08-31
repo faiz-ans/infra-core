@@ -40,6 +40,14 @@ sudo chown -R 1000:1000 /srv/dev-disk-by-uuid-d6e267fd-109f-4971-bfb1-26b3d99e0d
 
 Use this site’s `DATA_ROOT` and `PUID`/`PGID` if they are not those values. Then Redeploy **opencloud** after the catalog that mounts PosixFS at `/posix` is synced.
 
+If logs then show `error parsing mapping JSON` / `Failed service 'search'`, the Bleve index was left empty by the earlier crash. Wipe **only** the search dir (not `config`, `posix`, or household files):
+
+```text
+sudo docker stop opencloud
+sudo rm -rf /srv/dev-disk-by-uuid-d6e267fd-109f-4971-bfb1-26b3d99e0d47/system/opencloud/data/search
+sudo docker start opencloud
+```
+
 ## 3. Login and users
 
 Open **`https://cloud.<DOMAIN>`**. Log in as `admin` / `OPENCLOUD_ADMIN_PASSWORD`.
@@ -74,7 +82,9 @@ Do **not** delete NFS volumes or files under `shared/` and `users/`.
 
 | Symptom | What to do |
 |---|---|
-| `posixfs-xattr-check` or `mkdir …/storage/metadata: permission denied` | Nested Docker binds created `system/opencloud/data/storage` as root. On Core, as root: stop the container, `chown -R ${PUID}:${PGID}` `system/opencloud`, `mkdir -p …/system/opencloud/posix`, chown that too, Redeploy (catalog must mount PosixFS at `/posix`, not under `/var/lib/opencloud`). |
+| `cloud.<DOMAIN>` does not load while `opencloud` is Up | Caddyfile change is not applied by deploying OpenCloud. Komodo → **caddy** → **Redeploy**. Then from Core: `docker exec caddy wget -S -O- --timeout=10 http://opencloud:9200/ \| head`. You want HTTP 200, not `no such host` or connection refused. |
+| `posixfs-xattr-check` or `mkdir …/storage/metadata: permission denied` | Nested Docker binds created `data/storage` as root. Stop the container, `chown -R ${PUID}:${PGID}` `system/opencloud`, ensure `posix/` exists, Redeploy with PosixFS at `/posix`. |
+| `error parsing mapping JSON` / search service | Empty Bleve index from a failed first start. Stop the container, `rm -rf ${DATA_ROOT}/system/opencloud/data/search`, start again. |
 | `extended attributes not supported` | Data disk must allow `user_xattr`. Do not move OpenCloud to HTPC NFS. |
 | Permission denied on `users/<name>` | Re-run `bootstrap/data-root-perms.sh` as root. |
 | Collabora iframe blocked / blank | Confirm `collabora` is Up on the HTPC and `office.<DOMAIN>` resolves to Core Caddy. |

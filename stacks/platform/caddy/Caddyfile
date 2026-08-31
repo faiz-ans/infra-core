@@ -112,6 +112,8 @@ https://nextcloud.{$DOMAIN}, https://nc.{$DOMAIN} {
 https://cloud.{$DOMAIN}, https://oc.{$DOMAIN}, https://opencloud.{$DOMAIN} {
 	tls internal
 	reverse_proxy opencloud:9200 {
+		# Disable buffering for OpenCloud SSE / TUS (nginx equivalent: proxy_buffering off).
+		flush_interval -1
 		transport http {
 			read_timeout 3600s
 			write_timeout 3600s
