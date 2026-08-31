@@ -104,11 +104,35 @@ https://auto.{$DOMAIN}, https://ha.{$DOMAIN}, https://homeassistant.{$DOMAIN} {
 	}
 }
 
-https://cloud.{$DOMAIN}, https://nc.{$DOMAIN}, https://nextcloud.{$DOMAIN} {
+https://nextcloud.{$DOMAIN}, https://nc.{$DOMAIN} {
 	tls internal
-	reverse_proxy https://{$HTPC_UPSTREAM}:8080 {
+	redir https://cloud.{$DOMAIN}{uri} permanent
+}
+
+https://cloud.{$DOMAIN}, https://oc.{$DOMAIN}, https://opencloud.{$DOMAIN} {
+	tls internal
+	reverse_proxy opencloud:9200 {
 		transport http {
-			tls_insecure_skip_verify
+			read_timeout 3600s
+			write_timeout 3600s
+		}
+	}
+}
+
+https://photos.{$DOMAIN}, https://immich.{$DOMAIN} {
+	tls internal
+	reverse_proxy {$HTPC_UPSTREAM}:2283
+}
+
+https://office.{$DOMAIN}, https://collabora.{$DOMAIN} {
+	tls internal
+	reverse_proxy {$HTPC_UPSTREAM}:9980 {
+		header_up Host {host}
+		header_up X-Forwarded-Host {host}
+		header_up X-Forwarded-Proto {scheme}
+		transport http {
+			read_timeout 3600s
+			write_timeout 3600s
 		}
 	}
 }

@@ -1,13 +1,20 @@
 - Apps:
 
     - Local:
-        - Nextcloud:
-            id: nextcloud
+        - OpenCloud:
+            id: opencloud
             href: https://cloud.{{HOMEPAGE_VAR_DOMAIN}}
+            server: core
+            container: opencloud
+            icon: opencloud.svg
+            description: Files / Sync
+        - Immich:
+            id: immich
+            href: https://photos.{{HOMEPAGE_VAR_DOMAIN}}
             server: periphery
-            container: nextcloud
-            icon: nextcloud.svg
-            description: Docs / Photos
+            container: immich
+            icon: immich.svg
+            description: Photos
         - Home Assistant:
             id: homeassistant
             href: https://auto.{{HOMEPAGE_VAR_DOMAIN}}

@@ -1,0 +1,56 @@
+# OpenCloud on Core. PosixFS on local DATA_ROOT binds (not HTPC NFS).
+# Personal space users/<name> → ${DATA_ROOT}/users/<name>.
+# Project space named files|photos → ${DATA_ROOT}/shared/<name>.
+services:
+  opencloud:
+    image: opencloudeu/opencloud-rolling:latest
+    container_name: opencloud
+    restart: unless-stopped
+    user: "${PUID}:${PGID}"
+    entrypoint: ["/bin/sh"]
+    command: ["-c", "opencloud init || true; opencloud server"]
+    extra_hosts:
+      - "cloud.${DOMAIN}:${NAS_LAN_IP}"
+      - "office.${DOMAIN}:${NAS_LAN_IP}"
+    environment:
+      TZ: ${TZ}
+      PUID: ${PUID}
+      PGID: ${PGID}
+      PROXY_HTTP_ADDR: "0.0.0.0:9200"
+      PROXY_TLS: "false"
+      OC_INSECURE: "true"
+      PROXY_ENABLE_BASIC_AUTH: "true"
+      IDM_CREATE_DEMO_USERS: "false"
+      IDM_ADMIN_PASSWORD: ${OPENCLOUD_ADMIN_PASSWORD}
+      OC_URL: https://cloud.${DOMAIN}
+      OC_DOMAIN: cloud.${DOMAIN}
+      COLLABORA_DOMAIN: office.${DOMAIN}
+      PROXY_CSP_CONFIG_FILE_LOCATION: /etc/opencloud/csp.yaml
+      OC_ADD_RUN_SERVICES: collaboration
+      FRONTEND_APP_HANDLER_SECURE_VIEW_APP_ADDR: eu.opencloud.api.collaboration
+      COLLABORATION_WOPI_SRC: https://cloud.${DOMAIN}
+      COLLABORATION_APP_NAME: CollaboraOnline
+      COLLABORATION_APP_PRODUCT: Collabora
+      COLLABORATION_APP_ADDR: https://office.${DOMAIN}
+      COLLABORATION_APP_ICON: https://office.${DOMAIN}/favicon.ico
+      COLLABORATION_APP_INSECURE: "true"
+      COLLABORATION_CS3API_DATAGATEWAY_INSECURE: "true"
+      STORAGE_USERS_DRIVER: posix
+      STORAGE_USERS_ID_CACHE_STORE: nats-js-kv
+      STORAGE_USERS_POSIX_WATCH_FS: "true"
+      STORAGE_USERS_POSIX_PERSONAL_SPACE_PATH_TEMPLATE: "users/{{.User.Username}}"
+      STORAGE_USERS_POSIX_GENERAL_SPACE_PATH_TEMPLATE: "projects/{{.Space.Name}}"
+    volumes:
+      - ${DATA_ROOT}/system/opencloud/config:/etc/opencloud
+      - ./csp.yaml:/etc/opencloud/csp.yaml:ro
+      - ${DATA_ROOT}/system/opencloud/data:/var/lib/opencloud
+      - ${DATA_ROOT}/users:/var/lib/opencloud/storage/users/users
+      - ${DATA_ROOT}/shared/files:/var/lib/opencloud/storage/users/projects/files
+      - ${DATA_ROOT}/shared/photos:/var/lib/opencloud/storage/users/projects/photos
+    networks:
+      - edge
+
+networks:
+  edge:
+    external: true
+    name: edge

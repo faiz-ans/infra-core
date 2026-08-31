@@ -17,7 +17,7 @@ Mark items tagged **secret** as secrets in Komodo.
 | `HTPC_UPSTREAM` | | Caddy upstreams, Homepage HTPC widgets, NAS restic client |
 | `DATA_ROOT` | | Bind-mount compose (`compose.yaml`). Core app state is `${DATA_ROOT}/system/<app>`. Periphery `/config` is a local volume; household data uses `${DATA_ROOT}/shared` and `${DATA_ROOT}/users`. A stack that uses `compose.nfs.yaml` does not set this. |
 | `NFS_EXPORT` | | Docker-NFS path of the OMV `shared` share (`/shared`). Used as `:${NFS_EXPORT}/media` etc. No quotes, not a drive letter |
-| `NFS_USERS` | | Docker-NFS path of the OMV `users` share (`/users`). Nextcloud only. No quotes |
+| `NFS_USERS` | | Docker-NFS path of the OMV `users` share (`/users`). Immich External Libraries. No quotes |
 | `BACKUP_DRIVE` | | HTPC Restic REST data directory |
 | `PUID` | | linuxserver images on both hosts |
 | `PGID` | | linuxserver images on both hosts |
@@ -67,13 +67,17 @@ Authelia user hashes live in `${DATA_ROOT}/system/authelia/users.yml` on the NAS
 
 `HOMEPAGE_VAR_DOMAIN` and `HOMEPAGE_VAR_HTPC_UPSTREAM` are **mapped from** `DOMAIN` and `HTPC_UPSTREAM` in the Homepage stack environment. Do not duplicate live values in git.
 
+## Files and photos
+
+| Key | Secret | Used by |
+|---|---|---|
+| `OPENCLOUD_ADMIN_PASSWORD` | secret | OpenCloud built-in `admin` (`IDM_ADMIN_PASSWORD`) |
+| `IMMICH_DB_PASSWORD` | secret | Immich Postgres (`immich` role). Not the Immich UI login |
+
 ## HTPC apps
 
 | Key | Secret | Used by |
 |---|---|---|
 | `GRAFANA_ADMIN_PASSWORD` | secret | Grafana |
-| `NEXTCLOUD_ADMIN_USER` | | Nextcloud first-run |
-| `NEXTCLOUD_ADMIN_PASSWORD` | secret | Nextcloud first-run |
-| `NEXTCLOUD_DB_PASSWORD` | secret | Nextcloud Postgres (`nextcloud` role). Not the admin login |
 | `SMB_USERNAME` | | Unused by catalog stacks. SMB is for Explorer/Finder only |
 | `SMB_PASSWORD` | secret | Unused by catalog stacks |

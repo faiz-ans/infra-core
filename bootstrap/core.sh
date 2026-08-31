@@ -78,9 +78,8 @@ RESTIC_REST_USER='$(quote_s "${RESTIC_REST_USER}")'
 RESTIC_REST_PASSWORD='$(quote_s "${RESTIC_REST_PASSWORD}")'
 WG_HOST='$(quote_s "${WG_HOST}")'
 GRAFANA_ADMIN_PASSWORD='$(quote_s "${GRAFANA_ADMIN_PASSWORD}")'
-NEXTCLOUD_ADMIN_USER='$(quote_s "${NEXTCLOUD_ADMIN_USER}")'
-NEXTCLOUD_ADMIN_PASSWORD='$(quote_s "${NEXTCLOUD_ADMIN_PASSWORD}")'
-NEXTCLOUD_DB_PASSWORD='$(quote_s "${NEXTCLOUD_DB_PASSWORD}")'
+OPENCLOUD_ADMIN_PASSWORD='$(quote_s "${OPENCLOUD_ADMIN_PASSWORD}")'
+IMMICH_DB_PASSWORD='$(quote_s "${IMMICH_DB_PASSWORD}")'
 DATA_ROOT='$(quote_s "${DATA_ROOT:-}")'
 EOF
   umask "${old}"
@@ -444,9 +443,14 @@ if [[ -f "${ANSWERS}" ]]; then
   # shellcheck disable=SC1090
   source "${ANSWERS}"
   echo "Loaded saved site answers from ${ANSWERS}."
-  if [[ -z "${NEXTCLOUD_DB_PASSWORD:-}" ]]; then
-    NEXTCLOUD_DB_PASSWORD=$(rand)
-    echo "Generated NEXTCLOUD_DB_PASSWORD (save now; add in Komodo if Core is already running)."
+  if [[ -z "${OPENCLOUD_ADMIN_PASSWORD:-}" ]]; then
+    OPENCLOUD_ADMIN_PASSWORD=$(rand)
+    echo "Generated OPENCLOUD_ADMIN_PASSWORD (save now; add in Komodo if Core is already running)."
+    save_answers
+  fi
+  if [[ -z "${IMMICH_DB_PASSWORD:-}" ]]; then
+    IMMICH_DB_PASSWORD=$(rand)
+    echo "Generated IMMICH_DB_PASSWORD (save now; add in Komodo if Core is already running)."
     save_answers
   fi
 else
@@ -474,9 +478,8 @@ else
   prompt_secret RESTIC_REST_PASSWORD "Restic REST password"
   prompt WG_HOST "WireGuard public endpoint host (off-LAN DNS name, not a LAN name)"
   prompt_secret GRAFANA_ADMIN_PASSWORD "Grafana admin password"
-  prompt NEXTCLOUD_ADMIN_USER "Nextcloud admin user" "admin"
-  prompt_secret NEXTCLOUD_ADMIN_PASSWORD "Nextcloud admin password"
-  prompt_secret NEXTCLOUD_DB_PASSWORD "Nextcloud PostgreSQL password (role nextcloud)"
+  prompt_secret OPENCLOUD_ADMIN_PASSWORD "OpenCloud admin password (user admin)"
+  prompt_secret IMMICH_DB_PASSWORD "Immich PostgreSQL password (role immich)"
   save_answers
 fi
 
@@ -505,12 +508,15 @@ mkdir -p \
   "${DATA_ROOT}/system/pihole" \
   "${DATA_ROOT}/system/wireguard" \
   "${DATA_ROOT}/system/restic" \
+  "${DATA_ROOT}/system/opencloud/config" \
+  "${DATA_ROOT}/system/opencloud/data" \
   "${DATA_ROOT}/shared/media" \
   "${DATA_ROOT}/shared/downloads" \
   "${DATA_ROOT}/shared/files" \
   "${DATA_ROOT}/shared/photos" \
   "${DATA_ROOT}/users"
 # mkdir -p "${DATA_ROOT}/users/<user>/{files,photos}" as you add household users.
+chown -R "${PUID}:${PGID}" "${DATA_ROOT}/system/opencloud"
 
 # --- Komodo compose.env and core.config.toml ---
 if [[ -f "${KOMODO_DIR}/bootstrap/compose.env" ]]; then
@@ -611,9 +617,8 @@ RESTIC_REST_PASSWORD = "${RESTIC_REST_PASSWORD}"
 WG_HOST = "${WG_HOST}"
 WG_UI_PASSWORD = "${WG_UI_PASSWORD}"
 GRAFANA_ADMIN_PASSWORD = "${GRAFANA_ADMIN_PASSWORD}"
-NEXTCLOUD_ADMIN_USER = "${NEXTCLOUD_ADMIN_USER}"
-NEXTCLOUD_ADMIN_PASSWORD = "${NEXTCLOUD_ADMIN_PASSWORD}"
-NEXTCLOUD_DB_PASSWORD = "${NEXTCLOUD_DB_PASSWORD}"
+OPENCLOUD_ADMIN_PASSWORD = "${OPENCLOUD_ADMIN_PASSWORD}"
+IMMICH_DB_PASSWORD = "${IMMICH_DB_PASSWORD}"
 HOMEPAGE_VAR_PIHOLE_TOKEN = ""
 HOMEPAGE_VAR_JELLYFIN_KEY = ""
 HOMEPAGE_VAR_SONARR_KEY = ""
@@ -714,12 +719,13 @@ echo "After the remote Periphery server is OK, add stacks/komodo/stacks-peripher
 echo "Leave restic and restic-rest deploy=false until BACKUP_DRIVE is the IronWolf."
 echo
 echo "Target layout:"
-echo "  ${DATA_ROOT}/system/{authelia,vaultwarden,gitea,pihole,wireguard,restic}"
+echo "  ${DATA_ROOT}/system/{authelia,vaultwarden,gitea,pihole,wireguard,restic,opencloud}"
 echo "  ${DATA_ROOT}/shared/{media,downloads,files,photos}"
 echo "  ${DATA_ROOT}/users/<user>/{files,photos}"
 echo "  NFS exports /shared and /users to the HTPC IP only (not disk root, not system/)."
 echo "  Komodo NFS_EXPORT=/shared NFS_USERS=/users"
-echo "  HTPC /config is a local Docker volume; media/files stay on NFS."
+echo "  HTPC /config is a local Docker volume; media/photos stay on NFS; OpenCloud on Core uses local binds."
+echo "  First-run: bootstrap/opencloud.md and bootstrap/immich.md."
 echo "  Pi-hole stack names: pihole (Core) and pihole-periphery (HTPC)."
 echo "  Router DHCP DNS: ${NAS_LAN_IP} first, then ${HTPC_UPSTREAM}. No public resolver as a third server."
 echo "  Each Pi-hole fetches its own Gravity."

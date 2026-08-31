@@ -1,6 +1,6 @@
 # OMV shares: NFS for apps, SMB for people
 
-Docker Desktop bind-mounts of a Windows SMB (or NFS) drive letter go through virtiofs and break pathing. This site’s media/HTPC stacks therefore use **`compose.nfs.yaml`** (Docker NFS volume driver). Those stacks keep `/config` on a local Docker volume so the apps can start if Core/NFS is down (Home Assistant also needs that so `ensure-http` can write `trusted_proxies`). Media, downloads, and Nextcloud user trees stay on NFS. Catalog default remains **`compose.yaml`** (`${DATA_ROOT}` binds) for local disk or a host NFS/SMB mount. Pick one file per stack in ResourceSync; do not merge them.
+Docker Desktop bind-mounts of a Windows SMB (or NFS) drive letter go through virtiofs and break pathing. This site’s media/HTPC stacks therefore use **`compose.nfs.yaml`** (Docker NFS volume driver). Those stacks keep `/config` on a local Docker volume so the apps can start if Core/NFS is down (Home Assistant also needs that so `ensure-http` can write `trusted_proxies`). Media, downloads, and Immich photo trees stay on NFS. OpenCloud on Core uses local binds of `users/` and `shared/`. Catalog default remains **`compose.yaml`** (`${DATA_ROOT}` binds) for local disk or a host NFS/SMB mount. Pick one file per stack in ResourceSync; do not merge them.
 
 Windows Explorer keeps using **SMB**. Do not point a `compose.yaml` stack’s `DATA_ROOT` at `Z:`. Core still uses the local uuid path as `DATA_ROOT`.
 

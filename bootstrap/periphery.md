@@ -21,9 +21,9 @@ Workload compose is transport-agnostic. Komodo `file_paths` chooses one file (ne
 | File | When | Komodo env |
 |---|---|---|
 | `compose.yaml` | Local disk, or a host mount of NFS/SMB/CIFS at `DATA_ROOT` | `DATA_ROOT` |
-| `compose.nfs.yaml` | Docker engine mounts OMV NFS itself (this HTPC) | `NAS_LAN_IP`, `NFS_EXPORT`, `NFS_USERS` (Nextcloud) |
+| `compose.nfs.yaml` | Docker engine mounts OMV NFS itself (this HTPC) | `NAS_LAN_IP`, `NFS_EXPORT`, `NFS_USERS` (Immich) |
 
-This site’s `stacks-periphery.toml` uses `compose.nfs.yaml` for Jellyfin, Arr, qBittorrent, and Nextcloud. Follow `bootstrap/omv-nfs.md`, then set `NAS_LAN_IP`, `NFS_EXPORT=/shared`, and `NFS_USERS=/users`. Do not set those stacks’ `DATA_ROOT` to `Z:`.
+This site’s `stacks-periphery.toml` uses `compose.nfs.yaml` for Jellyfin, Arr, qBittorrent, and Immich. Follow `bootstrap/omv-nfs.md`, then set `NAS_LAN_IP`, `NFS_EXPORT=/shared`, and `NFS_USERS=/users`. Do not set those stacks’ `DATA_ROOT` to `Z:`.
 
 Home Assistant’s HTPC file is also named `compose.nfs.yaml`, but `/config` is a **local Docker volume**. `trusted_proxies` is written into that volume at start (`ensure-http/`); do not bind-mount `configuration.yaml` (Docker Desktop drops single-file binds, which produces Caddy 400s). `.storage` is not on DATA_ROOT.
 
@@ -44,7 +44,8 @@ Allow inbound TCP from the LAN (Caddy on Core) on the published ports:
 | 8096 | Jellyfin |
 | 5055 | Seerr (`request.${DOMAIN}` via Caddy) |
 | 8123 | Home Assistant |
-| 8080 | Nextcloud |
+| 2283 | Immich (`photos.${DOMAIN}` via Caddy) |
+| 9980 | Collabora (`office.${DOMAIN}` via Caddy) |
 | 8081 | qBittorrent |
 | 8989 | Sonarr |
 | 7878 | Radarr |

@@ -1,0 +1,20 @@
+# Collabora Online on periphery. Caddy terminates TLS at office.${DOMAIN}.
+# OpenCloud WOPI allowlist is aliasgroup1 (the public cloud hostname).
+services:
+  collabora:
+    image: collabora/code:latest
+    container_name: collabora
+    restart: unless-stopped
+    extra_hosts:
+      - "cloud.${DOMAIN}:${NAS_LAN_IP}"
+    environment:
+      TZ: ${TZ}
+      aliasgroup1: https://cloud.${DOMAIN}:443
+      extra_params: "--o:ssl.enable=false --o:ssl.ssl_verification=false --o:ssl.termination=true --o:welcome.enable=false --o:net.frame_ancestors=cloud.${DOMAIN}"
+    ports:
+      - "9980:9980"
+    cap_add:
+      - MKNOD
+      - SYS_ADMIN
+    security_opt:
+      - seccomp:unconfined

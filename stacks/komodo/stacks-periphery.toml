@@ -5,7 +5,7 @@
 # repo path stays faiz-ans/infra-core. After Gitea is up, the same Komodo git
 # provider (gitea:3000) is used here; GitHub is a push mirror.
 # Storage: /config is always a local volume. Household data is either
-# compose.yaml + DATA_ROOT binds, or compose.nfs.yaml + NAS_LAN_IP + NFS_EXPORT (+ NFS_USERS for Nextcloud).
+# compose.yaml + DATA_ROOT binds, or compose.nfs.yaml + NAS_LAN_IP + NFS_EXPORT (+ NFS_USERS for Immich).
 # Do not list both files.
 
 # compose.nfs.yaml: media on NFS; /config is local (survives Core down).
@@ -87,32 +87,41 @@ NAS_LAN_IP = [[NAS_LAN_IP]]
 NFS_EXPORT = [[NFS_EXPORT]]
 """
 
-# compose.nfs.yaml: files/photos/users on NFS; /config and Postgres are local.
+# compose.nfs.yaml: photos/users on NFS; Postgres, Redis, ML, and upload are local.
 [[stack]]
-name = "nextcloud"
+name = "immich"
 deploy = true
 [stack.config]
 server = "periphery"
 repo = "faiz-ans/infra-core"
 branch = "main"
-run_directory = "stacks/workload/nextcloud"
+run_directory = "stacks/workload/immich"
 file_paths = ["compose.nfs.yaml"]
-config_files = [
-  { path = "custom-cont-init.d/10-proxy.sh", requires = "Redeploy" },
-]
 webhook_enabled = false
 poll_for_updates = true
 environment = """
 TZ = [[TZ]]
-PUID = [[PUID]]
-PGID = [[PGID]]
 NAS_LAN_IP = [[NAS_LAN_IP]]
 NFS_EXPORT = [[NFS_EXPORT]]
 NFS_USERS = [[NFS_USERS]]
-NEXTCLOUD_ADMIN_USER = [[NEXTCLOUD_ADMIN_USER]]
-NEXTCLOUD_ADMIN_PASSWORD = [[NEXTCLOUD_ADMIN_PASSWORD]]
-NEXTCLOUD_DB_PASSWORD = [[NEXTCLOUD_DB_PASSWORD]]
+IMMICH_DB_PASSWORD = [[IMMICH_DB_PASSWORD]]
+"""
+
+[[stack]]
+name = "collabora"
+deploy = true
+[stack.config]
+server = "periphery"
+repo = "faiz-ans/infra-core"
+branch = "main"
+run_directory = "stacks/workload/collabora"
+file_paths = ["compose.yaml"]
+webhook_enabled = false
+poll_for_updates = true
+environment = """
+TZ = [[TZ]]
 DOMAIN = [[DOMAIN]]
+NAS_LAN_IP = [[NAS_LAN_IP]]
 """
 
 # HA /config is a local volume. trusted_proxies is written at container start (ensure-http/).
