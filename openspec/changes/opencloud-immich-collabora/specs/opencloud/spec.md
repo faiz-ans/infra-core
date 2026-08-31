@@ -1,7 +1,7 @@
 ## ADDED Requirements
 
 ### Requirement: OpenCloud on Core with PosixFS
-OpenCloud SHALL deploy on server `core`, attach to the `edge` Docker network, and SHALL NOT publish a host port. Caddy SHALL proxy `cloud.{$DOMAIN}` (and `oc.` / `opencloud.` aliases) to the OpenCloud service by container name on port 9200. Storage SHALL use the PosixFS driver with collaborative watch enabled. Config and OpenCloud-internal state SHALL live under `${DATA_ROOT}/system/opencloud`. Personal spaces SHALL map to `${DATA_ROOT}/users/<username>`. Project spaces SHALL map under `${DATA_ROOT}/shared/` by space name (`files`, `photos`). The container MUST run as `${PUID}:${PGID}`. The stack MUST NOT use DecomposedFS or store household files only as opaque blobs.
+OpenCloud SHALL deploy on server `core`, attach to the `edge` Docker network, and SHALL NOT publish a host port. Caddy SHALL proxy `cloud.{$DOMAIN}` (and `oc.` / `opencloud.` aliases) to the OpenCloud service by container name on port 9200. Storage SHALL use the PosixFS driver with collaborative watch enabled. Config and OpenCloud-internal state SHALL live under `${DATA_ROOT}/system/opencloud`. Personal spaces SHALL map to `${DATA_ROOT}/users/<username>`. The stack MUST NOT bind `${DATA_ROOT}/shared/files` or `shared/photos` under the PosixFS root (nested Docker mounts break space xattrs and the filesystem watch). Household shared trees remain SMB and Immich NFS. The container MUST run as `${PUID}:${PGID}`. The stack MUST NOT use DecomposedFS or store personal files only as opaque blobs.
 
 #### Scenario: Caddy reaches OpenCloud on edge
 - **WHEN** a client opens `https://cloud.{$DOMAIN}`

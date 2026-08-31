@@ -1,6 +1,6 @@
 # OpenCloud first-run
 
-OpenCloud runs on **Core** (edge network). Files are PosixFS on local disk: personal space `users/<username>/`, household Spaces `shared/files` and `shared/photos`. Do not point it at HTPC NFS.
+OpenCloud runs on **Core** (edge network). Personal space is PosixFS on `users/<username>/`. Household `shared/files` and `shared/photos` stay SMB (and Immich NFS). Do not point OpenCloud at HTPC NFS, and do not bind those shared trees as OpenCloud Spaces.
 
 Caddy is `https://cloud.<DOMAIN>`. `nextcloud.` and `nc.` redirect here.
 
@@ -69,9 +69,9 @@ sudo docker logs -f opencloud
 
 Open **`https://cloud.<DOMAIN>`**. Log in as `admin` / `OPENCLOUD_ADMIN_PASSWORD`.
 
-Create household users whose **usernames match** `users/<name>` directories (`faiz`, `diana`, …). Each personal space is that directory (`files/` and `photos/` at the space root).
+Create household users whose **usernames match** `users/<name>` directories (`faiz`, `diana`, …). Each personal space **is** that directory. `files/` and `photos/` inside it are ordinary folders, not extra Spaces.
 
-Optional: create project Spaces named **`files`** and **`photos`** if they do not appear from disk. Those map to `shared/files` and `shared/photos`.
+Do **not** create project Spaces named `files` or `photos`. PosixFS cannot use nested Docker binds of `shared/files` and `shared/photos` as space roots (`node.Xattrs … no data available`). Household shared trees stay SMB; Immich indexes them over NFS.
 
 ## 4. Phone auto-upload (camera backup)
 
@@ -105,6 +105,6 @@ Do **not** delete NFS volumes or files under `shared/` and `users/`.
 | Login: Unexpected HTTP response: 500 | Built-in IDM bolt-store does not match `opencloud.yaml` (crash-loop init, or config wiped without data). Confirm the log has `idm`/`idp` LDAP 49 or `not found`. Wipe **both** `${DATA_ROOT}/system/opencloud/config` and `.../data` (not `posix`, `users`, or `shared`), start again so `init` reseeds. |
 | `extended attributes not supported` | Data disk must allow `user_xattr`. Do not move OpenCloud to HTPC NFS. |
 | Permission denied on `users/<name>` | Re-run `bootstrap/data-root-perms.sh` as root. |
-| Creating a Space fails (`X-Request-Id` / `can't evaluate field Space`) | Catalog used `{{.Space.Name}}`; PosixFS wants `{{.SpaceName}}`. Sync that compose change, Komodo → **opencloud** → **Redeploy**, then create **files** and **photos** again. |
+| Creating a Space fails / `node.Xattrs /posix/projects/photos: no data available` | Do not create project Spaces for `shared/files` or `shared/photos`. Personal space is `users/<name>`. Drop those nested binds (catalog), `rm -rf …/posix/projects`, Redeploy **opencloud**. |
 | Collabora iframe blocked / blank | Confirm `collabora` is Up on the HTPC and `office.<DOMAIN>` resolves to Core Caddy. |
 | Secret does not match | `IDM_ADMIN_PASSWORD` applies only on `opencloud init`. Changing the Komodo secret later does not update a live IDM. Reset with `opencloud idm resetpassword`, or wipe **both** config and data and init again. |
