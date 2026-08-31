@@ -6,7 +6,7 @@
             href: https://cloud.{{HOMEPAGE_VAR_DOMAIN}}
             server: core
             container: opencloud
-            icon: open-cloud.svg
+            icon: open-cloud-dark.svg
             description: Files
         - Immich:
             id: immich
