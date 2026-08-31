@@ -1,8 +1,7 @@
-# OpenCloud on Core. PosixFS on local DATA_ROOT binds (not HTPC NFS).
-# Personal space = ${DATA_ROOT}/users/<username> (one nested bind).
-# Do not bind shared/files|photos: PosixFS watch cannot treat those
-# nested mounts as project spaces (ENODATA xattrs, mixed-up paths).
-# Household shared trees stay SMB / Immich NFS.
+# OpenCloud on Core. PosixFS root is the household users tree (one bind).
+# Personal space = ${DATA_ROOT}/users/<username>. No nested mounts (those
+# break space xattrs and first-login Personal provisioning).
+# shared/files and shared/photos stay SMB / Immich NFS, not OpenCloud Spaces.
 services:
   opencloud:
     image: opencloudeu/opencloud-rolling:latest
@@ -41,15 +40,12 @@ services:
       STORAGE_USERS_ID_CACHE_STORE: nats-js-kv
       STORAGE_USERS_POSIX_WATCH_FS: "true"
       STORAGE_USERS_POSIX_ROOT: /posix
-      STORAGE_USERS_POSIX_PERSONAL_SPACE_PATH_TEMPLATE: "users/{{.User.Username}}"
+      STORAGE_USERS_POSIX_PERSONAL_SPACE_PATH_TEMPLATE: "{{.User.Username}}"
     volumes:
-      # posix/ must exist and be PUID-owned before start (xattr check).
-      # Nested binds under /var/lib/opencloud make Docker create storage/ as root.
       - ${DATA_ROOT}/system/opencloud/config:/etc/opencloud
       - ./csp.yaml:/etc/opencloud/csp.yaml:ro
       - ${DATA_ROOT}/system/opencloud/data:/var/lib/opencloud
-      - ${DATA_ROOT}/system/opencloud/posix:/posix
-      - ${DATA_ROOT}/users:/posix/users
+      - ${DATA_ROOT}/users:/posix
     networks:
       - edge
 

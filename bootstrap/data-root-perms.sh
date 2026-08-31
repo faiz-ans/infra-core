@@ -120,7 +120,8 @@ setfacl -R -d -m "${acl_shared}" "${DATA_ROOT}/shared"
 setfacl -b "${DATA_ROOT}/users" || true
 chown root:root "${DATA_ROOT}/users"
 chmod 755 "${DATA_ROOT}/users"
-users_acl="o::rx"
+# PUID writes posixfs-xattr-check at the users/ root when it is POSIX_ROOT.
+users_acl="o::rx,u:${PUID}:rwx"
 if [[ "${HAVE_ADMIN}" -eq 1 ]]; then
   users_acl="u:${ADMIN}:rwx,${users_acl}"
 fi

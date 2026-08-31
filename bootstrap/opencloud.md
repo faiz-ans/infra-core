@@ -69,9 +69,13 @@ sudo docker logs -f opencloud
 
 Open **`https://cloud.<DOMAIN>`**. Log in as `admin` / `OPENCLOUD_ADMIN_PASSWORD`.
 
-Create household users whose **usernames match** `users/<name>` directories (`faiz`, `diana`, …). Each personal space **is** that directory. `files/` and `photos/` inside it are ordinary folders, not extra Spaces.
+Create household users whose **usernames match** `users/<name>` directories (`faiz`, `diana`, …). Set the role to **User**, not **User Light**.
 
-Do **not** create project Spaces named `files` or `photos`. PosixFS cannot use nested Docker binds of `shared/files` and `shared/photos` as space roots (`node.Xattrs … no data available`). Household shared trees stay SMB; Immich indexes them over NFS.
+A **User cannot create Spaces**. Personal must appear by itself on first login. An empty Spaces list means PosixFS never provisioned `users/<name>`. After the catalog uses `users/` as POSIX_ROOT, re-run `data-root-perms.sh` so `${PUID}` can write the xattr check on `users/`, Redeploy **opencloud**, then log in as that user in the browser again.
+
+The Android app treats “no Personal space” as User Light even when the admin role is User. When Personal works in the browser, remove the account from the app and add it again.
+
+Do **not** create project Spaces for `shared/files` or `shared/photos`. Those stay SMB; Immich indexes them over NFS.
 
 ## 4. Phone auto-upload (camera backup)
 
