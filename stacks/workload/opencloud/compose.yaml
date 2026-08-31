@@ -38,15 +38,19 @@ services:
       STORAGE_USERS_DRIVER: posix
       STORAGE_USERS_ID_CACHE_STORE: nats-js-kv
       STORAGE_USERS_POSIX_WATCH_FS: "true"
+      STORAGE_USERS_POSIX_ROOT: /posix
       STORAGE_USERS_POSIX_PERSONAL_SPACE_PATH_TEMPLATE: "users/{{.User.Username}}"
       STORAGE_USERS_POSIX_GENERAL_SPACE_PATH_TEMPLATE: "projects/{{.Space.Name}}"
     volumes:
+      # Nested binds under /var/lib/opencloud make Docker create storage/ as
+      # root, so PUID cannot write posixfs-xattr-check or storage/metadata.
       - ${DATA_ROOT}/system/opencloud/config:/etc/opencloud
       - ./csp.yaml:/etc/opencloud/csp.yaml:ro
       - ${DATA_ROOT}/system/opencloud/data:/var/lib/opencloud
-      - ${DATA_ROOT}/users:/var/lib/opencloud/storage/users/users
-      - ${DATA_ROOT}/shared/files:/var/lib/opencloud/storage/users/projects/files
-      - ${DATA_ROOT}/shared/photos:/var/lib/opencloud/storage/users/projects/photos
+      - ${DATA_ROOT}/system/opencloud/posix:/posix
+      - ${DATA_ROOT}/users:/posix/users
+      - ${DATA_ROOT}/shared/files:/posix/projects/files
+      - ${DATA_ROOT}/shared/photos:/posix/projects/photos
     networks:
       - edge
 

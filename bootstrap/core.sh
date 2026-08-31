@@ -510,6 +510,7 @@ mkdir -p \
   "${DATA_ROOT}/system/restic" \
   "${DATA_ROOT}/system/opencloud/config" \
   "${DATA_ROOT}/system/opencloud/data" \
+  "${DATA_ROOT}/system/opencloud/posix" \
   "${DATA_ROOT}/shared/media" \
   "${DATA_ROOT}/shared/downloads" \
   "${DATA_ROOT}/shared/files" \

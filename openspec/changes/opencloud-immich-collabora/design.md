@@ -26,10 +26,10 @@ This change splits the jobs: OpenCloud writes files on Core local disk; Immich i
 
 ### 1. OpenCloud on Core, PosixFS, local binds
 
-OpenCloud joins the `edge` network (Caddy `opencloud:9200`). Config/state under `${DATA_ROOT}/system/opencloud`. PosixFS root is `/var/lib/opencloud/storage/users` with:
+OpenCloud joins the `edge` network (Caddy `opencloud:9200`). Config/state under `${DATA_ROOT}/system/opencloud`. PosixFS root is `/posix` (`${DATA_ROOT}/system/opencloud/posix`), not under `/var/lib/opencloud` (Docker nested binds there create `storage/` as root and PUID cannot write the xattr check or `storage/metadata`):
 
-- `${DATA_ROOT}/users` → `.../users` (personal space `users/{{.User.Username}}` = `users/<user>/`)
-- `${DATA_ROOT}/shared` → `.../projects` (project space named `files` or `photos` maps to `shared/files` or `shared/photos`)
+- `${DATA_ROOT}/users` → `/posix/users` (personal space `users/{{.User.Username}}` = `users/<user>/`)
+- `${DATA_ROOT}/shared/files` and `shared/photos` → `/posix/projects/{files,photos}`
 
 `STORAGE_USERS_POSIX_WATCH_FS=true` so SMB/Finder writes are noticed. Container UID is `${PUID}:${PGID}`. `OC_INSECURE=true` and `PROXY_ENABLE_BASIC_AUTH=true` because Caddy uses internal TLS and mobile DAV is not OIDC yet.
 

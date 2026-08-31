@@ -7,7 +7,7 @@
             server: core
             container: opencloud
             icon: opencloud.svg
-            description: Files / Sync
+            description: Files
         - Immich:
             id: immich
             href: https://photos.{{HOMEPAGE_VAR_DOMAIN}}

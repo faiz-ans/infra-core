@@ -30,6 +30,16 @@ docker ps --filter name=opencloud --format "table {{.Names}}\t{{.Status}}"
 
 You want `opencloud` **Up**. It must **not** publish 9200 on the LAN (Caddy uses the edge network).
 
+If logs show `posixfs-xattr-check` or `mkdir …/storage/metadata: permission denied`, Docker already created `data/storage` as root. On Core (container stopped is fine):
+
+```text
+sudo docker stop opencloud
+sudo mkdir -p /srv/dev-disk-by-uuid-d6e267fd-109f-4971-bfb1-26b3d99e0d47/system/opencloud/posix
+sudo chown -R 1000:1000 /srv/dev-disk-by-uuid-d6e267fd-109f-4971-bfb1-26b3d99e0d47/system/opencloud
+```
+
+Use this site’s `DATA_ROOT` and `PUID`/`PGID` if they are not those values. Then Redeploy **opencloud** after the catalog that mounts PosixFS at `/posix` is synced.
+
 ## 3. Login and users
 
 Open **`https://cloud.<DOMAIN>`**. Log in as `admin` / `OPENCLOUD_ADMIN_PASSWORD`.
@@ -64,6 +74,7 @@ Do **not** delete NFS volumes or files under `shared/` and `users/`.
 
 | Symptom | What to do |
 |---|---|
+| `posixfs-xattr-check` or `mkdir …/storage/metadata: permission denied` | Nested Docker binds created `system/opencloud/data/storage` as root. On Core, as root: stop the container, `chown -R ${PUID}:${PGID}` `system/opencloud`, `mkdir -p …/system/opencloud/posix`, chown that too, Redeploy (catalog must mount PosixFS at `/posix`, not under `/var/lib/opencloud`). |
 | `extended attributes not supported` | Data disk must allow `user_xattr`. Do not move OpenCloud to HTPC NFS. |
 | Permission denied on `users/<name>` | Re-run `bootstrap/data-root-perms.sh` as root. |
 | Collabora iframe blocked / blank | Confirm `collabora` is Up on the HTPC and `office.<DOMAIN>` resolves to Core Caddy. |
