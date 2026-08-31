@@ -40,7 +40,7 @@ services:
       STORAGE_USERS_POSIX_WATCH_FS: "true"
       STORAGE_USERS_POSIX_ROOT: /posix
       STORAGE_USERS_POSIX_PERSONAL_SPACE_PATH_TEMPLATE: "users/{{.User.Username}}"
-      STORAGE_USERS_POSIX_GENERAL_SPACE_PATH_TEMPLATE: "projects/{{.Space.Name}}"
+      STORAGE_USERS_POSIX_GENERAL_SPACE_PATH_TEMPLATE: "projects/{{.SpaceName}}"
     volumes:
       # Nested binds under /var/lib/opencloud make Docker create storage/ as
       # root, so PUID cannot write posixfs-xattr-check or storage/metadata.

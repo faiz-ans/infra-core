@@ -48,6 +48,23 @@ sudo rm -rf /srv/dev-disk-by-uuid-d6e267fd-109f-4971-bfb1-26b3d99e0d47/system/op
 sudo docker start opencloud
 ```
 
+If the UI then returns **Unexpected HTTP response: 500** on login, config and IDM are out of sync (typical after a crash-loop `init`). Wipe **both** `config` and `data` so `opencloud init` can run again. Do **not** delete `posix/`, `users/`, or `shared/`. Confirm `OPENCLOUD_ADMIN_PASSWORD` is set in Komodo first (that becomes the `admin` password on this new init).
+
+Do not use a shell glob (`config/*`). Those directories are `700` for UID 1000, so `sudo rm -rf …/*` expands as your user, matches nothing, and leaves `opencloud.yaml` / `idm.boltdb` in place.
+
+```text
+sudo docker stop opencloud
+sudo find /srv/dev-disk-by-uuid-d6e267fd-109f-4971-bfb1-26b3d99e0d47/system/opencloud/config -mindepth 1 -delete
+sudo find /srv/dev-disk-by-uuid-d6e267fd-109f-4971-bfb1-26b3d99e0d47/system/opencloud/data -mindepth 1 -delete
+sudo chown -R 1000:1000 /srv/dev-disk-by-uuid-d6e267fd-109f-4971-bfb1-26b3d99e0d47/system/opencloud
+sudo ls -la /srv/dev-disk-by-uuid-d6e267fd-109f-4971-bfb1-26b3d99e0d47/system/opencloud/config
+sudo ls -la /srv/dev-disk-by-uuid-d6e267fd-109f-4971-bfb1-26b3d99e0d47/system/opencloud/data
+sudo docker start opencloud
+sudo docker logs -f opencloud
+```
+
+`ls` must show empty directories (only `.` and `..`). Logs must show `opencloud init` creating a new config, **not** `config file already exists`. Wait until the container stays **Up**, then log in as `admin` / `OPENCLOUD_ADMIN_PASSWORD`. Do not wipe `config` without `data` (or the reverse); that is what causes the 500.
+
 ## 3. Login and users
 
 Open **`https://cloud.<DOMAIN>`**. Log in as `admin` / `OPENCLOUD_ADMIN_PASSWORD`.
@@ -85,7 +102,9 @@ Do **not** delete NFS volumes or files under `shared/` and `users/`.
 | `cloud.<DOMAIN>` does not load while `opencloud` is Up | Caddyfile change is not applied by deploying OpenCloud. Komodo → **caddy** → **Redeploy**. Then from Core: `docker exec caddy wget -S -O- --timeout=10 http://opencloud:9200/ \| head`. You want HTTP 200, not `no such host` or connection refused. |
 | `posixfs-xattr-check` or `mkdir …/storage/metadata: permission denied` | Nested Docker binds created `data/storage` as root. Stop the container, `chown -R ${PUID}:${PGID}` `system/opencloud`, ensure `posix/` exists, Redeploy with PosixFS at `/posix`. |
 | `error parsing mapping JSON` / search service | Empty Bleve index from a failed first start. Stop the container, `rm -rf ${DATA_ROOT}/system/opencloud/data/search`, start again. |
+| Login: Unexpected HTTP response: 500 | Built-in IDM bolt-store does not match `opencloud.yaml` (crash-loop init, or config wiped without data). Confirm the log has `idm`/`idp` LDAP 49 or `not found`. Wipe **both** `${DATA_ROOT}/system/opencloud/config` and `.../data` (not `posix`, `users`, or `shared`), start again so `init` reseeds. |
 | `extended attributes not supported` | Data disk must allow `user_xattr`. Do not move OpenCloud to HTPC NFS. |
 | Permission denied on `users/<name>` | Re-run `bootstrap/data-root-perms.sh` as root. |
+| Creating a Space fails (`X-Request-Id` / `can't evaluate field Space`) | Catalog used `{{.Space.Name}}`; PosixFS wants `{{.SpaceName}}`. Sync that compose change, Komodo → **opencloud** → **Redeploy**, then create **files** and **photos** again. |
 | Collabora iframe blocked / blank | Confirm `collabora` is Up on the HTPC and `office.<DOMAIN>` resolves to Core Caddy. |
-| Secret does not match | Set `OPENCLOUD_ADMIN_PASSWORD` in Komodo, Redeploy. `opencloud init` only applies the password on first config create; wipe `${DATA_ROOT}/system/opencloud/config` only if you accept a fresh IDM. |
+| Secret does not match | `IDM_ADMIN_PASSWORD` applies only on `opencloud init`. Changing the Komodo secret later does not update a live IDM. Reset with `opencloud idm resetpassword`, or wipe **both** config and data and init again. |
