@@ -8,6 +8,13 @@
             container: opencloud
             icon: open-cloud-dark.svg
             description: Files
+        - Collabora:
+            id: collabora
+            href: https://office.{{HOMEPAGE_VAR_DOMAIN}}
+            server: periphery
+            container: collabora
+            icon: collabora-online.svg
+            description: Office
         - Immich:
             id: immich
             href: https://photos.{{HOMEPAGE_VAR_DOMAIN}}
