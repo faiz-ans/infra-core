@@ -28,13 +28,6 @@
             container: seerr
             icon: seerr.svg
             description: Request Movies & TV
-        - Vaultwarden:
-            id: vaultwarden
-            href: https://pass.{{HOMEPAGE_VAR_DOMAIN}}
-            server: core
-            container: vaultwarden
-            icon: bitwarden.svg
-            description: Passwords
         - Jotty:
             id: jotty
             href: https://notes.{{HOMEPAGE_VAR_DOMAIN}}
@@ -49,6 +42,13 @@
             container: linkding
             icon: linkding.png
             description: Bookmarks
+        - Vaultwarden:
+            id: vaultwarden
+            href: https://pass.{{HOMEPAGE_VAR_DOMAIN}}
+            server: core
+            container: vaultwarden
+            icon: bitwarden.svg
+            description: Passwords
         - Adventure Log:
             id: adventurelog
             href: https://travel.{{HOMEPAGE_VAR_DOMAIN}}
