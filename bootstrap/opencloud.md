@@ -71,7 +71,30 @@ Open **`https://cloud.<DOMAIN>`**. Log in as `admin` / `OPENCLOUD_ADMIN_PASSWORD
 
 Create household users whose **usernames match** `users/<name>` directories (`faiz`, `diana`, …). Set the role to **User**, not **User Light**.
 
-A **User cannot create Spaces**. Personal must appear by itself on first login. An empty Spaces list means PosixFS never provisioned `users/<name>`. After the catalog uses `users/` as POSIX_ROOT, re-run `data-root-perms.sh` so `${PUID}` can write the xattr check on `users/`, Redeploy **opencloud**, then log in as that user in the browser again.
+A **User cannot create Spaces**. Personal appears on first login.
+
+PosixFS root must be `system/opencloud/posix` (so `indexes/` and `uploads/` are not next to homes). Personal path is `users/<username>` via a bind of `${DATA_ROOT}/users` → `/posix/users`. If `users/` was used as POSIX_ROOT, CreateStorageSpace fails with `node.Xattrs /posix/uploads: no data available`.
+
+Pre-existing `users/<name>` homes also block create (already-exists, no xattrs). Park them, let OpenCloud mkdir the space, then restore:
+
+```text
+DATA=/srv/dev-disk-by-uuid-d6e267fd-109f-4971-bfb1-26b3d99e0d47
+sudo docker stop opencloud
+sudo mkdir -p "$DATA/system/opencloud/posix/users"
+sudo chown -R 1000:1000 "$DATA/system/opencloud/posix"
+# Move internals out of the household tree if a previous layout put them there.
+if [[ -d $DATA/users/indexes && ! -d $DATA/system/opencloud/posix/indexes ]]; then
+  sudo mv "$DATA/users/indexes" "$DATA/system/opencloud/posix/indexes"
+fi
+if [[ -d $DATA/users/uploads && ! -d $DATA/system/opencloud/posix/uploads ]]; then
+  sudo mv "$DATA/users/uploads" "$DATA/system/opencloud/posix/uploads"
+fi
+sudo chown root:1000 "$DATA/users"
+sudo chmod 775 "$DATA/users"
+sudo docker start opencloud
+```
+
+After Redeploy, confirm `TPL=users/{{.User.Username}}` and a bind `$DATA/users` → `/posix/users`. Keep `faiz.__oc_incoming` parked. Sign in as **faiz**. Then `getfattr -d $DATA/users/faiz` must show `user.oc.space.id`. Restore with `opencloud-adopt-homes.sh restore`.
 
 The Android app treats “no Personal space” as User Light even when the admin role is User. When Personal works in the browser, remove the account from the app and add it again.
 
@@ -109,6 +132,7 @@ Do **not** delete NFS volumes or files under `shared/` and `users/`.
 | Login: Unexpected HTTP response: 500 | Built-in IDM bolt-store does not match `opencloud.yaml` (crash-loop init, or config wiped without data). Confirm the log has `idm`/`idp` LDAP 49 or `not found`. Wipe **both** `${DATA_ROOT}/system/opencloud/config` and `.../data` (not `posix`, `users`, or `shared`), start again so `init` reseeds. |
 | `extended attributes not supported` | Data disk must allow `user_xattr`. Do not move OpenCloud to HTPC NFS. |
 | Permission denied on `users/<name>` | Re-run `bootstrap/data-root-perms.sh` as root. |
+| Admin Settings → Spaces is empty / faiz has no Personal | Household `users/<name>` already existed, so CreateStorageSpace never indexed a space. Run `opencloud-adopt-homes.sh park`, log in as each user, then `restore`. Confirm with `getfattr -d ${DATA_ROOT}/users/faiz` (`user.oc.space.id`). |
 | Creating a Space fails / `node.Xattrs /posix/projects/photos: no data available` | Do not create project Spaces for `shared/files` or `shared/photos`. Personal space is `users/<name>`. Drop those nested binds (catalog), `rm -rf …/posix/projects`, Redeploy **opencloud**. |
 | Collabora iframe blocked / blank | Confirm `collabora` is Up on the HTPC and `office.<DOMAIN>` resolves to Core Caddy. |
 | Secret does not match | `IDM_ADMIN_PASSWORD` applies only on `opencloud init`. Changing the Komodo secret later does not update a live IDM. Reset with `opencloud idm resetpassword`, or wipe **both** config and data and init again. |

@@ -1,6 +1,8 @@
-# OpenCloud on Core. PosixFS root is the household users tree (one bind).
-# Personal space = ${DATA_ROOT}/users/<username>. No nested mounts (those
-# break space xattrs and first-login Personal provisioning).
+# OpenCloud on Core. PosixFS root is system/opencloud/posix (indexes, uploads).
+# Personal space = users/<username> under that root, via one bind of
+# ${DATA_ROOT}/users → /posix/users. Do not mount users/ as POSIX_ROOT:
+# uploads/ then sits next to homes and CreateStorageSpace fails with
+# "node.Xattrs /posix/uploads: no data available".
 # shared/files and shared/photos stay SMB / Immich NFS, not OpenCloud Spaces.
 services:
   opencloud:
@@ -40,12 +42,14 @@ services:
       STORAGE_USERS_ID_CACHE_STORE: nats-js-kv
       STORAGE_USERS_POSIX_WATCH_FS: "true"
       STORAGE_USERS_POSIX_ROOT: /posix
-      STORAGE_USERS_POSIX_PERSONAL_SPACE_PATH_TEMPLATE: "{{.User.Username}}"
+      STORAGE_USERS_POSIX_PERSONAL_SPACE_PATH_TEMPLATE: "users/{{.User.Username}}"
+      STORAGE_USERS_POSIX_GENERAL_SPACE_PATH_TEMPLATE: "projects/{{.SpaceId}}"
     volumes:
       - ${DATA_ROOT}/system/opencloud/config:/etc/opencloud
       - ./csp.yaml:/etc/opencloud/csp.yaml:ro
       - ${DATA_ROOT}/system/opencloud/data:/var/lib/opencloud
-      - ${DATA_ROOT}/users:/posix
+      - ${DATA_ROOT}/system/opencloud/posix:/posix
+      - ${DATA_ROOT}/users:/posix/users
     networks:
       - edge
 

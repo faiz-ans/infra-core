@@ -118,10 +118,12 @@ setfacl -R -d -m "${acl_shared}" "${DATA_ROOT}/shared"
 
 # Drop leftover OMV ACLs on users/ (they override chmod and block even 'other').
 setfacl -b "${DATA_ROOT}/users" || true
-chown root:root "${DATA_ROOT}/users"
-chmod 755 "${DATA_ROOT}/users"
-# PUID writes posixfs-xattr-check at the users/ root when it is POSIX_ROOT.
-users_acl="o::rx,u:${PUID}:rwx"
+# PUID must mkdir users/<name> (OpenCloud CreateStorageSpace) and write the
+# posixfs-xattr-check tempfile. root:root 755 is not enough; use group PGID
+# plus an ACL (and a default ACL so new space dirs stay writable).
+chown root:"${PGID}" "${DATA_ROOT}/users"
+chmod 775 "${DATA_ROOT}/users"
+users_acl="g:${PGID}:rwx,u:${PUID}:rwx,o::rx"
 if [[ "${HAVE_ADMIN}" -eq 1 ]]; then
   users_acl="u:${ADMIN}:rwx,${users_acl}"
 fi
@@ -129,10 +131,16 @@ if [[ "${HAVE_HTPC}" -eq 1 ]]; then
   users_acl="u:${HTPC}:rwx,${users_acl}"
 fi
 setfacl -m "${users_acl}" "${DATA_ROOT}/users"
+setfacl -d -m "${users_acl}" "${DATA_ROOT}/users"
 
 apply_home() {
   local user="$1"
   local home="${DATA_ROOT}/users/${user}"
+  # Do not recreate a home that opencloud-adopt-homes.sh has parked.
+  if [[ -d "${home}.__oc_incoming" ]]; then
+    echo "Skipping ${user}: parked at ${user}.__oc_incoming (do not mkdir a stub home)."
+    return
+  fi
   mkdir -p "${home}/files" "${home}/photos"
   if getent group "${user}" >/dev/null; then
     chown -R "${user}:${user}" "${home}"
