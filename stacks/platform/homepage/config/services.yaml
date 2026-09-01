@@ -63,13 +63,6 @@
             container: homeassistant
             icon: home-assistant.svg
             description: Home Automation
-        - ZoneMinder:
-            id: zoneminder
-            href: https://cams.{{HOMEPAGE_VAR_DOMAIN}}
-            server: periphery
-            container: zoneminder
-            icon: zoneminder.webp
-            description: Home Surveillance
 
     - Web:
         - Gmail:

@@ -154,11 +154,6 @@ https://desk.{$DOMAIN}, https://rustdesk.{$DOMAIN} {
 	respond "RustDesk ID/relay is this host (LAN and WireGuard only). Use the native client. Do not port-forward 21115-21119." 200
 }
 
-https://cams.{$DOMAIN}, https://zm.{$DOMAIN}, https://zoneminder.{$DOMAIN} {
-	tls internal
-	reverse_proxy {$HTPC_UPSTREAM}:8084
-}
-
 https://travel.{$DOMAIN}, https://trips.{$DOMAIN}, https://adventurelog.{$DOMAIN} {
 	tls internal
 	reverse_proxy {$HTPC_UPSTREAM}:8015
