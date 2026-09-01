@@ -21,6 +21,7 @@
 - [x] 4.1 Create `system/{jotty,linkding,rustdesk}` in `data-root-perms.sh` / README
 - [x] 4.2 Add `bootstrap/{jotty,linkding,rustdesk,adventurelog}.md`; update `periphery.md` firewall ports
 
-## 5. Drop ZoneMinder
+## 5. Drop NVR from catalog
 
-- [x] 5.1 Remove ZoneMinder compose, ResourceSync, Caddy, Homepage, secrets, bootstrap, and `shared/cameras` from the catalog
+- [x] 5.1 Remove ZoneMinder compose, ResourceSync, Caddy `cams.`/`zm.`/`zoneminder.`, Homepage tile, `ZM_DB_PASSWORD`, bootstrap notes, and `shared/cameras` mkdir
+- [x] 5.2 Do not ship a Frigate replacement in this change

@@ -1,6 +1,6 @@
 ## Context
 
-The catalog already splits always-on Core apps (edge network + Caddy by container name) from HTPC apps (published ports + `{$HTPC_UPSTREAM}`). WireGuard is host-network on Core; the only router forward is UDP 51820. Core is a 4GB NAS. This change adds household apps without waiting on the IronWolf `DATA_ROOT` move. ZoneMinder was tried and then dropped from the catalog.
+The catalog already splits always-on Core apps (edge network + Caddy by container name) from HTPC apps (published ports + `{$HTPC_UPSTREAM}`). WireGuard is host-network on Core; the only router forward is UDP 51820. Core is a 4GB NAS. This change adds four household apps without waiting on the IronWolf `DATA_ROOT` move. An NVR is deferred.
 
 ## Goals / Non-Goals
 
@@ -17,7 +17,6 @@ The catalog already splits always-on Core apps (edge network + Caddy by containe
 - Authelia OIDC / proxy auth for these apps.
 - RustDesk Server Pro (web console on 21114).
 - Migrating `DATA_ROOT` onto the IronWolf.
-- ZoneMinder, Frigate, or any NVR.
 - Opening WireGuard or Caddy 80/443 policy beyond what already exists.
 
 ## Decisions
@@ -34,8 +33,6 @@ The catalog already splits always-on Core apps (edge network + Caddy by containe
 **Alternative considered:** Adventure Log on Core. Rejected: PostGIS plus the aio image on a 4GB Pi next to OpenCloud/Gitea/Caddy.
 
 **Alternative considered:** RustDesk on periphery. Rejected: HTPC sleep/off would drop ID/relay.
-
-**Alternative considered:** ZoneMinder on periphery with NFS `shared/cameras`. Rejected after deploy: not kept in the catalog.
 
 ### 2. Jotty and Linkding: edge, no host ports
 
@@ -66,7 +63,11 @@ Optional HTTPS page at `desk.` / `rustdesk.` with a static `respond` so Homepage
 
 **Alternative considered:** Bridge network + published ports. Rejected: hbbs NAT/heartbeat is unreliable unless it sees the real source IP; host net matches RustDesk’s Linux docs and this catalog’s WireGuard stack.
 
-### 4. Adventure Log standard (aio) on periphery
+
+
+
+
+### 5. Adventure Log standard (aio) on periphery
 
 Official `ghcr.io/seanmorley15/adventurelog:latest` + `postgis/postgis:16-3.5`. `SITE_URL=https://travel.${DOMAIN}`. `POSTGRES_PASSWORD` and `DJANGO_ADMIN_PASSWORD` from Komodo. `DISABLE_REGISTRATION=True`. Publish `8015:80`. Local volumes for Postgres and media (like Immich DB — not NFS). Caddy: `travel.` `adventures.` `adventurelog.` → `{$HTPC_UPSTREAM}:8015`.
 
