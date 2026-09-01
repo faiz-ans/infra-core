@@ -68,7 +68,7 @@
             href: https://cams.{{HOMEPAGE_VAR_DOMAIN}}
             server: periphery
             container: zoneminder
-            icon: zone-minder.webp
+            icon: zoneminder.webp
             description: Home Surveillance
 
     - Web:
