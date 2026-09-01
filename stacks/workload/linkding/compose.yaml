@@ -1,0 +1,20 @@
+# Linkding on Core. SQLite under system/linkding. Caddy on edge.
+services:
+  linkding:
+    image: sissbruecker/linkding:latest
+    container_name: linkding
+    restart: unless-stopped
+    environment:
+      TZ: ${TZ}
+      LD_SUPERUSER_NAME: ${LINKDING_SUPERUSER_NAME}
+      LD_SUPERUSER_PASSWORD: ${LINKDING_SUPERUSER_PASSWORD}
+      LD_CSRF_TRUSTED_ORIGINS: https://links.${DOMAIN},https://bookmarks.${DOMAIN},https://linkding.${DOMAIN}
+    volumes:
+      - ${DATA_ROOT}/system/linkding:/etc/linkding/data
+    networks:
+      - edge
+
+networks:
+  edge:
+    external: true
+    name: edge

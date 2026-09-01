@@ -94,7 +94,7 @@ sudo chmod 775 "$DATA/users"
 sudo docker start opencloud
 ```
 
-After Redeploy, confirm `TPL=users/{{.User.Username}}` and a bind `$DATA/users` → `/posix/users`. Keep `faiz.__oc_incoming` parked. Sign in as **faiz**. Then `getfattr -d $DATA/users/faiz` must show `user.oc.space.id`. Restore with `opencloud-adopt-homes.sh restore`.
+After Redeploy, confirm `TPL=users/{{.User.Username}}` and a bind `$DATA/users` → `/posix/users`. Park pre-existing homes with `opencloud-adopt-homes.sh park` (that moves them to `system/opencloud/incoming/`, not a sibling under `users/`). Sign in as each user. `getfattr -d $DATA/users/<name>` must show `user.oc.space.id`. Then `opencloud-adopt-homes.sh restore`.
 
 The Android app treats “no Personal space” as User Light even when the admin role is User. When Personal works in the browser, remove the account from the app and add it again.
 

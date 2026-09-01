@@ -1,0 +1,25 @@
+# Jotty on Core. Notes/checklists are files under system/jotty. Caddy on edge.
+services:
+  jotty:
+    image: ghcr.io/fccview/jotty:latest
+    container_name: jotty
+    restart: unless-stopped
+    user: "${PUID}:${PGID}"
+    environment:
+      TZ: ${TZ}
+      NODE_ENV: production
+      PUID: ${PUID}
+      PGID: ${PGID}
+      APP_URL: https://notes.${DOMAIN}
+      HTTPS: "true"
+    volumes:
+      - ${DATA_ROOT}/system/jotty/data:/app/data
+      - ${DATA_ROOT}/system/jotty/config:/app/config
+      - ${DATA_ROOT}/system/jotty/cache:/app/.next/cache
+    networks:
+      - edge
+
+networks:
+  edge:
+    external: true
+    name: edge

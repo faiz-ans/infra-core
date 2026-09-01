@@ -23,7 +23,7 @@ Workload compose is transport-agnostic. Komodo `file_paths` chooses one file (ne
 | `compose.yaml` | Local disk, or a host mount of NFS/SMB/CIFS at `DATA_ROOT` | `DATA_ROOT` |
 | `compose.nfs.yaml` | Docker engine mounts OMV NFS itself (this HTPC) | `NAS_LAN_IP`, `NFS_EXPORT`, `NFS_USERS` (Immich) |
 
-This site’s `stacks-periphery.toml` uses `compose.nfs.yaml` for Jellyfin, Arr, qBittorrent, and Immich. Follow `bootstrap/omv-nfs.md`, then set `NAS_LAN_IP`, `NFS_EXPORT=/shared`, and `NFS_USERS=/users`. Do not set those stacks’ `DATA_ROOT` to `Z:`.
+This site’s `stacks-periphery.toml` uses `compose.nfs.yaml` for Jellyfin, Arr, qBittorrent, Immich, and ZoneMinder. Follow `bootstrap/omv-nfs.md`, then set `NAS_LAN_IP`, `NFS_EXPORT=/shared`, and `NFS_USERS=/users`. Do not set those stacks’ `DATA_ROOT` to `Z:`.
 
 Home Assistant’s HTPC file is also named `compose.nfs.yaml`, but `/config` is a **local Docker volume**. `trusted_proxies` is written into that volume at start (`ensure-http/`); do not bind-mount `configuration.yaml` (Docker Desktop drops single-file binds, which produces Caddy 400s). `.storage` is not on DATA_ROOT.
 
@@ -53,6 +53,8 @@ Allow inbound TCP from the LAN (Caddy on Core) on the published ports:
 | 3000 | Grafana |
 | 9090 | Prometheus (optional) |
 | 8000 | Restic REST |
+| 8084 | ZoneMinder (`cams.${DOMAIN}` via Caddy) |
+| 8015 | Adventure Log (`travel.${DOMAIN}` via Caddy) |
 
 Router DHCP DNS: Core `NAS_LAN_IP` first, then `HTPC_UPSTREAM`. Do not add a public resolver as a third DHCP DNS. Each Pi-hole fetches its own Gravity. Windows may already use :53 (ICS / another DNS); if the stack cannot bind, stop that listener.
 

@@ -1,0 +1,26 @@
+# RustDesk OSS ID (hbbs) and relay (hbbr) on Core. Host network so UDP 21116
+# sees real peer IPs (same reason wg-easy is host-net). Do not attach to edge.
+# Do not publish 21115–21119 through Caddy. Do not port-forward them on the
+# router. Off-LAN clients use wg-easy, then desk.${DOMAIN} / NAS_LAN_IP.
+# hbbs -r advertises the NAS LAN address as relay, not a Docker bridge IP.
+
+services:
+  hbbr:
+    image: rustdesk/rustdesk-server:latest
+    container_name: hbbr
+    restart: unless-stopped
+    network_mode: host
+    command: hbbr
+    volumes:
+      - ${DATA_ROOT}/system/rustdesk:/root
+
+  hbbs:
+    image: rustdesk/rustdesk-server:latest
+    container_name: hbbs
+    restart: unless-stopped
+    network_mode: host
+    command: ["hbbs", "-r", "${NAS_LAN_IP}:21117"]
+    depends_on:
+      - hbbr
+    volumes:
+      - ${DATA_ROOT}/system/rustdesk:/root

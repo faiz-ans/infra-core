@@ -18,8 +18,10 @@ fi
 
 DATA_ROOT="${DATA_ROOT:-/srv/dev-disk-by-uuid-d6e267fd-109f-4971-bfb1-26b3d99e0d47}"
 HOUSEHOLD=(faiz diana)
-STAMP="__oc_incoming"
 USERS="${DATA_ROOT}/users"
+# Park outside users/: a sibling like faiz.__oc_incoming makes CreateStorageSpace
+# fail with node.Xattrs /posix/users/faiz.__oc_incoming.
+INCOMING="${DATA_ROOT}/system/opencloud/incoming"
 
 usage() {
   echo "Usage: $0 park|restore|status"
@@ -53,10 +55,11 @@ status() {
 
 park() {
   docker stop opencloud
+  mkdir -p "${INCOMING}"
   local u src dst
   for u in "${HOUSEHOLD[@]}"; do
     src="${USERS}/${u}"
-    dst="${USERS}/${u}.${STAMP}"
+    dst="${INCOMING}/${u}"
     if [[ ! -d "${src}" ]]; then
       echo "skip ${u} (no home)"
       continue
@@ -70,7 +73,7 @@ park() {
       exit 1
     fi
     mv "${src}" "${dst}"
-    echo "parked ${u} -> ${u}.${STAMP}"
+    echo "parked ${u} -> system/opencloud/incoming/${u}"
   done
   docker start opencloud
   echo
@@ -82,7 +85,10 @@ restore() {
   docker stop opencloud
   local u src dst item
   for u in "${HOUSEHOLD[@]}"; do
-    src="${USERS}/${u}.${STAMP}"
+    src="${INCOMING}/${u}"
+    if [[ ! -d "${src}" && -d "${USERS}/${u}.__oc_incoming" ]]; then
+      src="${USERS}/${u}.__oc_incoming"
+    fi
     dst="${USERS}/${u}"
     if [[ ! -d "${src}" ]]; then
       echo "skip ${u} (no parked home)"

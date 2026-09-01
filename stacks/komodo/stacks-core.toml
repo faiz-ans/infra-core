@@ -192,6 +192,65 @@ VAULTWARDEN_ADMIN_TOKEN = [[VAULTWARDEN_ADMIN_TOKEN]]
 SIGNUPS_ALLOWED = [[SIGNUPS_ALLOWED]]
 """
 
+[[stack]]
+name = "jotty"
+deploy = true
+after = ["caddy"]
+[stack.config]
+server = "core"
+repo = "faiz-ans/infra-core"
+branch = "main"
+run_directory = "stacks/workload/jotty"
+file_paths = ["compose.yaml"]
+webhook_enabled = false
+poll_for_updates = true
+environment = """
+DOMAIN = [[DOMAIN]]
+TZ = [[TZ]]
+DATA_ROOT = [[DATA_ROOT]]
+PUID = [[PUID]]
+PGID = [[PGID]]
+"""
+
+[[stack]]
+name = "linkding"
+deploy = true
+after = ["caddy"]
+[stack.config]
+server = "core"
+repo = "faiz-ans/infra-core"
+branch = "main"
+run_directory = "stacks/workload/linkding"
+file_paths = ["compose.yaml"]
+webhook_enabled = false
+poll_for_updates = true
+environment = """
+DOMAIN = [[DOMAIN]]
+TZ = [[TZ]]
+DATA_ROOT = [[DATA_ROOT]]
+LINKDING_SUPERUSER_NAME = [[LINKDING_SUPERUSER_NAME]]
+LINKDING_SUPERUSER_PASSWORD = [[LINKDING_SUPERUSER_PASSWORD]]
+"""
+
+# Host network. Not on edge. Do not port-forward 21115–21119; off-LAN is wg-easy.
+[[stack]]
+name = "rustdesk"
+deploy = true
+after = ["caddy"]
+[stack.config]
+server = "core"
+repo = "faiz-ans/infra-core"
+branch = "main"
+run_directory = "stacks/workload/rustdesk"
+file_paths = ["compose.yaml"]
+webhook_enabled = false
+poll_for_updates = true
+environment = """
+TZ = [[TZ]]
+DATA_ROOT = [[DATA_ROOT]]
+NAS_LAN_IP = [[NAS_LAN_IP]]
+"""
+
 # Off until restic-rest is on the IronWolf. Applying this now would crash-loop against :8000.
 [[stack]]
 name = "restic"

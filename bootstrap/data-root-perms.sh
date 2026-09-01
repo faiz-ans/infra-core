@@ -76,6 +76,11 @@ mkdir -p \
   "${DATA_ROOT}/system/opencloud/data" \
   "${DATA_ROOT}/system/opencloud/posix" \
   "${DATA_ROOT}/system/opencloud/posix/projects" \
+  "${DATA_ROOT}/system/jotty/data" \
+  "${DATA_ROOT}/system/jotty/config" \
+  "${DATA_ROOT}/system/jotty/cache" \
+  "${DATA_ROOT}/system/linkding" \
+  "${DATA_ROOT}/system/rustdesk" \
   "${DATA_ROOT}/shared/media" \
   "${DATA_ROOT}/shared/media/movies" \
   "${DATA_ROOT}/shared/media/tv" \
@@ -84,6 +89,7 @@ mkdir -p \
   "${DATA_ROOT}/shared/downloads/incomplete" \
   "${DATA_ROOT}/shared/files" \
   "${DATA_ROOT}/shared/photos" \
+  "${DATA_ROOT}/shared/cameras" \
   "${DATA_ROOT}/users"
 
 if [[ "${HAVE_HTPC}" -eq 1 ]]; then
@@ -99,6 +105,7 @@ chown root:root "${DATA_ROOT}/system"
 chmod 700 "${DATA_ROOT}/system"
 setfacl -b "${DATA_ROOT}/system" || true
 chown -R "${PUID}:${PGID}" "${DATA_ROOT}/system/opencloud"
+chown -R "${PUID}:${PGID}" "${DATA_ROOT}/system/jotty"
 
 # linuxserver containers (Radarr/qBit/Jellyfin) write as PUID:PGID over NFS.
 acl_shared="g:${SHARED_GROUP}:rwx,u:${PUID}:rwx,g:${PGID}:rwx"
@@ -137,8 +144,8 @@ apply_home() {
   local user="$1"
   local home="${DATA_ROOT}/users/${user}"
   # Do not recreate a home that opencloud-adopt-homes.sh has parked.
-  if [[ -d "${home}.__oc_incoming" ]]; then
-    echo "Skipping ${user}: parked at ${user}.__oc_incoming (do not mkdir a stub home)."
+  if [[ -d "${home}.__oc_incoming" || -d "${DATA_ROOT}/system/opencloud/incoming/${user}" ]]; then
+    echo "Skipping ${user}: parked (do not mkdir a stub home)."
     return
   fi
   mkdir -p "${home}/files" "${home}/photos"

@@ -86,12 +86,12 @@ PowerShell (Docker Desktop running):
 ```text
 docker volume create --driver local --opt type=nfs --opt o=addr=<NAS_LAN_IP>,nfsvers=4,rw,nolock,hard --opt device=:/shared nas-nfs-shared
 docker volume create --driver local --opt type=nfs --opt o=addr=<NAS_LAN_IP>,nfsvers=4,rw,nolock,hard --opt device=:/users nas-nfs-users
-docker run --rm -v nas-nfs-shared:/shared alpine ls /shared/media /shared/downloads /shared/files /shared/photos
+docker run --rm -v nas-nfs-shared:/shared alpine ls /shared/media /shared/downloads /shared/files /shared/photos /shared/cameras
 docker run --rm -v nas-nfs-users:/users alpine ls /users
 docker volume rm nas-nfs-shared nas-nfs-users
 ```
 
-You should see media/downloads/files/photos and the user homes. You should not see `system/`.
+You should see media/downloads/files/photos/cameras and the user homes. You should not see `system/`.
 
 If `ls` fails with `mount.nfs` / `permission denied`, the usual causes are: NFS not applied, client IP not the HTPC, missing `insecure`, or TCP 2049 blocked.
 

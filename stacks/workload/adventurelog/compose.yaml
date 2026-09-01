@@ -1,0 +1,48 @@
+# Adventure Log standard (aio) on periphery. Postgres and media are local volumes.
+# Caddy terminates TLS at travel.${DOMAIN}.
+services:
+  db:
+    image: postgis/postgis:16-3.5
+    container_name: adventurelog-db
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: database
+      POSTGRES_USER: adventure
+      POSTGRES_PASSWORD: ${ADVENTURELOG_POSTGRES_PASSWORD}
+    volumes:
+      - adventurelog-postgres:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U adventure -d database"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+      start_period: 10s
+
+  adventurelog:
+    image: ghcr.io/seanmorley15/adventurelog:latest
+    container_name: adventurelog
+    restart: unless-stopped
+    depends_on:
+      db:
+        condition: service_healthy
+    environment:
+      TZ: ${TZ}
+      SITE_URL: https://travel.${DOMAIN}
+      POSTGRES_PASSWORD: ${ADVENTURELOG_POSTGRES_PASSWORD}
+      PGHOST: db
+      POSTGRES_DB: database
+      POSTGRES_USER: adventure
+      DJANGO_ADMIN_USERNAME: admin
+      DJANGO_ADMIN_PASSWORD: ${ADVENTURELOG_ADMIN_PASSWORD}
+      DJANGO_ADMIN_EMAIL: admin@${DOMAIN}
+      DISABLE_REGISTRATION: "True"
+    ports:
+      - "8015:80"
+    volumes:
+      - adventurelog-media:/code/media
+
+volumes:
+  adventurelog-postgres:
+    name: adventurelog-postgres
+  adventurelog-media:
+    name: adventurelog-media

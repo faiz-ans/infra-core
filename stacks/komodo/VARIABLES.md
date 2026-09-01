@@ -15,7 +15,7 @@ Mark items tagged **secret** as secrets in Komodo.
 | `TZ` | | Most containers |
 | `NAS_LAN_IP` | | Pi-hole wildcard (`*.DOMAIN` → Caddy), Homepage/Prometheus scrape, periphery NFS `addr=` |
 | `HTPC_UPSTREAM` | | Caddy upstreams, Homepage HTPC widgets, NAS restic client |
-| `DATA_ROOT` | | Bind-mount compose (`compose.yaml`). Core app state is `${DATA_ROOT}/system/<app>`. Periphery `/config` is a local volume; household data uses `${DATA_ROOT}/shared` and `${DATA_ROOT}/users`. A stack that uses `compose.nfs.yaml` does not set this. |
+| `DATA_ROOT` | | Bind-mount compose (`compose.yaml`). Core app state is `${DATA_ROOT}/system/<app>`. Periphery `/config` is a local volume; household data uses `${DATA_ROOT}/shared` and `${DATA_ROOT}/users`. A stack that uses `compose.nfs.yaml` does not set this. ZoneMinder events are `shared/cameras`. |
 | `NFS_EXPORT` | | Docker-NFS path of the OMV `shared` share (`/shared`). Used as `:${NFS_EXPORT}/media` etc. No quotes, not a drive letter |
 | `NFS_USERS` | | Docker-NFS path of the OMV `users` share (`/users`). Immich External Libraries. No quotes |
 | `BACKUP_DRIVE` | | HTPC Restic REST data directory |
@@ -66,6 +66,27 @@ Authelia user hashes live in `${DATA_ROOT}/system/authelia/users.yml` on the NAS
 `HOMEPAGE_VAR_WGEASY_PASSWORD` is the live wg-easy `wg-admin` login (not `WG_UI_PASSWORD` unless you never changed it). wg-easy 2FA must stay off for the widget API.
 
 `HOMEPAGE_VAR_DOMAIN` and `HOMEPAGE_VAR_HTPC_UPSTREAM` are **mapped from** `DOMAIN` and `HTPC_UPSTREAM` in the Homepage stack environment. Do not duplicate live values in git.
+
+## Notes and bookmarks
+
+| Key | Secret | Used by |
+|---|---|---|
+| `LINKDING_SUPERUSER_NAME` | | Linkding initial admin (use `admin`) |
+| `LINKDING_SUPERUSER_PASSWORD` | secret | Linkding initial admin |
+
+Jotty has no Komodo secret; the first browser visit creates the admin.
+
+## Remote desktop
+
+RustDesk OSS generates its own key pair under `${DATA_ROOT}/system/rustdesk`. No Komodo secret. Do not port-forward 21115–21119; off-LAN is wg-easy.
+
+## Cameras and travel
+
+| Key | Secret | Used by |
+|---|---|---|
+| `ZM_DB_PASSWORD` | secret | ZoneMinder MariaDB root and `zmuser` |
+| `ADVENTURELOG_POSTGRES_PASSWORD` | secret | Adventure Log PostGIS |
+| `ADVENTURELOG_ADMIN_PASSWORD` | secret | Adventure Log Django admin on first boot |
 
 ## Files and photos
 
