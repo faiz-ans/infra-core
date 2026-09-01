@@ -39,6 +39,9 @@ services:
       PGID: ${PGID}
     ports:
       - "8084:80"
+    # Docker Desktop WSL2: 1G shm plus a 2G cap still OOMs Immich/Jellyfin and
+    # drops Periphery. Keep both small. Raise only after the UI stays up.
+    mem_limit: 768m
     volumes:
       - zoneminder-events:/data
       - zoneminder-config:/config
@@ -46,7 +49,7 @@ services:
       - type: tmpfs
         target: /dev/shm
         tmpfs:
-          size: 1000000000
+          size: 268435456
 
 volumes:
   zoneminder-db:

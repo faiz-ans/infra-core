@@ -124,10 +124,12 @@ DOMAIN = [[DOMAIN]]
 NAS_LAN_IP = [[NAS_LAN_IP]]
 """
 
+# Manual Deploy only. Auto-deploy with Immich/Jellyfin running OOMs Docker Desktop
+# (1G /dev/shm in the image's example compose). Pull the image first, then Deploy.
 # compose.nfs.yaml: events on NFS shared/cameras; MariaDB/config/log are local.
 [[stack]]
 name = "zoneminder"
-deploy = true
+deploy = false
 [stack.config]
 server = "periphery"
 repo = "faiz-ans/infra-core"
