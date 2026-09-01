@@ -104,11 +104,6 @@ https://auto.{$DOMAIN}, https://ha.{$DOMAIN}, https://homeassistant.{$DOMAIN} {
 	}
 }
 
-https://nextcloud.{$DOMAIN}, https://nc.{$DOMAIN} {
-	tls internal
-	redir https://cloud.{$DOMAIN}{uri} permanent
-}
-
 https://cloud.{$DOMAIN}, https://oc.{$DOMAIN}, https://opencloud.{$DOMAIN} {
 	tls internal
 	reverse_proxy opencloud:9200 {
@@ -121,12 +116,12 @@ https://cloud.{$DOMAIN}, https://oc.{$DOMAIN}, https://opencloud.{$DOMAIN} {
 	}
 }
 
-https://photos.{$DOMAIN}, https://immich.{$DOMAIN} {
+https://photos.{$DOMAIN}, https://gallery.{$DOMAIN}, https://immich.{$DOMAIN} {
 	tls internal
 	reverse_proxy {$HTPC_UPSTREAM}:2283
 }
 
-https://office.{$DOMAIN}, https://collabora.{$DOMAIN} {
+https://office.{$DOMAIN}, https://docs.{$DOMAIN}, https://collabora.{$DOMAIN} {
 	tls internal
 	reverse_proxy {$HTPC_UPSTREAM}:9980 {
 		header_up Host {host}
@@ -149,17 +144,12 @@ https://links.{$DOMAIN}, https://bookmarks.{$DOMAIN}, https://linkding.{$DOMAIN}
 	reverse_proxy linkding:9090
 }
 
-https://desk.{$DOMAIN}, https://rustdesk.{$DOMAIN} {
+https://desk.{$DOMAIN}, https://remote.{$DOMAIN}, https://rustdesk.{$DOMAIN} {
 	tls internal
 	respond "RustDesk ID/relay is this host (LAN and WireGuard only). Use the native client. Do not port-forward 21115-21119." 200
 }
 
-https://cams.{$DOMAIN}, https://zm.{$DOMAIN}, https://zoneminder.{$DOMAIN} {
-	tls internal
-	reverse_proxy {$HTPC_UPSTREAM}:8084
-}
-
-https://travel.{$DOMAIN}, https://trips.{$DOMAIN}, https://adventurelog.{$DOMAIN} {
+https://trips.{$DOMAIN}, https://travel.{$DOMAIN}, https://adventurelog.{$DOMAIN} {
 	tls internal
 	reverse_proxy {$HTPC_UPSTREAM}:8015
 }

@@ -7,17 +7,20 @@
 
 ## 2. Periphery stacks
 
-- [x] 2.1 Add ZoneMinder `compose.yaml` and `compose.nfs.yaml` (local DB/config; events on shared/cameras)
-- [x] 2.2 Add Adventure Log compose (aio + PostGIS, SITE_URL, local volumes, 8015)
-- [x] 2.3 Register `zoneminder` and `adventurelog` in `stacks-periphery.toml`
+- [x] 2.1 Add Adventure Log compose (aio + PostGIS, SITE_URL, local volumes, 8015)
+- [x] 2.2 Register `adventurelog` in `stacks-periphery.toml`
 
 ## 3. Edge, Homepage, secrets
 
-- [x] 3.1 Caddyfile: Jotty, Linkding, ZoneMinder, Adventure Log vhosts; RustDesk static hint at `desk.` / `rustdesk.`
-- [x] 3.2 Homepage tiles for the five apps
+- [x] 3.1 Caddyfile: Jotty, Linkding, Adventure Log vhosts; RustDesk static hint at `desk.` / `rustdesk.`
+- [x] 3.2 Homepage tiles for Jotty, Linkding, RustDesk, and Adventure Log
 - [x] 3.3 Document and wire Komodo keys in `VARIABLES.md` and `core.sh`
 
 ## 4. Bootstrap and first-run
 
-- [x] 4.1 Create `system/{jotty,linkding,rustdesk}` and `shared/cameras` in `data-root-perms.sh` / README
-- [x] 4.2 Add `bootstrap/{jotty,linkding,rustdesk,zoneminder,adventurelog}.md`; update `periphery.md` firewall ports
+- [x] 4.1 Create `system/{jotty,linkding,rustdesk}` in `data-root-perms.sh` / README
+- [x] 4.2 Add `bootstrap/{jotty,linkding,rustdesk,adventurelog}.md`; update `periphery.md` firewall ports
+
+## 5. Drop ZoneMinder
+
+- [x] 5.1 Remove ZoneMinder compose, ResourceSync, Caddy, Homepage, secrets, bootstrap, and `shared/cameras` from the catalog

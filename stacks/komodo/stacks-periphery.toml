@@ -124,27 +124,6 @@ DOMAIN = [[DOMAIN]]
 NAS_LAN_IP = [[NAS_LAN_IP]]
 """
 
-# compose.nfs.yaml: events on NFS shared/cameras; MariaDB/config/log are local.
-[[stack]]
-name = "zoneminder"
-deploy = true
-[stack.config]
-server = "periphery"
-repo = "faiz-ans/infra-core"
-branch = "main"
-run_directory = "stacks/workload/zoneminder"
-file_paths = ["compose.nfs.yaml"]
-webhook_enabled = false
-poll_for_updates = true
-environment = """
-TZ = [[TZ]]
-PUID = [[PUID]]
-PGID = [[PGID]]
-NAS_LAN_IP = [[NAS_LAN_IP]]
-NFS_EXPORT = [[NFS_EXPORT]]
-ZM_DB_PASSWORD = [[ZM_DB_PASSWORD]]
-"""
-
 # Local volumes for PostGIS and media. Caddy proxies :8015.
 [[stack]]
 name = "adventurelog"

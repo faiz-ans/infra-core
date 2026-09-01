@@ -82,7 +82,6 @@ OPENCLOUD_ADMIN_PASSWORD='$(quote_s "${OPENCLOUD_ADMIN_PASSWORD}")'
 IMMICH_DB_PASSWORD='$(quote_s "${IMMICH_DB_PASSWORD}")'
 LINKDING_SUPERUSER_NAME='$(quote_s "${LINKDING_SUPERUSER_NAME:-admin}")'
 LINKDING_SUPERUSER_PASSWORD='$(quote_s "${LINKDING_SUPERUSER_PASSWORD}")'
-ZM_DB_PASSWORD='$(quote_s "${ZM_DB_PASSWORD}")'
 ADVENTURELOG_POSTGRES_PASSWORD='$(quote_s "${ADVENTURELOG_POSTGRES_PASSWORD}")'
 ADVENTURELOG_ADMIN_PASSWORD='$(quote_s "${ADVENTURELOG_ADMIN_PASSWORD}")'
 DATA_ROOT='$(quote_s "${DATA_ROOT:-}")'
@@ -467,11 +466,6 @@ if [[ -f "${ANSWERS}" ]]; then
     echo "Generated LINKDING_SUPERUSER_PASSWORD (save now; add in Komodo if Core is already running)."
     save_answers
   fi
-  if [[ -z "${ZM_DB_PASSWORD:-}" ]]; then
-    ZM_DB_PASSWORD=$(rand)
-    echo "Generated ZM_DB_PASSWORD (save now; add in Komodo if Core is already running)."
-    save_answers
-  fi
   if [[ -z "${ADVENTURELOG_POSTGRES_PASSWORD:-}" ]]; then
     ADVENTURELOG_POSTGRES_PASSWORD=$(rand)
     echo "Generated ADVENTURELOG_POSTGRES_PASSWORD (save now; add in Komodo if Core is already running)."
@@ -511,7 +505,6 @@ else
   prompt_secret IMMICH_DB_PASSWORD "Immich PostgreSQL password (role immich)"
   prompt LINKDING_SUPERUSER_NAME "Linkding admin username" "admin"
   prompt_secret LINKDING_SUPERUSER_PASSWORD "Linkding admin password"
-  prompt_secret ZM_DB_PASSWORD "ZoneMinder MariaDB password"
   prompt_secret ADVENTURELOG_POSTGRES_PASSWORD "Adventure Log PostgreSQL password"
   prompt_secret ADVENTURELOG_ADMIN_PASSWORD "Adventure Log admin password"
   save_answers
@@ -554,7 +547,6 @@ mkdir -p \
   "${DATA_ROOT}/shared/downloads" \
   "${DATA_ROOT}/shared/files" \
   "${DATA_ROOT}/shared/photos" \
-  "${DATA_ROOT}/shared/cameras" \
   "${DATA_ROOT}/users"
 # mkdir -p "${DATA_ROOT}/users/<user>/{files,photos}" as you add household users.
 chown -R "${PUID}:${PGID}" "${DATA_ROOT}/system/opencloud"
@@ -663,7 +655,6 @@ OPENCLOUD_ADMIN_PASSWORD = "${OPENCLOUD_ADMIN_PASSWORD}"
 IMMICH_DB_PASSWORD = "${IMMICH_DB_PASSWORD}"
 LINKDING_SUPERUSER_NAME = "${LINKDING_SUPERUSER_NAME}"
 LINKDING_SUPERUSER_PASSWORD = "${LINKDING_SUPERUSER_PASSWORD}"
-ZM_DB_PASSWORD = "${ZM_DB_PASSWORD}"
 ADVENTURELOG_POSTGRES_PASSWORD = "${ADVENTURELOG_POSTGRES_PASSWORD}"
 ADVENTURELOG_ADMIN_PASSWORD = "${ADVENTURELOG_ADMIN_PASSWORD}"
 HOMEPAGE_VAR_PIHOLE_TOKEN = ""
@@ -767,12 +758,12 @@ echo "Leave restic and restic-rest deploy=false until BACKUP_DRIVE is the IronWo
 echo
 echo "Target layout:"
 echo "  ${DATA_ROOT}/system/{authelia,vaultwarden,gitea,pihole,wireguard,restic,opencloud,jotty,linkding,rustdesk}"
-echo "  ${DATA_ROOT}/shared/{media,downloads,files,photos,cameras}"
+echo "  ${DATA_ROOT}/shared/{media,downloads,files,photos}"
 echo "  ${DATA_ROOT}/users/<user>/{files,photos}"
 echo "  NFS exports /shared and /users to the HTPC IP only (not disk root, not system/)."
 echo "  Komodo NFS_EXPORT=/shared NFS_USERS=/users"
-echo "  HTPC /config is a local Docker volume; media/photos/cameras stay on NFS; OpenCloud on Core uses local binds."
-echo "  First-run: bootstrap/opencloud.md, bootstrap/immich.md, bootstrap/jotty.md, bootstrap/linkding.md, bootstrap/rustdesk.md, bootstrap/zoneminder.md, bootstrap/adventurelog.md."
+echo "  HTPC /config is a local Docker volume; media/photos stay on NFS; OpenCloud on Core uses local binds."
+echo "  First-run: bootstrap/opencloud.md, bootstrap/immich.md, bootstrap/jotty.md, bootstrap/linkding.md, bootstrap/rustdesk.md, bootstrap/adventurelog.md."
 echo "  Pi-hole stack names: pihole (Core) and pihole-periphery (HTPC)."
 echo "  Router DHCP DNS: ${NAS_LAN_IP} first, then ${HTPC_UPSTREAM}. No public resolver as a third server."
 echo "  Each Pi-hole fetches its own Gravity."
