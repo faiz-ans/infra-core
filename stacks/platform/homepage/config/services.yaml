@@ -35,19 +35,12 @@
             container: vaultwarden
             icon: bitwarden.svg
             description: Passwords
-        - Home Assistant:
-            id: homeassistant
-            href: https://auto.{{HOMEPAGE_VAR_DOMAIN}}
-            server: periphery
-            container: homeassistant
-            icon: home-assistant.svg
-            description: Home Automation
         - Jotty:
             id: jotty
             href: https://notes.{{HOMEPAGE_VAR_DOMAIN}}
             server: core
             container: jotty
-            icon: mdi-notebook-edit
+            icon: jotty.svg
             description: Notes
         - Linkding:
             id: linkding
@@ -61,15 +54,22 @@
             href: https://travel.{{HOMEPAGE_VAR_DOMAIN}}
             server: periphery
             container: adventurelog
-            icon: mdi-hiking
-            description: Travel
+            icon: adventure-log.svg
+            description: Travel Log
+        - Home Assistant:
+            id: homeassistant
+            href: https://auto.{{HOMEPAGE_VAR_DOMAIN}}
+            server: periphery
+            container: homeassistant
+            icon: home-assistant.svg
+            description: Home Automation
         - ZoneMinder:
             id: zoneminder
             href: https://cams.{{HOMEPAGE_VAR_DOMAIN}}
             server: periphery
             container: zoneminder
-            icon: zoneminder.png
-            description: Cameras
+            icon: zone-minder.webp
+            description: Home Surveillance
 
     - Web:
         - Gmail:
@@ -209,7 +209,7 @@
             server: core
             container: hbbs
             icon: rustdesk.png
-            description: Remote desktop (WireGuard off-LAN)
+            description: Remote Desktop
         - Linksys EA8300:
             href: https://wifi.{{HOMEPAGE_VAR_DOMAIN}}
             siteMonitor: https://192.168.1.1/
