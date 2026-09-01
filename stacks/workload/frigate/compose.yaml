@@ -1,0 +1,48 @@
+# Frigate on periphery. /config (SQLite + site cameras) is a local volume.
+# Household recordings via DATA_ROOT bind. Docker-engine NFS: deploy
+# compose.nfs.yaml instead. Caddy terminates TLS at cams.${DOMAIN}.
+# Seed config is copied only when the volume has no config.yml.
+services:
+  mosquitto:
+    image: eclipse-mosquitto:2
+    container_name: frigate-mqtt
+    restart: unless-stopped
+    ports:
+      - "1883:1883"
+    volumes:
+      - ./mosquitto:/mosquitto/config:ro
+
+  frigate:
+    image: ghcr.io/blakeblackshear/frigate:stable
+    container_name: frigate
+    restart: unless-stopped
+    stop_grace_period: 30s
+    shm_size: "256mb"
+    depends_on:
+      - mosquitto
+    environment:
+      TZ: ${TZ}
+    entrypoint: ["/bin/sh", "-c"]
+    command:
+      - |
+        if [ ! -f /config/config.yml ] && [ ! -f /config/config.yaml ]; then
+          cp /seed/config.yml /config/config.yml
+        fi
+        exec /init
+    ports:
+      - "8971:8971"
+      - "8554:8554"
+      - "8555:8555/tcp"
+      - "8555:8555/udp"
+    volumes:
+      - frigate-config:/config
+      - ${DATA_ROOT}/shared/cameras:/media/frigate
+      - ./seed:/seed:ro
+      - type: tmpfs
+        target: /tmp/cache
+        tmpfs:
+          size: 1000000000
+
+volumes:
+  frigate-config:
+    name: frigate-config

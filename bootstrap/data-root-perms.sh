@@ -89,6 +89,7 @@ mkdir -p \
   "${DATA_ROOT}/shared/downloads/incomplete" \
   "${DATA_ROOT}/shared/files" \
   "${DATA_ROOT}/shared/photos" \
+  "${DATA_ROOT}/shared/cameras" \
   "${DATA_ROOT}/users"
 
 if [[ "${HAVE_HTPC}" -eq 1 ]]; then

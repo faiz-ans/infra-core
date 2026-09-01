@@ -98,6 +98,10 @@ RustDesk OSS generates its own key pair under `${DATA_ROOT}/system/rustdesk`. No
 | `OPENCLOUD_ADMIN_PASSWORD` | secret | OpenCloud built-in `admin` (`IDM_ADMIN_PASSWORD`) |
 | `IMMICH_DB_PASSWORD` | secret | Immich Postgres (`immich` role). Not the Immich UI login |
 
+## NVR
+
+Frigate has no Komodo secret. The first start prints an admin password in `docker logs frigate`. MQTT is anonymous on the HTPC LAN port 1883 (not Caddy). Camera RTSP URLs live in the HTPC `frigate-config` volume, not git.
+
 ## HTPC apps
 
 | Key | Secret | Used by |

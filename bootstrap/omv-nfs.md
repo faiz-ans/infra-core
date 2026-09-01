@@ -1,6 +1,6 @@
 # OMV shares: NFS for apps, SMB for people
 
-Docker Desktop bind-mounts of a Windows SMB (or NFS) drive letter go through virtiofs and break pathing. This site’s media/HTPC stacks therefore use **`compose.nfs.yaml`** (Docker NFS volume driver). Those stacks keep `/config` on a local Docker volume so the apps can start if Core/NFS is down (Home Assistant also needs that so `ensure-http` can write `trusted_proxies`). Media, downloads, and Immich photo trees stay on NFS. OpenCloud on Core uses local binds of `users/` and `shared/`. Catalog default remains **`compose.yaml`** (`${DATA_ROOT}` binds) for local disk or a host NFS/SMB mount. Pick one file per stack in ResourceSync; do not merge them.
+Docker Desktop bind-mounts of a Windows SMB (or NFS) drive letter go through virtiofs and break pathing. This site’s media/HTPC stacks therefore use **`compose.nfs.yaml`** (Docker NFS volume driver). Those stacks keep `/config` on a local Docker volume so the apps can start if Core/NFS is down (Home Assistant also needs that so `ensure-http` can write `trusted_proxies`). Media, downloads, Immich photo trees, and Frigate recordings stay on NFS. OpenCloud on Core uses local binds of `users/` and `shared/`. Catalog default remains **`compose.yaml`** (`${DATA_ROOT}` binds) for local disk or a host NFS/SMB mount. Pick one file per stack in ResourceSync; do not merge them.
 
 Windows Explorer keeps using **SMB**. Do not point a `compose.yaml` stack’s `DATA_ROOT` at `Z:`. Core still uses the local uuid path as `DATA_ROOT`.
 
@@ -86,12 +86,12 @@ PowerShell (Docker Desktop running):
 ```text
 docker volume create --driver local --opt type=nfs --opt o=addr=<NAS_LAN_IP>,nfsvers=4,rw,nolock,hard --opt device=:/shared nas-nfs-shared
 docker volume create --driver local --opt type=nfs --opt o=addr=<NAS_LAN_IP>,nfsvers=4,rw,nolock,hard --opt device=:/users nas-nfs-users
-docker run --rm -v nas-nfs-shared:/shared alpine ls /shared/media /shared/downloads /shared/files /shared/photos
+docker run --rm -v nas-nfs-shared:/shared alpine ls /shared/media /shared/downloads /shared/files /shared/photos /shared/cameras
 docker run --rm -v nas-nfs-users:/users alpine ls /users
 docker volume rm nas-nfs-shared nas-nfs-users
 ```
 
-You should see media/downloads/files/photos and the user homes. You should not see `system/`.
+You should see media/downloads/files/photos/cameras and the user homes. You should not see `system/`. If `cameras` is missing, run `bootstrap/data-root-perms.sh` on Core.
 
 If `ls` fails with `mount.nfs` / `permission denied`, the usual causes are: NFS not applied, client IP not the HTPC, missing `insecure`, or TCP 2049 blocked.
 

@@ -1,5 +1,9 @@
 # Outbound Periphery for a remote Docker engine (default server name: periphery).
 # Copy to that host and pass an env file — do not commit filled env.
+# Pin the compose network off 192.168.0.0/16. Docker Desktop’s default /16
+# pools run out after ~12 stacks and the next network swallows the LAN.
+# Required on the HTPC: bootstrap/periphery.md §1 (periphery-docker-engine.ps1
+# or windows/docker-engine.json). If Periphery is already Not OK, §7.
 
 services:
   periphery:
@@ -16,3 +20,11 @@ services:
       - /var/run/docker.sock:/var/run/docker.sock
       - /proc:/proc
       - ${PERIPHERY_ROOT_DIRECTORY:-/etc/komodo}:${PERIPHERY_ROOT_DIRECTORY:-/etc/komodo}
+
+networks:
+  default:
+    driver: bridge
+    ipam:
+      config:
+        - subnet: 10.200.1.0/24
+

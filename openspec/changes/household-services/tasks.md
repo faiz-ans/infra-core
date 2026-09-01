@@ -26,3 +26,9 @@
 
 - [x] 5.1 Remove ZoneMinder compose, ResourceSync, Caddy `cams.`/`zm.`/`zoneminder.`, Homepage tile, `ZM_DB_PASSWORD`, bootstrap notes, and `shared/cameras` mkdir
 - [x] 5.2 Do not ship a Frigate replacement in this change
+
+## 6. HTPC Docker LAN overlap
+
+- [x] 6.1 Make Docker Desktop `default-address-pools` a Periphery Layer 0 step (`periphery-docker-engine.ps1`, `periphery.md` §1); keep §7 as recovery only
+- [x] 6.2 Pin Periphery agent and Scriberr compose networks off `192.168.0.0/16`
+

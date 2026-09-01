@@ -7,6 +7,9 @@
 # Storage: /config is always a local volume. Household data is either
 # compose.yaml + DATA_ROOT binds, or compose.nfs.yaml + NAS_LAN_IP + NFS_EXPORT (+ NFS_USERS for Immich).
 # Do not list both files.
+# Docker Desktop: run bootstrap/periphery-docker-engine.ps1 (or merge
+# windows/docker-engine.json) before applying this file. Factory 172.18–172.31
+# /16 pools then overlap the LAN and Periphery loses Core (bootstrap/periphery.md §1).
 
 # compose.nfs.yaml: media on NFS; /config is local (survives Core down).
 [[stack]]
@@ -160,6 +163,29 @@ TZ = [[TZ]]
 DOMAIN = [[DOMAIN]]
 PUID = [[PUID]]
 PGID = [[PGID]]
+"""
+
+# Recordings on NFS (shared/cameras). /config is local. Caddy proxies :8971.
+# MQTT :1883 is LAN-only for Home Assistant (not in Caddy).
+[[stack]]
+name = "frigate"
+deploy = true
+[stack.config]
+server = "periphery"
+repo = "faiz-ans/infra-core"
+branch = "main"
+run_directory = "stacks/workload/frigate"
+file_paths = ["compose.nfs.yaml"]
+config_files = [
+  { path = "seed/config.yml", requires = "Redeploy" },
+  { path = "mosquitto/mosquitto.conf", requires = "Redeploy" },
+]
+webhook_enabled = false
+poll_for_updates = true
+environment = """
+TZ = [[TZ]]
+NAS_LAN_IP = [[NAS_LAN_IP]]
+NFS_EXPORT = [[NFS_EXPORT]]
 """
 
 # HA /config is a local volume. trusted_proxies is written at container start (ensure-http/).

@@ -1,0 +1,11 @@
+# Copied to the Frigate config volume only when config.yml is missing.
+# Camera RTSP URLs are added in the UI; do not put them in git.
+mqtt:
+  enabled: true
+  host: mosquitto
+  port: 1883
+
+tls:
+  enabled: false
+
+cameras: {}

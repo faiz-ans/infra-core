@@ -547,6 +547,7 @@ mkdir -p \
   "${DATA_ROOT}/shared/downloads" \
   "${DATA_ROOT}/shared/files" \
   "${DATA_ROOT}/shared/photos" \
+  "${DATA_ROOT}/shared/cameras" \
   "${DATA_ROOT}/users"
 # mkdir -p "${DATA_ROOT}/users/<user>/{files,photos}" as you add household users.
 chown -R "${PUID}:${PGID}" "${DATA_ROOT}/system/opencloud"
@@ -758,12 +759,12 @@ echo "Leave restic and restic-rest deploy=false until BACKUP_DRIVE is the IronWo
 echo
 echo "Target layout:"
 echo "  ${DATA_ROOT}/system/{authelia,vaultwarden,gitea,pihole,wireguard,restic,opencloud,jotty,linkding,rustdesk}"
-echo "  ${DATA_ROOT}/shared/{media,downloads,files,photos}"
+echo "  ${DATA_ROOT}/shared/{media,downloads,files,photos,cameras}"
 echo "  ${DATA_ROOT}/users/<user>/{files,photos}"
 echo "  NFS exports /shared and /users to the HTPC IP only (not disk root, not system/)."
 echo "  Komodo NFS_EXPORT=/shared NFS_USERS=/users"
-echo "  HTPC /config is a local Docker volume; media/photos stay on NFS; OpenCloud on Core uses local binds."
-echo "  First-run: bootstrap/opencloud.md, bootstrap/immich.md, bootstrap/jotty.md, bootstrap/linkding.md, bootstrap/rustdesk.md, bootstrap/adventurelog.md, bootstrap/scriberr.md."
+echo "  HTPC /config is a local Docker volume; media/photos/cameras stay on NFS; OpenCloud on Core uses local binds."
+echo "  First-run: bootstrap/opencloud.md, bootstrap/immich.md, bootstrap/jotty.md, bootstrap/linkding.md, bootstrap/rustdesk.md, bootstrap/adventurelog.md, bootstrap/scriberr.md, bootstrap/frigate.md."
 echo "  Pi-hole stack names: pihole (Core) and pihole-periphery (HTPC)."
 echo "  Router DHCP DNS: ${NAS_LAN_IP} first, then ${HTPC_UPSTREAM}. No public resolver as a third server."
 echo "  Each Pi-hole fetches its own Gravity."

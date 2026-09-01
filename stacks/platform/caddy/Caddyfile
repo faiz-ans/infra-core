@@ -165,6 +165,17 @@ https://voice.{$DOMAIN}, https://transcribe.{$DOMAIN}, https://scriberr.{$DOMAIN
 	}
 }
 
+https://cam.{$DOMAIN}, https://nvr.{$DOMAIN}, https://frigate.{$DOMAIN} {
+	tls internal
+	reverse_proxy {$HTPC_UPSTREAM}:8971 {
+		flush_interval -1
+		transport http {
+			read_timeout 3600s
+			write_timeout 3600s
+		}
+	}
+}
+
 https://sonarr.{$DOMAIN} {
 	tls internal
 	reverse_proxy {$HTPC_UPSTREAM}:8989

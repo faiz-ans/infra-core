@@ -56,13 +56,6 @@
             container: vaultwarden
             icon: bitwarden.svg
             description: Passwords
-        - Home Assistant:
-            id: homeassistant
-            href: https://auto.{{HOMEPAGE_VAR_DOMAIN}}
-            server: periphery
-            container: homeassistant
-            icon: home-assistant.svg
-            description: Home Automation
         - Adventure Log:
             id: adventurelog
             href: https://trips.{{HOMEPAGE_VAR_DOMAIN}}
@@ -70,6 +63,21 @@
             container: adventurelog
             icon: adventure-log.svg
             description: Travel Log
+        - Home Assistant:
+            id: homeassistant
+            href: https://auto.{{HOMEPAGE_VAR_DOMAIN}}
+            server: periphery
+            container: homeassistant
+            icon: home-assistant.svg
+            description: Home Automation
+        - Frigate:
+            id: frigate
+            href: https://cam.{{HOMEPAGE_VAR_DOMAIN}}
+            server: periphery
+            container: frigate
+            icon: frigate.svg
+            description: Home Surveillance
+
 
 
     - Web:

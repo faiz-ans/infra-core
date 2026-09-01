@@ -17,6 +17,8 @@ docker logs -f scriberr
 
 First start **downloads models** and can take several minutes. Wait for `Scriberr is ready` before opening the URL. Subsequent starts are much faster.
 
+If Komodo shows Periphery **Not OK** and the Scriberr container is Up, that is the Docker LAN-overlap failure (not Scriberr itself). Fix it on the HTPC with `bootstrap/periphery.md` §7 **before** Redeploy. Windows can still reach Core; the Periphery container cannot. New HTPC sites apply Engine JSON in §1 so this does not happen.
+
 ## 2. Admin
 
 Open **`https://scribe.<DOMAIN>`**. Create the household admin in the setup wizard.
