@@ -154,6 +154,17 @@ https://trips.{$DOMAIN}, https://travel.{$DOMAIN}, https://adventurelog.{$DOMAIN
 	reverse_proxy {$HTPC_UPSTREAM}:8015
 }
 
+https://voice.{$DOMAIN}, https://transcribe.{$DOMAIN}, https://scriberr.{$DOMAIN} {
+	tls internal
+	reverse_proxy {$HTPC_UPSTREAM}:8085 {
+		flush_interval -1
+		transport http {
+			read_timeout 3600s
+			write_timeout 3600s
+		}
+	}
+}
+
 https://sonarr.{$DOMAIN} {
 	tls internal
 	reverse_proxy {$HTPC_UPSTREAM}:8989

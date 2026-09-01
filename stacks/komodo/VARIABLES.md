@@ -76,6 +76,10 @@ Authelia user hashes live in `${DATA_ROOT}/system/authelia/users.yml` on the NAS
 
 Jotty has no Komodo secret; the first browser visit creates the admin.
 
+## Transcription
+
+Scriberr has no Komodo secret; JWT material is generated in the HTPC data volume. Models stay on local HTPC volumes, not NFS.
+
 ## Remote desktop
 
 RustDesk OSS generates its own key pair under `${DATA_ROOT}/system/rustdesk`. No Komodo secret. Do not port-forward 21115–21119; off-LAN is wg-easy.

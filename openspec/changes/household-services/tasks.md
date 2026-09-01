@@ -9,17 +9,18 @@
 
 - [x] 2.1 Add Adventure Log compose (aio + PostGIS, SITE_URL, local volumes, 8015)
 - [x] 2.2 Register `adventurelog` in `stacks-periphery.toml`
+- [x] 2.3 Add Scriberr compose (CPU image, local data/model volumes, 8085) and register it in `stacks-periphery.toml`
 
 ## 3. Edge, Homepage, secrets
 
-- [x] 3.1 Caddyfile: Jotty, Linkding, Adventure Log vhosts; RustDesk static hint at `desk.` / `rustdesk.`
-- [x] 3.2 Homepage tiles for Jotty, Linkding, RustDesk, and Adventure Log
+- [x] 3.1 Caddyfile: Jotty, Linkding, Adventure Log, Scriberr vhosts; RustDesk static hint at `desk.` / `rustdesk.`
+- [x] 3.2 Homepage tiles for Jotty, Linkding, RustDesk, Adventure Log, and Scriberr
 - [x] 3.3 Document and wire Komodo keys in `VARIABLES.md` and `core.sh`
 
 ## 4. Bootstrap and first-run
 
 - [x] 4.1 Create `system/{jotty,linkding,rustdesk}` in `data-root-perms.sh` / README
-- [x] 4.2 Add `bootstrap/{jotty,linkding,rustdesk,adventurelog}.md`; update `periphery.md` firewall ports
+- [x] 4.2 Add `bootstrap/{jotty,linkding,rustdesk,adventurelog,scriberr}.md`; update `periphery.md` firewall ports
 
 ## 5. Drop NVR from catalog
 

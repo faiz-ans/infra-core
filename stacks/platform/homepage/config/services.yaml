@@ -35,6 +35,13 @@
             container: jotty
             icon: jotty.svg
             description: Notes
+        - Scriberr:
+            id: scriberr
+            href: https://voice.{{HOMEPAGE_VAR_DOMAIN}}
+            server: periphery
+            container: scriberr
+            icon: scriberr.svg
+            description: Voice Notes & Transcription
         - Linkding:
             id: linkding
             href: https://links.{{HOMEPAGE_VAR_DOMAIN}}
@@ -58,11 +65,12 @@
             description: Home Automation
         - Adventure Log:
             id: adventurelog
-            href: https://travel.{{HOMEPAGE_VAR_DOMAIN}}
+            href: https://trips.{{HOMEPAGE_VAR_DOMAIN}}
             server: periphery
             container: adventurelog
             icon: adventure-log.svg
             description: Travel Log
+
 
     - Web:
         - Gmail:

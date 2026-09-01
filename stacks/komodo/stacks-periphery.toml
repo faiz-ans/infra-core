@@ -143,6 +143,25 @@ ADVENTURELOG_POSTGRES_PASSWORD = [[ADVENTURELOG_POSTGRES_PASSWORD]]
 ADVENTURELOG_ADMIN_PASSWORD = [[ADVENTURELOG_ADMIN_PASSWORD]]
 """
 
+# Local volumes for SQLite and Whisper models. Caddy proxies :8085.
+[[stack]]
+name = "scriberr"
+deploy = true
+[stack.config]
+server = "periphery"
+repo = "faiz-ans/infra-core"
+branch = "main"
+run_directory = "stacks/workload/scriberr"
+file_paths = ["compose.yaml"]
+webhook_enabled = false
+poll_for_updates = true
+environment = """
+TZ = [[TZ]]
+DOMAIN = [[DOMAIN]]
+PUID = [[PUID]]
+PGID = [[PGID]]
+"""
+
 # HA /config is a local volume. trusted_proxies is written at container start (ensure-http/).
 [[stack]]
 name = "homeassistant"

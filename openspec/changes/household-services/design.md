@@ -1,12 +1,12 @@
 ## Context
 
-The catalog already splits always-on Core apps (edge network + Caddy by container name) from HTPC apps (published ports + `{$HTPC_UPSTREAM}`). WireGuard is host-network on Core; the only router forward is UDP 51820. Core is a 4GB NAS. This change adds four household apps without waiting on the IronWolf `DATA_ROOT` move. An NVR is deferred.
+The catalog already splits always-on Core apps (edge network + Caddy by container name) from HTPC apps (published ports + `{$HTPC_UPSTREAM}`). WireGuard is host-network on Core; the only router forward is UDP 51820. Core is a 4GB NAS. This change adds household apps without waiting on the IronWolf `DATA_ROOT` move. An NVR is deferred.
 
 ## Goals / Non-Goals
 
 **Goals:**
 
-- Notes, bookmarks, remote desktop rendezvous, and a travel log are catalogued GitOps stacks.
+- Notes, bookmarks, remote desktop rendezvous, a travel log, and local audio transcription are catalogued GitOps stacks.
 - Off-LAN use of every new app (including RustDesk) requires wg-easy, same as existing `*.{$DOMAIN}` services.
 - RustDesk ID/relay MUST NOT be published on the WAN. No Caddy TCP/UDP stream for 21115–21119. No router forwards for those ports.
 - New Core state lives under `${DATA_ROOT}/system/<app>`.
@@ -18,6 +18,7 @@ The catalog already splits always-on Core apps (edge network + Caddy by containe
 - RustDesk Server Pro (web console on 21114).
 - Migrating `DATA_ROOT` onto the IronWolf.
 - Opening WireGuard or Caddy 80/443 policy beyond what already exists.
+- Scriberr CUDA/GPU images (Docker Desktop GPU passthrough).
 
 ## Decisions
 
@@ -29,6 +30,7 @@ The catalog already splits always-on Core apps (edge network + Caddy by containe
 | Linkding | `core`, `edge` | SQLite bookmarks, same |
 | RustDesk `hbbs`/`hbbr` | `core`, host network | Rendezvous must be up whenever someone remotes in; host net so UDP 21116 sees real peer IPs |
 | Adventure Log | `periphery` | PostGIS + ~1GB image; Core RAM is already tight |
+| Scriberr | `periphery` | Whisper models and CPU; first start downloads GBs |
 
 **Alternative considered:** Adventure Log on Core. Rejected: PostGIS plus the aio image on a 4GB Pi next to OpenCloud/Gitea/Caddy.
 
@@ -63,21 +65,25 @@ Optional HTTPS page at `desk.` / `rustdesk.` with a static `respond` so Homepage
 
 **Alternative considered:** Bridge network + published ports. Rejected: hbbs NAT/heartbeat is unreliable unless it sees the real source IP; host net matches RustDesk’s Linux docs and this catalog’s WireGuard stack.
 
-
-
-
-
-### 5. Adventure Log standard (aio) on periphery
+### 4. Adventure Log standard (aio) on periphery
 
 Official `ghcr.io/seanmorley15/adventurelog:latest` + `postgis/postgis:16-3.5`. `SITE_URL=https://travel.${DOMAIN}`. `POSTGRES_PASSWORD` and `DJANGO_ADMIN_PASSWORD` from Komodo. `DISABLE_REGISTRATION=True`. Publish `8015:80`. Local volumes for Postgres and media (like Immich DB — not NFS). Caddy: `travel.` `adventures.` `adventurelog.` → `{$HTPC_UPSTREAM}:8015`.
 
 **Alternative considered:** Advanced frontend/backend split. Rejected: extra ports and env; Caddy already terminates TLS.
 
-### 5. Homepage
+### 5. Scriberr on periphery, CPU, local models
 
-Apps → Local: Jotty, Linkding, Adventure Log. System → Network: RustDesk (next to WireGuard). Public hrefs through Caddy. Core widgets by container name; HTPC `siteMonitor`/`container` on `periphery`.
+Official `ghcr.io/rishikanthc/scriberr:latest`. Publish `8085:8080`. Named volumes `scriberr-data` (`/app/data`) and `scriberr-whisperx` (`/app/whisperx-env`). Not NFS: models are large and the first start is slow. `APP_ENV=production`, `ALLOWED_ORIGINS` lists `scribe.` / `transcribe.` / `scriberr.` HTTPS origins. Secure cookies stay on (Caddy is HTTPS). No Komodo JWT secret (auto-generated in the data volume). Admin is the first-run wizard. Caddy uses long read/write timeouts for uploads.
 
-### 6. Secrets (existing Core: add in Komodo, do not re-run bootstrap only for these)
+**Alternative considered:** Scriberr on Core. Rejected: Whisper + model download on a 4GB NAS.
+
+**Alternative considered:** CUDA image. Rejected: this site’s periphery is Docker Desktop; GPU passthrough is out of scope.
+
+### 6. Homepage
+
+Apps → Local: Jotty, Linkding, Adventure Log, Scriberr. System → Network: RustDesk (next to WireGuard). Public hrefs through Caddy. Core widgets by container name; HTPC `siteMonitor`/`container` on `periphery`.
+
+### 7. Secrets (existing Core: add in Komodo, do not re-run bootstrap only for these)
 
 | Key | Secret | Used by |
 |---|---|---|
@@ -87,19 +93,19 @@ Apps → Local: Jotty, Linkding, Adventure Log. System → Network: RustDesk (ne
 | `ADVENTURELOG_ADMIN_PASSWORD` | secret | Django admin on first boot |
 | `ADVENTURELOG_ADMIN_EMAIL` | | Django admin email |
 
-`core.sh` generates the secrets on new installs. Jotty and RustDesk have no Komodo secrets.
+`core.sh` generates the secrets on new installs. Jotty, RustDesk, and Scriberr have no Komodo secrets.
 
 ## Risks / Trade-offs
 
 - **[RustDesk reachable on WAN if someone forwards 21115–21119 or enables UPnP]** → First-run doc: router forwards UDP 51820 only; disable UPnP for those ports. Catalog never publishes them through Caddy.
 - **[hbbs advertises a wrong relay IP]** → `-r ${NAS_LAN_IP}:21117` is explicit.
 - **[Adventure Log maps need outbound HTTPS]** → Expected; no extra catalog network policy.
-- **[Core disk before IronWolf]** → App state for these stacks is small. IronWolf move still later.
+- **[Scriberr first start looks hung]** → First-run doc: wait for `Scriberr is ready`; models persist in `scriberr-whisperx`.
 
 ## Migration Plan
 
 1. Add Komodo keys above. Run `data-root-perms.sh` (creates `system/{jotty,linkding,rustdesk}`).
-2. Push catalog; wait for ResourceSync. Deploy `jotty`, `linkding`, `rustdesk` on Core; Redeploy `caddy` and `homepage`. Deploy `adventurelog` on periphery. Open Windows firewall for 8015 from the LAN.
+2. Push catalog; wait for ResourceSync. Deploy `jotty`, `linkding`, `rustdesk` on Core; Redeploy `caddy` and `homepage`. Deploy `adventurelog` and `scriberr` on periphery. Open Windows firewall for 8015 and 8085 from the LAN.
 3. First-run docs per app. RustDesk: copy public key, point clients at `desk.{$DOMAIN}`, test on LAN, then test through wg-easy with the WAN forwards **unchanged**.
 4. Rollback: `deploy = false` or remove the new stacks; delete new volumes. Do not delete `shared/` household trees.
 

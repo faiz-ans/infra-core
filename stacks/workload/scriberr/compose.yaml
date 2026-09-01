@@ -1,0 +1,25 @@
+# Scriberr on periphery. SQLite, uploads, and Whisper/Python envs are local
+# volumes (models are large; not NFS). Caddy terminates TLS at scribe.${DOMAIN}.
+# First start downloads models and can take several minutes.
+services:
+  scriberr:
+    image: ghcr.io/rishikanthc/scriberr:latest
+    container_name: scriberr
+    restart: unless-stopped
+    environment:
+      TZ: ${TZ}
+      PUID: ${PUID}
+      PGID: ${PGID}
+      APP_ENV: production
+      ALLOWED_ORIGINS: https://scribe.${DOMAIN},https://transcribe.${DOMAIN},https://scriberr.${DOMAIN}
+    ports:
+      - "8085:8080"
+    volumes:
+      - scriberr-data:/app/data
+      - scriberr-whisperx:/app/whisperx-env
+
+volumes:
+  scriberr-data:
+    name: scriberr-data
+  scriberr-whisperx:
+    name: scriberr-whisperx
