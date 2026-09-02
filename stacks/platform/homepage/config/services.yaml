@@ -41,7 +41,7 @@
             server: periphery
             container: scriberr
             icon: scriberr.svg
-            description: Voice Notes & Transcription
+            description: Voice Transcription
         - Linkding:
             id: linkding
             href: https://links.{{HOMEPAGE_VAR_DOMAIN}}
@@ -77,8 +77,6 @@
             container: frigate
             icon: frigate.svg
             description: Home Surveillance
-
-
 
     - Web:
         - Gmail:
