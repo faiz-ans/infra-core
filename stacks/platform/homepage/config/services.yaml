@@ -105,7 +105,7 @@
             href: https://read.{{HOMEPAGE_VAR_DOMAIN}}
             server: periphery
             container: openreader
-            icon: openreader.png
+            icon: https://cdn.jsdelivr.net/gh/selfhst/icons@main/webp/openreader.webp
             description: Read Aloud
         - IT Tools:
             id: it-tools
