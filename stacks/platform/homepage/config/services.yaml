@@ -252,7 +252,7 @@
                 type: pihole
                 url: http://pihole:80
                 version: 6
-                key: ${PIHOLE_WEBPASSWORD}
+                key: ${{PIHOLE_WEBPASSWORD}}
                 fields:
                 - queries
                 - blocked_percent
