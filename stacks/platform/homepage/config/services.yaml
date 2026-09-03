@@ -51,7 +51,7 @@
             icon: bitwarden.svg
             description: Passwords
 
-    - Utils:
+    - Utilities:
         - Transmute:
             id: transmute
             href: https://convert.{{HOMEPAGE_VAR_DOMAIN}}
