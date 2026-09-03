@@ -10,8 +10,9 @@ services:
     pid: host
     environment:
       TZ: ${TZ}
-      GLANCES_OPT: "-w --disable-plugin docker"
+      GLANCES_OPT: "-w --disable-plugin docker -C /glances/conf/glances.conf"
     volumes:
+      - ./glances.conf:/glances/conf/glances.conf:ro
       - /etc/os-release:/etc/os-release:ro
       - /sys:/sys:ro
       - ${DATA_ROOT}:/mnt/data:ro

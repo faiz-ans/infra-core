@@ -1,7 +1,7 @@
 # Glances on periphery. pid:host is the Docker Desktop VM (where containers run).
 # Homepage on Core scrapes HTPC_UPSTREAM:61208. Not in Caddy.
-# Host / is overlay inside the container and Glances hides it, so bind it at
-# /mnt/host (same idea as Core /mnt/data) for the disk widget.
+# Do not bind host / — that is overlay and Glances drops it (disk widget empty).
+# /var/lib/docker sits on the WSL2 data disk; df of that path is the VM disk.
 services:
   glances:
     image: nicolargo/glances:latest
@@ -10,9 +10,10 @@ services:
     pid: host
     environment:
       TZ: ${TZ}
-      GLANCES_OPT: "-w --disable-plugin docker"
+      GLANCES_OPT: "-w --disable-plugin docker -C /glances/conf/glances.conf"
     ports:
       - "61208:61208"
     volumes:
+      - ./glances.conf:/glances/conf/glances.conf:ro
       - /etc/os-release:/etc/os-release:ro
-      - /:/mnt/host:ro
+      - /var/lib/docker:/mnt/host:ro

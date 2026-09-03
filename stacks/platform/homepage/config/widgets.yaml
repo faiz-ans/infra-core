@@ -25,5 +25,6 @@
     cpu: true
     mem: true
     uptime: true
-    disk: /mnt/host
+    disk:
+      - /mnt/host
     label: Periphery
