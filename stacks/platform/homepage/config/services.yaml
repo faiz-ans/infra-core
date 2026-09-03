@@ -226,12 +226,12 @@
                 version: 4
                 metric: memory
                 chart: false
-        - Periphery GPU:
+        - Periphery Disk:
             widget:
                 type: glances
                 url: http://{{HOMEPAGE_VAR_HTPC_UPSTREAM}}:61208
                 version: 4
-                metric: gpu:nvidia0
+                metric: fs:/
                 chart: false
 
     - Services:
