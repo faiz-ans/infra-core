@@ -25,7 +25,7 @@
       - /mnt/windows
     label: Periphery
 
-    - datetime:
+- datetime:
     text_size: xl
     format:
       timeStyle: short
