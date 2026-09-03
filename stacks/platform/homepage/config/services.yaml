@@ -317,7 +317,7 @@
                 metric: fs:/mnt/data
     - Periphery:
         - Periphery:    
-            icon: windows.svg
+            icon: windows-10.svg
             server: periphery
             container: glances-periphery
             widget:
