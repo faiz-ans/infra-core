@@ -306,7 +306,7 @@
                     metric: cpu
                     chart: false
             - CPU Temp:
-                icon: mdi-thermometer
+                icon: mdi-thermometer-#38bdf8
                 widget:
                     type: glances
                     url: http://glances:61208
