@@ -292,7 +292,6 @@
             - Core:
                 icon: raspberry-pi.svg
                 server: core
-                container: glances
                 widget:
                     type: glances
                     url: http://glances:61208
@@ -325,7 +324,6 @@
             - Periphery:    
                 icon: windows-10.svg
                 server: periphery
-                container: glances-periphery
                 widget:
                     type: glances
                     url: http://{{HOMEPAGE_VAR_HTPC_UPSTREAM}}:61208
