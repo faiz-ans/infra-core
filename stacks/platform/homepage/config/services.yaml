@@ -207,25 +207,27 @@
                 url: http://{{HOMEPAGE_VAR_HTPC_UPSTREAM}}:61208
                 version: 4
                 metric: info
+                chart: false
         - CPU:
             widget:
                 type: glances
                 url: http://{{HOMEPAGE_VAR_HTPC_UPSTREAM}}:61208
                 version: 4
                 metric: cpu
+                chart: false
         - Memory:
             widget:
                 type: glances
                 url: http://{{HOMEPAGE_VAR_HTPC_UPSTREAM}}:61208
                 version: 4
                 metric: memory
-        - Disk:
+                chart: false
+        - GPU:
             widget:
                 type: glances
                 url: http://{{HOMEPAGE_VAR_HTPC_UPSTREAM}}:61208
                 version: 4
-                metric: fs:/mnt/data
-                diskUnits: bytes
+                metric: gpu:0
 
     - Services:
         - Media:
