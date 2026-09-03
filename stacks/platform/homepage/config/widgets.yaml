@@ -11,9 +11,9 @@
 #    units: imperial
 #    cache: 5
 
-#- search:
-#    provider: duckduckgo
-#    target: _blank
+- search:
+    provider: duckduckgo
+    target: _blank
 
 - glances:
     url: http://glances:61208
