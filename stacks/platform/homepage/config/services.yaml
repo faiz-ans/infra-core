@@ -180,21 +180,21 @@
                 version: 4
                 metric: info
                 chart: false
-        - CPU:
+        - Core CPU:
             widget:
                 type: glances
                 url: http://glances:61208
                 version: 4
                 metric: cpu
                 chart: false
-        - Memory:
+        - Core Memory:
             widget:
                 type: glances
                 url: http://glances:61208
                 version: 4
                 metric: memory
                 chart: false
-        - Disk:
+        - Core Disk:
             widget:
                 type: glances
                 url: http://glances:61208
@@ -212,21 +212,21 @@
                 version: 4
                 metric: info
                 chart: false
-        - CPU:
+        - Periphery CPU:
             widget:
                 type: glances
                 url: http://{{HOMEPAGE_VAR_HTPC_UPSTREAM}}:61208
                 version: 4
                 metric: cpu
                 chart: false
-        - Memory:
+        - PeripheryMemory:
             widget:
                 type: glances
                 url: http://{{HOMEPAGE_VAR_HTPC_UPSTREAM}}:61208
                 version: 4
                 metric: memory
                 chart: false
-        - GPU:
+        - Periphery GPU:
             widget:
                 type: glances
                 url: http://{{HOMEPAGE_VAR_HTPC_UPSTREAM}}:61208
