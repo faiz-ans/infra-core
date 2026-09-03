@@ -298,7 +298,7 @@
                     version: 4
                     metric: info
         - Core Stats:
-            - Core CPU:
+            - CPU .:
                 widget:
                     type: glances
                     url: http://glances:61208
@@ -330,7 +330,7 @@
                     version: 4
                     metric: info
         - Periphery Stats:
-            - Periphery CPU:
+            - CPU ..:
                 widget:
                     type: glances
                     url: http://{{HOMEPAGE_VAR_HTPC_UPSTREAM}}:61208
