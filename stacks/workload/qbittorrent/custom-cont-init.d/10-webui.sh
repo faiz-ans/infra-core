@@ -12,4 +12,7 @@ for CONF in /config/qBittorrent/qBittorrent.conf /config/qBittorrent.conf; do
   grep -q '^WebUI\\CSRFProtection=' "${CONF}" || printf '%s\n' 'WebUI\CSRFProtection=false' >> "${CONF}"
   sed -i 's/^WebUI\\ReverseProxySupportEnabled=.*/WebUI\\ReverseProxySupportEnabled=true/' "${CONF}"
   grep -q '^WebUI\\ReverseProxySupportEnabled=' "${CONF}" || printf '%s\n' 'WebUI\ReverseProxySupportEnabled=true' >> "${CONF}"
+  # Failed logins ban the reverse-proxy IP (Caddy on Core), which locks every browser.
+  sed -i 's/^WebUI\\BannedIPs=.*/WebUI\\BannedIPs=/' "${CONF}"
+  grep -q '^WebUI\\BannedIPs=' "${CONF}" || printf '%s\n' 'WebUI\BannedIPs=' >> "${CONF}"
 done

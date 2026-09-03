@@ -77,6 +77,7 @@ mkdir -p \
   "${DATA_ROOT}/system/opencloud/posix" \
   "${DATA_ROOT}/system/opencloud/posix/projects" \
   "${DATA_ROOT}/system/opencloud/radicale" \
+  "${DATA_ROOT}/system/opencloud/radicale/collections" \
   "${DATA_ROOT}/system/jotty/data" \
   "${DATA_ROOT}/system/jotty/config" \
   "${DATA_ROOT}/system/jotty/cache" \

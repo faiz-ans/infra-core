@@ -13,7 +13,7 @@ services:
     environment:
       TZ: ${TZ}
       FTLCONF_dns_listeningMode: ALL
-      FTLCONF_webserver_api_password: ""
+      FTLCONF_webserver_api_password: ${PIHOLE_PERIPHERY_WEBPASSWORD}
       FTLCONF_misc_dnsmasq_lines: "address=/${DOMAIN}/${NAS_LAN_IP}"
     volumes:
       - pihole-config:/etc/pihole
