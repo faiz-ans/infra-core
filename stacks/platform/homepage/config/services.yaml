@@ -1,6 +1,6 @@
 - Apps:
 
-    - Local:
+    - Data:
         - OpenCloud:
             id: opencloud
             href: https://cloud.{{HOMEPAGE_VAR_DOMAIN}}
@@ -15,19 +15,6 @@
             container: immich
             icon: immich.svg
             description: Photos
-        - Jellyfin:
-            id: jellyfin
-            href: https://watch.{{HOMEPAGE_VAR_DOMAIN}}
-            server: periphery
-            container: jellyfin
-            icon: jellyfin.svg
-            description: Watch Movies & TV
-        - Seerr:
-            href: https://request.{{HOMEPAGE_VAR_DOMAIN}}
-            server: periphery
-            container: seerr
-            icon: seerr.svg
-            description: Request Movies & TV
         - Jotty:
             id: jotty
             href: https://notes.{{HOMEPAGE_VAR_DOMAIN}}
@@ -63,6 +50,21 @@
             container: adventurelog
             icon: adventure-log.svg
             description: Travel Log
+
+    - Media & Home:
+        - Jellyfin:
+            id: jellyfin
+            href: https://watch.{{HOMEPAGE_VAR_DOMAIN}}
+            server: periphery
+            container: jellyfin
+            icon: jellyfin.svg
+            description: Watch Movies & TV
+        - Seerr:
+            href: https://request.{{HOMEPAGE_VAR_DOMAIN}}
+            server: periphery
+            container: seerr
+            icon: seerr.svg
+            description: Request Movies & TV
         - Home Assistant:
             id: homeassistant
             href: https://auto.{{HOMEPAGE_VAR_DOMAIN}}
@@ -78,21 +80,28 @@
             icon: frigate.svg
             description: Home Surveillance
 
-    - Tools:
+    - Utilities:
         - Transmute:
             id: transmute
             href: https://convert.{{HOMEPAGE_VAR_DOMAIN}}
             server: periphery
             container: transmute
             icon: https://cdn.jsdelivr.net/gh/selfhst/icons/svg/transmute.svg
-            description: File Conversion
+            description: Convert File Types
         - BentoPDF:
             id: bentopdf
             href: https://pdf.{{HOMEPAGE_VAR_DOMAIN}}
             server: core
             container: bentopdf
             icon: bentopdf.svg
-            description: PDF Tools
+            description: PDF Utilities
+        - OpenReader:
+            id: openreader
+            href: https://read.{{HOMEPAGE_VAR_DOMAIN}}
+            server: periphery
+            container: openreader
+            icon: https://cdn.jsdelivr.net/gh/selfhst/icons@main/webp/openreader.webp
+            description: Text to Speech
         - LibreTranslate:
             id: libretranslate
             href: https://translate.{{HOMEPAGE_VAR_DOMAIN}}
@@ -100,34 +109,27 @@
             container: libretranslate
             icon: libretranslate.svg
             description: Translate
-        - OpenReader:
-            id: openreader
-            href: https://read.{{HOMEPAGE_VAR_DOMAIN}}
-            server: periphery
-            container: openreader
-            icon: https://cdn.jsdelivr.net/gh/selfhst/icons@main/webp/openreader.webp
-            description: Read Aloud
-        - IT Tools:
-            id: it-tools
-            href: https://tools.{{HOMEPAGE_VAR_DOMAIN}}
-            server: core
-            container: it-tools
-            icon: it-tools.svg
-            description: Utilities
-        - n8n:
-            id: n8n
-            href: https://flow.{{HOMEPAGE_VAR_DOMAIN}}
-            server: periphery
-            container: n8n
-            icon: n8n.svg
-            description: Workflows
         - ByteStash:
             id: bytestash
             href: https://snippets.{{HOMEPAGE_VAR_DOMAIN}}
             server: core
             container: bytestash
             icon: bytestash.svg
-            description: Snippets
+            description: Text & Code Snippets
+        - IT Tools:
+            id: it-tools
+            href: https://tools.{{HOMEPAGE_VAR_DOMAIN}}
+            server: core
+            container: it-tools
+            icon: it-tools.svg
+            description: Developer Utilities
+        - n8n:
+            id: n8n
+            href: https://flow.{{HOMEPAGE_VAR_DOMAIN}}
+            server: periphery
+            container: n8n
+            icon: n8n.svg
+            description: Workflow Automation
 
     - Web:
         - Gmail:
