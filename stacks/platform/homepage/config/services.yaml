@@ -179,19 +179,19 @@
                 url: http://glances:61208
                 version: 4
                 metric: info
-        - Core CPU:
+        - CPU:
             widget:
                 type: glances
                 url: http://glances:61208
                 version: 4
                 metric: cpu
-        - Core Memory:
+        - Memory:
             widget:
                 type: glances
                 url: http://glances:61208
                 version: 4
                 metric: memory
-        - Core Disk:
+        - Disk:
             widget:
                 type: glances
                 url: http://glances:61208
@@ -207,24 +207,24 @@
                 url: http://{{HOMEPAGE_VAR_HTPC_UPSTREAM}}:61208
                 version: 4
                 metric: info
-        - Periphery CPU:
+        - CPU:
             widget:
                 type: glances
                 url: http://{{HOMEPAGE_VAR_HTPC_UPSTREAM}}:61208
                 version: 4
                 metric: cpu
-        - Periphery Memory:
+        - Memory:
             widget:
                 type: glances
                 url: http://{{HOMEPAGE_VAR_HTPC_UPSTREAM}}:61208
                 version: 4
                 metric: memory
-        - Periphery Disk:
+        - Disk:
             widget:
                 type: glances
                 url: http://{{HOMEPAGE_VAR_HTPC_UPSTREAM}}:61208
                 version: 4
-                metric: C:/
+                metric: fs:/mnt/data
                 diskUnits: bytes
 
     - Services:
