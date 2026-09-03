@@ -37,7 +37,7 @@ layout:
       Core Stats:
         header: false
         style: row
-        columns: 2
+        columns: 3
     Periphery:
       header: false
       Periphery Info:
@@ -45,4 +45,4 @@ layout:
       Periphery Stats:
         header: false
         style: row
-        columns: 2
+        columns: 3

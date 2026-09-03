@@ -3,18 +3,30 @@
 # Disk must be Windows C:, not the WSL2 VHD. Docker Desktop exposes that
 # drive at /mnt/host/c inside the engine VM (9p/drvfs). Bind it at a
 # stable path so Homepage can match mnt_point without a drive letter.
+# ubuntu-*-full (not Alpine) plus NVIDIA device access for the RTX 2060.
+# Docker Desktop → Settings → Resources must have GPU enabled.
 services:
   glances:
-    image: nicolargo/glances:latest
+    image: nicolargo/glances:ubuntu-latest-full
     container_name: glances-periphery
     restart: unless-stopped
     pid: host
     environment:
       TZ: ${TZ}
       GLANCES_OPT: "-w --disable-plugin docker"
+      NVIDIA_VISIBLE_DEVICES: all
+      NVIDIA_DRIVER_CAPABILITIES: compute,utility
     ports:
       - "61208:61208"
     volumes:
       - ./glances.conf:/etc/glances/glances.conf:ro
       - /etc/os-release:/etc/os-release:ro
+      - /sys:/sys:ro
       - /mnt/host/c:/mnt/windows:ro
+    deploy:
+      resources:
+        reservations:
+          devices:
+            - driver: nvidia
+              count: 1
+              capabilities: [gpu]

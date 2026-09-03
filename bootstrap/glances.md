@@ -18,7 +18,9 @@ You want `glances` **Up**. It must **not** publish 61208 on the LAN.
 
 ## Periphery
 
-Runs on **periphery**. Homepage scrapes `http://<HTPC_UPSTREAM>:61208`. CPU/RAM are the Docker Desktop VM. **Disk is Windows `C:`**, bind-mounted from `/mnt/host/c` to `/mnt/windows` (not the WSL2 VHD). The widget path is `/mnt/windows`.
+Runs on **periphery**. Homepage scrapes `http://<HTPC_UPSTREAM>:61208`. CPU/RAM/uptime are the Docker Desktop VM. **Disk is Windows `C:`**, bind-mounted from `/mnt/host/c` to `/mnt/windows` (not the WSL2 VHD). The widget path is `/mnt/windows`.
+
+GPU (RTX 2060) needs the `ubuntu-latest-full` image and NVIDIA in Docker Desktop (Settings → Resources → GPU). Alpine `latest` cannot load NVML. WSL2 usually has no CPU thermal sensors, so Periphery has no CPU-temp tile; GPU temp is on the GPU widget.
 
 Allow Windows Firewall TCP **61208** from the LAN (Homepage on Core). See `bootstrap/periphery.md`.
 
@@ -38,3 +40,5 @@ docker ps --filter name=glances-periphery --format "table {{.Names}}\t{{.Status}
 | Data disk missing on Core | Confirm `/mnt/data` is mounted (`docker exec glances df -h /mnt/data`) |
 | Periphery disk is ~800 GB free / looks like the VM | Redeploy **glances-periphery** after this catalog pull. `docker exec glances-periphery df -h /mnt/windows` should match Explorer on `C:`. Widget path is `/mnt/windows`, not `/etc/hosts` |
 | Periphery disk missing | `/mnt/host/c` is Docker Desktop’s C: in the engine VM. If the container cannot start, Docker Desktop → Settings → Resources → File sharing must include `C:\`. Then Redeploy **glances-periphery** and **homepage** |
+| Core CPU temp is `-` | Sensor label must match Glances exactly. `docker exec glances wget -qO- http://127.0.0.1:61208/api/4/sensors` and set `metric: sensor:<label>` (Pi is usually `cpu_thermal 0`) |
+| Periphery GPU is `-` / empty | Redeploy **glances-periphery** after this catalog pull (image change). Docker Desktop GPU on, current NVIDIA Windows driver (WSL). Then `docker exec glances-periphery wget -qO- http://127.0.0.1:61208/api/4/gpu` should list `gpu_id` 0 |

@@ -305,6 +305,13 @@
                     version: 4
                     metric: cpu
                     chart: false
+            - CPU Temp:
+                widget:
+                    type: glances
+                    url: http://glances:61208
+                    version: 4
+                    metric: "sensor:cpu_thermal 0"
+                    chart: false
             - Memory:
                 widget:
                     type: glances
@@ -319,6 +326,14 @@
                     version: 4
                     metric: fs:/mnt/data
                     chart: false
+            - Uptime:
+                widget:
+                    type: customapi
+                    url: http://glances:61208/api/4/uptime
+                    refreshInterval: 60000
+                    mappings:
+                      - label: Uptime
+                        format: text
     - Periphery:
         - Periphery Info:
             - Periphery:
@@ -337,6 +352,13 @@
                     version: 4
                     metric: cpu
                     chart: false
+            - GPU:
+                widget:
+                    type: glances
+                    url: http://{{HOMEPAGE_VAR_HTPC_UPSTREAM}}:61208
+                    version: 4
+                    metric: "gpu:0"
+                    chart: false
             - Memory:
                 widget:
                     type: glances
@@ -351,3 +373,11 @@
                     version: 4
                     metric: fs:/mnt/windows
                     chart: false
+            - Uptime:
+                widget:
+                    type: customapi
+                    url: http://{{HOMEPAGE_VAR_HTPC_UPSTREAM}}:61208/api/4/uptime
+                    refreshInterval: 60000
+                    mappings:
+                      - label: Uptime
+                        format: text
