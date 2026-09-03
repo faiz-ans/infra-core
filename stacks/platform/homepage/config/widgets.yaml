@@ -1,8 +1,12 @@
+- datetime:
+    text_size: xl
+    format:
+      timeStyle: short
+      dateStyle: medium
 
-
-- search:
-    provider: duckduckgo
-    target: _blank
+#- search:
+#    provider: duckduckgo
+#    target: _blank
 
 - glances:
     url: http://glances:61208
@@ -24,9 +28,3 @@
     disk:
       - /mnt/windows
     label: Periphery
-
-- datetime:
-    text_size: xl
-    format:
-      timeStyle: short
-      dateStyle: medium
