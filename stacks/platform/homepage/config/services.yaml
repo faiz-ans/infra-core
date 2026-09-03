@@ -7,21 +7,14 @@
             server: periphery
             container: transmute
             icon: https://cdn.jsdelivr.net/gh/selfhst/icons/svg/transmute.svg
-            description: Convert File Types
+            description: File Conversion
         - BentoPDF:
             id: bentopdf
             href: https://pdf.{{HOMEPAGE_VAR_DOMAIN}}
             server: core
             container: bentopdf
             icon: bentopdf.svg
-            description: PDF Utilities
-        - OpenReader:
-            id: openreader
-            href: https://read.{{HOMEPAGE_VAR_DOMAIN}}
-            server: periphery
-            container: openreader
-            icon: https://cdn.jsdelivr.net/gh/selfhst/icons@main/webp/openreader.webp
-            description: Text to Speech
+            description: PDF Tools
         - LibreTranslate:
             id: libretranslate
             href: https://translate.{{HOMEPAGE_VAR_DOMAIN}}
@@ -29,13 +22,20 @@
             container: libretranslate
             icon: libretranslate.svg
             description: Translate
+        - OpenReader:
+            id: openreader
+            href: https://read.{{HOMEPAGE_VAR_DOMAIN}}
+            server: periphery
+            container: openreader
+            icon: https://cdn.jsdelivr.net/gh/selfhst/icons@main/webp/openreader.webp
+            description: Text-to-Speech
         - ByteStash:
             id: bytestash
             href: https://snippets.{{HOMEPAGE_VAR_DOMAIN}}
             server: core
             container: bytestash
             icon: bytestash.svg
-            description: Text & Code Snippets
+            description: Snippets
         - IT Tools:
             id: it-tools
             href: https://tools.{{HOMEPAGE_VAR_DOMAIN}}
