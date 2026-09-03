@@ -297,24 +297,28 @@
                 url: http://glances:61208
                 version: 4
                 metric: info
+                chart: false
         - Core CPU:
             widget:
                 type: glances
                 url: http://glances:61208
                 version: 4
                 metric: cpu
+                chart: false
         - Core Memory:
             widget:
                 type: glances
                 url: http://glances:61208
                 version: 4
                 metric: memory
+                chart: false
         - Core Disk:
             widget:
                 type: glances
                 url: http://glances:61208
                 version: 4
                 metric: fs:/mnt/data
+                chart: false
     - Periphery:
         - Periphery:    
             icon: windows-10.svg
