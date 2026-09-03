@@ -18,7 +18,7 @@ You want `glances` **Up**. It must **not** publish 61208 on the LAN.
 
 ## Periphery
 
-Runs on **periphery**. Homepage scrapes `http://<HTPC_UPSTREAM>:61208`. On Docker Desktop this is the WSL2 VM (where the stacks run), not the Windows GUI session. Glances only reports physical filesystems, so the catalog bind-mounts `/var/lib/docker` at `/mnt/host` (the VM data disk) instead of overlay `/`.
+Runs on **periphery**. Homepage scrapes `http://<HTPC_UPSTREAM>:61208`. On Docker Desktop this is the WSL2 VM (where the stacks run), not `C:`. Glances only lists physical filesystems; inside Docker the VM disk shows up as mount `/etc/hosts` (not `/`). That is the widget path.
 
 Allow Windows Firewall TCP **61208** from the LAN (Homepage on Core). See `bootstrap/periphery.md`.
 
@@ -36,4 +36,4 @@ docker ps --filter name=glances-periphery --format "table {{.Names}}\t{{.Status}
 | Periphery widget empty | Windows Firewall **61208**. From Core: `docker exec homepage wget -S -O- --timeout=5 http://<HTPC_UPSTREAM>:61208/api/4/cpu` |
 | API 404 | Image is Glances 4; widgets use `version: 4`. Do not set version 3 |
 | Data disk missing on Core | Confirm `/mnt/data` is mounted (`docker exec glances df -h /mnt/data`) |
-| Periphery disk missing | Redeploy **glances-periphery** (not only Homepage). `docker exec glances-periphery df -h /mnt/host` must succeed. Widget path is `/mnt/host`. Check `/api/4/fs` includes `"mnt_point": "/mnt/host"` |
+| Periphery disk missing | Redeploy **glances-periphery** and **homepage**. From Core: `wget -qO- http://<HTPC>:61208/api/4/fs` must include `"mnt_point": "/etc/hosts"`. Widget path is `/etc/hosts`, not `/` |
