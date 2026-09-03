@@ -116,7 +116,7 @@ OpenCloud proxies authenticated CalDAV/CardDAV to a Radicale sidecar on the edge
 
 Radicale collections live in `${DATA_ROOT}/system/opencloud/radicale`. Do not publish 5232. Wipe of OpenCloud `config`/`data` must not delete this directory.
 
-Existing Core: `sudo mkdir -p ${DATA_ROOT}/system/opencloud/radicale` then `sudo chown -R ${PUID}:${PGID} ${DATA_ROOT}/system/opencloud` (or re-run `data-root-perms.sh`). Redeploy **opencloud**.
+Existing Core: `sudo mkdir -p ${DATA_ROOT}/system/opencloud/radicale` then `sudo chown -R ${PUID}:${PGID} ${DATA_ROOT}/system/opencloud` (or re-run `data-root-perms.sh`). Redeploy **opencloud**. If `radicale` was Restarting, Redeploy after this catalog pull (the image CMD listens on IPv6 and exits on this host).
 
 ## 6. Remove leftover Nextcloud
 
@@ -144,5 +144,5 @@ Do **not** delete NFS volumes or files under `shared/` and `users/`.
 | Creating a Space fails / `node.Xattrs /posix/projects/photos: no data available` | Do not create project Spaces for `shared/files` or `shared/photos`. Personal space is `users/<name>`. Drop those nested binds (catalog), `rm -rf …/posix/projects`, Redeploy **opencloud**. |
 | Collabora iframe blocked / blank | Confirm `collabora` is Up on the HTPC and `office.<DOMAIN>` resolves to Core Caddy. |
 | CalDAV/CardDAV client cannot discover | URL is `https://cloud.<DOMAIN>` (not a LAN port). Use an App Token, not the login password. Redeploy **opencloud** after this catalog pull. From Core: `docker exec caddy wget -S -O- --timeout=5 http://opencloud:9200/.well-known/caldav \| head`. |
-| `radicale` Exited / permission denied | `mkdir` and `chown ${PUID}:${PGID}` `${DATA_ROOT}/system/opencloud/radicale`, then Redeploy **opencloud**. |
+| `radicale` Restarting / Exited | Image default listens on `[::]:5232`. Redeploy **opencloud** after this catalog pull (IPv4-only `--hosts`). If logs say permission denied: `mkdir` and `chown ${PUID}:${PGID}` `${DATA_ROOT}/system/opencloud/radicale`, then Redeploy. `docker logs radicale` |
 | Secret does not match | `IDM_ADMIN_PASSWORD` applies only on `opencloud init`. Changing the Komodo secret later does not update a live IDM. Reset with `opencloud idm resetpassword`, or wipe **both** config and data and init again. Do **not** delete `radicale/`. |

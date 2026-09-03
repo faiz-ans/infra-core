@@ -10,10 +10,13 @@ services:
     container_name: radicale
     restart: unless-stopped
     user: "${PUID}:${PGID}"
+    # Image CMD binds [::]:5232 and overrides config hosts. That fails when
+    # the edge network has no IPv6 (typical on this Core host).
+    command: ["--config", "/etc/radicale/config", "--hosts", "0.0.0.0:5232"]
     environment:
       TZ: ${TZ}
     volumes:
-      - ./radicale/config:/etc/radicale/config:ro
+      - ./radicale:/etc/radicale:ro
       - ${DATA_ROOT}/system/opencloud/radicale:/var/lib/radicale
     networks:
       - edge
