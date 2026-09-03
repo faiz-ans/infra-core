@@ -1,0 +1,24 @@
+# OpenReader on periphery. Docstore is a local HTPC volume (not NFS).
+# Caddy terminates TLS at read.${DOMAIN}. Do not publish SeaweedFS :8333;
+# the app falls back to its own upload API through Caddy.
+# TTS providers are configured in the Admin tab after first login — no
+# catalogued Kokoro/GPU worker (Docker Desktop GPU is out of scope).
+services:
+  openreader:
+    image: ghcr.io/richardr1126/openreader:latest
+    container_name: openreader
+    restart: unless-stopped
+    environment:
+      TZ: ${TZ}
+      BASE_URL: https://read.${DOMAIN}
+      AUTH_SECRET: ${OPENREADER_AUTH_SECRET}
+      AUTH_TRUSTED_ORIGINS: https://read.${DOMAIN},https://openreader.${DOMAIN},https://reader.${DOMAIN}
+      ADMIN_EMAILS: admin@${DOMAIN}
+    ports:
+      - "3003:3003"
+    volumes:
+      - openreader-docstore:/app/docstore
+
+volumes:
+  openreader-docstore:
+    name: openreader-docstore

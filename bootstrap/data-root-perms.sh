@@ -81,6 +81,7 @@ mkdir -p \
   "${DATA_ROOT}/system/jotty/cache" \
   "${DATA_ROOT}/system/linkding" \
   "${DATA_ROOT}/system/rustdesk" \
+  "${DATA_ROOT}/system/bytestash" \
   "${DATA_ROOT}/shared/media" \
   "${DATA_ROOT}/shared/media/movies" \
   "${DATA_ROOT}/shared/media/tv" \

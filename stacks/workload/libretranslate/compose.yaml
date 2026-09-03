@@ -1,0 +1,24 @@
+# LibreTranslate on periphery. Argos models are a local HTPC volume (not NFS).
+# First start downloads models and can take several minutes.
+# Caddy terminates TLS at translate.${DOMAIN}.
+services:
+  libretranslate:
+    image: libretranslate/libretranslate:latest
+    container_name: libretranslate
+    restart: unless-stopped
+    environment:
+      TZ: ${TZ}
+    ports:
+      - "5000:5000"
+    volumes:
+      - libretranslate-models:/home/libretranslate/.local
+    healthcheck:
+      test: ["CMD-SHELL", "./venv/bin/python scripts/healthcheck.py"]
+      interval: 10s
+      timeout: 4s
+      retries: 4
+      start_period: 600s
+
+volumes:
+  libretranslate-models:
+    name: libretranslate-models

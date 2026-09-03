@@ -79,6 +79,10 @@ Allow inbound TCP from the LAN (Caddy on Core) on the published ports:
 | 8000 | Restic REST |
 | 8015 | Adventure Log (`travel.${DOMAIN}` via Caddy) |
 | 8085 | Scriberr (`scribe.${DOMAIN}` via Caddy) |
+| 3313 | Transmute (`convert.${DOMAIN}` via Caddy) |
+| 5000 | LibreTranslate (`translate.${DOMAIN}` via Caddy) |
+| 3003 | OpenReader (`read.${DOMAIN}` via Caddy) |
+| 5678 | n8n (`flow.${DOMAIN}` via Caddy) |
 | 8971 | Frigate UI (`cams.${DOMAIN}` via Caddy) |
 | 8554 | Frigate RTSP restream (LAN; not Caddy) |
 | 8555/tcp+udp | Frigate WebRTC (LAN; not Caddy) |

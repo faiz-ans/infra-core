@@ -19,7 +19,7 @@ A finished site matches this layout. Bootstrap creates it; do not reintroduce `s
 
 ```
 ${DATA_ROOT}/
-  system/{authelia,vaultwarden,gitea,pihole,wireguard,restic,opencloud,jotty,linkding,rustdesk}   # Core bind-mounts only
+  system/{authelia,vaultwarden,gitea,pihole,wireguard,restic,opencloud,jotty,linkding,rustdesk,bytestash}   # Core bind-mounts only
   shared/{media,downloads,files,photos,cameras}           # NFS /shared
   users/<user>/{files,photos}                             # NFS /users
 ```
@@ -35,7 +35,7 @@ ${DATA_ROOT}/
 1. Copy the `bootstrap/` directory (including `core.sh`, `omv-nfs.sh`, `data-root-perms.sh`, and `komodo/`) to the Core host and run `core.sh` as root (or follow the commented commands). Storage is configured first; site prompts come after any OMV reboot. With OMV present, the script exports `shared/` and `users/` to the HTPC IP and applies `data-root-perms.sh`.
 2. In Komodo, confirm the `core` server. Secrets from bootstrap live in `/etc/komodo/core.config.toml`. Create a ResourceSync (webhooks off) with resource path `stacks/komodo/stacks-core.toml` first, then apply. After Gitea is up, follow [`bootstrap/gitea.md`](bootstrap/gitea.md) so polls use `gitea:3000` and GitHub is only a mirror.
 3. Keep SMB for Explorer/Finder. If you skipped OMV (OS-disk `DATA_ROOT`), export `shared/` and `users/` yourself (`bootstrap/omv-nfs.md`). When the SATA IronWolf replaces the stand-in USB data disk, follow [`bootstrap/ironwolf-migrate.md`](bootstrap/ironwolf-migrate.md) (rsync with xattrs, then change Komodo `DATA_ROOT`). On the remote host, follow [`bootstrap/periphery.md`](bootstrap/periphery.md) **in order**: Docker Desktop, Engine JSON (`bootstrap/periphery-docker-engine.ps1`), outbound Periphery with `PERIPHERY_CONNECT_AS=periphery`. Leave `restic` / `restic-rest` off until HTPC `BACKUP_DRIVE` exists.
-4. Confirm that server in Komodo, add `stacks/komodo/stacks-periphery.toml` to the same ResourceSync (or a second one), and apply. Home Assistant uses a local volume; `trusted_proxies` is written at start. The other HTPC apps use NFS for household data only. OpenCloud first-run: [`bootstrap/opencloud.md`](bootstrap/opencloud.md). Immich External Libraries: [`bootstrap/immich.md`](bootstrap/immich.md). Jotty / Linkding / RustDesk / Adventure Log / Scriberr / Frigate: matching files under `bootstrap/`.
+4. Confirm that server in Komodo, add `stacks/komodo/stacks-periphery.toml` to the same ResourceSync (or a second one), and apply. Home Assistant uses a local volume; `trusted_proxies` is written at start. The other HTPC apps use NFS for household data only. OpenCloud first-run: [`bootstrap/opencloud.md`](bootstrap/opencloud.md). Immich External Libraries: [`bootstrap/immich.md`](bootstrap/immich.md). Jotty / Linkding / RustDesk / Adventure Log / Scriberr / Frigate / Transmute / BentoPDF / LibreTranslate / OpenReader / IT Tools / n8n / ByteStash: matching files under `bootstrap/`.
 
 Winget packages for later Windows apps are listed under `windows/` and are not required for GitOps.
 

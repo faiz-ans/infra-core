@@ -78,6 +78,57 @@
             icon: frigate.svg
             description: Home Surveillance
 
+    - Tools:
+        - Transmute:
+            id: transmute
+            href: https://convert.{{HOMEPAGE_VAR_DOMAIN}}
+            server: periphery
+            container: transmute
+            icon: mdi-file-sync
+            description: File Conversion
+        - BentoPDF:
+            id: bentopdf
+            href: https://pdf.{{HOMEPAGE_VAR_DOMAIN}}
+            server: core
+            container: bentopdf
+            icon: mdi-file-pdf-box
+            description: PDF Tools
+        - LibreTranslate:
+            id: libretranslate
+            href: https://translate.{{HOMEPAGE_VAR_DOMAIN}}
+            server: periphery
+            container: libretranslate
+            icon: libretranslate.svg
+            description: Translate
+        - OpenReader:
+            id: openreader
+            href: https://read.{{HOMEPAGE_VAR_DOMAIN}}
+            server: periphery
+            container: openreader
+            icon: mdi-book-open-page-variant
+            description: Read Aloud
+        - IT Tools:
+            id: it-tools
+            href: https://tools.{{HOMEPAGE_VAR_DOMAIN}}
+            server: core
+            container: it-tools
+            icon: it-tools.svg
+            description: Utilities
+        - n8n:
+            id: n8n
+            href: https://flow.{{HOMEPAGE_VAR_DOMAIN}}
+            server: periphery
+            container: n8n
+            icon: n8n.svg
+            description: Workflows
+        - ByteStash:
+            id: bytestash
+            href: https://snippets.{{HOMEPAGE_VAR_DOMAIN}}
+            server: core
+            container: bytestash
+            icon: mdi-code-tags
+            description: Snippets
+
     - Web:
         - Gmail:
             href: https://gmail.com

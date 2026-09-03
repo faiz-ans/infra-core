@@ -232,6 +232,58 @@ LINKDING_SUPERUSER_NAME = [[LINKDING_SUPERUSER_NAME]]
 LINKDING_SUPERUSER_PASSWORD = [[LINKDING_SUPERUSER_PASSWORD]]
 """
 
+[[stack]]
+name = "bentopdf"
+deploy = true
+after = ["caddy"]
+[stack.config]
+server = "core"
+repo = "faiz-ans/infra-core"
+branch = "main"
+run_directory = "stacks/workload/bentopdf"
+file_paths = ["compose.yaml"]
+webhook_enabled = false
+poll_for_updates = true
+environment = """
+TZ = [[TZ]]
+"""
+
+[[stack]]
+name = "it-tools"
+deploy = true
+after = ["caddy"]
+[stack.config]
+server = "core"
+repo = "faiz-ans/infra-core"
+branch = "main"
+run_directory = "stacks/workload/it-tools"
+file_paths = ["compose.yaml"]
+webhook_enabled = false
+poll_for_updates = true
+environment = """
+TZ = [[TZ]]
+"""
+
+[[stack]]
+name = "bytestash"
+deploy = true
+after = ["caddy"]
+[stack.config]
+server = "core"
+repo = "faiz-ans/infra-core"
+branch = "main"
+run_directory = "stacks/workload/bytestash"
+file_paths = ["compose.yaml"]
+webhook_enabled = false
+poll_for_updates = true
+environment = """
+DOMAIN = [[DOMAIN]]
+TZ = [[TZ]]
+DATA_ROOT = [[DATA_ROOT]]
+BYTESTASH_JWT_SECRET = [[BYTESTASH_JWT_SECRET]]
+BYTESTASH_ALLOW_NEW_ACCOUNTS = [[BYTESTASH_ALLOW_NEW_ACCOUNTS]]
+"""
+
 # Host network. Not on edge. Do not port-forward 21115–21119; off-LAN is wg-easy.
 [[stack]]
 name = "rustdesk"

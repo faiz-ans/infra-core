@@ -1,0 +1,33 @@
+# Transmute on periphery. FFmpeg conversions are local HTPC volumes (not NFS).
+# Caddy terminates TLS at convert.${DOMAIN}. First visit creates the admin.
+services:
+  transmute:
+    image: ghcr.io/transmute-app/transmute:latest
+    container_name: transmute
+    restart: unless-stopped
+    environment:
+      TZ: ${TZ}
+      AUTH_SECRET_KEY: ${TRANSMUTE_AUTH_SECRET_KEY}
+      APP_URL: https://convert.${DOMAIN}
+      PORT: "3313"
+    ports:
+      - "3313:3313"
+    volumes:
+      - transmute-data:/app/data
+    healthcheck:
+      test:
+        - "CMD"
+        - "wget"
+        - "-q"
+        - "-O"
+        - "/dev/null"
+        - "--tries=1"
+        - "http://localhost:3313/api/health/ready"
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
+
+volumes:
+  transmute-data:
+    name: transmute-data

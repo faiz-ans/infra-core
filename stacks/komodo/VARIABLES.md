@@ -102,6 +102,18 @@ RustDesk OSS generates its own key pair under `${DATA_ROOT}/system/rustdesk`. No
 
 Frigate has no Komodo secret. The first start prints an admin password in `docker logs frigate`. MQTT is anonymous on the HTPC LAN port 1883 (not Caddy). Camera RTSP URLs live in the HTPC `frigate-config` volume, not git.
 
+## File conversion, PDF, translate, read-aloud, workflows, snippets
+
+| Key | Secret | Used by |
+|---|---|---|
+| `TRANSMUTE_AUTH_SECRET_KEY` | secret | Transmute JWT signing. Must stay fixed across Redeploys |
+| `BYTESTASH_JWT_SECRET` | secret | ByteStash |
+| `BYTESTASH_ALLOW_NEW_ACCOUNTS` | | ByteStash registration (`true` until the first account, then `false`) |
+| `OPENREADER_AUTH_SECRET` | secret | OpenReader session signing. Must stay fixed across Redeploys |
+| `N8N_ENCRYPTION_KEY` | secret | n8n credential encryption. Losing it orphans stored credentials |
+
+BentoPDF, IT Tools, and LibreTranslate have no Komodo secret. LibreTranslate models stay on a local HTPC volume, not NFS.
+
 ## HTPC apps
 
 | Key | Secret | Used by |

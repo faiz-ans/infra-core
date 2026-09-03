@@ -165,6 +165,76 @@ PUID = [[PUID]]
 PGID = [[PGID]]
 """
 
+# Local volume for uploads/SQLite. Caddy proxies :3313.
+[[stack]]
+name = "transmute"
+deploy = true
+[stack.config]
+server = "periphery"
+repo = "faiz-ans/infra-core"
+branch = "main"
+run_directory = "stacks/workload/transmute"
+file_paths = ["compose.yaml"]
+webhook_enabled = false
+poll_for_updates = true
+environment = """
+TZ = [[TZ]]
+DOMAIN = [[DOMAIN]]
+TRANSMUTE_AUTH_SECRET_KEY = [[TRANSMUTE_AUTH_SECRET_KEY]]
+"""
+
+# Local volume for Argos models. Caddy proxies :5000.
+[[stack]]
+name = "libretranslate"
+deploy = true
+[stack.config]
+server = "periphery"
+repo = "faiz-ans/infra-core"
+branch = "main"
+run_directory = "stacks/workload/libretranslate"
+file_paths = ["compose.yaml"]
+webhook_enabled = false
+poll_for_updates = true
+environment = """
+TZ = [[TZ]]
+"""
+
+# Local docstore volume. Caddy proxies :3003 (not SeaweedFS :8333).
+[[stack]]
+name = "openreader"
+deploy = true
+[stack.config]
+server = "periphery"
+repo = "faiz-ans/infra-core"
+branch = "main"
+run_directory = "stacks/workload/openreader"
+file_paths = ["compose.yaml"]
+webhook_enabled = false
+poll_for_updates = true
+environment = """
+TZ = [[TZ]]
+DOMAIN = [[DOMAIN]]
+OPENREADER_AUTH_SECRET = [[OPENREADER_AUTH_SECRET]]
+"""
+
+# Local SQLite volume. Caddy proxies :5678.
+[[stack]]
+name = "n8n"
+deploy = true
+[stack.config]
+server = "periphery"
+repo = "faiz-ans/infra-core"
+branch = "main"
+run_directory = "stacks/workload/n8n"
+file_paths = ["compose.yaml"]
+webhook_enabled = false
+poll_for_updates = true
+environment = """
+TZ = [[TZ]]
+DOMAIN = [[DOMAIN]]
+N8N_ENCRYPTION_KEY = [[N8N_ENCRYPTION_KEY]]
+"""
+
 # Recordings on NFS (shared/cameras). /config is local. Caddy proxies :8971.
 # MQTT :1883 is LAN-only for Home Assistant (not in Caddy).
 [[stack]]

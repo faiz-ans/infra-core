@@ -1,0 +1,28 @@
+# n8n on periphery. SQLite and credentials are a local HTPC volume (not NFS).
+# Caddy terminates TLS at flow.${DOMAIN}. Scheduled workflows run while the
+# HTPC is up. External SaaS webhooks still need WireGuard; this catalog does
+# not WAN-publish 5678.
+services:
+  n8n:
+    image: docker.n8n.io/n8nio/n8n:latest
+    container_name: n8n
+    restart: unless-stopped
+    environment:
+      TZ: ${TZ}
+      GENERIC_TIMEZONE: ${TZ}
+      N8N_HOST: flow.${DOMAIN}
+      N8N_PORT: "5678"
+      N8N_PROTOCOL: https
+      WEBHOOK_URL: https://flow.${DOMAIN}/
+      N8N_EDITOR_BASE_URL: https://flow.${DOMAIN}/
+      N8N_ENCRYPTION_KEY: ${N8N_ENCRYPTION_KEY}
+      N8N_PROXY_HOPS: "1"
+      N8N_DIAGNOSTICS_ENABLED: "false"
+    ports:
+      - "5678:5678"
+    volumes:
+      - n8n-data:/home/node/.n8n
+
+volumes:
+  n8n-data:
+    name: n8n-data

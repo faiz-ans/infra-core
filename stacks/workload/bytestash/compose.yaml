@@ -1,0 +1,27 @@
+# ByteStash on Core. Snippet SQLite under system/bytestash. Caddy on edge.
+# First browser visit creates the household account. Then set
+# BYTESTASH_ALLOW_NEW_ACCOUNTS=false in Komodo and Redeploy.
+services:
+  bytestash:
+    image: ghcr.io/jordan-dalby/bytestash:latest
+    container_name: bytestash
+    restart: unless-stopped
+    environment:
+      TZ: ${TZ}
+      BASE_PATH: ""
+      JWT_SECRET: ${BYTESTASH_JWT_SECRET}
+      TOKEN_EXPIRY: 24h
+      ALLOW_NEW_ACCOUNTS: "${BYTESTASH_ALLOW_NEW_ACCOUNTS}"
+      DEBUG: "false"
+      DISABLE_ACCOUNTS: "false"
+      DISABLE_INTERNAL_ACCOUNTS: "false"
+      ALLOWED_HOSTS: snippets.${DOMAIN},bytestash.${DOMAIN}
+    volumes:
+      - ${DATA_ROOT}/system/bytestash:/data/snippets
+    networks:
+      - edge
+
+networks:
+  edge:
+    external: true
+    name: edge

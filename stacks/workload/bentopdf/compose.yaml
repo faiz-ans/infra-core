@@ -1,0 +1,16 @@
+# BentoPDF on Core. Client-side WASM PDF toolkit; no server-side file store.
+# Caddy on edge. Self-hosted image (no bentopdf.com marketing chrome).
+services:
+  bentopdf:
+    image: ghcr.io/alam00000/bentopdf-simple:latest
+    container_name: bentopdf
+    restart: unless-stopped
+    environment:
+      TZ: ${TZ}
+    networks:
+      - edge
+
+networks:
+  edge:
+    external: true
+    name: edge
