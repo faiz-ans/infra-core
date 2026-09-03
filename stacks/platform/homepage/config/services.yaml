@@ -197,8 +197,9 @@
                 url: http://glances:61208
                 version: 4
                 metric: fs:/mnt/data
+                diskUnits: bytes
         - Periphery:
-            icon: windows.svg
+            icon: windows-10.svg
             server: periphery
             container: glances-periphery
             widget:
@@ -224,6 +225,7 @@
                 url: http://{{HOMEPAGE_VAR_HTPC_UPSTREAM}}:61208
                 version: 4
                 metric: fs:/
+                diskUnits: bytes
 
     - Services:
         - Media:

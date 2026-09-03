@@ -26,7 +26,7 @@ layout:
     Stats:
       header: false
       style: row
-      columns: 8
+      columns: 4
     Services:
       header: false
       style: row
