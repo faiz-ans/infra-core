@@ -386,5 +386,4 @@
                     url: http://{{HOMEPAGE_VAR_HTPC_UPSTREAM}}:61208/api/4/uptime
                     refreshInterval: 60000
                     mappings:
-                      - label: Uptime
-                        format: text
+                      - format: text
