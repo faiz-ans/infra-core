@@ -25,3 +25,8 @@ layout:
     header: false
     style: row
     columns: 3
+  Monitoring:
+    tab: Monitoring
+    header: false
+    style: row
+    columns: 2
