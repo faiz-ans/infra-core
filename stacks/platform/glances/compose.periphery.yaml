@@ -1,5 +1,7 @@
 # Glances on periphery. pid:host is the Docker Desktop VM (where containers run).
 # Homepage on Core scrapes HTPC_UPSTREAM:61208. Not in Caddy.
+# Host / is overlay inside the container and Glances hides it, so bind it at
+# /mnt/host (same idea as Core /mnt/data) for the disk widget.
 services:
   glances:
     image: nicolargo/glances:latest
@@ -13,3 +15,4 @@ services:
       - "61208:61208"
     volumes:
       - /etc/os-release:/etc/os-release:ro
+      - /:/mnt/host:ro
