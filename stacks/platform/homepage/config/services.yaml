@@ -288,7 +288,7 @@
 - Monitoring:
 
     - Core:
-        - Info:
+        - Core Info:
             - Core:
                 icon: raspberry-pi.svg
                 server: core
@@ -297,7 +297,7 @@
                     url: http://glances:61208
                     version: 4
                     metric: info
-        - Stats:
+        - Core Stats:
             - Core CPU:
                 widget:
                     type: glances
@@ -320,8 +320,8 @@
                     metric: fs:/mnt/data
                     chart: false
     - Periphery:
-        - Info:
-            - Periphery:    
+        - Periphery Info:
+            - Periphery:
                 icon: windows-10.svg
                 server: periphery
                 widget:
@@ -329,22 +329,25 @@
                     url: http://{{HOMEPAGE_VAR_HTPC_UPSTREAM}}:61208
                     version: 4
                     metric: info
-        - Stats:
+        - Periphery Stats:
             - Periphery CPU:
                 widget:
                     type: glances
                     url: http://{{HOMEPAGE_VAR_HTPC_UPSTREAM}}:61208
                     version: 4
                     metric: cpu
+                    chart: false
             - Periphery Memory:
                 widget:
                     type: glances
                     url: http://{{HOMEPAGE_VAR_HTPC_UPSTREAM}}:61208
                     version: 4
                     metric: memory
+                    chart: false
             - Periphery Disk:
                 widget:
                     type: glances
                     url: http://{{HOMEPAGE_VAR_HTPC_UPSTREAM}}:61208
                     version: 4
                     metric: fs:/mnt/windows
+                    chart: false

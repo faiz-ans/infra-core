@@ -32,17 +32,17 @@ layout:
     columns: 2
     Core:
       header: false
-      Info:
+      Core Info:
         header: false
-      Stats:
+      Core Stats:
         header: false
         style: row
         columns: 2
     Periphery:
       header: false
-      Info:
+      Periphery Info:
         header: false
-      Stats:
+      Periphery Stats:
         header: false
         style: row
         columns: 2
