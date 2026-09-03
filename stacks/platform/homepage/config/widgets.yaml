@@ -5,9 +5,9 @@
       dateStyle: medium
 
 - openmeteo:
-    latitude: 34.19107278206662
-    longitude: -118.48053034784378
-    timezone: America/Los_Angeles
+    latitude: {{HOMEPAGE_VAR_WEATHER_LATITUDE}}
+    longitude: {{HOMEPAGE_VAR_WEATHER_LONGITUDE}}
+    timezone: "{{HOMEPAGE_VAR_TZ}}"
     units: imperial
     cache: 5
 
@@ -24,6 +24,7 @@
     uptime: true
     disk:
       - /mnt/data
+    label: Core
 
 #- glances:
 #    url: http://{{HOMEPAGE_VAR_HTPC_UPSTREAM}}:61208

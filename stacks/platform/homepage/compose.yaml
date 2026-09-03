@@ -22,6 +22,8 @@ services:
     restart: unless-stopped
     depends_on:
       - dockerproxy
+    env_file:
+      - .env
     environment:
       TZ: ${TZ}
       NODE_OPTIONS: --dns-result-order=ipv4first
@@ -39,8 +41,8 @@ services:
       HOMEPAGE_VAR_GRAFANA_KEY: ${HOMEPAGE_VAR_GRAFANA_KEY}
       HOMEPAGE_VAR_WGEASY_PASSWORD: ${HOMEPAGE_VAR_WGEASY_PASSWORD}
       HOMEPAGE_VAR_TZ: ${TZ}
-      HOMEPAGE_VAR_WEATHER_LATITUDE: ${HOMEPAGE_VAR_WEATHER_LATITUDE}
-      HOMEPAGE_VAR_WEATHER_LONGITUDE: ${HOMEPAGE_VAR_WEATHER_LONGITUDE}
+      HOMEPAGE_VAR_WEATHER_LATITUDE: "${HOMEPAGE_VAR_WEATHER_LATITUDE:-${WEATHER_LATITUDE}}"
+      HOMEPAGE_VAR_WEATHER_LONGITUDE: "${HOMEPAGE_VAR_WEATHER_LONGITUDE:-${WEATHER_LONGITUDE}}"
     sysctls:
       net.ipv6.conf.all.disable_ipv6: 1
     volumes:
