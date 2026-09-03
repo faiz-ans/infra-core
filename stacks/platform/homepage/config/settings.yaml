@@ -32,9 +32,17 @@ layout:
     columns: 2
     Core:
       header: false
-      style: row
-      columns: 2
+      Info:
+        header: false
+      Stats:
+        header: false
+        style: row
+        columns: 2
     Periphery:
       header: false
-      style: row
-      columns: 2
+      Info:
+        header: false
+      Stats:
+        header: false
+        style: row
+        columns: 2
