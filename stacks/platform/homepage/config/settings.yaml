@@ -1,6 +1,6 @@
 title: Home
 theme: dark
-headerStyle: clean
+headerStyle: boxedWidgets
 hideVersion: true
 statusStyle: dot
 target: _top
