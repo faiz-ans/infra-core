@@ -1,6 +1,6 @@
 # Glances first-run
 
-Glances feeds Homepage host stats (CPU, memory, disk, uptime). It is not behind Caddy.
+Glances feeds Homepage host stats on the **System** tab (CPU, memory, disk). It is not behind Caddy. The global header does not show host stats.
 
 ## Core
 
@@ -8,7 +8,7 @@ Runs on **Core** (`edge`). Homepage scrapes `http://glances:61208`. `pid: host` 
 
 No Komodo secret. No new `system/` directory.
 
-Commit and push. Wait for ResourceSync. Komodo → **Stacks** → **glances** → **Deploy**. Redeploy **homepage** so the header widgets exist.
+Commit and push. Wait for ResourceSync. Komodo → **Stacks** → **glances** → **Deploy**. Redeploy **homepage** so the System → Hosts widgets exist.
 
 ```text
 docker ps --filter name=glances --format "table {{.Names}}\t{{.Status}}"
