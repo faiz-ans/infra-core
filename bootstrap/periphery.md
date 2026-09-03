@@ -83,7 +83,7 @@ Allow inbound TCP from the LAN (Caddy on Core) on the published ports:
 | 5000 | LibreTranslate (`translate.${DOMAIN}` via Caddy) |
 | 3003 | OpenReader (`read.${DOMAIN}` via Caddy) |
 | 5678 | n8n (`flow.${DOMAIN}` via Caddy) |
-| 61208 | Glances (Homepage host stats; not Caddy) |
+| 61208 | Glances (`glances2.${DOMAIN}` via Caddy; Homepage host stats) |
 | 8971 | Frigate UI (`cams.${DOMAIN}` via Caddy) |
 | 8554 | Frigate RTSP restream (LAN; not Caddy) |
 | 8555/tcp+udp | Frigate WebRTC (LAN; not Caddy) |

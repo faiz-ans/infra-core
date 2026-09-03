@@ -1,5 +1,6 @@
 # Glances on Core. pid:host so CPU/mem/temp are the NAS, not the container.
 # No published ports: Homepage scrapes http://glances:61208 on edge.
+# Browser UI is https://glances.<DOMAIN> through Caddy.
 # DATA_ROOT is mounted at /mnt/data so the widget can name the data disk
 # without putting a live uuid path in git.
 services:

@@ -36,13 +36,13 @@ https://git.{$DOMAIN} {
 	}
 }
 
-https://dns.{$DOMAIN}, https://pihole.{$DOMAIN} {
+https://dns.{$DOMAIN}, https://pihole.{$DOMAIN}, https://pihole-core.{$DOMAIN} {
 	tls internal
 	redir / /admin
 	reverse_proxy pihole:80
 }
 
-https://dns2.{$DOMAIN}, https://pihole2.{$DOMAIN} {
+https://dns2.{$DOMAIN}, https://pihole2.{$DOMAIN}, https://pihole-periphery.{$DOMAIN} {
 	tls internal
 	redir / /admin
 	reverse_proxy {$HTPC_UPSTREAM}:8083
@@ -261,6 +261,16 @@ https://stats.{$DOMAIN}, https://monitoring.{$DOMAIN}, https://grafana.{$DOMAIN}
 https://metrics.{$DOMAIN}, https://prometheus.{$DOMAIN} {
 	tls internal
 	reverse_proxy {$HTPC_UPSTREAM}:9090
+}
+
+https://glances.{$DOMAIN}, https://glances-core.{$DOMAIN} {
+	tls internal
+	reverse_proxy glances:61208
+}
+
+https://glances2.{$DOMAIN}, https://glances-periphery.{$DOMAIN} {
+	tls internal
+	reverse_proxy {$HTPC_UPSTREAM}:61208
 }
 
 https://wifi.{$DOMAIN}, https://router.{$DOMAIN} {

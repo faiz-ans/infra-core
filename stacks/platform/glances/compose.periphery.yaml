@@ -1,5 +1,6 @@
 # Glances on periphery. pid:host is the Docker Desktop VM (CPU/RAM).
-# Homepage on Core scrapes HTPC_UPSTREAM:61208. Not in Caddy.
+# Homepage on Core scrapes HTPC_UPSTREAM:61208.
+# Browser UI is https://glances2.<DOMAIN> through Caddy.
 # Disk must be Windows C:, not the WSL2 VHD. Docker Desktop exposes that
 # drive at /mnt/host/c inside the engine VM (9p/drvfs). Bind it at a
 # stable path so Homepage can match mnt_point without a drive letter.

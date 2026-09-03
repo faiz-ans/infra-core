@@ -1,14 +1,14 @@
 # Glances first-run
 
-Glances feeds Homepage host stats on the **System** tab (CPU, memory, disk). It is not behind Caddy. The global header does not show host stats.
+Glances feeds Homepage host stats (header widgets and System → Platform tiles). The **web UI** is on Caddy. Homepage still scrapes internally (not through Caddy).
 
 ## Core
 
-Runs on **Core** (`edge`). Homepage scrapes `http://glances:61208`. `pid: host` so the numbers are the NAS, not the container. `${DATA_ROOT}` is mounted at `/mnt/data` (the data-disk widget).
+Runs on **Core** (`edge`). Homepage scrapes `http://glances:61208`. Browser: `https://glances.<DOMAIN>` (alias `glances-core.`). `pid: host` so the numbers are the NAS, not the container. `${DATA_ROOT}` is mounted at `/mnt/data` (the data-disk widget).
 
-No Komodo secret. No new `system/` directory.
+No Komodo secret. No new `system/` directory. No LAN port.
 
-Commit and push. Wait for ResourceSync. Komodo → **Stacks** → **glances** → **Deploy**. Redeploy **homepage** so the System → Hosts widgets exist.
+Commit and push. Wait for ResourceSync. Komodo → **Stacks** → **glances** → **Deploy**. Redeploy **caddy** and **homepage**.
 
 ```text
 docker ps --filter name=glances --format "table {{.Names}}\t{{.Status}}"
@@ -18,11 +18,11 @@ You want `glances` **Up**. It must **not** publish 61208 on the LAN.
 
 ## Periphery
 
-Runs on **periphery**. Homepage scrapes `http://<HTPC_UPSTREAM>:61208`. CPU/RAM/uptime are the Docker Desktop VM. **Disk is Windows `C:`**, bind-mounted from `/mnt/host/c` to `/mnt/windows` (not the WSL2 VHD). The widget path is `/mnt/windows`.
+Runs on **periphery**. Homepage scrapes `http://<HTPC_UPSTREAM>:61208`. Browser: `https://glances2.<DOMAIN>` (alias `glances-htpc.`). CPU/RAM/uptime are the Docker Desktop VM. **Disk is Windows `C:`**, bind-mounted from `/mnt/host/c` to `/mnt/windows` (not the WSL2 VHD). The widget path is `/mnt/windows`.
 
 GPU (RTX 2060) needs the `ubuntu-latest-full` image and NVIDIA in Docker Desktop (Settings → Resources → GPU). Alpine `latest` cannot load NVML. WSL2 usually has no CPU thermal sensors, so Periphery has no CPU-temp tile; GPU temp is on the GPU widget.
 
-Allow Windows Firewall TCP **61208** from the LAN (Homepage on Core). See `bootstrap/periphery.md`.
+Allow Windows Firewall TCP **61208** from the LAN (Caddy and Homepage on Core). See `bootstrap/periphery.md`.
 
 Komodo → **Stacks** → **glances-periphery** → **Deploy**.
 
@@ -34,6 +34,9 @@ docker ps --filter name=glances-periphery --format "table {{.Names}}\t{{.Status}
 
 | Symptom | What to do |
 |---|---|
+| Click opens `http://glances:61208` | Redeploy **homepage** (href is `https://glances.<DOMAIN>`). Redeploy **caddy** |
+| `glances.<DOMAIN>` does not load | Redeploy **caddy**. Core glances must be Up on `edge`. From Core: `docker exec caddy wget -S -O- --timeout=5 http://glances:61208/ \| head` |
+| `glances2.<DOMAIN>` does not load | Windows Firewall **61208**. Redeploy **caddy**. From Core: `docker exec caddy wget -S -O- --timeout=5 http://<HTPC_UPSTREAM>:61208/ \| head` |
 | Core widget empty / API error | Redeploy **homepage**. Then `docker exec homepage wget -S -O- --timeout=5 http://glances:61208/api/4/cpu` |
 | Periphery widget empty | Windows Firewall **61208**. From Core: `docker exec homepage wget -S -O- --timeout=5 http://<HTPC_UPSTREAM>:61208/api/4/cpu` |
 | API 404 | Image is Glances 4; widgets use `version: 4`. Do not set version 3 |
