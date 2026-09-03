@@ -1,15 +1,15 @@
+- datetime:
+    text_size: xl
+    format:
+      timeStyle: short
+      dateStyle: medium
+
 - openmeteo:
     latitude: 34.19107278206662
     longitude: -118.48053034784378
     timezone: America/Los_Angeles
     units: imperial
     cache: 5
-
-- datetime:
-    text_size: xl
-    format:
-      timeStyle: short
-      dateStyle: medium
 
 #- search:
 #    provider: duckduckgo
