@@ -23,11 +23,5 @@ layout:
   System:
     tab: System
     header: false
-    Stats:
-      header: false
-      style: row
-      columns: 4
-    Services:
-      header: false
-      style: row
-      columns: 3
+    style: row
+    columns: 3

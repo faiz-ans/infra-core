@@ -169,183 +169,117 @@
             
 - System:
 
-    - Stats:
-        - Core:
-            icon: raspberry-pi.svg
-            server: core
-            container: glances
-            widget:
-                type: glances
-                url: http://glances:61208
-                version: 4
-                metric: info
-                chart: false
-        - Core CPU:
-            widget:
-                type: glances
-                url: http://glances:61208
-                version: 4
-                metric: cpu
-                chart: false
-        - Core Memory:
-            widget:
-                type: glances
-                url: http://glances:61208
-                version: 4
-                metric: memory
-                chart: false
-        - Core Disk:
-            widget:
-                type: glances
-                url: http://glances:61208
-                version: 4
-                metric: fs:/mnt/data
-                diskUnits: bytes
-                chart: false
-        - Periphery:
-            icon: windows-10.svg
+    - Media:
+        - Jellyfin:
+            href: https://watch.{{HOMEPAGE_VAR_DOMAIN}}
             server: periphery
-            container: glances-periphery
-            widget:
-                type: glances
-                url: http://{{HOMEPAGE_VAR_HTPC_UPSTREAM}}:61208
-                version: 4
-                metric: info
-                chart: false
-        - Periphery CPU:
-            widget:
-                type: glances
-                url: http://{{HOMEPAGE_VAR_HTPC_UPSTREAM}}:61208
-                version: 4
-                metric: cpu
-                chart: false
-        - PeripheryMemory:
-            widget:
-                type: glances
-                url: http://{{HOMEPAGE_VAR_HTPC_UPSTREAM}}:61208
-                version: 4
-                metric: memory
-                chart: false
-        - Periphery Disk:
-            widget:
-                type: glances
-                url: http://{{HOMEPAGE_VAR_HTPC_UPSTREAM}}:61208
-                version: 4
-                metric: fs:C:\\\\
-                chart: false
+            container: jellyfin
+            icon: jellyfin.svg
+            description: Library
+        - qBittorrent:
+            href: https://down.{{HOMEPAGE_VAR_DOMAIN}}
+            server: periphery
+            container: qbittorrent
+            icon: qbittorrent.svg
+            description: Downloads      
+        - Prowlarr:
+            href: https://prowlarr.{{HOMEPAGE_VAR_DOMAIN}}
+            server: periphery
+            container: prowlarr
+            icon: prowlarr.svg
+            description: Indices      
+        - Radarr:
+            href: https://radarr.{{HOMEPAGE_VAR_DOMAIN}}
+            server: periphery
+            container: radarr
+            icon: radarr.svg
+            description: Request Movies    
+        - Sonarr:
+            href: https://sonarr.{{HOMEPAGE_VAR_DOMAIN}}
+            server: periphery
+            container: sonarr
+            icon: sonarr.svg
+            description: Request TV Shows
 
-    - Services:
-        - Media:
-            - Jellyfin:
-                href: https://watch.{{HOMEPAGE_VAR_DOMAIN}}
-                server: periphery
-                container: jellyfin
-                icon: jellyfin.svg
-                description: Library
-            - qBittorrent:
-                href: https://down.{{HOMEPAGE_VAR_DOMAIN}}
-                server: periphery
-                container: qbittorrent
-                icon: qbittorrent.svg
-                description: Downloads      
-            - Prowlarr:
-                href: https://prowlarr.{{HOMEPAGE_VAR_DOMAIN}}
-                server: periphery
-                container: prowlarr
-                icon: prowlarr.svg
-                description: Indices      
-            - Radarr:
-                href: https://radarr.{{HOMEPAGE_VAR_DOMAIN}}
-                server: periphery
-                container: radarr
-                icon: radarr.svg
-                description: Request Movies    
-            - Sonarr:
-                href: https://sonarr.{{HOMEPAGE_VAR_DOMAIN}}
-                server: periphery
-                container: sonarr
-                icon: sonarr.svg
-                description: Request TV Shows
+    - Platform:
+        - Gitea:
+            href: https://git.{{HOMEPAGE_VAR_DOMAIN}}
+            server: core
+            container: gitea
+            icon: gitea.svg
+            description: Version Control
+        - Komodo:
+            href: https://ops.{{HOMEPAGE_VAR_DOMAIN}}
+            siteMonitor: http://{{HOMEPAGE_VAR_NAS_LAN_IP}}:9120
+            icon: docker.svg
+            description: Deployment
+        - OpenMediaVault:
+            href: https://nas.{{HOMEPAGE_VAR_DOMAIN}}
+            siteMonitor: http://{{HOMEPAGE_VAR_NAS_LAN_IP}}:81
+            icon: openmediavault.svg
+            description: Storage
+        - Grafana:
+            href: https://stats.{{HOMEPAGE_VAR_DOMAIN}}
+            server: periphery
+            container: grafana
+            icon: grafana.svg
+            description: Monitoring
+        #    widget:
+        #      type: grafana
+        #      url: http://{{HOMEPAGE_VAR_HTPC_UPSTREAM}}:3000
+        #      key: "{{HOMEPAGE_VAR_GRAFANA_KEY}}"
+        - Prometheus:
+            href: https://metrics.{{HOMEPAGE_VAR_DOMAIN}}
+            server: periphery
+            container: prometheus
+            icon: prometheus.svg
+            description: Metrics
+        - Authelia:
+            href: https://auth.{{HOMEPAGE_VAR_DOMAIN}}
+            server: core
+            container: authelia
+            icon: authelia.svg
+            description: Authentication
 
-        - Platform:
-            - Gitea:
-                href: https://git.{{HOMEPAGE_VAR_DOMAIN}}
-                server: core
-                container: gitea
-                icon: gitea.svg
-                description: Version Control
-            - Komodo:
-                href: https://ops.{{HOMEPAGE_VAR_DOMAIN}}
-                siteMonitor: http://{{HOMEPAGE_VAR_NAS_LAN_IP}}:9120
-                icon: docker.svg
-                description: Deployment
-            - OpenMediaVault:
-                href: https://nas.{{HOMEPAGE_VAR_DOMAIN}}
-                siteMonitor: http://{{HOMEPAGE_VAR_NAS_LAN_IP}}:81
-                icon: openmediavault.svg
-                description: Storage
-            - Grafana:
-                href: https://stats.{{HOMEPAGE_VAR_DOMAIN}}
-                server: periphery
-                container: grafana
-                icon: grafana.svg
-                description: Monitoring
-            #    widget:
-            #      type: grafana
-            #      url: http://{{HOMEPAGE_VAR_HTPC_UPSTREAM}}:3000
-            #      key: "{{HOMEPAGE_VAR_GRAFANA_KEY}}"
-            - Prometheus:
-                href: https://metrics.{{HOMEPAGE_VAR_DOMAIN}}
-                server: periphery
-                container: prometheus
-                icon: prometheus.svg
-                description: Metrics
-            - Authelia:
-                href: https://auth.{{HOMEPAGE_VAR_DOMAIN}}
-                server: core
-                container: authelia
-                icon: authelia.svg
-                description: Authentication
-
-        - Network:
-            - Pi-hole:
-                href: https://dns.{{HOMEPAGE_VAR_DOMAIN}}/admin
-                server: core
-                container: pihole
-                icon: pi-hole.svg
-                description: DNS
-                widget:
-                    type: pihole
-                    url: http://pihole:80
-                    version: 6
-                    fields:
-                    - queries
-                    - blocked_percent
-                    - gravity
-            # - Pi-hole Periphery:
-            #    href: https://dns2.{{HOMEPAGE_VAR_DOMAIN}}/admin
-            #    siteMonitor: http://{{HOMEPAGE_VAR_HTPC_UPSTREAM}}:8083/admin
-            #    icon: pi-hole.svg
-            #    description: DNS (Secondary)
-            - WireGuard:
-                href: https://vpn.{{HOMEPAGE_VAR_DOMAIN}}
-                server: core
-                container: wireguard
-                icon: wireguard.svg
-                description: VPN
-            - RustDesk:
-                href: https://desk.{{HOMEPAGE_VAR_DOMAIN}}
-                server: core
-                container: hbbs
-                icon: rustdesk.png
-                description: Remote Desktop
-            - Linksys EA8300:
-                href: https://wifi.{{HOMEPAGE_VAR_DOMAIN}}
-                siteMonitor: https://192.168.1.1/
-                icon: linksys.svg
-                description: Router
-            - HP LaserJet M29w:
-                href: https://print.{{HOMEPAGE_VAR_DOMAIN}}
-                siteMonitor: https://192.168.1.113/
-                icon: hp.svg
-                description: Printer
+    - Network:
+        - Pi-hole:
+            href: https://dns.{{HOMEPAGE_VAR_DOMAIN}}/admin
+            server: core
+            container: pihole
+            icon: pi-hole.svg
+            description: DNS
+            widget:
+                type: pihole
+                url: http://pihole:80
+                version: 6
+                fields:
+                - queries
+                - blocked_percent
+                - gravity
+        # - Pi-hole Periphery:
+        #    href: https://dns2.{{HOMEPAGE_VAR_DOMAIN}}/admin
+        #    siteMonitor: http://{{HOMEPAGE_VAR_HTPC_UPSTREAM}}:8083/admin
+        #    icon: pi-hole.svg
+        #    description: DNS (Secondary)
+        - WireGuard:
+            href: https://vpn.{{HOMEPAGE_VAR_DOMAIN}}
+            server: core
+            container: wireguard
+            icon: wireguard.svg
+            description: VPN
+        - RustDesk:
+            href: https://desk.{{HOMEPAGE_VAR_DOMAIN}}
+            server: core
+            container: hbbs
+            icon: rustdesk.png
+            description: Remote Desktop
+        - Linksys EA8300:
+            href: https://wifi.{{HOMEPAGE_VAR_DOMAIN}}
+            siteMonitor: https://192.168.1.1/
+            icon: linksys.svg
+            description: Router
+        - HP LaserJet M29w:
+            href: https://print.{{HOMEPAGE_VAR_DOMAIN}}
+            siteMonitor: https://192.168.1.113/
+            icon: hp.svg
+            description: Printer
