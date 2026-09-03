@@ -24,7 +24,6 @@
     uptime: true
     disk:
       - /mnt/data
-    label: Core
 
 #- glances:
 #    url: http://{{HOMEPAGE_VAR_HTPC_UPSTREAM}}:61208
