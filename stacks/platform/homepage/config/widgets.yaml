@@ -3,12 +3,11 @@
     format:
       timeStyle: short
       dateStyle: medium
-- greeting:
-    text_size: xl
-    text: Home
+
 - search:
     provider: duckduckgo
     target: _blank
+
 - glances:
     url: http://glances:61208
     version: 4
@@ -19,6 +18,7 @@
     disk:
       - /mnt/data
     label: Core
+
 - glances:
     url: http://{{HOMEPAGE_VAR_HTPC_UPSTREAM}}:61208
     version: 4
