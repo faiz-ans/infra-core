@@ -10,14 +10,15 @@ services:
     container_name: radicale
     restart: unless-stopped
     user: "${PUID}:${PGID}"
-    # Image CMD binds [::]:5232 and overrides config hosts. That fails when
-    # the edge network has no IPv6 (typical on this Core host).
+    # Image CMD binds [::]:5232. Override so we do not listen on IPv6.
+    # Do not mount ./radicale/config — the first deploy created that path
+    # as a directory and Radicale exits with IsADirectoryError.
     command: ["--config", "/etc/radicale/config", "--hosts", "0.0.0.0:5232"]
     environment:
       TZ: ${TZ}
     volumes:
-      - ./radicale:/etc/radicale:ro
-      - ${DATA_ROOT}/system/opencloud/radicale:/var/lib/radicale
+      - ./radicale.conf:/etc/radicale/config:ro
+      - ${DATA_ROOT}/system/opencloud/radicale:/var/lib/radicale/collections
     networks:
       - edge
 
