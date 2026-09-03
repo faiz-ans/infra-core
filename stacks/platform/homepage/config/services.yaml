@@ -224,7 +224,7 @@
                 type: glances
                 url: http://{{HOMEPAGE_VAR_HTPC_UPSTREAM}}:61208
                 version: 4
-                metric: C:\\
+                metric: C:
                 diskUnits: bytes
 
     - Services:
