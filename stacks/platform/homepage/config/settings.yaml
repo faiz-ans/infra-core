@@ -37,4 +37,4 @@ layout:
     Periphery:
       header: false
       style: row
-      columns: 4
+      columns: 2
