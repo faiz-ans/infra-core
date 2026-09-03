@@ -84,14 +84,14 @@
             href: https://convert.{{HOMEPAGE_VAR_DOMAIN}}
             server: periphery
             container: transmute
-            icon: mdi-file-sync
+            icon: transmute.svg
             description: File Conversion
         - BentoPDF:
             id: bentopdf
             href: https://pdf.{{HOMEPAGE_VAR_DOMAIN}}
             server: core
             container: bentopdf
-            icon: mdi-file-pdf-box
+            icon: bentopdf.svg
             description: PDF Tools
         - LibreTranslate:
             id: libretranslate
@@ -105,7 +105,7 @@
             href: https://read.{{HOMEPAGE_VAR_DOMAIN}}
             server: periphery
             container: openreader
-            icon: mdi-book-open-page-variant
+            icon: openreader.svg
             description: Read Aloud
         - IT Tools:
             id: it-tools
@@ -126,7 +126,7 @@
             href: https://snippets.{{HOMEPAGE_VAR_DOMAIN}}
             server: core
             container: bytestash
-            icon: mdi-code-tags
+            icon: bytestash.svg
             description: Snippets
 
     - Web:
@@ -161,6 +161,9 @@
         - GitHub:
             href: https://github.com
             icon: github-light.svg
+        - Twitch:
+            href: https://twitch.tv
+            icon: twitch.svg
             
 - System:
 
