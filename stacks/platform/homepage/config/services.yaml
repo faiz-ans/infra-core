@@ -84,7 +84,7 @@
             href: https://convert.{{HOMEPAGE_VAR_DOMAIN}}
             server: periphery
             container: transmute
-            icon: transmute.svg
+            icon: https://cdn.jsdelivr.net/gh/selfhst/icons/svg/transmute.svg
             description: File Conversion
         - BentoPDF:
             id: bentopdf
@@ -105,7 +105,7 @@
             href: https://read.{{HOMEPAGE_VAR_DOMAIN}}
             server: periphery
             container: openreader
-            icon: openreader.svg
+            icon: openreader.png
             description: Read Aloud
         - IT Tools:
             id: it-tools
