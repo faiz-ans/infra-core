@@ -1,9 +1,11 @@
+# Datetime
 - datetime:
     text_size: xl
     format:
       timeStyle: short
       dateStyle: medium
 
+# Weather
 - openmeteo:
     latitude: {{HOMEPAGE_VAR_WEATHER_LATITUDE}}
     longitude: {{HOMEPAGE_VAR_WEATHER_LONGITUDE}}
@@ -11,10 +13,12 @@
     units: imperial
     cache: 5
 
+# Searchbar
 #- search:
 #    provider: duckduckgo
 #    target: _blank
 
+# Core Glances
 - glances:
     url: http://glances:61208
     href: https://glances.{{HOMEPAGE_VAR_DOMAIN}}
@@ -25,7 +29,9 @@
     uptime: true
     disk:
       - /mnt/data
+ #   label: Core
 
+# Periphery Glances
 #- glances:
 #    url: http://{{HOMEPAGE_VAR_HTPC_UPSTREAM}}:61208
 #    href: https://glances2.{{HOMEPAGE_VAR_DOMAIN}}

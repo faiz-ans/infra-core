@@ -17,7 +17,14 @@ layout:
     header: false
     style: row
     columns: 4
+    Data:
+      header: false
+    Utilities:
+      header: false
+    Household:
+      header: false
     Web:
+      header: false
       style: row
       columns: 2
   System:
