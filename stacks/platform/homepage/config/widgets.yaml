@@ -4,12 +4,12 @@
       timeStyle: short
       dateStyle: medium
 
-#- openmeteo:
-#    latitude: "{{HOMEPAGE_VAR_WEATHER_LATITUDE}}"
-#    longitude: "{{HOMEPAGE_VAR_WEATHER_LONGITUDE}}"
-#    timezone: auto
-#    units: imperial
-#    cache: 5
+- openmeteo:
+    latitude: 34.19107278206662
+    longitude: -118.48053034784378
+    timezone: America/Los_Angeles
+    units: imperial
+    cache: 5
 
 #- search:
 #    provider: duckduckgo
