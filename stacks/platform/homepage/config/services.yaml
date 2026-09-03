@@ -283,3 +283,63 @@
             siteMonitor: https://192.168.1.113/
             icon: hp.svg
             description: Printer
+
+
+- Monitoring:
+
+    - Core:
+        - Core:
+            icon: raspberry-pi.svg
+            server: core
+            container: glances
+            widget:
+                type: glances
+                url: http://glances:61208
+                version: 4
+                metric: info
+        - Core CPU:
+            widget:
+                type: glances
+                url: http://glances:61208
+                version: 4
+                metric: cpu
+        - Core Memory:
+            widget:
+                type: glances
+                url: http://glances:61208
+                version: 4
+                metric: memory
+        - Core Disk:
+            widget:
+                type: glances
+                url: http://glances:61208
+                version: 4
+                metric: fs:/mnt/data
+    - Periphery:
+        - Periphery:    
+            icon: windows.svg
+            server: periphery
+            container: glances-periphery
+            widget:
+                type: glances
+                url: http://{{HOMEPAGE_VAR_HTPC_UPSTREAM}}:61208
+                version: 4
+                metric: info
+        - Periphery CPU:
+            widget:
+                type: glances
+                url: http://{{HOMEPAGE_VAR_HTPC_UPSTREAM}}:61208
+                version: 4
+                metric: cpu
+        - Periphery Memory:
+            widget:
+                type: glances
+                url: http://{{HOMEPAGE_VAR_HTPC_UPSTREAM}}:61208
+                version: 4
+                metric: memory
+        - Periphery Disk:
+            widget:
+                type: glances
+                url: http://{{HOMEPAGE_VAR_HTPC_UPSTREAM}}:61208
+                version: 4
+                metric: fs:/mnt/windows

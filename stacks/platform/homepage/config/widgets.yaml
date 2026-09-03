@@ -4,27 +4,27 @@
       timeStyle: short
       dateStyle: medium
 
-#- search:
-#    provider: duckduckgo
-#    target: _blank
+- search:
+    provider: duckduckgo
+    target: _blank
 
-- glances:
-    url: http://glances:61208
-    version: 4
-    cpu: true
-    mem: true
-    cputemp: true
-    uptime: true
-    disk:
-      - /mnt/data
-    label: Core
+#- glances:
+#    url: http://glances:61208
+#    version: 4
+#    cpu: true
+#    mem: true
+#    cputemp: true
+#    uptime: true
+#    disk:
+#      - /mnt/data
+#    label: Core
 
-- glances:
-    url: http://{{HOMEPAGE_VAR_HTPC_UPSTREAM}}:61208
-    version: 4
-    cpu: true
-    mem: true
-    uptime: true
-    disk:
-      - /mnt/windows
-    label: Periphery
+#- glances:
+#    url: http://{{HOMEPAGE_VAR_HTPC_UPSTREAM}}:61208
+#    version: 4
+#    cpu: true
+#    mem: true
+#    uptime: true
+#    disk:
+#      - /mnt/windows
+#    label: Periphery
