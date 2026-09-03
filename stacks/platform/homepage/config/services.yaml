@@ -1,6 +1,50 @@
 - Apps:
 
-    - Utilities:
+    - Data:
+        - OpenCloud:
+            id: opencloud
+            href: https://cloud.{{HOMEPAGE_VAR_DOMAIN}}
+            server: core
+            container: opencloud
+            icon: open-cloud-dark.svg
+            description: Files
+        - Immich:
+            id: immich
+            href: https://photos.{{HOMEPAGE_VAR_DOMAIN}}
+            server: periphery
+            container: immich
+            icon: immich.svg
+            description: Photos
+        - Jotty:
+            id: jotty
+            href: https://notes.{{HOMEPAGE_VAR_DOMAIN}}
+            server: core
+            container: jotty
+            icon: jotty.svg
+            description: Notes
+        - Scriberr:
+            id: scriberr
+            href: https://voice.{{HOMEPAGE_VAR_DOMAIN}}
+            server: periphery
+            container: scriberr
+            icon: scriberr.svg
+            description: Voice Transcription
+        - Linkding:
+            id: linkding
+            href: https://links.{{HOMEPAGE_VAR_DOMAIN}}
+            server: core
+            container: linkding
+            icon: linkding.svg
+            description: Bookmarks
+        - Vaultwarden:
+            id: vaultwarden
+            href: https://pass.{{HOMEPAGE_VAR_DOMAIN}}
+            server: core
+            container: vaultwarden
+            icon: bitwarden.svg
+            description: Passwords
+
+    - Utils:
         - Transmute:
             id: transmute
             href: https://convert.{{HOMEPAGE_VAR_DOMAIN}}
@@ -51,58 +95,7 @@
             icon: n8n.svg
             description: Workflow Automation
 
-    - Data:
-        - OpenCloud:
-            id: opencloud
-            href: https://cloud.{{HOMEPAGE_VAR_DOMAIN}}
-            server: core
-            container: opencloud
-            icon: open-cloud-dark.svg
-            description: Files
-        - Immich:
-            id: immich
-            href: https://photos.{{HOMEPAGE_VAR_DOMAIN}}
-            server: periphery
-            container: immich
-            icon: immich.svg
-            description: Photos
-        - Jotty:
-            id: jotty
-            href: https://notes.{{HOMEPAGE_VAR_DOMAIN}}
-            server: core
-            container: jotty
-            icon: jotty.svg
-            description: Notes
-        - Scriberr:
-            id: scriberr
-            href: https://voice.{{HOMEPAGE_VAR_DOMAIN}}
-            server: periphery
-            container: scriberr
-            icon: scriberr.svg
-            description: Voice Transcription
-        - Linkding:
-            id: linkding
-            href: https://links.{{HOMEPAGE_VAR_DOMAIN}}
-            server: core
-            container: linkding
-            icon: linkding.svg
-            description: Bookmarks
-        - Vaultwarden:
-            id: vaultwarden
-            href: https://pass.{{HOMEPAGE_VAR_DOMAIN}}
-            server: core
-            container: vaultwarden
-            icon: bitwarden.svg
-            description: Passwords
-        - Adventure Log:
-            id: adventurelog
-            href: https://trips.{{HOMEPAGE_VAR_DOMAIN}}
-            server: periphery
-            container: adventurelog
-            icon: adventure-log.svg
-            description: Travel Log
-
-    - Media & Home:
+    - Household:
         - Jellyfin:
             id: jellyfin
             href: https://watch.{{HOMEPAGE_VAR_DOMAIN}}
@@ -116,6 +109,13 @@
             container: seerr
             icon: seerr.svg
             description: Request Movies & TV
+        - Adventure Log:
+            id: adventurelog
+            href: https://trips.{{HOMEPAGE_VAR_DOMAIN}}
+            server: periphery
+            container: adventurelog
+            icon: adventure-log.svg
+            description: Travel Log
         - Home Assistant:
             id: homeassistant
             href: https://auto.{{HOMEPAGE_VAR_DOMAIN}}
