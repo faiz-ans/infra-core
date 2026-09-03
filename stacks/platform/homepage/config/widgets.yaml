@@ -1,8 +1,4 @@
-- datetime:
-    text_size: xl
-    format:
-      timeStyle: short
-      dateStyle: medium
+
 
 - search:
     provider: duckduckgo
@@ -28,3 +24,9 @@
     disk:
       - /mnt/windows
     label: Periphery
+
+    - datetime:
+    text_size: xl
+    format:
+      timeStyle: short
+      dateStyle: medium
