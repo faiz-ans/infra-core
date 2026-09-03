@@ -26,5 +26,5 @@
     mem: true
     uptime: true
     disk:
-      - /etc/hosts
+      - /mnt/windows
     label: Periphery
