@@ -5,10 +5,25 @@
 # "node.Xattrs /posix/uploads: no data available".
 # shared/files and shared/photos stay SMB / Immich NFS, not OpenCloud Spaces.
 services:
+  radicale:
+    image: opencloudeu/radicale:latest
+    container_name: radicale
+    restart: unless-stopped
+    user: "${PUID}:${PGID}"
+    environment:
+      TZ: ${TZ}
+    volumes:
+      - ./radicale/config:/etc/radicale/config:ro
+      - ${DATA_ROOT}/system/opencloud/radicale:/var/lib/radicale
+    networks:
+      - edge
+
   opencloud:
     image: opencloudeu/opencloud-rolling:latest
     container_name: opencloud
     restart: unless-stopped
+    depends_on:
+      - radicale
     user: "${PUID}:${PGID}"
     entrypoint: ["/bin/sh"]
     command: ["-c", "opencloud init || true; opencloud server"]
@@ -47,6 +62,7 @@ services:
     volumes:
       - ${DATA_ROOT}/system/opencloud/config:/etc/opencloud
       - ./csp.yaml:/etc/opencloud/csp.yaml:ro
+      - ./proxy.yaml:/etc/opencloud/proxy.yaml:ro
       - ${DATA_ROOT}/system/opencloud/data:/var/lib/opencloud
       - ${DATA_ROOT}/system/opencloud/posix:/posix
       - ${DATA_ROOT}/users:/posix/users

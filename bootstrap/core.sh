@@ -581,6 +581,7 @@ mkdir -p \
   "${DATA_ROOT}/system/opencloud/config" \
   "${DATA_ROOT}/system/opencloud/data" \
   "${DATA_ROOT}/system/opencloud/posix" \
+  "${DATA_ROOT}/system/opencloud/radicale" \
   "${DATA_ROOT}/system/jotty/data" \
   "${DATA_ROOT}/system/jotty/config" \
   "${DATA_ROOT}/system/jotty/cache" \

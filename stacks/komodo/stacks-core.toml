@@ -184,6 +184,8 @@ run_directory = "stacks/workload/opencloud"
 file_paths = ["compose.yaml"]
 config_files = [
   { path = "csp.yaml", requires = "Redeploy" },
+  { path = "proxy.yaml", requires = "Redeploy" },
+  { path = "radicale/config", requires = "Redeploy" },
 ]
 webhook_enabled = false
 poll_for_updates = true
