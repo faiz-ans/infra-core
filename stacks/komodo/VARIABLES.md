@@ -62,8 +62,12 @@ Authelia user hashes live in `${DATA_ROOT}/system/authelia/users.yml` on the NAS
 | `HOMEPAGE_VAR_QBIT_PASSWORD` | secret |
 | `HOMEPAGE_VAR_GRAFANA_KEY` | secret |
 | `HOMEPAGE_VAR_WGEASY_PASSWORD` | secret |
+| `WEATHER_LATITUDE` | |
+| `WEATHER_LONGITUDE` | |
 
 `HOMEPAGE_VAR_WGEASY_PASSWORD` is the live wg-easy `wg-admin` login (not `WG_UI_PASSWORD` unless you never changed it). wg-easy 2FA must stay off for the widget API.
+
+`WEATHER_LATITUDE` and `WEATHER_LONGITUDE` are decimal degrees for the Homepage Open-Meteo widget (home location, not each browser). Empty values fall back to browser geolocation. Timezone for the widget is mapped from `TZ`. Units are imperial in `widgets.yaml`.
 
 `HOMEPAGE_VAR_DOMAIN` and `HOMEPAGE_VAR_HTPC_UPSTREAM` are **mapped from** `DOMAIN` and `HTPC_UPSTREAM` in the Homepage stack environment. Do not duplicate live values in git.
 

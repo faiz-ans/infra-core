@@ -4,6 +4,13 @@
       timeStyle: short
       dateStyle: medium
 
+- openmeteo:
+    latitude: {{HOMEPAGE_VAR_WEATHER_LATITUDE}}
+    longitude: {{HOMEPAGE_VAR_WEATHER_LONGITUDE}}
+    timezone: "{{HOMEPAGE_VAR_TZ}}"
+    units: imperial
+    cache: 5
+
 #- search:
 #    provider: duckduckgo
 #    target: _blank

@@ -89,6 +89,8 @@ BYTESTASH_JWT_SECRET='$(quote_s "${BYTESTASH_JWT_SECRET}")'
 BYTESTASH_ALLOW_NEW_ACCOUNTS='$(quote_s "${BYTESTASH_ALLOW_NEW_ACCOUNTS:-true}")'
 OPENREADER_AUTH_SECRET='$(quote_s "${OPENREADER_AUTH_SECRET}")'
 N8N_ENCRYPTION_KEY='$(quote_s "${N8N_ENCRYPTION_KEY}")'
+WEATHER_LATITUDE='$(quote_s "${WEATHER_LATITUDE:-}")'
+WEATHER_LONGITUDE='$(quote_s "${WEATHER_LONGITUDE:-}")'
 DATA_ROOT='$(quote_s "${DATA_ROOT:-}")'
 EOF
   umask "${old}"
@@ -505,11 +507,18 @@ if [[ -f "${ANSWERS}" ]]; then
     echo "Generated N8N_ENCRYPTION_KEY (save now; add in Komodo if Core is already running)."
     save_answers
   fi
+  if [[ -z "${WEATHER_LATITUDE+x}" ]] || [[ -z "${WEATHER_LONGITUDE+x}" ]]; then
+    : "${WEATHER_LATITUDE:=}"
+    : "${WEATHER_LONGITUDE:=}"
+    save_answers
+  fi
 else
   # Default domain for the prompt only. Not written to git.
   prompt DOMAIN "Domain" "home.lan"
   prompt CATALOG_REPO "Catalog owner/repo path (Gitea; same name as the GitHub mirror)"
   prompt TZ "Timezone" "America/Los_Angeles"
+  prompt WEATHER_LATITUDE "Homepage weather latitude (decimal degrees; empty = browser geolocation)"
+  prompt WEATHER_LONGITUDE "Homepage weather longitude (decimal degrees; empty = browser geolocation)"
   prompt PUID "PUID" "1000"
   prompt PGID "PGID" "1000"
   prompt CORE_SERVER "Komodo server name for this host (Core + local Periphery)" "core"
@@ -707,6 +716,8 @@ HOMEPAGE_VAR_QBIT_USERNAME = ""
 HOMEPAGE_VAR_QBIT_PASSWORD = ""
 HOMEPAGE_VAR_GRAFANA_KEY = ""
 HOMEPAGE_VAR_WGEASY_PASSWORD = ""
+WEATHER_LATITUDE = "${WEATHER_LATITUDE}"
+WEATHER_LONGITUDE = "${WEATHER_LONGITUDE}"
 EOF
 chmod 600 "${KOMODO_DIR}/core.config.toml" "${KOMODO_DIR}/bootstrap/compose.env" "${ANSWERS}"
 # chmod 600 /etc/komodo/core.config.toml /etc/komodo/bootstrap/compose.env

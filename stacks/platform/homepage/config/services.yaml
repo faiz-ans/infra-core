@@ -285,105 +285,105 @@
             description: Printer
 
 
-- Monitoring:
+#- Monitoring:
 
-    - Core:
-        - Core Info:
-            - Core:
-                icon: raspberry-pi.svg
-                server: core
-                widget:
-                    type: glances
-                    url: http://glances:61208
-                    version: 4
-                    metric: info
-        - Core Stats:
-            - CPU:
-                icon: mdi-memory-#ffffff
-                widget:
-                    type: glances
-                    url: http://glances:61208
-                    version: 4
-                    metric: cpu
-                    chart: false
-            - TEMP:
-                icon: mdi-thermometer-#ffffff
-                widget:
-                    type: glances
-                    url: http://glances:61208
-                    version: 4
-                    metric: "sensor:cpu_thermal 0"
-                    chart: false
-            - RAM:
-                icon: mdi-chip-#ffffff
-                widget:
-                    type: glances
-                    url: http://glances:61208
-                    version: 4
-                    metric: memory
-                    chart: false
-            - Disk:
-                icon: mdi-harddisk-#ffffff
-                widget:
-                    type: glances
-                    url: http://glances:61208
-                    version: 4
-                    metric: fs:/mnt/data
-                    chart: false
-            - UP:
-                icon: mdi-clock-outline-#ffffff
-                widget:
-                    type: customapi
-                    url: http://glances:61208/api/4/uptime
-                    refreshInterval: 60000
-    - Periphery:
-        - Periphery Info:
-            - Periphery:
-                icon: windows-10.svg
-                server: periphery
-                widget:
-                    type: glances
-                    url: http://{{HOMEPAGE_VAR_HTPC_UPSTREAM}}:61208
-                    version: 4
-                    metric: info
-        - Periphery Stats:
-            - CPU:
-                icon: mdi-memory-#ffffff
-                widget:
-                    type: glances
-                    url: http://{{HOMEPAGE_VAR_HTPC_UPSTREAM}}:61208
-                    version: 4
-                    metric: cpu
-                    chart: false
-            - RAM:
-                icon: mdi-chip-#ffffff
-                widget:
-                    type: glances
-                    url: http://{{HOMEPAGE_VAR_HTPC_UPSTREAM}}:61208
-                    version: 4
-                    metric: memory
-                    chart: false
-            - Disk:
-                icon: mdi-harddisk-#ffffff
-                widget:
-                    type: glances
-                    url: http://{{HOMEPAGE_VAR_HTPC_UPSTREAM}}:61208
-                    version: 4
-                    metric: fs:/mnt/windows
-                    chart: false
-            - GPU:
-                icon: mdi-expansion-card-#ffffff
-                widget:
-                    type: glances
-                    url: http://{{HOMEPAGE_VAR_HTPC_UPSTREAM}}:61208
-                    version: 4
-                    metric: "gpu:0"
-                    chart: false
-            - UP:
-                icon: mdi-clock-outline-#ffffff
-                widget:
-                    type: customapi
-                    url: http://{{HOMEPAGE_VAR_HTPC_UPSTREAM}}:61208/api/4/uptime
-                    refreshInterval: 60000
-                    mappings:
-                      - format: text
+ #   - Core:
+ #       - Core Info:
+ #           - Core:
+ #               icon: raspberry-pi.svg
+ #               server: core
+ #               widget:
+ #                   type: glances
+ #                   url: http://glances:61208
+ #                   version: 4
+ #                   metric: info
+ #       - Core Stats:
+ #           - CPU:
+ #               icon: mdi-memory-#ffffff
+ #               widget:
+ #                   type: glances
+ #                   url: http://glances:61208
+ #                   version: 4
+ #                   metric: cpu
+ #                   chart: false
+ #           - TEMP:
+ #               icon: mdi-thermometer-#ffffff
+ #               widget:
+ #                   type: glances
+ #                   url: http://glances:61208
+ #                   version: 4
+ #                   metric: "sensor:cpu_thermal 0"
+ #                   chart: false
+ #           - RAM:
+ #               icon: mdi-chip-#ffffff
+ #               widget:
+ #                   type: glances
+ #                   url: http://glances:61208
+ #                   version: 4
+ #                   metric: memory
+ #                   chart: false
+ #           - Disk:
+ #               icon: mdi-harddisk-#ffffff
+ #               widget:
+ #                   type: glances
+ #                   url: http://glances:61208
+ #                   version: 4
+ #                   metric: fs:/mnt/data
+ #                   chart: false
+ #           - UP:
+ #               icon: mdi-clock-outline-#ffffff
+ #               widget:
+ #                   type: customapi
+ #                   url: http://glances:61208/api/4/uptime
+ #                   refreshInterval: 60000
+ #   - Periphery:
+ #       - Periphery Info:
+ #           - Periphery:
+ #               icon: windows-10.svg
+ #               server: periphery
+ #               widget:
+ #                   type: glances
+ #                   url: http://{{HOMEPAGE_VAR_HTPC_UPSTREAM}}:61208
+ #                   version: 4
+ #                   metric: info
+ #       - Periphery Stats:
+ #           - CPU:
+ #               icon: mdi-memory-#ffffff
+ #               widget:
+ #                   type: glances
+ #                   url: http://{{HOMEPAGE_VAR_HTPC_UPSTREAM}}:61208
+ #                   version: 4
+ #                   metric: cpu
+ #                   chart: false
+ #           - RAM:
+ #               icon: mdi-chip-#ffffff
+ #               widget:
+ #                   type: glances
+ #                   url: http://{{HOMEPAGE_VAR_HTPC_UPSTREAM}}:61208
+ #                   version: 4
+ #                   metric: memory
+ #                   chart: false
+ #           - Disk:
+ #               icon: mdi-harddisk-#ffffff
+ #               widget:
+ #                   type: glances
+ #                   url: http://{{HOMEPAGE_VAR_HTPC_UPSTREAM}}:61208
+ #                   version: 4
+ #                   metric: fs:/mnt/windows
+ #                   chart: false
+ #           - GPU:
+ #               icon: mdi-expansion-card-#ffffff
+ #               widget:
+ #                   type: glances
+ #                   url: http://{{HOMEPAGE_VAR_HTPC_UPSTREAM}}:61208
+ #                   version: 4
+ #                   metric: "gpu:0"
+ #                   chart: false
+ #           - UP:
+ #                 icon: mdi-clock-outline-#ffffff
+ #               widget:
+ #                   type: customapi
+ #                   url: http://{{HOMEPAGE_VAR_HTPC_UPSTREAM}}:61208/api/4/uptime
+ #                   refreshInterval: 60000
+ #                   mappings:
+ #                     - format: text
