@@ -67,7 +67,7 @@ Authelia user hashes live in `${DATA_ROOT}/system/authelia/users.yml` on the NAS
 
 `HOMEPAGE_VAR_WGEASY_PASSWORD` is the live wg-easy `wg-admin` login (not `WG_UI_PASSWORD` unless you never changed it). wg-easy 2FA must stay off for the widget API.
 
-`WEATHER_LATITUDE` and `WEATHER_LONGITUDE` are decimal degrees for the Homepage Open-Meteo widget (home location, not each browser). West of Greenwich is negative (e.g. US longitudes). Names must match exactly; do not prefix them with `HOMEPAGE_VAR_`. After adding or changing them, Execute ResourceSync if the Homepage stack env is missing the weather lines, then Redeploy **homepage** (a config-only reload is not enough). Empty values fall back to browser geolocation. Units are imperial; Open-Meteo infers timezone from the coordinates.
+`WEATHER_LATITUDE` and `WEATHER_LONGITUDE` are decimal degrees for the Homepage Open-Meteo widget (home location, not each browser). West of Greenwich is negative. Names must be exactly those two keys (not `HOMEPAGE_VAR_WEATHER_*`). After creating them, Redeploy **homepage** so Komodo rewrites `.env` and recreates the container. Empty values fall back to browser geolocation. Units are imperial. Timezone is mapped from `TZ`.
 
 `HOMEPAGE_VAR_DOMAIN` and `HOMEPAGE_VAR_HTPC_UPSTREAM` are **mapped from** `DOMAIN` and `HTPC_UPSTREAM` in the Homepage stack environment. Do not duplicate live values in git.
 
