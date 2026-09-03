@@ -31,6 +31,8 @@ Mark items tagged **secret** as secrets in Komodo.
 | `AUTHELIA_STORAGE_ENCRYPTION_KEY` | secret | Authelia |
 | `WG_HOST` | | wg-easy INIT_HOST. Public DNS name that resolves off-LAN to the WAN IPv4 (Dynamic DNS if the WAN moves). Not a LAN-only name. |
 | `WG_UI_PASSWORD` | secret | wg-easy v15 admin password (plaintext; used only at first start) |
+| `PIHOLE_WEBPASSWORD` | secret | Core Pi-hole web/API password (`FTLCONF_webserver_api_password`). Empty disables the login page. |
+| `PIHOLE_PERIPHERY_WEBPASSWORD` | secret | HTPC Pi-hole web/API password. Empty disables the login page. |
 
 Authelia user hashes live in `${DATA_ROOT}/system/authelia/users.yml` on the NAS (written by bootstrap), not in Komodo.
 

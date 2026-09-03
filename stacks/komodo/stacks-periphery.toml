@@ -317,6 +317,7 @@ TZ = [[TZ]]
 DOMAIN = [[DOMAIN]]
 NAS_LAN_IP = [[NAS_LAN_IP]]
 HTPC_UPSTREAM = [[HTPC_UPSTREAM]]
+PIHOLE_PERIPHERY_WEBPASSWORD = [[PIHOLE_PERIPHERY_WEBPASSWORD]]
 """
 
 # Read-only Docker API for Homepage. LAN bind only; not in Caddy.
