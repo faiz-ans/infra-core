@@ -93,7 +93,7 @@ Komodo UI stays up. Stop stacks that bind `DATA_ROOT` (not Caddy, not Komodo):
 
 ```text
 sudo docker stop opencloud vaultwarden gitea authelia pihole wireguard \
-  jotty linkding rustdesk bytestash homepage
+  jotty linkding rustdesk bytestash glances homepage
 ```
 
 If a name is missing, skip it. On the HTPC, pause Immich/Frigate/Jellyfin/Arr/qBit if they are up so NFS is idle.
@@ -141,7 +141,7 @@ DATA_ROOT=/srv/dev-disk-by-uuid-<NEW_UUID>
 
 No trailing slash. Then **Redeploy** every Core stack that mounts it:
 
-`gitea`, `authelia`, `pihole`, `wireguard`, `homepage`, `opencloud`, `vaultwarden`, `jotty`, `linkding`, `rustdesk`, `bytestash`.
+`gitea`, `authelia`, `pihole`, `wireguard`, `homepage`, `opencloud`, `vaultwarden`, `jotty`, `linkding`, `rustdesk`, `bytestash`, `glances`.
 
 Leave `restic` off. Redeploy **caddy** only if something else is wrong; it does not use `DATA_ROOT`.
 
@@ -176,7 +176,7 @@ HTPC (if NFS stacks are up): Explorer/SMB and a docker NFS `ls` of `/shared` sti
 
 ```text
 sudo docker stop opencloud vaultwarden gitea authelia pihole wireguard \
-  jotty linkding rustdesk bytestash homepage
+  jotty linkding rustdesk bytestash glances homepage
 sudo umount "${OLD}"
 ```
 

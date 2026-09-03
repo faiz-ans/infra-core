@@ -1,0 +1,15 @@
+# Glances on periphery. pid:host is the Docker Desktop VM (where containers run).
+# Homepage on Core scrapes HTPC_UPSTREAM:61208. Not in Caddy.
+services:
+  glances:
+    image: nicolargo/glances:latest
+    container_name: glances-periphery
+    restart: unless-stopped
+    pid: host
+    environment:
+      TZ: ${TZ}
+      GLANCES_OPT: "-w --disable-plugin docker"
+    ports:
+      - "61208:61208"
+    volumes:
+      - /etc/os-release:/etc/os-release:ro

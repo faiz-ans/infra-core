@@ -112,9 +112,26 @@ WG_UI_PASSWORD = [[WG_UI_PASSWORD]]
 """
 
 [[stack]]
+name = "glances"
+deploy = true
+after = ["caddy"]
+[stack.config]
+server = "core"
+repo = "faiz-ans/infra-core"
+branch = "main"
+run_directory = "stacks/platform/glances"
+file_paths = ["compose.yaml"]
+webhook_enabled = false
+poll_for_updates = true
+environment = """
+TZ = [[TZ]]
+DATA_ROOT = [[DATA_ROOT]]
+"""
+
+[[stack]]
 name = "homepage"
 deploy = true
-after = ["caddy", "authelia"]
+after = ["caddy", "authelia", "glances"]
 [stack.config]
 server = "core"
 repo = "faiz-ans/infra-core"
@@ -125,6 +142,7 @@ config_files = [
   { path = "config/services.yaml", requires = "Redeploy" },
   { path = "config/settings.yaml", requires = "Redeploy" },
   { path = "config/docker.yaml", requires = "Redeploy" },
+  { path = "config/widgets.yaml", requires = "Redeploy" },
 ]
 webhook_enabled = false
 poll_for_updates = true

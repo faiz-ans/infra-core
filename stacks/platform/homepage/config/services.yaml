@@ -28,7 +28,7 @@
             server: periphery
             container: scriberr
             icon: scriberr.svg
-            description: Voice Transcription
+            description: Transcription
         - Linkding:
             id: linkding
             href: https://links.{{HOMEPAGE_VAR_DOMAIN}}

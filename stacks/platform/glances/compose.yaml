@@ -1,0 +1,24 @@
+# Glances on Core. pid:host so CPU/mem/temp are the NAS, not the container.
+# No published ports: Homepage scrapes http://glances:61208 on edge.
+# DATA_ROOT is mounted at /mnt/data so the widget can name the data disk
+# without putting a live uuid path in git.
+services:
+  glances:
+    image: nicolargo/glances:latest
+    container_name: glances
+    restart: unless-stopped
+    pid: host
+    environment:
+      TZ: ${TZ}
+      GLANCES_OPT: "-w --disable-plugin docker"
+    volumes:
+      - /etc/os-release:/etc/os-release:ro
+      - /sys:/sys:ro
+      - ${DATA_ROOT}:/mnt/data:ro
+    networks:
+      - edge
+
+networks:
+  edge:
+    external: true
+    name: edge
