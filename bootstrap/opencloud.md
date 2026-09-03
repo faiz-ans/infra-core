@@ -112,25 +112,40 @@ Android cannot yet auto-upload arbitrary folders (WhatsApp, Documents). Use the 
 
 ## 5. Calendar and contacts (Radicale)
 
-OpenCloud proxies authenticated CalDAV/CardDAV to a Radicale sidecar on the edge network. There is no calendar UI in OpenCloud. Clients: Apple Calendar/Contacts, Thunderbird, DAVx⁵. Server URL is `https://cloud.<DOMAIN>` (well-known discovery). Most clients cannot use OIDC; create an **App Token** in the OpenCloud user settings and use that as the password.
+This stack follows the official overlay, not a custom Radicale setup:
 
-Radicale collections live in `${DATA_ROOT}/system/opencloud/radicale`. Do not publish 5232. Wipe of OpenCloud `config`/`data` must not delete this directory.
+- Docs: https://docs.opencloud.eu/docs/admin/configuration/radicale-integration/
+- Compose overlay: https://github.com/opencloud-eu/opencloud-compose/blob/main/radicale/radicale.yml
+- Config file: https://github.com/opencloud-eu/opencloud-compose/blob/main/config/radicale/config
+- Proxy routes: https://github.com/opencloud-eu/opencloud-compose/blob/main/config/opencloud/proxy.yaml
 
-Existing Core:
+OpenCloud authenticates CalDAV/CardDAV and forwards `/caldav`, `/carddav`, and `.well-known` to the `radicale` container. There is no calendar UI. Clients: Apple Calendar/Contacts, Thunderbird, DAVx⁵. URL is `https://cloud.<DOMAIN>` (well-known discovery). Most clients cannot use OIDC; create an **App Token** in OpenCloud user settings and use that as the password.
+
+Catalog adaptations of that overlay (this repo has no Traefik / `opencloud-net`):
+
+- Network is `edge` (same Docker DNS name `radicale` used in official `proxy.yaml`).
+- Data bind is `${DATA_ROOT}/system/opencloud/radicale` → `/var/lib/radicale` (official `${RADICALE_DATA_DIR}`).
+- `user:` is `${PUID}:${PGID}` (official `OC_CONTAINER_UID_GID`).
+
+Do not publish 5232. Caddy already proxies all of `cloud.` to OpenCloud `:9200`. Wipe of OpenCloud `config`/`data` must not delete the Radicale data directory.
+
+Official `.env.example` requires a bind-mounted Radicale data dir owned by the container uid/gid (default 1000:1000). On Core that is `${PUID}:${PGID}`:
 
 ```text
 sudo mkdir -p ${DATA_ROOT}/system/opencloud/radicale
 sudo chown -R ${PUID}:${PGID} ${DATA_ROOT}/system/opencloud/radicale
 ```
 
-If the first deploy created `radicale/config` as a **directory** in the OpenCloud stack clone (Docker does that when the file is missing), remove it before Redeploy:
+The official config bind is a **file**: `./config/radicale/config` → `/etc/radicale/config`. If that host path is a directory, Docker created it because the file was missing and Radicale exits. In the Komodo opencloud stack clone:
 
 ```text
-# path is the Komodo stack working directory for opencloud
-sudo rm -rf radicale/config
+# leftover from earlier catalog paths
+sudo rm -rf radicale/config radicale.conf
+# if Docker created the official path as a directory:
+sudo rm -rf config/radicale/config
 ```
 
-Then Redeploy **opencloud**.
+Then Redeploy **opencloud** so ResourceSync copies `config/radicale/config` as a file. Confirm with `docker logs radicale` if it still restarts.
 
 ## 6. Remove leftover Nextcloud
 
@@ -158,5 +173,5 @@ Do **not** delete NFS volumes or files under `shared/` and `users/`.
 | Creating a Space fails / `node.Xattrs /posix/projects/photos: no data available` | Do not create project Spaces for `shared/files` or `shared/photos`. Personal space is `users/<name>`. Drop those nested binds (catalog), `rm -rf …/posix/projects`, Redeploy **opencloud**. |
 | Collabora iframe blocked / blank | Confirm `collabora` is Up on the HTPC and `office.<DOMAIN>` resolves to Core Caddy. |
 | CalDAV/CardDAV client cannot discover | URL is `https://cloud.<DOMAIN>` (not a LAN port). Use an App Token, not the login password. Redeploy **opencloud** after this catalog pull. From Core: `docker exec caddy wget -S -O- --timeout=5 http://opencloud:9200/.well-known/caldav \| head`. |
-| `radicale` Restarting / Exited | `docker logs radicale`. `IsADirectoryError` / failed to load config: `sudo rm -rf` the leftover `radicale/config` **directory** in the OpenCloud stack clone, then Redeploy **opencloud**. Permission denied: `chown ${PUID}:${PGID}` `${DATA_ROOT}/system/opencloud/radicale`. |
+| `radicale` Restarting / Exited | `docker logs radicale` (do not guess). `IsADirectoryError`: the official bind `config/radicale/config` must be a file — remove leftover directories in the stack clone (see §5), Redeploy **opencloud**. Permission denied: official bind-mount ownership — `chown ${PUID}:${PGID}` `${DATA_ROOT}/system/opencloud/radicale`. |
 | Secret does not match | `IDM_ADMIN_PASSWORD` applies only on `opencloud init`. Changing the Komodo secret later does not update a live IDM. Reset with `opencloud idm resetpassword`, or wipe **both** config and data and init again. Do **not** delete `radicale/`. |

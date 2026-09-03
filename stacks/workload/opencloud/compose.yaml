@@ -6,19 +6,17 @@
 # shared/files and shared/photos stay SMB / Immich NFS, not OpenCloud Spaces.
 services:
   radicale:
+    # Official overlay: https://github.com/opencloud-eu/opencloud-compose/blob/main/radicale/radicale.yml
+    # Docs: https://docs.opencloud.eu/docs/admin/configuration/radicale-integration/
     image: opencloudeu/radicale:latest
     container_name: radicale
     restart: unless-stopped
     user: "${PUID}:${PGID}"
-    # Image CMD binds [::]:5232. Override so we do not listen on IPv6.
-    # Do not mount ./radicale/config — the first deploy created that path
-    # as a directory and Radicale exits with IsADirectoryError.
-    command: ["--config", "/etc/radicale/config", "--hosts", "0.0.0.0:5232"]
-    environment:
-      TZ: ${TZ}
+    logging:
+      driver: local
     volumes:
-      - ./radicale.conf:/etc/radicale/config:ro
-      - ${DATA_ROOT}/system/opencloud/radicale:/var/lib/radicale/collections
+      - ./config/radicale/config:/etc/radicale/config
+      - ${DATA_ROOT}/system/opencloud/radicale:/var/lib/radicale
     networks:
       - edge
 
@@ -26,8 +24,6 @@ services:
     image: opencloudeu/opencloud-rolling:latest
     container_name: opencloud
     restart: unless-stopped
-    depends_on:
-      - radicale
     user: "${PUID}:${PGID}"
     entrypoint: ["/bin/sh"]
     command: ["-c", "opencloud init || true; opencloud server"]
@@ -66,7 +62,7 @@ services:
     volumes:
       - ${DATA_ROOT}/system/opencloud/config:/etc/opencloud
       - ./csp.yaml:/etc/opencloud/csp.yaml:ro
-      - ./proxy.yaml:/etc/opencloud/proxy.yaml:ro
+      - ./config/opencloud/proxy.yaml:/etc/opencloud/proxy.yaml
       - ${DATA_ROOT}/system/opencloud/data:/var/lib/opencloud
       - ${DATA_ROOT}/system/opencloud/posix:/posix
       - ${DATA_ROOT}/users:/posix/users
