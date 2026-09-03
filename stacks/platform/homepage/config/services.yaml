@@ -307,6 +307,7 @@
                     chart: false
             - CPU Temp:
                 widget:
+                    icon: temperature.svg
                     type: glances
                     url: http://glances:61208
                     version: 4
