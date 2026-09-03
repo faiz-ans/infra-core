@@ -36,13 +36,6 @@
             container: linkding
             icon: linkding.svg
             description: Bookmarks
-        - ByteStash:
-            id: bytestash
-            href: https://snippets.{{HOMEPAGE_VAR_DOMAIN}}
-            server: core
-            container: bytestash
-            icon: bytestash.svg
-            description: Snippets
         - Vaultwarden:
             id: vaultwarden
             href: https://pass.{{HOMEPAGE_VAR_DOMAIN}}
@@ -50,6 +43,13 @@
             container: vaultwarden
             icon: bitwarden.svg
             description: Passwords
+        - ByteStash:
+            id: bytestash
+            href: https://snippets.{{HOMEPAGE_VAR_DOMAIN}}
+            server: core
+            container: bytestash
+            icon: bytestash.svg
+            description: Snippets
 
     - Utilities:
         - Transmute:
