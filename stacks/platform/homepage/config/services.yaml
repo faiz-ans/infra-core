@@ -36,6 +36,13 @@
             container: linkding
             icon: linkding.svg
             description: Bookmarks
+        - ByteStash:
+            id: bytestash
+            href: https://snippets.{{HOMEPAGE_VAR_DOMAIN}}
+            server: core
+            container: bytestash
+            icon: bytestash.svg
+            description: Snippets
         - Vaultwarden:
             id: vaultwarden
             href: https://pass.{{HOMEPAGE_VAR_DOMAIN}}
@@ -73,20 +80,6 @@
             container: openreader
             icon: https://cdn.jsdelivr.net/gh/selfhst/icons@main/webp/openreader.webp
             description: Text-to-Speech
-        - ByteStash:
-            id: bytestash
-            href: https://snippets.{{HOMEPAGE_VAR_DOMAIN}}
-            server: core
-            container: bytestash
-            icon: bytestash.svg
-            description: Snippets
-        - IT Tools:
-            id: it-tools
-            href: https://tools.{{HOMEPAGE_VAR_DOMAIN}}
-            server: core
-            container: it-tools
-            icon: it-tools.svg
-            description: Developer Utilities
         - n8n:
             id: n8n
             href: https://flow.{{HOMEPAGE_VAR_DOMAIN}}
@@ -94,6 +87,13 @@
             container: n8n
             icon: n8n.svg
             description: Workflow Automation
+        - IT Tools:
+            id: it-tools
+            href: https://tools.{{HOMEPAGE_VAR_DOMAIN}}
+            server: core
+            container: it-tools
+            icon: it-tools.svg
+            description: Developer Utilities
 
     - Household:
         - Jellyfin:
