@@ -1,6 +1,6 @@
 # ByteStash first-run
 
-ByteStash runs on **Core** (edge network). Snippets live under `${DATA_ROOT}/system/bytestash`. Caddy is `https://snippets.<DOMAIN>` (`bytestash.` is an alias).
+ByteStash runs on **Core** (edge network). Snippets live under `${DATA_ROOT}/system/bytestash`. Caddy is `https://snip.<DOMAIN>` (`snippets.` and `bytestash.` 301 there).
 
 ## 1. Secrets (existing Core)
 
@@ -28,13 +28,13 @@ You want `bytestash` **Up**. It must **not** publish 5000 on the LAN.
 
 ## 3. First account
 
-Open **`https://snippets.<DOMAIN>`**. Create or keep the local household account as break-glass, then set **`BYTESTASH_ALLOW_NEW_ACCOUNTS`** to `false` in Komodo and Redeploy **bytestash**. Authelia OIDC is on; first Authelia login as **faiz** or **diana** creates a ByteStash user. Elevate **faiz** in ByteStash. Changing `BYTESTASH_JWT_SECRET` later signs everyone out.
+Open **`https://snip.<DOMAIN>`**. Create or keep the local household account as break-glass, then set **`BYTESTASH_ALLOW_NEW_ACCOUNTS`** to `false` in Komodo and Redeploy **bytestash**. Authelia OIDC is on; first Authelia login as **faiz** or **diana** creates a ByteStash user. Elevate **faiz** in ByteStash. Changing `BYTESTASH_JWT_SECRET` later signs everyone out.
 
 ## If it fails
 
 | Symptom | What to do |
 |---|---|
-| `snippets.<DOMAIN>` does not load while `bytestash` is Up | Redeploy **caddy**. Then `docker exec caddy wget -S -O- --timeout=10 http://bytestash:5000/ \| head` |
-| Host / CSRF errors | `ALLOWED_HOSTS` must include `snip.<DOMAIN>`. Redeploy **bytestash** after the catalog pull |
-| Authelia `invalid_request` | Callback is `/api/auth/oidc/callback` (not `/api/oauth/openid`). Redeploy **authelia** after the catalog pull |
+| `snip.<DOMAIN>` does not load while `bytestash` is Up | Redeploy **caddy**. Then `docker exec caddy wget -S -O- --timeout=10 http://bytestash:5000/ \| head` |
+| Host / CSRF errors | `ALLOWED_HOSTS` must be `snip.<DOMAIN>`. Redeploy **bytestash** after the catalog pull |
+| Authelia `invalid_request` | ByteStash builds `redirect_uri` from Host. Authelia only allows `https://snip.<DOMAIN>/api/auth/oidc/callback`. Redeploy **caddy** and **authelia** |
 | Cannot create the first user | `BYTESTASH_ALLOW_NEW_ACCOUNTS` must be `true` for that first visit |

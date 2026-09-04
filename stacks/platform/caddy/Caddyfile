@@ -12,6 +12,10 @@
 	}
 }
 
+#--------------------------------
+# AUTHELIA
+#--------------------------------
+
 https://authelia.{$DOMAIN} {
 	tls internal
 	redir https://auth.{$DOMAIN}{uri} permanent
@@ -26,6 +30,9 @@ https://auth.{$DOMAIN} {
 	}
 	reverse_proxy authelia:9091
 }
+#--------------------------------
+# HOMEPAGE
+#--------------------------------
 
 https://homepage.{$DOMAIN} {
 	tls internal
@@ -36,6 +43,10 @@ https://dash.{$DOMAIN} {
 	tls internal
 	reverse_proxy homepage:3000
 }
+
+#--------------------------------
+# GITEA
+#--------------------------------
 
 https://gitea.{$DOMAIN} {
 	tls internal
@@ -54,6 +65,10 @@ https://git.{$DOMAIN} {
 	}
 }
 
+#--------------------------------
+# PI-HOLE CORE
+#--------------------------------
+
 https://pihole.{$DOMAIN}, https://pihole-core.{$DOMAIN} {
 	tls internal
 	redir https://dns.{$DOMAIN}{uri} permanent
@@ -64,6 +79,10 @@ https://dns.{$DOMAIN} {
 	redir / /admin
 	reverse_proxy pihole:80
 }
+
+#--------------------------------
+# PI-HOLE PERIPHERY
+#--------------------------------
 
 https://pihole2.{$DOMAIN}, https://pihole-periphery.{$DOMAIN} {
 	tls internal
@@ -76,6 +95,10 @@ https://dns2.{$DOMAIN} {
 	reverse_proxy {$HTPC_UPSTREAM}:8083
 }
 
+#--------------------------------
+# WIREGUARD
+#--------------------------------
+
 https://wg.{$DOMAIN}, https://wireguard.{$DOMAIN} {
 	tls internal
 	redir https://vpn.{$DOMAIN}{uri} permanent
@@ -85,6 +108,10 @@ https://vpn.{$DOMAIN} {
 	tls internal
 	reverse_proxy host.docker.internal:51821
 }
+
+#--------------------------------
+# KOMODO
+#--------------------------------
 
 https://komodo.{$DOMAIN} {
 	tls internal
@@ -96,6 +123,10 @@ https://ops.{$DOMAIN} {
 	reverse_proxy host.docker.internal:9120
 }
 
+#--------------------------------
+# OpenMediaVault
+#--------------------------------
+
 https://omv.{$DOMAIN}, https://openmediavault.{$DOMAIN} {
 	tls internal
 	redir https://nas.{$DOMAIN}{uri} permanent
@@ -105,6 +136,10 @@ https://nas.{$DOMAIN} {
 	tls internal
 	reverse_proxy host.docker.internal:81
 }
+
+#--------------------------------
+# VAULTWARDEN
+#--------------------------------
 
 https://pw.{$DOMAIN}, https://vaultwarden.{$DOMAIN} {
 	tls internal
@@ -129,6 +164,10 @@ https://pass.{$DOMAIN} {
 	}
 }
 
+#--------------------------------
+# Jellyfin
+#--------------------------------
+
 https://jellyfin.{$DOMAIN} {
 	tls internal
 	redir https://watch.{$DOMAIN}{uri} permanent
@@ -139,6 +178,10 @@ https://watch.{$DOMAIN} {
 	reverse_proxy {$HTPC_UPSTREAM}:8096
 }
 
+#--------------------------------
+# SEERR
+#--------------------------------
+
 https://seerr.{$DOMAIN}, https://jellyseerr.{$DOMAIN} {
 	tls internal
 	redir https://request.{$DOMAIN}{uri} permanent
@@ -148,6 +191,10 @@ https://request.{$DOMAIN} {
 	tls internal
 	reverse_proxy {$HTPC_UPSTREAM}:5055
 }
+
+#--------------------------------
+# HOME ASSISTANT
+#--------------------------------
 
 https://ha.{$DOMAIN}, https://homeassistant.{$DOMAIN} {
 	tls internal
@@ -167,6 +214,10 @@ https://auto.{$DOMAIN} {
 	}
 }
 
+#--------------------------------
+# OPENCLOUD
+#--------------------------------
+
 https://oc.{$DOMAIN}, https://opencloud.{$DOMAIN} {
 	tls internal
 	redir https://cloud.{$DOMAIN}{uri} permanent
@@ -184,6 +235,10 @@ https://cloud.{$DOMAIN} {
 	}
 }
 
+#--------------------------------
+# IMMICH
+#--------------------------------
+
 https://gallery.{$DOMAIN}, https://immich.{$DOMAIN} {
 	tls internal
 	redir https://photos.{$DOMAIN}{uri} permanent
@@ -193,6 +248,10 @@ https://photos.{$DOMAIN} {
 	tls internal
 	reverse_proxy {$HTPC_UPSTREAM}:2283
 }
+
+#--------------------------------
+# COLLABORA
+#--------------------------------
 
 https://docs.{$DOMAIN}, https://collabora.{$DOMAIN} {
 	tls internal
@@ -212,6 +271,10 @@ https://office.{$DOMAIN} {
 	}
 }
 
+#--------------------------------
+# JOTTY
+#--------------------------------
+
 https://jotty.{$DOMAIN} {
 	tls internal
 	redir https://notes.{$DOMAIN}{uri} permanent
@@ -221,6 +284,10 @@ https://notes.{$DOMAIN} {
 	tls internal
 	reverse_proxy jotty:3000
 }
+
+#--------------------------------
+# LINKDING
+#--------------------------------
 
 https://bookmarks.{$DOMAIN}, https://linkding.{$DOMAIN} {
 	tls internal
@@ -232,6 +299,10 @@ https://links.{$DOMAIN} {
 	reverse_proxy linkding:9090
 }
 
+#--------------------------------
+# RUSTDESK
+#--------------------------------
+
 https://remote.{$DOMAIN}, https://rustdesk.{$DOMAIN} {
 	tls internal
 	redir https://desk.{$DOMAIN}{uri} permanent
@@ -242,6 +313,10 @@ https://desk.{$DOMAIN} {
 	respond "RustDesk ID/relay is this host (LAN and WireGuard only). Use the native client. Do not port-forward 21115-21119." 200
 }
 
+#--------------------------------
+# ADVENTURELOG
+#--------------------------------
+
 https://trips.{$DOMAIN}, https://adventurelog.{$DOMAIN} {
 	tls internal
 	redir https://travel.{$DOMAIN}{uri} permanent
@@ -251,6 +326,10 @@ https://travel.{$DOMAIN} {
 	tls internal
 	reverse_proxy {$HTPC_UPSTREAM}:8015
 }
+
+#--------------------------------
+# SCriberr
+#--------------------------------
 
 https://transcribe.{$DOMAIN}, https://scriberr.{$DOMAIN} {
 	tls internal
@@ -268,6 +347,10 @@ https://voice.{$DOMAIN} {
 	}
 }
 
+#--------------------------------
+# TRANSMUTE
+#--------------------------------
+
 https://transmute.{$DOMAIN} {
 	tls internal
 	redir https://convert.{$DOMAIN}{uri} permanent
@@ -284,6 +367,10 @@ https://convert.{$DOMAIN} {
 	}
 }
 
+#--------------------------------
+# BENTOPDF
+#--------------------------------
+
 https://bentopdf.{$DOMAIN} {
 	tls internal
 	redir https://pdf.{$DOMAIN}{uri} permanent
@@ -295,6 +382,10 @@ https://pdf.{$DOMAIN} {
 	reverse_proxy bentopdf:8080
 }
 
+#--------------------------------
+# LIBRETRANSLATE
+#--------------------------------
+
 https://libretranslate.{$DOMAIN} {
 	tls internal
 	redir https://translate.{$DOMAIN}{uri} permanent
@@ -305,6 +396,10 @@ https://translate.{$DOMAIN} {
 	import authelia_gate
 	reverse_proxy {$HTPC_UPSTREAM}:5000
 }
+
+#--------------------------------
+# OPENREADER
+#--------------------------------
 
 https://openreader.{$DOMAIN}, https://reader.{$DOMAIN} {
 	tls internal
@@ -322,6 +417,10 @@ https://read.{$DOMAIN} {
 	}
 }
 
+#--------------------------------
+# IT TOOLS
+#--------------------------------
+
 https://it.{$DOMAIN}, https://it-tools.{$DOMAIN} {
 	tls internal
 	redir https://tools.{$DOMAIN}{uri} permanent
@@ -332,6 +431,10 @@ https://tools.{$DOMAIN} {
 	import authelia_gate
 	reverse_proxy it-tools:80
 }
+
+#--------------------------------
+# N8N
+#--------------------------------
 
 https://n8n.{$DOMAIN} {
 	tls internal
@@ -349,6 +452,10 @@ https://flow.{$DOMAIN} {
 	}
 }
 
+#--------------------------------
+# BYTESTASH
+#--------------------------------
+
 https://bytestash.{$DOMAIN}, https://snippets.{$DOMAIN} {
 	tls internal
 	redir https://snip.{$DOMAIN}{uri} permanent
@@ -356,8 +463,17 @@ https://bytestash.{$DOMAIN}, https://snippets.{$DOMAIN} {
 
 https://snip.{$DOMAIN} {
 	tls internal
-	reverse_proxy bytestash:5000
+	# ByteStash has no APP_URL; it builds OIDC redirect_uri from these headers.
+	reverse_proxy bytestash:5000 {
+		header_up Host snip.{$DOMAIN}
+		header_up X-Forwarded-Host snip.{$DOMAIN}
+		header_up X-Forwarded-Proto https
+	}
 }
+
+#--------------------------------
+# NVR
+#--------------------------------
 
 https://nvr.{$DOMAIN}, https://frigate.{$DOMAIN} {
 	tls internal
@@ -375,20 +491,36 @@ https://cam.{$DOMAIN} {
 	}
 }
 
+#--------------------------------
+# SONARR
+#--------------------------------
+
 https://sonarr.{$DOMAIN} {
 	tls internal
 	reverse_proxy {$HTPC_UPSTREAM}:8989
 }
+
+#--------------------------------
+# RADARR
+#--------------------------------
 
 https://radarr.{$DOMAIN} {
 	tls internal
 	reverse_proxy {$HTPC_UPSTREAM}:7878
 }
 
+#--------------------------------
+# PROWLARR
+#--------------------------------
+
 https://prowlarr.{$DOMAIN} {
 	tls internal
 	reverse_proxy {$HTPC_UPSTREAM}:9696
 }
+
+#--------------------------------
+# QBITTORRENT
+#--------------------------------
 
 https://qbit.{$DOMAIN}, https://qbittorrent.{$DOMAIN} {
 	tls internal
@@ -404,6 +536,10 @@ https://down.{$DOMAIN} {
 	}
 }
 
+#--------------------------------
+# MONITORING
+#--------------------------------
+
 https://monitoring.{$DOMAIN}, https://grafana.{$DOMAIN} {
 	tls internal
 	redir https://stats.{$DOMAIN}{uri} permanent
@@ -413,6 +549,10 @@ https://stats.{$DOMAIN} {
 	tls internal
 	reverse_proxy {$HTPC_UPSTREAM}:3000
 }
+
+#--------------------------------
+# PROMETHEUS
+#--------------------------------
 
 https://prometheus.{$DOMAIN} {
 	tls internal
@@ -425,6 +565,10 @@ https://metrics.{$DOMAIN} {
 	reverse_proxy {$HTPC_UPSTREAM}:9090
 }
 
+#--------------------------------
+# GLANCES CORE
+#--------------------------------
+
 https://glances-core.{$DOMAIN} {
 	tls internal
 	redir https://glances.{$DOMAIN}{uri} permanent
@@ -435,6 +579,10 @@ https://glances.{$DOMAIN} {
 	import authelia_gate
 	reverse_proxy glances:61208
 }
+
+#--------------------------------
+# GLANCES PERIPHERY
+#--------------------------------
 
 https://glances-periphery.{$DOMAIN} {
 	tls internal
@@ -447,6 +595,10 @@ https://glances2.{$DOMAIN} {
 	reverse_proxy {$HTPC_UPSTREAM}:61208
 }
 
+#--------------------------------
+# ROUTER
+#--------------------------------
+
 https://router.{$DOMAIN} {
 	tls internal
 	redir https://wifi.{$DOMAIN}{uri} permanent
@@ -456,6 +608,10 @@ https://wifi.{$DOMAIN} {
 	tls internal
 	reverse_proxy 192.168.1.1
 }
+
+#--------------------------------
+# PRINTER
+#--------------------------------
 
 https://printer.{$DOMAIN} {
 	tls internal

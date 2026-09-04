@@ -27,27 +27,17 @@ access_control:
       policy: bypass
     - domain:
         - 'pdf.{{ env "DOMAIN" }}'
-        - 'bentopdf.{{ env "DOMAIN" }}'
-        - 'it.{{ env "DOMAIN" }}'
         - 'tools.{{ env "DOMAIN" }}'
-        - 'it-tools.{{ env "DOMAIN" }}'
         - 'translate.{{ env "DOMAIN" }}'
-        - 'libretranslate.{{ env "DOMAIN" }}'
       subject: 'group:users'
       policy: one_factor
     - domain:
         - 'metrics.{{ env "DOMAIN" }}'
-        - 'prometheus.{{ env "DOMAIN" }}'
         - 'glances.{{ env "DOMAIN" }}'
-        - 'glances-core.{{ env "DOMAIN" }}'
         - 'glances2.{{ env "DOMAIN" }}'
-        - 'glances-periphery.{{ env "DOMAIN" }}'
       subject: 'group:admins'
       policy: one_factor
-    - domain:
-        - 'pw.{{ env "DOMAIN" }}'
-        - 'pass.{{ env "DOMAIN" }}'
-        - 'vaultwarden.{{ env "DOMAIN" }}'
+    - domain: 'pass.{{ env "DOMAIN" }}'
       resources:
         - '^/admin([/?].*)?$'
       subject: 'group:admins'
@@ -112,12 +102,6 @@ identity_providers:
           - 'https://cloud.{{ env "DOMAIN" }}/'
           - 'https://cloud.{{ env "DOMAIN" }}/oidc-callback.html'
           - 'https://cloud.{{ env "DOMAIN" }}/oidc-silent-redirect.html'
-          - 'https://oc.{{ env "DOMAIN" }}/'
-          - 'https://oc.{{ env "DOMAIN" }}/oidc-callback.html'
-          - 'https://oc.{{ env "DOMAIN" }}/oidc-silent-redirect.html'
-          - 'https://opencloud.{{ env "DOMAIN" }}/'
-          - 'https://opencloud.{{ env "DOMAIN" }}/oidc-callback.html'
-          - 'https://opencloud.{{ env "DOMAIN" }}/oidc-silent-redirect.html'
         response_types:
           - code
         grant_types:
@@ -220,10 +204,6 @@ identity_providers:
         redirect_uris:
           - 'https://photos.{{ env "DOMAIN" }}/auth/login'
           - 'https://photos.{{ env "DOMAIN" }}/user-settings'
-          - 'https://gallery.{{ env "DOMAIN" }}/auth/login'
-          - 'https://gallery.{{ env "DOMAIN" }}/user-settings'
-          - 'https://immich.{{ env "DOMAIN" }}/auth/login'
-          - 'https://immich.{{ env "DOMAIN" }}/user-settings'
           - app.immich:///oauth-callback
         scopes:
           - openid
@@ -246,8 +226,6 @@ identity_providers:
         pkce_challenge_method: S256
         redirect_uris:
           - 'https://stats.{{ env "DOMAIN" }}/login/generic_oauth'
-          - 'https://monitoring.{{ env "DOMAIN" }}/login/generic_oauth'
-          - 'https://grafana.{{ env "DOMAIN" }}/login/generic_oauth'
         scopes:
           - openid
           - profile
@@ -291,7 +269,6 @@ identity_providers:
         pkce_challenge_method: S256
         redirect_uris:
           - 'https://ops.{{ env "DOMAIN" }}/auth/oidc/callback'
-          - 'https://komodo.{{ env "DOMAIN" }}/auth/oidc/callback'
         scopes:
           - openid
           - profile
@@ -312,8 +289,6 @@ identity_providers:
         require_pkce: false
         redirect_uris:
           - 'https://links.{{ env "DOMAIN" }}/oidc/callback/'
-          - 'https://bookmarks.{{ env "DOMAIN" }}/oidc/callback/'
-          - 'https://linkding.{{ env "DOMAIN" }}/oidc/callback/'
         scopes:
           - openid
           - email
@@ -333,7 +308,6 @@ identity_providers:
         require_pkce: false
         redirect_uris:
           - 'https://notes.{{ env "DOMAIN" }}/api/oidc/callback'
-          - 'https://jotty.{{ env "DOMAIN" }}/api/oidc/callback'
         scopes:
           - openid
           - profile
@@ -355,7 +329,6 @@ identity_providers:
         require_pkce: false
         redirect_uris:
           - 'https://convert.{{ env "DOMAIN" }}/api/oidc/callback'
-          - 'https://transmute.{{ env "DOMAIN" }}/api/oidc/callback'
         scopes:
           - openid
           - profile
@@ -378,11 +351,11 @@ identity_providers:
         public: false
         authorization_policy: users
         consent_mode: implicit
-        require_pkce: false
+        # ByteStash (openid-client) always sends PKCE S256. Caddy pins Host to snip.
+        require_pkce: true
+        pkce_challenge_method: S256
         redirect_uris:
           - 'https://snip.{{ env "DOMAIN" }}/api/auth/oidc/callback'
-          - 'https://snippets.{{ env "DOMAIN" }}/api/auth/oidc/callback'
-          - 'https://bytestash.{{ env "DOMAIN" }}/api/auth/oidc/callback'
         scopes:
           - openid
           - profile
@@ -403,8 +376,6 @@ identity_providers:
         require_pkce: false
         redirect_uris:
           - 'https://travel.{{ env "DOMAIN" }}/accounts/oidc/authelia/login/callback/'
-          - 'https://trips.{{ env "DOMAIN" }}/accounts/oidc/authelia/login/callback/'
-          - 'https://adventurelog.{{ env "DOMAIN" }}/accounts/oidc/authelia/login/callback/'
         scopes:
           - openid
           - email
