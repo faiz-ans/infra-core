@@ -42,7 +42,12 @@ KOMODO_OIDC_PROVIDER=https://auth.home.lan
 KOMODO_OIDC_CLIENT_ID=komodo
 KOMODO_OIDC_CLIENT_SECRET=<OIDC_CLIENT_SECRET>
 KOMODO_ENABLE_NEW_USERS=true
+KOMODO_DISABLE_USER_REGISTRATION=false
+KOMODO_DISABLE_LOCAL_USER_REGISTRATION=true
+KOMODO_DISABLE_OIDC_USER_REGISTRATION=false
 ```
+
+`KOMODO_DISABLE_USER_REGISTRATION=true` blocks **OIDC** as well as local sign-up. First Authelia login as **faiz** must be allowed to create the Komodo user (`faiz` is not the bootstrap `admin`). Local sign-up stays off.
 
 `KOMODO_LOCAL_AUTH` stays `true` (break-glass). Copy the current `bootstrap/komodo/compose.yaml` to `/etc/komodo/bootstrap/compose.yaml` (it mounts `ca-bundle.crt`). The bundle must be a **file** before recreate:
 
@@ -141,3 +146,4 @@ Homepage (`dash.` / `homepage.`) has no Authelia gate. Widgets scrape internal U
 | Immich OAuth “can’t reach the server” | Redeploy **immich** after `extra_hosts` + `NODE_TLS_REJECT_UNAUTHORIZED`. The image has no `wget` — use `docker exec -e NODE_TLS_REJECT_UNAUTHORIZED=0 immich node -e "fetch('https://auth.<DOMAIN>/.well-known/openid-configuration').then(async r=>{console.log(r.status);console.log(await r.text())}).catch(e=>{console.error(e);process.exit(1)})"`. `ENOTFOUND` means the stack was not recreated with `extra_hosts`. Timeout to the NAS IP means Docker LAN overlap ([periphery.md](periphery.md) §7). |
 | Firefox “can’t find” `*.home.lan`, Edge works | AAAA NXDOMAIN from Pi-hole (`address=/` IPv4-only). Firefox will not try A. See [periphery.md](periphery.md) §3. |
 | Komodo OIDC “Provider not available” | Core cannot verify Caddy TLS. Write `ca-bundle.crt` (see §2), copy `bootstrap/komodo/compose.yaml` onto the box, set `DATA_ROOT` in `compose.env`, recreate Core. |
+| Komodo Authelia → “User registration is disabled” | First OIDC user is new (`faiz` ≠ bootstrap `admin`). Set `KOMODO_DISABLE_USER_REGISTRATION=false` and `KOMODO_DISABLE_OIDC_USER_REGISTRATION=false` in `/etc/komodo/bootstrap/compose.env`, then recreate Core (not ResourceSync). |

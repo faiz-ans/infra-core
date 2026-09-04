@@ -35,6 +35,6 @@ Open **`https://snippets.<DOMAIN>`**. Create or keep the local household account
 | Symptom | What to do |
 |---|---|
 | `snippets.<DOMAIN>` does not load while `bytestash` is Up | Redeploy **caddy**. Then `docker exec caddy wget -S -O- --timeout=10 http://bytestash:5000/ \| head` |
-| Host / CSRF errors | `ALLOWED_HOSTS` must include `snippets.<DOMAIN>`. Redeploy **bytestash** after the catalog pull |
+| Host / CSRF errors | `ALLOWED_HOSTS` must include `snip.<DOMAIN>`. Redeploy **bytestash** after the catalog pull |
 | Authelia `invalid_request` | Callback is `/api/auth/oidc/callback` (not `/api/oauth/openid`). Redeploy **authelia** after the catalog pull |
 | Cannot create the first user | `BYTESTASH_ALLOW_NEW_ACCOUNTS` must be `true` for that first visit |

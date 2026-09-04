@@ -15,7 +15,7 @@ services:
       DEBUG: "false"
       DISABLE_ACCOUNTS: "false"
       DISABLE_INTERNAL_ACCOUNTS: "false"
-      ALLOWED_HOSTS: snippets.${DOMAIN},bytestash.${DOMAIN}
+      ALLOWED_HOSTS: snip.${DOMAIN},snippets.${DOMAIN},bytestash.${DOMAIN}
       OIDC_ENABLED: "true"
       OIDC_DISPLAY_NAME: Authelia
       OIDC_ISSUER_URL: https://auth.${DOMAIN}

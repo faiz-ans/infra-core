@@ -2,6 +2,9 @@
 	email off
 }
 
+# Aliases 301 to the Homepage host. OIDC APP_URL / cookies / Authelia
+# redirect_uri are single-host; serving the same app on two names breaks login.
+
 (authelia_gate) {
 	forward_auth authelia:9091 {
 		uri /api/authz/forward-auth?authelia_url=https://auth.{$DOMAIN}/
@@ -9,7 +12,12 @@
 	}
 }
 
-https://auth.{$DOMAIN}, https://authelia.{$DOMAIN} {
+https://authelia.{$DOMAIN} {
+	tls internal
+	redir https://auth.{$DOMAIN}{uri} permanent
+}
+
+https://auth.{$DOMAIN} {
 	tls internal
 	handle /pki/local-root.crt {
 		rewrite * /root.crt
@@ -19,7 +27,12 @@ https://auth.{$DOMAIN}, https://authelia.{$DOMAIN} {
 	reverse_proxy authelia:9091
 }
 
-https://dash.{$DOMAIN}, https://homepage.{$DOMAIN} {
+https://homepage.{$DOMAIN} {
+	tls internal
+	redir https://dash.{$DOMAIN}{uri} permanent
+}
+
+https://dash.{$DOMAIN} {
 	tls internal
 	reverse_proxy homepage:3000
 }
@@ -41,34 +54,64 @@ https://git.{$DOMAIN} {
 	}
 }
 
-https://dns.{$DOMAIN}, https://pihole.{$DOMAIN}, https://pihole-core.{$DOMAIN} {
+https://pihole.{$DOMAIN}, https://pihole-core.{$DOMAIN} {
+	tls internal
+	redir https://dns.{$DOMAIN}{uri} permanent
+}
+
+https://dns.{$DOMAIN} {
 	tls internal
 	redir / /admin
 	reverse_proxy pihole:80
 }
 
-https://dns2.{$DOMAIN}, https://pihole2.{$DOMAIN}, https://pihole-periphery.{$DOMAIN} {
+https://pihole2.{$DOMAIN}, https://pihole-periphery.{$DOMAIN} {
+	tls internal
+	redir https://dns2.{$DOMAIN}{uri} permanent
+}
+
+https://dns2.{$DOMAIN} {
 	tls internal
 	redir / /admin
 	reverse_proxy {$HTPC_UPSTREAM}:8083
 }
 
-https://vpn.{$DOMAIN}, https://wg.{$DOMAIN}, https://wireguard.{$DOMAIN} {
+https://wg.{$DOMAIN}, https://wireguard.{$DOMAIN} {
+	tls internal
+	redir https://vpn.{$DOMAIN}{uri} permanent
+}
+
+https://vpn.{$DOMAIN} {
 	tls internal
 	reverse_proxy host.docker.internal:51821
 }
 
-https://ops.{$DOMAIN}, https://komodo.{$DOMAIN} {
+https://komodo.{$DOMAIN} {
+	tls internal
+	redir https://ops.{$DOMAIN}{uri} permanent
+}
+
+https://ops.{$DOMAIN} {
 	tls internal
 	reverse_proxy host.docker.internal:9120
 }
 
-https://nas.{$DOMAIN}, https://omv.{$DOMAIN}, https://openmediavault.{$DOMAIN} {
+https://omv.{$DOMAIN}, https://openmediavault.{$DOMAIN} {
+	tls internal
+	redir https://nas.{$DOMAIN}{uri} permanent
+}
+
+https://nas.{$DOMAIN} {
 	tls internal
 	reverse_proxy host.docker.internal:81
 }
 
-https://pw.{$DOMAIN}, https://pass.{$DOMAIN}, https://vaultwarden.{$DOMAIN} {
+https://pw.{$DOMAIN}, https://vaultwarden.{$DOMAIN} {
+	tls internal
+	redir https://pass.{$DOMAIN}{uri} permanent
+}
+
+https://pass.{$DOMAIN} {
 	tls internal
 
 	@admin path /admin /admin/*
@@ -86,17 +129,32 @@ https://pw.{$DOMAIN}, https://pass.{$DOMAIN}, https://vaultwarden.{$DOMAIN} {
 	}
 }
 
-https://watch.{$DOMAIN}, https://jellyfin.{$DOMAIN} {
+https://jellyfin.{$DOMAIN} {
+	tls internal
+	redir https://watch.{$DOMAIN}{uri} permanent
+}
+
+https://watch.{$DOMAIN} {
 	tls internal
 	reverse_proxy {$HTPC_UPSTREAM}:8096
 }
 
-https://request.{$DOMAIN}, https://seerr.{$DOMAIN}, https://jellyseerr.{$DOMAIN} {
+https://seerr.{$DOMAIN}, https://jellyseerr.{$DOMAIN} {
+	tls internal
+	redir https://request.{$DOMAIN}{uri} permanent
+}
+
+https://request.{$DOMAIN} {
 	tls internal
 	reverse_proxy {$HTPC_UPSTREAM}:5055
 }
 
-https://auto.{$DOMAIN}, https://ha.{$DOMAIN}, https://homeassistant.{$DOMAIN} {
+https://ha.{$DOMAIN}, https://homeassistant.{$DOMAIN} {
+	tls internal
+	redir https://auto.{$DOMAIN}{uri} permanent
+}
+
+https://auto.{$DOMAIN} {
 	tls internal
 	# HA 400s if X-Forwarded-For is present and the TCP peer is not in trusted_proxies.
 	# Caddy is on Core, HA is on Docker Desktop: the peer is often an IPv4-mapped
@@ -109,7 +167,12 @@ https://auto.{$DOMAIN}, https://ha.{$DOMAIN}, https://homeassistant.{$DOMAIN} {
 	}
 }
 
-https://cloud.{$DOMAIN}, https://oc.{$DOMAIN}, https://opencloud.{$DOMAIN} {
+https://oc.{$DOMAIN}, https://opencloud.{$DOMAIN} {
+	tls internal
+	redir https://cloud.{$DOMAIN}{uri} permanent
+}
+
+https://cloud.{$DOMAIN} {
 	tls internal
 	reverse_proxy opencloud:9200 {
 		# Disable buffering for OpenCloud SSE / TUS (nginx equivalent: proxy_buffering off).
@@ -121,12 +184,22 @@ https://cloud.{$DOMAIN}, https://oc.{$DOMAIN}, https://opencloud.{$DOMAIN} {
 	}
 }
 
-https://photos.{$DOMAIN}, https://gallery.{$DOMAIN}, https://immich.{$DOMAIN} {
+https://gallery.{$DOMAIN}, https://immich.{$DOMAIN} {
+	tls internal
+	redir https://photos.{$DOMAIN}{uri} permanent
+}
+
+https://photos.{$DOMAIN} {
 	tls internal
 	reverse_proxy {$HTPC_UPSTREAM}:2283
 }
 
-https://office.{$DOMAIN}, https://docs.{$DOMAIN}, https://collabora.{$DOMAIN} {
+https://docs.{$DOMAIN}, https://collabora.{$DOMAIN} {
+	tls internal
+	redir https://office.{$DOMAIN}{uri} permanent
+}
+
+https://office.{$DOMAIN} {
 	tls internal
 	reverse_proxy {$HTPC_UPSTREAM}:9980 {
 		header_up Host {host}
@@ -149,22 +222,42 @@ https://notes.{$DOMAIN} {
 	reverse_proxy jotty:3000
 }
 
-https://links.{$DOMAIN}, https://bookmarks.{$DOMAIN}, https://linkding.{$DOMAIN} {
+https://bookmarks.{$DOMAIN}, https://linkding.{$DOMAIN} {
+	tls internal
+	redir https://links.{$DOMAIN}{uri} permanent
+}
+
+https://links.{$DOMAIN} {
 	tls internal
 	reverse_proxy linkding:9090
 }
 
-https://desk.{$DOMAIN}, https://remote.{$DOMAIN}, https://rustdesk.{$DOMAIN} {
+https://remote.{$DOMAIN}, https://rustdesk.{$DOMAIN} {
+	tls internal
+	redir https://desk.{$DOMAIN}{uri} permanent
+}
+
+https://desk.{$DOMAIN} {
 	tls internal
 	respond "RustDesk ID/relay is this host (LAN and WireGuard only). Use the native client. Do not port-forward 21115-21119." 200
 }
 
-https://trips.{$DOMAIN}, https://travel.{$DOMAIN}, https://adventurelog.{$DOMAIN} {
+https://trips.{$DOMAIN}, https://adventurelog.{$DOMAIN} {
+	tls internal
+	redir https://travel.{$DOMAIN}{uri} permanent
+}
+
+https://travel.{$DOMAIN} {
 	tls internal
 	reverse_proxy {$HTPC_UPSTREAM}:8015
 }
 
-https://voice.{$DOMAIN}, https://transcribe.{$DOMAIN}, https://scriberr.{$DOMAIN} {
+https://transcribe.{$DOMAIN}, https://scriberr.{$DOMAIN} {
+	tls internal
+	redir https://voice.{$DOMAIN}{uri} permanent
+}
+
+https://voice.{$DOMAIN} {
 	tls internal
 	reverse_proxy {$HTPC_UPSTREAM}:8085 {
 		flush_interval -1
@@ -191,19 +284,34 @@ https://convert.{$DOMAIN} {
 	}
 }
 
-https://pdf.{$DOMAIN}, https://bentopdf.{$DOMAIN} {
+https://bentopdf.{$DOMAIN} {
+	tls internal
+	redir https://pdf.{$DOMAIN}{uri} permanent
+}
+
+https://pdf.{$DOMAIN} {
 	tls internal
 	import authelia_gate
 	reverse_proxy bentopdf:8080
 }
 
-https://translate.{$DOMAIN}, https://libretranslate.{$DOMAIN} {
+https://libretranslate.{$DOMAIN} {
+	tls internal
+	redir https://translate.{$DOMAIN}{uri} permanent
+}
+
+https://translate.{$DOMAIN} {
 	tls internal
 	import authelia_gate
 	reverse_proxy {$HTPC_UPSTREAM}:5000
 }
 
-https://read.{$DOMAIN}, https://openreader.{$DOMAIN}, https://reader.{$DOMAIN} {
+https://openreader.{$DOMAIN}, https://reader.{$DOMAIN} {
+	tls internal
+	redir https://read.{$DOMAIN}{uri} permanent
+}
+
+https://read.{$DOMAIN} {
 	tls internal
 	reverse_proxy {$HTPC_UPSTREAM}:3003 {
 		flush_interval -1
@@ -214,13 +322,23 @@ https://read.{$DOMAIN}, https://openreader.{$DOMAIN}, https://reader.{$DOMAIN} {
 	}
 }
 
-https://it.{$DOMAIN}, https://tools.{$DOMAIN}, https://it-tools.{$DOMAIN} {
+https://it.{$DOMAIN}, https://it-tools.{$DOMAIN} {
+	tls internal
+	redir https://tools.{$DOMAIN}{uri} permanent
+}
+
+https://tools.{$DOMAIN} {
 	tls internal
 	import authelia_gate
 	reverse_proxy it-tools:80
 }
 
-https://flow.{$DOMAIN}, https://n8n.{$DOMAIN} {
+https://n8n.{$DOMAIN} {
+	tls internal
+	redir https://flow.{$DOMAIN}{uri} permanent
+}
+
+https://flow.{$DOMAIN} {
 	tls internal
 	reverse_proxy {$HTPC_UPSTREAM}:5678 {
 		flush_interval -1
@@ -231,12 +349,22 @@ https://flow.{$DOMAIN}, https://n8n.{$DOMAIN} {
 	}
 }
 
-https://snip.{$DOMAIN}, https://bytestash.{$DOMAIN}, https://snippets.{$DOMAIN} {
+https://bytestash.{$DOMAIN}, https://snippets.{$DOMAIN} {
+	tls internal
+	redir https://snip.{$DOMAIN}{uri} permanent
+}
+
+https://snip.{$DOMAIN} {
 	tls internal
 	reverse_proxy bytestash:5000
 }
 
-https://cam.{$DOMAIN}, https://nvr.{$DOMAIN}, https://frigate.{$DOMAIN} {
+https://nvr.{$DOMAIN}, https://frigate.{$DOMAIN} {
+	tls internal
+	redir https://cam.{$DOMAIN}{uri} permanent
+}
+
+https://cam.{$DOMAIN} {
 	tls internal
 	reverse_proxy {$HTPC_UPSTREAM}:8971 {
 		flush_interval -1
@@ -262,7 +390,12 @@ https://prowlarr.{$DOMAIN} {
 	reverse_proxy {$HTPC_UPSTREAM}:9696
 }
 
-https://down.{$DOMAIN}, https://qbit.{$DOMAIN}, https://qbittorrent.{$DOMAIN} {
+https://qbit.{$DOMAIN}, https://qbittorrent.{$DOMAIN} {
+	tls internal
+	redir https://down.{$DOMAIN}{uri} permanent
+}
+
+https://down.{$DOMAIN} {
 	tls internal
 	reverse_proxy {$HTPC_UPSTREAM}:8081 {
 		header_up Host {http.reverse_proxy.upstream.hostport}
@@ -271,35 +404,65 @@ https://down.{$DOMAIN}, https://qbit.{$DOMAIN}, https://qbittorrent.{$DOMAIN} {
 	}
 }
 
-https://stats.{$DOMAIN}, https://monitoring.{$DOMAIN}, https://grafana.{$DOMAIN} {
+https://monitoring.{$DOMAIN}, https://grafana.{$DOMAIN} {
+	tls internal
+	redir https://stats.{$DOMAIN}{uri} permanent
+}
+
+https://stats.{$DOMAIN} {
 	tls internal
 	reverse_proxy {$HTPC_UPSTREAM}:3000
 }
 
-https://metrics.{$DOMAIN}, https://prometheus.{$DOMAIN} {
+https://prometheus.{$DOMAIN} {
+	tls internal
+	redir https://metrics.{$DOMAIN}{uri} permanent
+}
+
+https://metrics.{$DOMAIN} {
 	tls internal
 	import authelia_gate
 	reverse_proxy {$HTPC_UPSTREAM}:9090
 }
 
-https://glances.{$DOMAIN}, https://glances-core.{$DOMAIN} {
+https://glances-core.{$DOMAIN} {
+	tls internal
+	redir https://glances.{$DOMAIN}{uri} permanent
+}
+
+https://glances.{$DOMAIN} {
 	tls internal
 	import authelia_gate
 	reverse_proxy glances:61208
 }
 
-https://glances2.{$DOMAIN}, https://glances-periphery.{$DOMAIN} {
+https://glances-periphery.{$DOMAIN} {
+	tls internal
+	redir https://glances2.{$DOMAIN}{uri} permanent
+}
+
+https://glances2.{$DOMAIN} {
 	tls internal
 	import authelia_gate
 	reverse_proxy {$HTPC_UPSTREAM}:61208
 }
 
-https://wifi.{$DOMAIN}, https://router.{$DOMAIN} {
+https://router.{$DOMAIN} {
+	tls internal
+	redir https://wifi.{$DOMAIN}{uri} permanent
+}
+
+https://wifi.{$DOMAIN} {
 	tls internal
 	reverse_proxy 192.168.1.1
 }
 
-https://print.{$DOMAIN}, https://printer.{$DOMAIN} {
+https://printer.{$DOMAIN} {
+	tls internal
+	redir https://print.{$DOMAIN}{uri} permanent
+}
+
+https://print.{$DOMAIN} {
 	tls internal
 	reverse_proxy 192.168.1.113 {
 		header_up Host {http.reverse_proxy.upstream.hostport}
