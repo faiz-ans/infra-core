@@ -45,6 +45,7 @@ services:
     extra_hosts:
       - "auth.${DOMAIN}:${NAS_LAN_IP}"
     entrypoint: ["/bin/bash", "/oidc-ca.sh"]
+    command: ["supervisord", "-c", "/aio/supervisord.conf"]
     ports:
       - "8015:80"
     volumes:

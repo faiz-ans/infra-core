@@ -19,4 +19,7 @@ for dest_dir in site.getsitepackages():
         print("adventurelog-oidc: skip", dest_dir, exc, flush=True)
 print("adventurelog-oidc: PYTHONPATH sitecustomize ready", flush=True)
 PY
+if [ "$#" -eq 0 ]; then
+  exec /aio/entrypoint.sh supervisord -c /aio/supervisord.conf
+fi
 exec /aio/entrypoint.sh "$@"
