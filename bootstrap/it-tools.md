@@ -18,7 +18,7 @@ You want `it-tools` **Up**. It must **not** publish 80 on the LAN.
 
 ## 2. Use
 
-Open **`https://tools.<DOMAIN>`**.
+Open **`https://tools.<DOMAIN>`**. If you already logged in to Authelia on another app, this vhost will not show a login (SSO cookie). Confirm the gate with a private window, or log out at `https://auth.<DOMAIN>/logout` first. Redeploy **caddy** if a private window still skips Authelia.
 
 ## If it fails
 

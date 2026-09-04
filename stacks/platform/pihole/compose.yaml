@@ -12,7 +12,10 @@ services:
       TZ: ${TZ}
       FTLCONF_dns_listeningMode: ALL
       FTLCONF_webserver_api_password: ${PIHOLE_WEBPASSWORD}
-      FTLCONF_misc_dnsmasq_lines: "address=/${DOMAIN}/${NAS_LAN_IP}"
+      # local= makes AAAA NODATA (not NXDOMAIN). Firefox follows RFC 4074 and
+      # will not try A if AAAA is NXDOMAIN — Edge still does, so only Firefox
+      # shows "can't find the site" for *.home.lan.
+      FTLCONF_misc_dnsmasq_lines: "local=/${DOMAIN}/;address=/${DOMAIN}/${NAS_LAN_IP}"
     volumes:
       - ${DATA_ROOT}/system/pihole:/etc/pihole
     cap_add:

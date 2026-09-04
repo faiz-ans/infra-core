@@ -28,6 +28,13 @@ if docker ps -qf name=^caddy$ | grep -q .; then
   docker exec caddy cat /data/caddy/pki/authorities/local/root.crt > "${DIR}/caddy-root.crt"
   chmod 644 "${DIR}/caddy-root.crt"
   echo "Wrote ${DIR}/caddy-root.crt"
+  if [[ -f /etc/ssl/certs/ca-certificates.crt ]]; then
+    cat /etc/ssl/certs/ca-certificates.crt "${DIR}/caddy-root.crt" > "${DIR}/ca-bundle.crt"
+  else
+    cp "${DIR}/caddy-root.crt" "${DIR}/ca-bundle.crt"
+  fi
+  chmod 644 "${DIR}/ca-bundle.crt"
+  echo "Wrote ${DIR}/ca-bundle.crt"
 else
   echo "Caddy is not running; skip caddy-root.crt (dump it later — see bootstrap/gitea.md)."
 fi

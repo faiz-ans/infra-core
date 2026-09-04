@@ -23,6 +23,7 @@ Use this site’s `DATA_ROOT` and `DOMAIN`. The script writes:
 | `${DATA_ROOT}/system/authelia/client_secret` | Shared confidential-client secret (plaintext) |
 | `${DATA_ROOT}/system/authelia/client_secret_digest` | Same secret, hashed for Authelia |
 | `${DATA_ROOT}/system/authelia/caddy-root.crt` | Caddy `tls internal` CA (for Gitea OIDC discovery) |
+| `${DATA_ROOT}/system/authelia/ca-bundle.crt` | Public CAs + Caddy CA (Komodo Core `SSL_CERT_FILE`) |
 
 It prints **`AUTHELIA_OIDC_HMAC_SECRET`** and **`OIDC_CLIENT_SECRET`**. Add both in Komodo → **Settings** → **Secrets**. Mark them secrets. Also add them to `/etc/komodo/core.config.toml` if you want `core.sh` re-runs to keep them.
 
@@ -35,6 +36,7 @@ Komodo Core is the bootstrap compose, not a ResourceSync stack. On Core, append 
 ```text
 DOMAIN=home.lan
 NAS_LAN_IP=<NAS_LAN_IP>
+DATA_ROOT=/srv/dev-disk-by-uuid-<UUID>
 KOMODO_OIDC_ENABLED=true
 KOMODO_OIDC_PROVIDER=https://auth.home.lan
 KOMODO_OIDC_CLIENT_ID=komodo
@@ -42,7 +44,16 @@ KOMODO_OIDC_CLIENT_SECRET=<OIDC_CLIENT_SECRET>
 KOMODO_ENABLE_NEW_USERS=true
 ```
 
-`KOMODO_LOCAL_AUTH` stays `true` (break-glass). Then recreate Core so it picks up `extra_hosts` and the new env:
+`KOMODO_LOCAL_AUTH` stays `true` (break-glass). Copy the current `bootstrap/komodo/compose.yaml` to `/etc/komodo/bootstrap/compose.yaml` (it mounts `ca-bundle.crt`). The bundle must be a **file** before recreate:
+
+```text
+CA="${DATA_ROOT}/system/authelia"
+sudo docker exec caddy cat /data/caddy/pki/authorities/local/root.crt | sudo tee "${CA}/caddy-root.crt" >/dev/null
+sudo cat /etc/ssl/certs/ca-certificates.crt "${CA}/caddy-root.crt" | sudo tee "${CA}/ca-bundle.crt" >/dev/null
+sudo chmod 644 "${CA}/caddy-root.crt" "${CA}/ca-bundle.crt"
+```
+
+Then recreate Core:
 
 ```text
 docker compose --env-file /etc/komodo/bootstrap/compose.env \
@@ -127,5 +138,6 @@ Homepage (`dash.` / `homepage.`) has no Authelia gate. Widgets scrape internal U
 | Diana can open Grafana/Komodo/Gitea login but Authelia denies | Expected. Those clients are `admins` only. |
 | OpenCloud CSP / blank login | `IDP_DOMAIN=auth.<DOMAIN>` and Redeploy **opencloud**. Confirm `csp.yaml` lists `https://auth.<DOMAIN>/`. |
 | Gitea `flag provided but not defined: -skip-tls-verify` | That flag is not on `gitea admin auth add-oauth`. Dump the Caddy CA and Redeploy **gitea**, then run the command in [gitea.md](gitea.md) (no skip-tls flag). |
-| Immich OAuth “can’t reach the server” | Redeploy **immich** after `extra_hosts` + `NODE_TLS_REJECT_UNAUTHORIZED`. `docker exec immich wget -S -O- --timeout=10 --no-check-certificate https://auth.<DOMAIN>/.well-known/openid-configuration` must return JSON. Timeout to the NAS IP means Docker LAN overlap ([periphery.md](periphery.md) §7). |
-| Komodo OIDC button missing | `compose.env` OIDC lines + recreate Core. `KOMODO_HOST` must be `https://ops.<DOMAIN>`. |
+| Immich OAuth “can’t reach the server” | Redeploy **immich** after `extra_hosts` + `NODE_TLS_REJECT_UNAUTHORIZED`. The image has no `wget` — use `docker exec -e NODE_TLS_REJECT_UNAUTHORIZED=0 immich node -e "fetch('https://auth.<DOMAIN>/.well-known/openid-configuration').then(async r=>{console.log(r.status);console.log(await r.text())}).catch(e=>{console.error(e);process.exit(1)})"`. `ENOTFOUND` means the stack was not recreated with `extra_hosts`. Timeout to the NAS IP means Docker LAN overlap ([periphery.md](periphery.md) §7). |
+| Firefox “can’t find” `*.home.lan`, Edge works | AAAA NXDOMAIN from Pi-hole (`address=/` IPv4-only). Firefox will not try A. See [periphery.md](periphery.md) §3. |
+| Komodo OIDC “Provider not available” | Core cannot verify Caddy TLS. Write `ca-bundle.crt` (see §2), copy `bootstrap/komodo/compose.yaml` onto the box, set `DATA_ROOT` in `compose.env`, recreate Core. |

@@ -365,7 +365,7 @@ identity_providers:
           - refresh_token
         access_token_signed_response_alg: none
         userinfo_signed_response_alg: none
-        token_endpoint_auth_method: client_secret_basic
+        token_endpoint_auth_method: client_secret_post
       - client_id: bytestash
         client_name: ByteStash
         client_secret: '{{ secret "/config/userdb/client_secret_digest" }}'
@@ -374,8 +374,8 @@ identity_providers:
         consent_mode: implicit
         require_pkce: false
         redirect_uris:
-          - 'https://snippets.{{ env "DOMAIN" }}/api/oauth/openid'
-          - 'https://bytestash.{{ env "DOMAIN" }}/api/oauth/openid'
+          - 'https://snippets.{{ env "DOMAIN" }}/api/auth/oidc/callback'
+          - 'https://bytestash.{{ env "DOMAIN" }}/api/auth/oidc/callback'
         scopes:
           - openid
           - profile
@@ -386,7 +386,7 @@ identity_providers:
           - authorization_code
         access_token_signed_response_alg: none
         userinfo_signed_response_alg: none
-        token_endpoint_auth_method: client_secret_basic
+        token_endpoint_auth_method: client_secret_post
       - client_id: adventurelog
         client_name: Adventure Log
         client_secret: '{{ secret "/config/userdb/client_secret_digest" }}'

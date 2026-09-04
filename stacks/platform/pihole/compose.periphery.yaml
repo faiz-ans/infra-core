@@ -14,7 +14,8 @@ services:
       TZ: ${TZ}
       FTLCONF_dns_listeningMode: ALL
       FTLCONF_webserver_api_password: ${PIHOLE_PERIPHERY_WEBPASSWORD}
-      FTLCONF_misc_dnsmasq_lines: "address=/${DOMAIN}/${NAS_LAN_IP}"
+      # local= : AAAA NODATA, not NXDOMAIN (Firefox RFC 4074). See compose.yaml.
+      FTLCONF_misc_dnsmasq_lines: "local=/${DOMAIN}/;address=/${DOMAIN}/${NAS_LAN_IP}"
     volumes:
       - pihole-config:/etc/pihole
     cap_add:

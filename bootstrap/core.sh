@@ -690,6 +690,12 @@ fi
 if docker ps -qf name=^caddy$ | grep -q .; then
   docker exec caddy cat /data/caddy/pki/authorities/local/root.crt > "${authelia_dir}/caddy-root.crt"
   chmod 644 "${authelia_dir}/caddy-root.crt"
+  if [[ -f /etc/ssl/certs/ca-certificates.crt ]]; then
+    cat /etc/ssl/certs/ca-certificates.crt "${authelia_dir}/caddy-root.crt" > "${authelia_dir}/ca-bundle.crt"
+  else
+    cp "${authelia_dir}/caddy-root.crt" "${authelia_dir}/ca-bundle.crt"
+  fi
+  chmod 644 "${authelia_dir}/ca-bundle.crt"
 fi
 
 # openssl rand -hex 24   (used above)
@@ -716,6 +722,7 @@ KOMODO_DATABASE_PASSWORD=${DB_PASS}
 TZ=${TZ}
 DOMAIN=${DOMAIN}
 NAS_LAN_IP=${NAS_LAN_IP}
+DATA_ROOT=${DATA_ROOT}
 KOMODO_HOST=https://ops.${DOMAIN}
 KOMODO_TITLE=Komodo
 KOMODO_LOCAL_AUTH=true

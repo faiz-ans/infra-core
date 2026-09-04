@@ -91,6 +91,18 @@ Allow inbound TCP from the LAN (Caddy on Core) on the published ports:
 
 Router DHCP DNS: Core `NAS_LAN_IP` first, then `HTPC_UPSTREAM`. Do not add a public resolver as a third DHCP DNS. Each Pi-hole fetches its own Gravity. Windows may already use :53 (ICS / another DNS); if the stack cannot bind, stop that listener.
 
+If Edge and `curl` work but Firefox says it **can’t find** `*.home.lan` (no certificate warning): Pi-hole’s IPv4-only `address=/home.lan/…` answers **AAAA with NXDOMAIN**. Firefox follows RFC 4074 and then never queries A. Edge still tries A. Cached A records keep Homepage (and the occasional other tab) alive.
+
+```text
+nslookup -type=AAAA cloud.home.lan
+```
+
+NXDOMAIN is the bug.
+
+Immediate: Firefox `about:config` → `network.dns.disableIPv6` = `true`, then `about:networking#dns` → Clear DNS cache.
+
+Lasting: Redeploy **pihole** and **pihole-periphery** after the catalog adds `local=/${DOMAIN}/` so AAAA is empty NODATA.
+
 ## 4. Periphery env (write on the box, do not commit)
 
 Create `periphery.env` next to `bootstrap/periphery.compose.yaml`:

@@ -47,10 +47,10 @@ Enable **PKCE** if the form has a checkbox (Authelia requires it).
 
 Discovery runs **inside the Immich container**, not in the browser. Docker Desktop does not use Pi-hole, so the catalog sets `extra_hosts` for `auth.<DOMAIN>` → `NAS_LAN_IP` and `NODE_TLS_REJECT_UNAUTHORIZED=0` (Caddy `tls internal`). Redeploy **immich** after that catalog lands, then save OAuth again.
 
-From the HTPC, this must return JSON (not a TLS or DNS error):
+The Immich image has no `wget`. From the HTPC this must print `200` and JSON (not `ENOTFOUND` / timeout):
 
 ```text
-docker exec immich wget -S -O- --timeout=10 --no-check-certificate https://auth.<DOMAIN>/.well-known/openid-configuration
+docker exec -e NODE_TLS_REJECT_UNAUTHORIZED=0 immich node -e "fetch('https://auth.<DOMAIN>/.well-known/openid-configuration').then(async r=>{console.log(r.status);console.log(await r.text())}).catch(e=>{console.error(e);process.exit(1)})"
 ```
 
 If that times out even to `https://<NAS_LAN_IP>/`, a Compose network is overlapping the LAN (`192.168.0.0/16`). Fix Engine JSON first — see [periphery.md](periphery.md) §7.
