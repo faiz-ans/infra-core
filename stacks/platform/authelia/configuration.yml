@@ -368,7 +368,10 @@ identity_providers:
           - refresh_token
         access_token_signed_response_alg: none
         userinfo_signed_response_alg: none
-        token_endpoint_auth_method: client_secret_post
+        # Transmute/Authlib defaults to HTTP Basic. The image sets
+        # token_endpoint_auth_method on oauth.register() (ignored) instead of
+        # client_kwargs, so the token POST is Basic. Post here → 401 invalid_client.
+        token_endpoint_auth_method: client_secret_basic
       - client_id: bytestash
         client_name: ByteStash
         client_secret: '{{ secret "/config/userdb/client_secret_digest" }}'

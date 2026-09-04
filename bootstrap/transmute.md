@@ -35,4 +35,4 @@ Open **`https://convert.<DOMAIN>`** (Caddy sends `transmute.` there). Local admi
 |---|---|
 | `convert.<DOMAIN>` does not load while the container is Up | Redeploy **caddy**. From Core: `docker exec caddy wget -S -O- --timeout=10 http://<HTPC_UPSTREAM>:3313/ \| head` |
 | Logged out after Redeploy | `TRANSMUTE_AUTH_SECRET_KEY` must be set and unchanged |
-| Authelia button → Internal Server Error | Token exchange hits `https://auth.<DOMAIN>` (Caddy `tls internal`). Redeploy **caddy** and **transmute**. `docker logs transmute` should show `transmute-oidc: PYTHONPATH sitecustomize ready` at start. |
+| Authelia succeeds, then Internal Server Error | Token POST is `401 invalid_client`. Authelia must use `token_endpoint_auth_method: client_secret_basic` (Transmute/Authlib sends Basic, not post). Redeploy **authelia** only. |
