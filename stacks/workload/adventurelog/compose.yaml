@@ -28,7 +28,10 @@ services:
     environment:
       TZ: ${TZ}
       SITE_URL: https://travel.${DOMAIN}
-      CSRF_TRUSTED_ORIGINS: https://travel.${DOMAIN},https://trips.${DOMAIN},https://adventurelog.${DOMAIN}
+      PUBLIC_URL: https://travel.${DOMAIN}
+      FRONTEND_URL: https://travel.${DOMAIN}
+      ORIGIN: https://travel.${DOMAIN}
+      CSRF_TRUSTED_ORIGINS: https://travel.${DOMAIN}
       POSTGRES_PASSWORD: ${ADVENTURELOG_POSTGRES_PASSWORD}
       PGHOST: db
       POSTGRES_DB: database
@@ -37,10 +40,17 @@ services:
       DJANGO_ADMIN_PASSWORD: ${ADVENTURELOG_ADMIN_PASSWORD}
       DJANGO_ADMIN_EMAIL: admin@${DOMAIN}
       DISABLE_REGISTRATION: "True"
+      SOCIALACCOUNT_ALLOW_SIGNUP: "True"
+      PYTHONPATH: /tmp/oidc-hooks
+    extra_hosts:
+      - "auth.${DOMAIN}:${NAS_LAN_IP}"
+    entrypoint: ["/bin/bash", "/oidc-ca.sh"]
     ports:
       - "8015:80"
     volumes:
       - adventurelog-media:/code/media
+      - ./entrypoint-oidc.sh:/oidc-ca.sh:ro
+      - ./sitecustomize-oidc.py:/oidc-sitecustomize.py:ro
 
 volumes:
   adventurelog-postgres:

@@ -324,7 +324,11 @@ https://trips.{$DOMAIN}, https://adventurelog.{$DOMAIN} {
 
 https://travel.{$DOMAIN} {
 	tls internal
-	reverse_proxy {$HTPC_UPSTREAM}:8015
+	reverse_proxy {$HTPC_UPSTREAM}:8015 {
+		header_up Host travel.{$DOMAIN}
+		header_up X-Forwarded-Host travel.{$DOMAIN}
+		header_up X-Forwarded-Proto https
+	}
 }
 
 #--------------------------------
