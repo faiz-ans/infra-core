@@ -11,6 +11,11 @@
 
 https://auth.{$DOMAIN}, https://authelia.{$DOMAIN} {
 	tls internal
+	handle /pki/local-root.crt {
+		rewrite * /root.crt
+		root * /data/caddy/pki/authorities/local
+		file_server
+	}
 	reverse_proxy authelia:9091
 }
 

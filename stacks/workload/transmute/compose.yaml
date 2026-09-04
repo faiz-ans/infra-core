@@ -16,15 +16,14 @@ services:
       OIDC_DISPLAY_NAME: Authelia
       OIDC_AUTO_CREATE_USERS: "true"
       OIDC_AUTO_LAUNCH: "false"
-      # Python/httpx (NODE_TLS_REJECT_UNAUTHORIZED does nothing here).
-      # Authelia is published on NAS_LAN_IP:9091 for HTPC discovery without Caddy TLS.
-      OIDC_INTERNAL_URL: http://${NAS_LAN_IP}:9091
     extra_hosts:
       - "auth.${DOMAIN}:${NAS_LAN_IP}"
+    entrypoint: ["/bin/bash", "/oidc-ca.sh"]
     ports:
       - "3313:3313"
     volumes:
       - transmute-data:/app/data
+      - ./entrypoint-oidc.sh:/oidc-ca.sh:ro
     healthcheck:
       test:
         - "CMD"
