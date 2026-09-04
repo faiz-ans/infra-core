@@ -27,7 +27,7 @@ You want `transmute` **Up** (healthy after the first minute). Video conversions 
 
 ## 3. Admin
 
-Open **`https://convert.<DOMAIN>`** (`transmute.` is an alias). Local admin stays as break-glass. Authelia OIDC is on (`Login with Authelia`). First Authelia login as **faiz** or **diana** creates a Transmute user (`OIDC_AUTO_CREATE_USERS`). Elevate **faiz** in Transmute.
+Open **`https://convert.<DOMAIN>`** (Caddy sends `transmute.` there). Local admin stays as break-glass. Authelia OIDC is on (`Login with Authelia`). First Authelia login as **faiz** or **diana** creates a Transmute user (`OIDC_AUTO_CREATE_USERS`). Elevate **faiz** in Transmute.
 
 ## If it fails
 
@@ -35,5 +35,4 @@ Open **`https://convert.<DOMAIN>`** (`transmute.` is an alias). Local admin stay
 |---|---|
 | `convert.<DOMAIN>` does not load while the container is Up | Redeploy **caddy**. From Core: `docker exec caddy wget -S -O- --timeout=10 http://<HTPC_UPSTREAM>:3313/ \| head` |
 | Logged out after Redeploy | `TRANSMUTE_AUTH_SECRET_KEY` must be set and unchanged |
-| Container healthy, page hangs or never loads | Do not use `OIDC_INTERNAL_URL=http://…` — Core OMV often allows **443** from the HTPC and blocks **80**. Redeploy **caddy** then **transmute**. |
-| Authelia succeeds, then Internal Server Error | Callback token/JWKS is HTTPS to Caddy `tls internal`. Entrypoint fetches `https://auth.<DOMAIN>/pki/local-root.crt` and pins it for httpx. Redeploy **transmute**. `docker logs transmute` should show `transmute-oidc: CA bundle` at start. |
+| Authelia succeeds, then Internal Server Error | Callback token/JWKS is server-side. Catalog uses `OIDC_INTERNAL_URL=http://auth.<DOMAIN>` (Caddy HTTP, no `tls internal`). Redeploy **caddy** then **transmute**. From the HTPC: `docker logs transmute` around the callback. |
