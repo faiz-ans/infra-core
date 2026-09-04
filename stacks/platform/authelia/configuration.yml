@@ -327,8 +327,10 @@ identity_providers:
         public: false
         authorization_policy: users
         consent_mode: implicit
-        require_pkce: true
-        pkce_challenge_method: S256
+        # Jotty with OIDC_CLIENT_SECRET is confidential: it posts the secret
+        # and does not send PKCE. require_pkce + client_secret_basic bounces
+        # the browser back to Jotty's native login after Authelia succeeds.
+        require_pkce: false
         redirect_uris:
           - 'https://notes.{{ env "DOMAIN" }}/api/oidc/callback'
           - 'https://jotty.{{ env "DOMAIN" }}/api/oidc/callback'
@@ -343,7 +345,7 @@ identity_providers:
           - authorization_code
         access_token_signed_response_alg: none
         userinfo_signed_response_alg: none
-        token_endpoint_auth_method: client_secret_basic
+        token_endpoint_auth_method: client_secret_post
       - client_id: transmute
         client_name: Transmute
         client_secret: '{{ secret "/config/userdb/client_secret_digest" }}'

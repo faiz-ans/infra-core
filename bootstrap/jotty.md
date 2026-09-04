@@ -20,11 +20,12 @@ You want `jotty` **Up**. It must **not** publish 3000 on the LAN.
 
 ## 3. Admin
 
-Open **`https://notes.<DOMAIN>`**. With Authelia OIDC in the catalog, the first visit goes to Authelia (not `/auth/setup`). Local login stays available (`SSO_FALLBACK_LOCAL`). First Authelia login as **faiz** or **diana** creates a Jotty user. Elevate **faiz** in Jotty. If this site already created a local admin, keep it as break-glass.
+Open **`https://notes.<DOMAIN>`** (Caddy sends `jotty.` there). With Authelia OIDC in the catalog, the first visit goes to Authelia (not `/auth/setup`). Local login stays available (`SSO_FALLBACK_LOCAL`). First Authelia login as **faiz** or **diana** creates a Jotty user. **faiz** is admin (`OIDC_ADMIN_GROUPS=admins`). If this site already created a local admin, keep it as break-glass.
 
 ## If it fails
 
 | Symptom | What to do |
 |---|---|
 | `notes.<DOMAIN>` does not load while `jotty` is Up | Redeploy **caddy**. Then `docker exec caddy wget -S -O- --timeout=10 http://jotty:3000/ \| head` |
+| Authelia succeeds, Jotty stays on the native login | Authelia must use `client_secret_post` and `require_pkce: false` (Jotty drops PKCE when `OIDC_CLIENT_SECRET` is set). Redeploy **authelia** after the catalog change. Then Redeploy **jotty**. |
 | Permission denied on `/app/data` | Stop the container, `chown -R ${PUID}:${PGID}` `system/jotty`, Redeploy |

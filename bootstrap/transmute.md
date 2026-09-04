@@ -27,7 +27,7 @@ You want `transmute` **Up** (healthy after the first minute). Video conversions 
 
 ## 3. Admin
 
-Open **`https://convert.<DOMAIN>`**. Local admin stays as break-glass. Authelia OIDC is on (`Login with Authelia`). First Authelia login as **faiz** or **diana** creates a Transmute user (`OIDC_AUTO_CREATE_USERS`). Elevate **faiz** in Transmute.
+Open **`https://convert.<DOMAIN>`** (Caddy sends `transmute.` there). Local admin stays as break-glass. Authelia OIDC is on (`Login with Authelia`). First Authelia login as **faiz** or **diana** creates a Transmute user (`OIDC_AUTO_CREATE_USERS`). Elevate **faiz** in Transmute.
 
 ## If it fails
 
@@ -35,4 +35,4 @@ Open **`https://convert.<DOMAIN>`**. Local admin stays as break-glass. Authelia 
 |---|---|
 | `convert.<DOMAIN>` does not load while the container is Up | Redeploy **caddy**. From Core: `docker exec caddy wget -S -O- --timeout=10 http://<HTPC_UPSTREAM>:3313/ \| head` |
 | Logged out after Redeploy | `TRANSMUTE_AUTH_SECRET_KEY` must be set and unchanged |
-| Authelia button → Internal Server Error | httpx uses certifi, not `SSL_CERT_FILE`. Redeploy **transmute** (entrypoint installs a sitecustomize that skips TLS verify). `docker logs transmute` should show `transmute-oidc: installed` at start. |
+| Authelia button → Internal Server Error | Token exchange hits `https://auth.<DOMAIN>` (Caddy `tls internal`). Redeploy **caddy** and **transmute**. `docker logs transmute` should show `transmute-oidc: PYTHONPATH sitecustomize ready` at start. |

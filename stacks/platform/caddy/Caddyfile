@@ -139,7 +139,12 @@ https://office.{$DOMAIN}, https://docs.{$DOMAIN}, https://collabora.{$DOMAIN} {
 	}
 }
 
-https://notes.{$DOMAIN}, https://jotty.{$DOMAIN} {
+https://jotty.{$DOMAIN} {
+	tls internal
+	redir https://notes.{$DOMAIN}{uri} permanent
+}
+
+https://notes.{$DOMAIN} {
 	tls internal
 	reverse_proxy jotty:3000
 }
@@ -170,7 +175,12 @@ https://voice.{$DOMAIN}, https://transcribe.{$DOMAIN}, https://scriberr.{$DOMAIN
 	}
 }
 
-https://convert.{$DOMAIN}, https://transmute.{$DOMAIN} {
+https://transmute.{$DOMAIN} {
+	tls internal
+	redir https://convert.{$DOMAIN}{uri} permanent
+}
+
+https://convert.{$DOMAIN} {
 	tls internal
 	reverse_proxy {$HTPC_UPSTREAM}:3313 {
 		flush_interval -1
