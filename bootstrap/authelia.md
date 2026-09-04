@@ -127,5 +127,5 @@ Homepage (`dash.` / `homepage.`) has no Authelia gate. Widgets scrape internal U
 | Diana can open Grafana/Komodo/Gitea login but Authelia denies | Expected. Those clients are `admins` only. |
 | OpenCloud CSP / blank login | `IDP_DOMAIN=auth.<DOMAIN>` and Redeploy **opencloud**. Confirm `csp.yaml` lists `https://auth.<DOMAIN>/`. |
 | Gitea `flag provided but not defined: -skip-tls-verify` | That flag is not on `gitea admin auth add-oauth`. Dump the Caddy CA and Redeploy **gitea**, then run the command in [gitea.md](gitea.md) (no skip-tls flag). |
-| Immich OAuth token fail | Immich on the HTPC must reach `https://auth.<DOMAIN>`. Trust the Caddy CA on Docker Desktop or the issuer fetch will fail. |
+| Immich OAuth “can’t reach the server” | Redeploy **immich** after `extra_hosts` + `NODE_TLS_REJECT_UNAUTHORIZED`. `docker exec immich wget -S -O- --timeout=10 --no-check-certificate https://auth.<DOMAIN>/.well-known/openid-configuration` must return JSON. Timeout to the NAS IP means Docker LAN overlap ([periphery.md](periphery.md) §7). |
 | Komodo OIDC button missing | `compose.env` OIDC lines + recreate Core. `KOMODO_HOST` must be `https://ops.<DOMAIN>`. |

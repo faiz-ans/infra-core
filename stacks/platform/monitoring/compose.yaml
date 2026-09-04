@@ -57,6 +57,8 @@ services:
       GF_AUTH_GENERIC_OAUTH_AUTO_LOGIN: "false"
       GF_AUTH_GENERIC_OAUTH_ROLE_ATTRIBUTE_PATH: contains(groups[*], 'admins') && 'Admin' || 'Viewer'
       GF_AUTH_DISABLE_LOGIN_FORM: "false"
+    extra_hosts:
+      - "auth.${DOMAIN}:${NAS_LAN_IP}"
     ports:
       - "3000:3000"
     volumes:

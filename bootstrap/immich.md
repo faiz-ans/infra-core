@@ -43,7 +43,19 @@ Administration → Settings → OAuth (wording varies slightly by Immich version
 | Auto Register | on |
 | Button text | `Login with Authelia` |
 
-The HTPC must reach `https://auth.<DOMAIN>` (Pi-hole → Caddy). Caddy uses internal TLS; if token exchange fails, import the Caddy root CA into Docker Desktop / the Windows trust store. First Authelia login as **faiz** or **diana** creates a normal Immich user. Elevate **faiz** in Immich.
+Enable **PKCE** if the form has a checkbox (Authelia requires it).
+
+Discovery runs **inside the Immich container**, not in the browser. Docker Desktop does not use Pi-hole, so the catalog sets `extra_hosts` for `auth.<DOMAIN>` → `NAS_LAN_IP` and `NODE_TLS_REJECT_UNAUTHORIZED=0` (Caddy `tls internal`). Redeploy **immich** after that catalog lands, then save OAuth again.
+
+From the HTPC, this must return JSON (not a TLS or DNS error):
+
+```text
+docker exec immich wget -S -O- --timeout=10 --no-check-certificate https://auth.<DOMAIN>/.well-known/openid-configuration
+```
+
+If that times out even to `https://<NAS_LAN_IP>/`, a Compose network is overlapping the LAN (`192.168.0.0/16`). Fix Engine JSON first — see [periphery.md](periphery.md) §7.
+
+The Windows browser is a different path. Homepage working only proves Pi-hole → Caddy for `dash.`. Try `https://auth.<DOMAIN>` and `https://cloud.<DOMAIN>` in Edge. If those fail too, `nslookup auth.<DOMAIN>` should return `NAS_LAN_IP`. First Authelia login as **faiz** or **diana** creates a normal Immich user. Elevate **faiz** in Immich.
 
 ## 4. External Libraries
 

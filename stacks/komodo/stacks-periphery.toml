@@ -104,6 +104,7 @@ webhook_enabled = false
 poll_for_updates = true
 environment = """
 TZ = [[TZ]]
+DOMAIN = [[DOMAIN]]
 NAS_LAN_IP = [[NAS_LAN_IP]]
 NFS_EXPORT = [[NFS_EXPORT]]
 NFS_USERS = [[NFS_USERS]]
@@ -180,6 +181,7 @@ poll_for_updates = true
 environment = """
 TZ = [[TZ]]
 DOMAIN = [[DOMAIN]]
+NAS_LAN_IP = [[NAS_LAN_IP]]
 TRANSMUTE_AUTH_SECRET_KEY = [[TRANSMUTE_AUTH_SECRET_KEY]]
 OIDC_CLIENT_SECRET = [[OIDC_CLIENT_SECRET]]
 """
