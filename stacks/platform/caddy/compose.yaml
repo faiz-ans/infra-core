@@ -9,32 +9,20 @@ services:
       - "443:443/udp"
     extra_hosts:
       - "host.docker.internal:host-gateway"
-    # Bind-mounted Caddyfile is not a compose spec change; --watch reloads it.
-    # docker compose up -d will not restart Caddy for Caddyfile-only git pulls.
-    command: ["caddy", "run", "--config", "/etc/caddy/Caddyfile", "--adapter", "caddyfile", "--watch"]
+    # Caddyfile updates: Komodo config_files requires Redeploy. Do not use
+    # --watch on this bind-mount (it reloads in a loop).
+    entrypoint: ["/bin/sh", "/entrypoint.sh"]
     environment:
       DOMAIN: ${DOMAIN}
       HTPC_UPSTREAM: ${HTPC_UPSTREAM}
       TZ: ${TZ}
     volumes:
       - ./Caddyfile:/etc/caddy/Caddyfile:ro
+      - ./entrypoint.sh:/entrypoint.sh:ro
+      - ./export-ca.sh:/export-ca.sh:ro
       - caddy-data:/data
       - caddy-config:/config
-    networks:
-      - edge
-
-  # Writes caddy-root.crt + ca-bundle.crt for Gitea/Komodo. Exits 0 once.
-  caddy-ca:
-    image: caddy:2
-    container_name: caddy-ca
-    depends_on:
-      - caddy
-    restart: on-failure
-    volumes:
-      - caddy-data:/data:ro
-      - ./export-ca.sh:/export-ca.sh:ro
       - ${DATA_ROOT}/system/authelia:/export-ca
-    entrypoint: ["/bin/sh", "/export-ca.sh"]
     networks:
       - edge
 

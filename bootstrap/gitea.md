@@ -34,11 +34,11 @@ Then log in at `https://git.<DOMAIN>`.
 
 ## OIDC (Authelia)
 
-The **gitea-oidc** oneshot registers source `authelia` after Gitea is healthy. Caddy’s `caddy-ca` sidecar writes `${DATA_ROOT}/system/authelia/caddy-root.crt` (tls internal). First Authelia login as **faiz** creates a normal Gitea user; elevate that user to admin in Gitea. Local `admin` stays as break-glass.
+Gitea registers source `authelia` after it is listening (same container). Caddy writes `${DATA_ROOT}/system/authelia/caddy-root.crt` on start (tls internal). First Authelia login as **faiz** creates a normal Gitea user; elevate that user to admin in Gitea. Local `admin` stays as break-glass.
 
 The authentication name **must** stay `authelia` (that is the callback path Authelia allows). Do not add a second source.
 
-If `gitea-oidc` is restarting, the CA file is still empty or Authelia is down. Wait for **caddy** (and `caddy-ca` Exited 0), then Redeploy **gitea**. Manual fallback:
+If logs show `Caddy CA not ready`, wait for **caddy** (`caddy-ca: exported`), then Redeploy **gitea**. Manual fallback:
 
 ```text
 CA="${DATA_ROOT}/system/authelia/caddy-root.crt"

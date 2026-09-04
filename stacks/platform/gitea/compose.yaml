@@ -9,6 +9,8 @@ services:
     restart: unless-stopped
     environment:
       TZ: ${TZ}
+      DOMAIN: ${DOMAIN}
+      OIDC_CLIENT_SECRET: ${OIDC_CLIENT_SECRET}
       USER_UID: "1000"
       USER_GID: "1000"
       GITEA__database__DB_TYPE: sqlite3
@@ -28,11 +30,14 @@ services:
       SSL_CERT_DIR: /etc/ssl/certs:/etc/ssl/caddy
     extra_hosts:
       - "auth.${DOMAIN}:${NAS_LAN_IP}"
+    entrypoint: ["/bin/bash", "/oidc-wrap.sh"]
     volumes:
       - ${DATA_ROOT}/system/gitea:/data
       # File must exist before first start (Docker will otherwise create a directory).
       # See bootstrap/gitea.md.
       - ${DATA_ROOT}/system/authelia/caddy-root.crt:/etc/ssl/caddy/caddy-root.crt:ro
+      - ./entrypoint-oidc.sh:/oidc-wrap.sh:ro
+      - ./seed-oidc.sh:/seed-oidc.sh:ro
     networks:
       - edge
     healthcheck:
@@ -45,28 +50,6 @@ services:
       timeout: 5s
       retries: 5
       start_period: 60s
-
-  gitea-oidc:
-    image: gitea/gitea:latest
-    container_name: gitea-oidc
-    depends_on:
-      gitea:
-        condition: service_healthy
-    restart: on-failure
-    environment:
-      TZ: ${TZ}
-      OIDC_CLIENT_SECRET: ${OIDC_CLIENT_SECRET}
-      DOMAIN: ${DOMAIN}
-      SSL_CERT_DIR: /etc/ssl/certs:/etc/ssl/caddy
-    extra_hosts:
-      - "auth.${DOMAIN}:${NAS_LAN_IP}"
-    volumes:
-      - ${DATA_ROOT}/system/gitea:/data
-      - ${DATA_ROOT}/system/authelia/caddy-root.crt:/etc/ssl/caddy/caddy-root.crt:ro
-      - ./seed-oidc.sh:/seed-oidc.sh:ro
-    networks:
-      - edge
-    entrypoint: ["/bin/bash", "/seed-oidc.sh"]
 
 networks:
   edge:

@@ -49,7 +49,7 @@ KOMODO_DISABLE_OIDC_USER_REGISTRATION=false
 
 `KOMODO_DISABLE_USER_REGISTRATION=true` blocks **OIDC** as well as local sign-up. First Authelia login as **faiz** must be allowed to create the Komodo user (`faiz` is not the bootstrap `admin`). Local sign-up stays off.
 
-`KOMODO_LOCAL_AUTH` stays `true` (break-glass). Copy the current `bootstrap/komodo/compose.yaml` to `/etc/komodo/bootstrap/compose.yaml` (it mounts `ca-bundle.crt`). The bundle must be a **file** before recreate. After **caddy** is up, the `caddy-ca` sidecar writes both cert files; if they are still empty, dump once:
+`KOMODO_LOCAL_AUTH` stays `true` (break-glass). Copy the current `bootstrap/komodo/compose.yaml` to `/etc/komodo/bootstrap/compose.yaml` (it mounts `ca-bundle.crt`). The bundle must be a **file** before recreate. After **caddy** is up, it writes both cert files (`caddy-ca: exported` in the caddy logs). If they are still empty, dump once:
 
 ```text
 CA="${DATA_ROOT}/system/authelia"
@@ -74,7 +74,7 @@ First Authelia login as **faiz**. If Komodo creates the user disabled, enable it
 Push this catalog to Gitea. Wait for ResourceSync. Then **Redeploy** in this order:
 
 1. **authelia** (must see `oidc.pem` and `client_secret_digest` or it will not start)
-2. **caddy** (forward-auth gates, Host pins, CA export; `--watch` is not enough)
+2. **caddy** (forward-auth gates, Host pins, CA export; Caddyfile needs Redeploy)
 3. **opencloud**, **gitea**, **jotty**, **linkding**, **bytestash**, **homepage**
 4. On the HTPC sync: **transmute**, **monitoring**, **adventurelog**
 
@@ -142,11 +142,11 @@ Homepage (`dash.` / `homepage.`) has no Authelia gate. Widgets scrape internal U
 |---|---|
 | Authelia Restarting / template error / JWKS | `${DATA_ROOT}/system/authelia/oidc.pem` must be a PEM private key. Re-run `authelia-oidc.sh` or generate with `docker run --rm -v "${DATA_ROOT}/system/authelia:/out" authelia/authelia:4 authelia crypto pair rsa generate --directory /out` and copy `private.pem` to `oidc.pem`. Confirm `client_secret_digest` exists. Then Redeploy **authelia**. |
 | Authelia: client_secret | `${DATA_ROOT}/system/authelia/client_secret_digest` must be a pbkdf2 digest, not the plaintext. |
-| `pdf.<DOMAIN>` / `metrics.<DOMAIN>` open with no Authelia login | The live Caddyfile is stale. Komodo `config_files` for Caddy **requires Redeploy** (`--watch` does not copy git updates). Redeploy **caddy**, then open `https://pdf.<DOMAIN>` / `https://metrics.<DOMAIN>` (not a host port). Homepage itself is ungated on purpose. |
+| `pdf.<DOMAIN>` / `metrics.<DOMAIN>` open with no Authelia login | The live Caddyfile is stale. Komodo `config_files` for Caddy **requires Redeploy**. Redeploy **caddy**, then open `https://pdf.<DOMAIN>` / `https://metrics.<DOMAIN>` (not a host port). Homepage itself is ungated on purpose. |
 | Forward-auth site returns 401 instead of the login page | Redeploy **caddy** so `authelia_url` is on the `forward_auth` URI. |
 | Diana can open Grafana/Komodo/Gitea login but Authelia denies | Expected. Those clients are `admins` only. |
 | OpenCloud CSP / blank login | `IDP_DOMAIN=auth.<DOMAIN>` and Redeploy **opencloud**. Confirm `csp.yaml` lists `https://auth.<DOMAIN>/`. |
-| Gitea `flag provided but not defined: -skip-tls-verify` | That flag is not on `gitea admin auth add-oauth`. Wait for `caddy-ca` to write the CA (or dump it), then Redeploy **gitea** so `gitea-oidc` can seed. |
+| Gitea `flag provided but not defined: -skip-tls-verify` | That flag is not on `gitea admin auth add-oauth`. Wait for Caddy to write the CA (or dump it), then Redeploy **gitea**. |
 | Immich OAuth “can’t reach the server” | Redeploy **immich** after `extra_hosts` + `NODE_TLS_REJECT_UNAUTHORIZED`. The image has no `wget` — use `docker exec -e NODE_TLS_REJECT_UNAUTHORIZED=0 immich node -e "fetch('https://auth.<DOMAIN>/.well-known/openid-configuration').then(async r=>{console.log(r.status);console.log(await r.text())}).catch(e=>{console.error(e);process.exit(1)})"`. `ENOTFOUND` means the stack was not recreated with `extra_hosts`. Timeout to the NAS IP means Docker LAN overlap ([periphery.md](periphery.md) §7). |
 | Firefox “can’t find” `*.home.lan`, Edge works | AAAA NXDOMAIN from Pi-hole (`address=/` IPv4-only). Firefox will not try A. See [periphery.md](periphery.md) §3. |
 | Komodo OIDC “Provider not available” | Core cannot verify Caddy TLS. Write `ca-bundle.crt` (see §2), copy `bootstrap/komodo/compose.yaml` onto the box, set `DATA_ROOT` in `compose.env`, recreate Core. |

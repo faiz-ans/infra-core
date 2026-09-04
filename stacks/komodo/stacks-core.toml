@@ -16,6 +16,7 @@ run_directory = "stacks/platform/caddy"
 file_paths = ["compose.yaml"]
 config_files = [
   { path = "Caddyfile", requires = "Redeploy" },
+  { path = "entrypoint.sh", requires = "Redeploy" },
   { path = "export-ca.sh", requires = "Redeploy" },
 ]
 webhook_enabled = false
@@ -39,6 +40,7 @@ branch = "main"
 run_directory = "stacks/platform/gitea"
 file_paths = ["compose.yaml"]
 config_files = [
+  { path = "entrypoint-oidc.sh", requires = "Redeploy" },
   { path = "seed-oidc.sh", requires = "Redeploy" },
 ]
 webhook_enabled = false
