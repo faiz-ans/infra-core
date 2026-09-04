@@ -24,6 +24,7 @@ services:
     volumes:
       - transmute-data:/app/data
       - ./entrypoint-oidc.sh:/oidc-ca.sh:ro
+      - ./sitecustomize-oidc.py:/oidc-sitecustomize.py:ro
     healthcheck:
       test:
         - "CMD"

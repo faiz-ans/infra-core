@@ -1,14 +1,12 @@
 #!/bin/bash
-# Trust Caddy tls internal so Python/httpx can discover Authelia over HTTPS.
-# Immich can set NODE_TLS_REJECT_UNAUTHORIZED; Transmute cannot.
+# Transmute's httpx uses certifi, not SSL_CERT_FILE, so Caddy tls internal
+# fails discovery. Install sitecustomize before the app starts.
 set -e
-AUTH="${OIDC_ISSUER_URL%/}"
-if [ -n "${AUTH}" ]; then
-  wget -q --no-check-certificate -O /tmp/caddy-root.crt "${AUTH}/pki/local-root.crt" || true
-  if grep -q "BEGIN CERTIFICATE" /tmp/caddy-root.crt 2>/dev/null; then
-    export SSL_CERT_FILE=/tmp/caddy-root.crt
-    export REQUESTS_CA_BUNDLE=/tmp/caddy-root.crt
-    export CURL_CA_BUNDLE=/tmp/caddy-root.crt
-  fi
-fi
+python - <<'PY'
+import pathlib, shutil, site
+src = pathlib.Path("/oidc-sitecustomize.py")
+dst = pathlib.Path(site.getsitepackages()[0]) / "sitecustomize.py"
+shutil.copy(src, dst)
+print("transmute-oidc: installed", dst, flush=True)
+PY
 exec /bin/bash /app/entrypoint.sh

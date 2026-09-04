@@ -35,4 +35,4 @@ Open **`https://convert.<DOMAIN>`**. Local admin stays as break-glass. Authelia 
 |---|---|
 | `convert.<DOMAIN>` does not load while the container is Up | Redeploy **caddy**. From Core: `docker exec caddy wget -S -O- --timeout=10 http://<HTPC_UPSTREAM>:3313/ \| head` |
 | Logged out after Redeploy | `TRANSMUTE_AUTH_SECRET_KEY` must be set and unchanged |
-| Authelia button → Internal Server Error | Python/httpx will not skip Caddy TLS. Redeploy **caddy** (serves `/pki/local-root.crt`) then **transmute**. `docker logs transmute` should not show `SSLCertVerificationError`. |
+| Authelia button → Internal Server Error | httpx uses certifi, not `SSL_CERT_FILE`. Redeploy **transmute** (entrypoint installs a sitecustomize that skips TLS verify). `docker logs transmute` should show `transmute-oidc: installed` at start. |

@@ -178,6 +178,7 @@ run_directory = "stacks/workload/transmute"
 file_paths = ["compose.yaml"]
 config_files = [
   { path = "entrypoint-oidc.sh", requires = "Redeploy" },
+  { path = "sitecustomize-oidc.py", requires = "Redeploy" },
 ]
 webhook_enabled = false
 poll_for_updates = true
