@@ -4,7 +4,7 @@ Authelia is the household IdP. Two file-backend users: **faiz** (`admins` + `use
 
 Caddy uses `tls internal`. App backends that talk to `https://auth.<DOMAIN>` skip TLS verify where the app allows it. Browsers must already trust the Caddy CA.
 
-Do **not** put Authelia forward-auth in front of OIDC apps, Gitea HTTP, Collabora, or Vaultwarden’s vault. That is a second login (or it breaks git/DAV/WOPI/clients).
+Do **not** put Authelia forward-auth in front of Homepage, OIDC apps, Gitea HTTP, Collabora, or Vaultwarden’s vault. Homepage stays open; the others would be a second login (or would break git/DAV/WOPI/clients).
 
 ## 1. Generate users and OIDC material
 
@@ -22,6 +22,7 @@ Use this site’s `DATA_ROOT` and `DOMAIN`. The script writes:
 | `${DATA_ROOT}/system/authelia/oidc.pem` | RSA signing key (keep) |
 | `${DATA_ROOT}/system/authelia/client_secret` | Shared confidential-client secret (plaintext) |
 | `${DATA_ROOT}/system/authelia/client_secret_digest` | Same secret, hashed for Authelia |
+| `${DATA_ROOT}/system/authelia/caddy-root.crt` | Caddy `tls internal` CA (for Gitea OIDC discovery) |
 
 It prints **`AUTHELIA_OIDC_HMAC_SECRET`** and **`OIDC_CLIENT_SECRET`**. Add both in Komodo → **Settings** → **Secrets**. Mark them secrets. Also add them to `/etc/komodo/core.config.toml` if you want `core.sh` re-runs to keep them.
 
@@ -83,7 +84,7 @@ DAV/mobile that cannot do OIDC: OpenCloud **App Token**; Immich mobile uses the 
 
 **Forward-auth (Authelia is the only login)**
 
-- Household (`users`): Homepage, BentoPDF, IT Tools, LibreTranslate
+- Household (`users`): BentoPDF, IT Tools, LibreTranslate
 - Sysadmin (`admins`): Prometheus, Glances, Glances (periphery), Vaultwarden `/admin`
 
 **OIDC (app session after Authelia)**
@@ -113,7 +114,7 @@ These either have no OIDC / trusted-header support, or putting Authelia in front
 | RustDesk | Not HTTP |
 | Router, printer | Device logins |
 
-Homepage widgets keep using internal URLs, so they do not hit Authelia.
+Homepage (`dash.` / `homepage.`) has no Authelia gate. Widgets scrape internal URLs, so they do not hit Authelia either.
 
 ## If it fails
 
@@ -121,9 +122,10 @@ Homepage widgets keep using internal URLs, so they do not hit Authelia.
 |---|---|
 | Authelia Restarting / template error / JWKS | `${DATA_ROOT}/system/authelia/oidc.pem` must be a PEM private key. Re-run `authelia-oidc.sh` or generate with `docker run --rm -v "${DATA_ROOT}/system/authelia:/out" authelia/authelia:4 authelia crypto pair rsa generate --directory /out` and copy `private.pem` to `oidc.pem`. Confirm `client_secret_digest` exists. Then Redeploy **authelia**. |
 | Authelia: client_secret | `${DATA_ROOT}/system/authelia/client_secret_digest` must be a pbkdf2 digest, not the plaintext. |
-| `dash.<DOMAIN>` login loop | Redeploy **caddy** after the Authelia gate was added. Cookie domain is `DOMAIN`. |
+| `pdf.<DOMAIN>` / `metrics.<DOMAIN>` open with no Authelia login | The live Caddyfile is stale. Komodo `config_files` for Caddy **requires Redeploy** (`--watch` does not copy git updates). Redeploy **caddy**, then open `https://pdf.<DOMAIN>` / `https://metrics.<DOMAIN>` (not a host port). Homepage itself is ungated on purpose. |
+| Forward-auth site returns 401 instead of the login page | Redeploy **caddy** so `authelia_url` is on the `forward_auth` URI. |
 | Diana can open Grafana/Komodo/Gitea login but Authelia denies | Expected. Those clients are `admins` only. |
 | OpenCloud CSP / blank login | `IDP_DOMAIN=auth.<DOMAIN>` and Redeploy **opencloud**. Confirm `csp.yaml` lists `https://auth.<DOMAIN>/`. |
-| Gitea OIDC TLS error | The add-oauth command uses `--skip-tls-verify` (internal CA). |
+| Gitea `flag provided but not defined: -skip-tls-verify` | That flag is not on `gitea admin auth add-oauth`. Dump the Caddy CA and Redeploy **gitea**, then run the command in [gitea.md](gitea.md) (no skip-tls flag). |
 | Immich OAuth token fail | Immich on the HTPC must reach `https://auth.<DOMAIN>`. Trust the Caddy CA on Docker Desktop or the issuer fetch will fail. |
 | Komodo OIDC button missing | `compose.env` OIDC lines + recreate Core. `KOMODO_HOST` must be `https://ops.<DOMAIN>`. |

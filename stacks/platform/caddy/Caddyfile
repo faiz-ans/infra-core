@@ -4,7 +4,7 @@
 
 (authelia_gate) {
 	forward_auth authelia:9091 {
-		uri /api/authz/forward-auth
+		uri /api/authz/forward-auth?authelia_url=https://auth.{$DOMAIN}/
 		copy_headers Remote-User Remote-Groups Remote-Name Remote-Email
 	}
 }
@@ -16,7 +16,6 @@ https://auth.{$DOMAIN}, https://authelia.{$DOMAIN} {
 
 https://dash.{$DOMAIN}, https://homepage.{$DOMAIN} {
 	tls internal
-	import authelia_gate
 	reverse_proxy homepage:3000
 }
 
@@ -71,7 +70,7 @@ https://pw.{$DOMAIN}, https://pass.{$DOMAIN}, https://vaultwarden.{$DOMAIN} {
 
 	handle @admin {
 		forward_auth authelia:9091 {
-			uri /api/authz/forward-auth
+			uri /api/authz/forward-auth?authelia_url=https://auth.{$DOMAIN}/
 			copy_headers Remote-User Remote-Groups Remote-Name Remote-Email
 		}
 		reverse_proxy vaultwarden:80

@@ -34,7 +34,20 @@ Then log in at `https://git.<DOMAIN>`.
 
 ## OIDC (Authelia)
 
-After Authelia OIDC material exists (`bootstrap/authelia.md`) and **gitea** has the current catalog:
+Gitea’s `admin auth add-oauth` has **no** `--skip-tls-verify` (that flag is LDAP/SMTP only). Discovery is `https://auth.<DOMAIN>/`, which uses Caddy’s `tls internal` CA. Trust that CA in the Gitea container **before** Redeploy **gitea**.
+
+On Core, with Caddy already running:
+
+```text
+CA="${DATA_ROOT}/system/authelia/caddy-root.crt"
+sudo mkdir -p "${DATA_ROOT}/system/authelia"
+# Docker creates a directory here if the file was missing at first start — remove it.
+sudo rm -rf "${CA}"
+sudo docker exec caddy cat /data/caddy/pki/authorities/local/root.crt | sudo tee "${CA}" >/dev/null
+sudo chmod 644 "${CA}"
+```
+
+Then Redeploy **gitea** so the CA bind-mount is a file. After Authelia OIDC material exists (`bootstrap/authelia.md`) and Gitea is healthy:
 
 ```text
 docker exec -u git gitea gitea admin auth add-oauth \
@@ -43,7 +56,6 @@ docker exec -u git gitea gitea admin auth add-oauth \
   --key=gitea \
   --secret='OIDC_CLIENT_SECRET' \
   --auto-discover-url='https://auth.<DOMAIN>/.well-known/openid-configuration' \
-  --skip-tls-verify \
   --scopes='openid email profile groups'
 ```
 

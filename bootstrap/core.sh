@@ -684,6 +684,13 @@ if [[ ! -f "${authelia_dir}/client_secret_digest" ]]; then
   printf '%s' "${OIDC_DIGEST}" > "${authelia_dir}/client_secret_digest"
   chmod 600 "${authelia_dir}/client_secret" "${authelia_dir}/client_secret_digest"
 fi
+if [[ -d "${authelia_dir}/caddy-root.crt" ]]; then
+  rm -rf "${authelia_dir}/caddy-root.crt"
+fi
+if docker ps -qf name=^caddy$ | grep -q .; then
+  docker exec caddy cat /data/caddy/pki/authorities/local/root.crt > "${authelia_dir}/caddy-root.crt"
+  chmod 644 "${authelia_dir}/caddy-root.crt"
+fi
 
 # openssl rand -hex 24   (used above)
 

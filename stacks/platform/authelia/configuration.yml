@@ -25,8 +25,6 @@ access_control:
     - domain: 'auth.{{ env "DOMAIN" }}'
       policy: bypass
     - domain:
-        - 'dash.{{ env "DOMAIN" }}'
-        - 'homepage.{{ env "DOMAIN" }}'
         - 'pdf.{{ env "DOMAIN" }}'
         - 'bentopdf.{{ env "DOMAIN" }}'
         - 'it.{{ env "DOMAIN" }}'

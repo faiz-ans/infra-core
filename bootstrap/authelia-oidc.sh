@@ -19,6 +19,19 @@ fi
 DIR="${DATA_ROOT}/system/authelia"
 mkdir -p "${DIR}"
 
+# Gitea (and other Go clients) need the Caddy tls-internal CA as a file.
+# If this path is a directory, Docker already hit the missing-file mount trap.
+if [[ -d "${DIR}/caddy-root.crt" ]]; then
+  rm -rf "${DIR}/caddy-root.crt"
+fi
+if docker ps -qf name=^caddy$ | grep -q .; then
+  docker exec caddy cat /data/caddy/pki/authorities/local/root.crt > "${DIR}/caddy-root.crt"
+  chmod 644 "${DIR}/caddy-root.crt"
+  echo "Wrote ${DIR}/caddy-root.crt"
+else
+  echo "Caddy is not running; skip caddy-root.crt (dump it later — see bootstrap/gitea.md)."
+fi
+
 hash_password() {
   local password="$1" digest
   digest=$(docker run --rm authelia/authelia:4 \

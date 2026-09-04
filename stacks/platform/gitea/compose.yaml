@@ -24,10 +24,15 @@ services:
       GITEA__oauth2_client__ACCOUNT_LINKING: login
       GITEA__actions__ENABLED: "false"
       GITEA__mirror__INTERVAL: 10m
+      # Go SystemCertPool: keep public CAs and add Caddy tls internal.
+      SSL_CERT_DIR: /etc/ssl/certs:/etc/ssl/caddy
     extra_hosts:
       - "auth.${DOMAIN}:${NAS_LAN_IP}"
     volumes:
       - ${DATA_ROOT}/system/gitea:/data
+      # File must exist before first start (Docker will otherwise create a directory).
+      # See bootstrap/gitea.md.
+      - ${DATA_ROOT}/system/authelia/caddy-root.crt:/etc/ssl/caddy/caddy-root.crt:ro
     networks:
       - edge
     healthcheck:
