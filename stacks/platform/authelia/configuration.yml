@@ -19,10 +19,6 @@ authentication_backend:
   password_reset:
     disable: true
 
-identity_validation:
-  reset_password:
-    disable: true
-
 access_control:
   default_policy: deny
   rules:
@@ -131,6 +127,9 @@ identity_providers:
         access_token_signed_response_alg: RS256
         userinfo_signed_response_alg: none
         token_endpoint_auth_method: none
+        requested_audience_mode: implicit
+        audience:
+          - opencloud
       - client_id: opencloud-android
         client_name: OpenCloud Android
         public: true
@@ -154,6 +153,9 @@ identity_providers:
         access_token_signed_response_alg: RS256
         userinfo_signed_response_alg: none
         token_endpoint_auth_method: none
+        requested_audience_mode: implicit
+        audience:
+          - opencloud-android
       - client_id: opencloud-ios
         client_name: OpenCloud iOS
         public: true
@@ -170,12 +172,17 @@ identity_providers:
           - groups
           - profile
           - email
+        response_types:
+          - code
         grant_types:
           - authorization_code
           - refresh_token
         access_token_signed_response_alg: RS256
         userinfo_signed_response_alg: none
         token_endpoint_auth_method: none
+        requested_audience_mode: implicit
+        audience:
+          - opencloud-ios
       - client_id: opencloud-desktop
         client_name: OpenCloud Desktop
         public: true
@@ -200,6 +207,9 @@ identity_providers:
         access_token_signed_response_alg: RS256
         userinfo_signed_response_alg: none
         token_endpoint_auth_method: none
+        requested_audience_mode: implicit
+        audience:
+          - opencloud-desktop
       - client_id: immich
         client_name: Immich
         client_secret: '{{ secret "/config/userdb/client_secret_digest" }}'
@@ -349,6 +359,7 @@ identity_providers:
           - openid
           - profile
           - email
+          - offline_access
         response_types:
           - code
         grant_types:
