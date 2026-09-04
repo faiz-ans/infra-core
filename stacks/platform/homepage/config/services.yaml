@@ -111,7 +111,7 @@
             description: Request Movies & TV
         - Adventure Log:
             id: adventurelog
-            href: https://trips.{{HOMEPAGE_VAR_DOMAIN}}
+            href: https://travel.{{HOMEPAGE_VAR_DOMAIN}}
             server: periphery
             container: adventurelog
             icon: adventure-log.svg

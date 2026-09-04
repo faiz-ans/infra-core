@@ -26,7 +26,7 @@ You want `adventurelog` and `adventurelog-db` **Up**. First boot can take a coup
 
 ## 3. Login
 
-Open **`https://travel.<DOMAIN>`**. Log in as `admin` / `ADVENTURELOG_ADMIN_PASSWORD`. Self-registration is off. Changing the Komodo admin secret later does not update an existing Django user.
+Open **`https://travel.<DOMAIN>`** (not `trips.` or `adventurelog.`). Log in as `admin` / `ADVENTURELOG_ADMIN_PASSWORD`. Self-registration is off. Changing the Komodo admin secret later does not update an existing Django user.
 
 Maps need outbound HTTPS from the HTPC. That is expected.
 
@@ -35,5 +35,6 @@ Maps need outbound HTTPS from the HTPC. That is expected.
 | Symptom | What to do |
 |---|---|
 | `travel.<DOMAIN>` does not load while the stack is Up | Redeploy **caddy**. From Core: `docker exec caddy wget -S -O- --timeout=10 http://<HTPC_UPSTREAM>:8015/ \| head` |
-| CSRF / wrong site URL | `SITE_URL` must be `https://travel.<DOMAIN>`. Redeploy **adventurelog** after the catalog pull |
+| CSRF / login ignored | Use `https://travel.<DOMAIN>` only. `SITE_URL` and Homepage must match that origin. Redeploy **adventurelog** after the catalog pull |
+| Password rejected after a Komodo secret change | First-boot password is frozen in Postgres. On the HTPC: `docker exec -it adventurelog python manage.py changepassword admin` |
 | Database connection failed | `ADVENTURELOG_POSTGRES_PASSWORD` must match on app and db. Changing it later does not update an existing PostGIS volume |

@@ -28,6 +28,7 @@ services:
     environment:
       TZ: ${TZ}
       SITE_URL: https://travel.${DOMAIN}
+      CSRF_TRUSTED_ORIGINS: https://travel.${DOMAIN},https://trips.${DOMAIN},https://adventurelog.${DOMAIN}
       POSTGRES_PASSWORD: ${ADVENTURELOG_POSTGRES_PASSWORD}
       PGHOST: db
       POSTGRES_DB: database
