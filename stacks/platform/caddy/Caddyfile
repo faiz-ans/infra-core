@@ -221,7 +221,7 @@ https://flow.{$DOMAIN}, https://n8n.{$DOMAIN} {
 	}
 }
 
-https://snippets.{$DOMAIN}, https://bytestash.{$DOMAIN} {
+https://snip.{$DOMAIN}, https://bytestash.{$DOMAIN}, https://snippets.{$DOMAIN} {
 	tls internal
 	reverse_proxy bytestash:5000
 }

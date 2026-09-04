@@ -45,7 +45,7 @@
             description: Passwords
         - ByteStash:
             id: bytestash
-            href: https://snippets.{{HOMEPAGE_VAR_DOMAIN}}
+            href: https://snip.{{HOMEPAGE_VAR_DOMAIN}}
             server: core
             container: bytestash
             icon: bytestash.svg
