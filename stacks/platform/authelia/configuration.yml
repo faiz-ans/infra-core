@@ -1,8 +1,7 @@
 # Authelia's template env() refuses names that start with AUTHELIA_ and
 # end in SECRET/KEY. Pass the same values as JWT_SECRET / SESSION_SECRET /
 # STORAGE_ENCRYPTION_KEY / OIDC_HMAC_SECRET instead.
-# OIDC client_secret digest and JWKS live under /config/userdb (DATA_ROOT),
-# not git — Docker Compose would eat the `$` in a pbkdf2 digest.
+# OIDC client_secret digest and JWKS live under /config/userdb (DATA_ROOT).
 
 server:
   address: tcp://0.0.0.0:9091
@@ -18,6 +17,10 @@ authentication_backend:
   file:
     path: /config/userdb/users.yml
   password_reset:
+    disable: true
+
+identity_validation:
+  reset_password:
     disable: true
 
 access_control:
@@ -76,8 +79,7 @@ identity_providers:
   oidc:
     hmac_secret: '{{ env "OIDC_HMAC_SECRET" }}'
     jwks:
-      - key: |
-{{ secret "/config/userdb/oidc.pem" | mindent 10 "|" }}
+      - key: {{ secret "/config/userdb/oidc.pem" | mindent 10 "|" | msquote }}
     cors:
       endpoints:
         - authorization

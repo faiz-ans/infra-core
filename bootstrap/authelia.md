@@ -119,7 +119,7 @@ Homepage widgets keep using internal URLs, so they do not hit Authelia.
 
 | Symptom | What to do |
 |---|---|
-| Authelia Restarting / template error / JWKS | `${DATA_ROOT}/system/authelia/oidc.pem` must be a PEM private key. Re-run `authelia-oidc.sh` or generate with `docker run --rm -v "${DATA_ROOT}/system/authelia:/out" authelia/authelia:4 authelia crypto pair rsa generate --directory /out` and copy `private.pem` to `oidc.pem`. |
+| Authelia Restarting / template error / JWKS | `${DATA_ROOT}/system/authelia/oidc.pem` must be a PEM private key. Re-run `authelia-oidc.sh` or generate with `docker run --rm -v "${DATA_ROOT}/system/authelia:/out" authelia/authelia:4 authelia crypto pair rsa generate --directory /out` and copy `private.pem` to `oidc.pem`. Confirm `client_secret_digest` exists. Then Redeploy **authelia**. |
 | Authelia: client_secret | `${DATA_ROOT}/system/authelia/client_secret_digest` must be a pbkdf2 digest, not the plaintext. |
 | `dash.<DOMAIN>` login loop | Redeploy **caddy** after the Authelia gate was added. Cookie domain is `DOMAIN`. |
 | Diana can open Grafana/Komodo/Gitea login but Authelia denies | Expected. Those clients are `admins` only. |
