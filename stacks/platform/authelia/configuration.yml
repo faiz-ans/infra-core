@@ -84,6 +84,15 @@ identity_providers:
         rules:
           - policy: one_factor
             subject: 'group:users'
+    # Authelia 4 keeps profile/email on UserInfo only. Adventure Log's allauth
+    # fails the callback if that extra HTTPS call errors; put them in the ID token.
+    claims_policies:
+      adventurelog:
+        id_token:
+          - email
+          - email_verified
+          - preferred_username
+          - name
     clients:
       - client_id: opencloud
         client_name: OpenCloud
@@ -372,6 +381,7 @@ identity_providers:
         client_secret: '{{ secret "/config/userdb/client_secret_digest" }}'
         public: false
         authorization_policy: users
+        claims_policy: adventurelog
         consent_mode: implicit
         require_pkce: false
         redirect_uris:

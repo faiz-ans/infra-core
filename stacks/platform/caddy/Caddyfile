@@ -28,7 +28,11 @@ https://auth.{$DOMAIN} {
 		root * /data/caddy/pki/authorities/local
 		file_server
 	}
-	reverse_proxy authelia:9091
+	reverse_proxy authelia:9091 {
+		header_up Host auth.{$DOMAIN}
+		header_up X-Forwarded-Host auth.{$DOMAIN}
+		header_up X-Forwarded-Proto https
+	}
 }
 #--------------------------------
 # HOMEPAGE

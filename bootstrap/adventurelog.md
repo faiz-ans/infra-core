@@ -41,7 +41,7 @@ Local **Sign Up** stays closed (`DISABLE_REGISTRATION`). The Authelia button is 
    - Name: `Authelia`
    - Client ID: `adventurelog`
    - Secret key: Komodo `OIDC_CLIENT_SECRET`
-   - Settings: `{"server_url": "https://auth.<DOMAIN>", "token_auth_method": "client_secret_post"}`
+   - Settings: `{"server_url": "https://auth.<DOMAIN>", "token_auth_method": "client_secret_post", "fetch_userinfo": false}`
    - **Sites:** move `example.com` to Chosen (required — no site means no login button).
 5. Save.
 
@@ -58,6 +58,6 @@ Maps need outbound HTTPS from the HTPC. That is expected.
 | Login has no Authelia button | Edit the Social application and move `example.com` to Chosen sites. Redeploy **adventurelog** so `PUBLIC_URL` is set |
 | Authelia succeeds, then Sign Up Closed | Redeploy **adventurelog** (`SOCIALACCOUNT_ALLOW_SIGNUP=True`). Local Sign Up stays closed; use Login → Authelia |
 | Authelia button → Server Error (500) / `CERTIFICATE_VERIFY_FAILED` | Caddy `tls internal`. Redeploy **adventurelog** so the sitecustomize TLS skip is mounted |
-| Authelia succeeds, then Third-Party Login Failure | Authelia must use `client_secret_post` (allauth default). Redeploy **authelia**. In the Social application Settings JSON add `"token_auth_method": "client_secret_post"` |
+| Authelia succeeds, then Third-Party Login Failure | Redeploy **authelia** (claims in the ID token). Social application Settings must be `{"server_url": "https://auth.<DOMAIN>", "token_auth_method": "client_secret_post", "fetch_userinfo": false}` |
 | Password rejected after a Komodo secret change | First-boot password is frozen in Postgres. On the HTPC: `docker exec -it adventurelog python manage.py changepassword admin` |
 | Database connection failed | `ADVENTURELOG_POSTGRES_PASSWORD` must match on app and db. Changing it later does not update an existing PostGIS volume |
