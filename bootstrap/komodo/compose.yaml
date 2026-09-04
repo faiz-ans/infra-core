@@ -37,6 +37,8 @@ services:
     ports:
       - "9120:9120"
     env_file: ./compose.env
+    extra_hosts:
+      - "auth.${DOMAIN}:${NAS_LAN_IP}"
     environment:
       KOMODO_DATABASE_ADDRESS: ferretdb:27017
     volumes:

@@ -1,6 +1,6 @@
 # IT Tools first-run
 
-IT Tools runs on **Core** (edge network). It is a stateless browser toolbox. Caddy is `https://tools.<DOMAIN>` (`it-tools.` is an alias).
+IT Tools runs on **Core** (edge network). It is a stateless browser toolbox. Caddy is `https://tools.<DOMAIN>` (`it-tools.` is an alias). The vhost is Authelia forward-auth (`users` — **faiz** and **diana**).
 
 No Komodo secret. No data directory.
 

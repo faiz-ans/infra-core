@@ -67,9 +67,9 @@ sudo docker logs -f opencloud
 
 ## 3. Login and users
 
-Open **`https://cloud.<DOMAIN>`**. Log in as `admin` / `OPENCLOUD_ADMIN_PASSWORD`.
+Open **`https://cloud.<DOMAIN>`**. Web login is Authelia OIDC (`faiz` and `diana`). The built-in **`admin`** / `OPENCLOUD_ADMIN_PASSWORD` stays as break-glass (DAV / App Tokens / `PROXY_ENABLE_BASIC_AUTH`). First Authelia login autoprovisions a normal User. Elevate **faiz** to admin in OpenCloud. Most CalDAV/CardDAV clients still cannot use OIDC — create an **App Token**.
 
-Create household users whose **usernames match** `users/<name>` directories (`faiz`, `diana`, …). Set the role to **User**, not **User Light**.
+Authelia autoprovisions `faiz` and `diana` with usernames that must match `users/<name>`. Do not create those users by hand unless Authelia is down. Set the role to **User**, not **User Light**, then elevate **faiz** to admin.
 
 A **User cannot create Spaces**. Personal appears on first login.
 

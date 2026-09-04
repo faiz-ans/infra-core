@@ -28,7 +28,7 @@ You want `bytestash` **Up**. It must **not** publish 5000 on the LAN.
 
 ## 3. First account
 
-Open **`https://snippets.<DOMAIN>`**. Create the household account. Then set **`BYTESTASH_ALLOW_NEW_ACCOUNTS`** to `false` in Komodo and Redeploy **bytestash**. Changing `BYTESTASH_JWT_SECRET` later signs everyone out.
+Open **`https://snippets.<DOMAIN>`**. Create or keep the local household account as break-glass, then set **`BYTESTASH_ALLOW_NEW_ACCOUNTS`** to `false` in Komodo and Redeploy **bytestash**. Authelia OIDC is on; first Authelia login as **faiz** or **diana** creates a ByteStash user. Elevate **faiz** in ByteStash. Changing `BYTESTASH_JWT_SECRET` later signs everyone out.
 
 ## If it fails
 

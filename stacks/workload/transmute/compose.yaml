@@ -10,6 +10,12 @@ services:
       AUTH_SECRET_KEY: ${TRANSMUTE_AUTH_SECRET_KEY}
       APP_URL: https://convert.${DOMAIN}
       PORT: "3313"
+      OIDC_ISSUER_URL: https://auth.${DOMAIN}
+      OIDC_CLIENT_ID: transmute
+      OIDC_CLIENT_SECRET: ${OIDC_CLIENT_SECRET}
+      OIDC_DISPLAY_NAME: Authelia
+      OIDC_AUTO_CREATE_USERS: "true"
+      OIDC_AUTO_LAUNCH: "false"
     ports:
       - "3313:3313"
     volumes:

@@ -20,7 +20,7 @@ You want `jotty` **Up**. It must **not** publish 3000 on the LAN.
 
 ## 3. Admin
 
-Open **`https://notes.<DOMAIN>`**. First visit sends you to `/auth/setup`. Create the household admin there. There is no Komodo secret for Jotty.
+Open **`https://notes.<DOMAIN>`**. With Authelia OIDC in the catalog, the first visit goes to Authelia (not `/auth/setup`). Local login stays available (`SSO_FALLBACK_LOCAL`). First Authelia login as **faiz** or **diana** creates a Jotty user. Elevate **faiz** in Jotty. If this site already created a local admin, keep it as break-glass.
 
 ## If it fails
 

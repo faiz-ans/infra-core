@@ -12,6 +12,16 @@ services:
       PGID: ${PGID}
       APP_URL: https://notes.${DOMAIN}
       HTTPS: "true"
+      AUTH_MODE: oidc
+      OIDC_ISSUER: https://auth.${DOMAIN}
+      OIDC_CLIENT_ID: jotty
+      OIDC_CLIENT_SECRET: ${OIDC_CLIENT_SECRET}
+      SSO_FALLBACK_LOCAL: "yes"
+      OIDC_USER_GROUPS: users
+      INTERNAL_API_URL: http://127.0.0.1:3000
+      NODE_TLS_REJECT_UNAUTHORIZED: "0"
+    extra_hosts:
+      - "auth.${DOMAIN}:${NAS_LAN_IP}"
     volumes:
       - ${DATA_ROOT}/system/jotty/data:/app/data
       - ${DATA_ROOT}/system/jotty/config:/app/config

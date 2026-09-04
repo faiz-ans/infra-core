@@ -1,5 +1,6 @@
-# Gitea on Core. SQLite is enough for this catalog. HTTP is Caddy-only (no Authelia:
-# git clone/push and Komodo must not hit a login wall). Git over HTTPS via Caddy;
+# Gitea on Core. SQLite is enough for this catalog. HTTP is Caddy-only (no Authelia
+# forward-auth: git clone/push and Komodo must not hit a login wall). Browser SSO is
+# Authelia OIDC (see bootstrap/gitea.md). Git over HTTPS via Caddy;
 # in-container SSH is off (it crash-loops on this host and whites out Homepage).
 services:
   gitea:
@@ -18,8 +19,13 @@ services:
       GITEA__server__START_SSH_SERVER: "false"
       GITEA__security__INSTALL_LOCK: "true"
       GITEA__service__DISABLE_REGISTRATION: "true"
+      GITEA__oauth2_client__ENABLE_AUTO_REGISTRATION: "true"
+      GITEA__oauth2_client__USERNAME: preferred_username
+      GITEA__oauth2_client__ACCOUNT_LINKING: login
       GITEA__actions__ENABLED: "false"
       GITEA__mirror__INTERVAL: 10m
+    extra_hosts:
+      - "auth.${DOMAIN}:${NAS_LAN_IP}"
     volumes:
       - ${DATA_ROOT}/system/gitea:/data
     networks:

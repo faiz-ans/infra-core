@@ -72,7 +72,8 @@ KOMODO_ADMIN_USER='$(quote_s "${KOMODO_ADMIN_USER}")'
 KOMODO_ADMIN_PASSWORD='$(quote_s "${KOMODO_ADMIN_PASSWORD}")'
 VAULTWARDEN_ADMIN_TOKEN='$(quote_s "${VAULTWARDEN_ADMIN_TOKEN}")'
 SIGNUPS_ALLOWED='$(quote_s "${SIGNUPS_ALLOWED}")'
-AUTHELIA_USER_PASSWORD='$(quote_s "${AUTHELIA_USER_PASSWORD}")'
+AUTHELIA_FAIZ_PASSWORD='$(quote_s "${AUTHELIA_FAIZ_PASSWORD:-${AUTHELIA_USER_PASSWORD:-}}")'
+AUTHELIA_DIANA_PASSWORD='$(quote_s "${AUTHELIA_DIANA_PASSWORD:-}")'
 RESTIC_PASSWORD='$(quote_s "${RESTIC_PASSWORD}")'
 RESTIC_REST_USER='$(quote_s "${RESTIC_REST_USER}")'
 RESTIC_REST_PASSWORD='$(quote_s "${RESTIC_REST_PASSWORD}")'
@@ -512,6 +513,18 @@ if [[ -f "${ANSWERS}" ]]; then
     : "${WEATHER_LONGITUDE:=}"
     save_answers
   fi
+  if [[ -z "${AUTHELIA_FAIZ_PASSWORD:-}" && -n "${AUTHELIA_USER_PASSWORD:-}" ]]; then
+    AUTHELIA_FAIZ_PASSWORD="${AUTHELIA_USER_PASSWORD}"
+    save_answers
+  fi
+  if [[ -z "${AUTHELIA_FAIZ_PASSWORD:-}" ]]; then
+    prompt_secret AUTHELIA_FAIZ_PASSWORD "Authelia password for user 'faiz'"
+    save_answers
+  fi
+  if [[ -z "${AUTHELIA_DIANA_PASSWORD:-}" ]]; then
+    prompt_secret AUTHELIA_DIANA_PASSWORD "Authelia password for user 'diana'"
+    save_answers
+  fi
 else
   # Default domain for the prompt only. Not written to git.
   prompt DOMAIN "Domain" "home.lan"
@@ -533,7 +546,8 @@ else
   prompt_secret KOMODO_ADMIN_PASSWORD "Komodo admin password"
   prompt_secret VAULTWARDEN_ADMIN_TOKEN "Vaultwarden admin token"
   prompt SIGNUPS_ALLOWED "Vaultwarden SIGNUPS_ALLOWED" "true"
-  prompt_secret AUTHELIA_USER_PASSWORD "Authelia file-backend password for user 'admin'"
+  prompt_secret AUTHELIA_FAIZ_PASSWORD "Authelia password for user 'faiz'"
+  prompt_secret AUTHELIA_DIANA_PASSWORD "Authelia password for user 'diana'"
   prompt_secret RESTIC_PASSWORD "Restic repo password"
   prompt RESTIC_REST_USER "Restic REST username" "restic"
   prompt_secret RESTIC_REST_PASSWORD "Restic REST password"
@@ -628,6 +642,48 @@ else
   WG_UI_PASSWORD=$(rand)
   echo "WireGuard UI user wg-admin password (save now): ${WG_UI_PASSWORD}"
 fi
+if [[ -f "${KOMODO_DIR}/core.config.toml" ]] && grep -q '^AUTHELIA_OIDC_HMAC_SECRET' "${KOMODO_DIR}/core.config.toml"; then
+  AUTHELIA_OIDC_HMAC=$(awk -F '"' '/^AUTHELIA_OIDC_HMAC_SECRET/ {print $2}' "${KOMODO_DIR}/core.config.toml")
+else
+  AUTHELIA_OIDC_HMAC=$(rand)
+fi
+if [[ -f "${KOMODO_DIR}/core.config.toml" ]] && grep -q '^OIDC_CLIENT_SECRET' "${KOMODO_DIR}/core.config.toml"; then
+  OIDC_CLIENT_SECRET=$(awk -F '"' '/^OIDC_CLIENT_SECRET/ {print $2}' "${KOMODO_DIR}/core.config.toml")
+else
+  OIDC_CLIENT_SECRET=$(openssl rand -hex 32)
+fi
+
+# OIDC JWKS + hashed client secret (Authelia reads these from DATA_ROOT).
+authelia_dir="${DATA_ROOT}/system/authelia"
+mkdir -p "${authelia_dir}"
+if [[ ! -f "${authelia_dir}/oidc.pem" ]]; then
+  oidc_tmp=$(mktemp -d)
+  docker run --rm -v "${oidc_tmp}:/out" authelia/authelia:4 \
+    authelia crypto pair rsa generate --directory /out
+  if [[ -f "${oidc_tmp}/private.pem" ]]; then
+    cp "${oidc_tmp}/private.pem" "${authelia_dir}/oidc.pem"
+  elif [[ -f "${oidc_tmp}/key.pem" ]]; then
+    cp "${oidc_tmp}/key.pem" "${authelia_dir}/oidc.pem"
+  else
+    echo "Failed to generate Authelia OIDC signing key."
+    ls -la "${oidc_tmp}"
+    exit 1
+  fi
+  rm -rf "${oidc_tmp}"
+  chmod 600 "${authelia_dir}/oidc.pem"
+fi
+if [[ ! -f "${authelia_dir}/client_secret_digest" ]]; then
+  OIDC_DIGEST=$(docker run --rm authelia/authelia:4 \
+    authelia crypto hash generate pbkdf2 --variant sha512 --password "${OIDC_CLIENT_SECRET}" \
+    | awk '/^Digest:/ {print $2}')
+  if [[ -z "${OIDC_DIGEST}" ]]; then
+    echo "Failed to hash OIDC client secret."
+    exit 1
+  fi
+  printf '%s' "${OIDC_CLIENT_SECRET}" > "${authelia_dir}/client_secret"
+  printf '%s' "${OIDC_DIGEST}" > "${authelia_dir}/client_secret_digest"
+  chmod 600 "${authelia_dir}/client_secret" "${authelia_dir}/client_secret_digest"
+fi
 
 # openssl rand -hex 24   (used above)
 
@@ -651,15 +707,21 @@ KOMODO_CORE_CONFIG_TOML=${KOMODO_DIR}/core.config.toml
 KOMODO_DATABASE_USERNAME=komodo
 KOMODO_DATABASE_PASSWORD=${DB_PASS}
 TZ=${TZ}
+DOMAIN=${DOMAIN}
+NAS_LAN_IP=${NAS_LAN_IP}
 KOMODO_HOST=https://ops.${DOMAIN}
 KOMODO_TITLE=Komodo
 KOMODO_LOCAL_AUTH=true
+KOMODO_OIDC_ENABLED=true
+KOMODO_OIDC_PROVIDER=https://auth.${DOMAIN}
+KOMODO_OIDC_CLIENT_ID=komodo
+KOMODO_OIDC_CLIENT_SECRET=${OIDC_CLIENT_SECRET}
 KOMODO_INIT_ADMIN_USERNAME=${KOMODO_ADMIN_USER}
 KOMODO_INIT_ADMIN_PASSWORD=${KOMODO_ADMIN_PASSWORD}
 KOMODO_FIRST_SERVER_NAME=${CORE_SERVER}
 KOMODO_PERIPHERY_PUBLIC_KEY=file:/config/keys/periphery.pub
 KOMODO_DISABLE_USER_REGISTRATION=true
-KOMODO_ENABLE_NEW_USERS=false
+KOMODO_ENABLE_NEW_USERS=true
 KOMODO_WEBHOOK_SECRET=${WEBHOOK_SECRET}
 KOMODO_JWT_SECRET=${JWT_SECRET}
 KOMODO_RESOURCE_POLL_INTERVAL=15-min
@@ -692,6 +754,8 @@ SIGNUPS_ALLOWED = "${SIGNUPS_ALLOWED}"
 AUTHELIA_JWT_SECRET = "${AUTHELIA_JWT}"
 AUTHELIA_SESSION_SECRET = "${AUTHELIA_SESSION}"
 AUTHELIA_STORAGE_ENCRYPTION_KEY = "${AUTHELIA_STORAGE}"
+AUTHELIA_OIDC_HMAC_SECRET = "${AUTHELIA_OIDC_HMAC}"
+OIDC_CLIENT_SECRET = "${OIDC_CLIENT_SECRET}"
 RESTIC_PASSWORD = "${RESTIC_PASSWORD}"
 RESTIC_REST_USER = "${RESTIC_REST_USER}"
 RESTIC_REST_PASSWORD = "${RESTIC_REST_PASSWORD}"
@@ -765,22 +829,35 @@ if [[ -d "${users_file}" ]]; then
   rm -rf "${users_file}"
 fi
 if [[ ! -f "${users_file}" ]] || ! grep -q '^    password: '\''\$' "${users_file}"; then
-  HASH=$(docker run --rm authelia/authelia:4 \
-    authelia crypto hash generate argon2 --password "${AUTHELIA_USER_PASSWORD}" \
+  FAIZ_HASH=$(docker run --rm authelia/authelia:4 \
+    authelia crypto hash generate argon2 --password "${AUTHELIA_FAIZ_PASSWORD}" \
     | awk '/^Digest:/ {print $2}')
-  if [[ -z "${HASH}" ]]; then
-    HASH="\$plaintext\$${AUTHELIA_USER_PASSWORD}"
+  DIANA_HASH=$(docker run --rm authelia/authelia:4 \
+    authelia crypto hash generate argon2 --password "${AUTHELIA_DIANA_PASSWORD}" \
+    | awk '/^Digest:/ {print $2}')
+  if [[ -z "${FAIZ_HASH}" ]]; then
+    FAIZ_HASH="\$plaintext\$${AUTHELIA_FAIZ_PASSWORD}"
+  fi
+  if [[ -z "${DIANA_HASH}" ]]; then
+    DIANA_HASH="\$plaintext\$${AUTHELIA_DIANA_PASSWORD}"
   fi
   cat > "${users_file}" <<EOF
 users:
-  admin:
+  faiz:
     disabled: false
-    displayname: 'admin'
-    password: '${HASH}'
-    email: 'admin@${DOMAIN}'
+    displayname: 'Faiz'
+    password: '${FAIZ_HASH}'
+    email: 'faiz@${DOMAIN}'
     groups:
       - admins
-      - dev
+      - users
+  diana:
+    disabled: false
+    displayname: 'Diana'
+    password: '${DIANA_HASH}'
+    email: 'diana@${DOMAIN}'
+    groups:
+      - users
 EOF
   chmod 644 "${users_file}"
 fi
@@ -817,7 +894,7 @@ echo "  ${DATA_ROOT}/users/<user>/{files,photos}"
 echo "  NFS exports /shared and /users to the HTPC IP only (not disk root, not system/)."
 echo "  Komodo NFS_EXPORT=/shared NFS_USERS=/users"
 echo "  HTPC /config is a local Docker volume; media/photos/cameras stay on NFS; OpenCloud on Core uses local binds."
-echo "  First-run: bootstrap/opencloud.md, bootstrap/immich.md, bootstrap/jotty.md, bootstrap/linkding.md, bootstrap/rustdesk.md, bootstrap/adventurelog.md, bootstrap/scriberr.md, bootstrap/frigate.md, bootstrap/transmute.md, bootstrap/bentopdf.md, bootstrap/libretranslate.md, bootstrap/openreader.md, bootstrap/it-tools.md, bootstrap/n8n.md, bootstrap/bytestash.md, bootstrap/glances.md."
+echo "  First-run: bootstrap/authelia.md, bootstrap/opencloud.md, bootstrap/immich.md, bootstrap/jotty.md, bootstrap/linkding.md, bootstrap/rustdesk.md, bootstrap/adventurelog.md, bootstrap/scriberr.md, bootstrap/frigate.md, bootstrap/transmute.md, bootstrap/bentopdf.md, bootstrap/libretranslate.md, bootstrap/openreader.md, bootstrap/it-tools.md, bootstrap/n8n.md, bootstrap/bytestash.md, bootstrap/glances.md."
 echo "  Pi-hole stack names: pihole (Core) and pihole-periphery (HTPC)."
 echo "  Router DHCP DNS: ${NAS_LAN_IP} first, then ${HTPC_UPSTREAM}. No public resolver as a third server."
 echo "  Each Pi-hole fetches its own Gravity."

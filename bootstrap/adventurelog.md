@@ -28,6 +28,19 @@ You want `adventurelog` and `adventurelog-db` **Up**. First boot can take a coup
 
 Open **`https://travel.<DOMAIN>`** (not `trips.` or `adventurelog.`). Log in as `admin` / `ADVENTURELOG_ADMIN_PASSWORD`. Self-registration is off. Changing the Komodo admin secret later does not update an existing Django user.
 
+## OIDC (Authelia)
+
+After Authelia OIDC material exists (`bootstrap/authelia.md`):
+
+1. Log in as `admin`.
+2. Avatar → Settings → Launch Admin Panel (or `https://travel.<DOMAIN>/admin`).
+3. **Social accounts** → **Social applications** → Add.
+4. Provider: **OpenID Connect**. Provider ID / Name: **`authelia`** (the name must match the Authelia redirect path).
+5. Client ID: `adventurelog`. Secret: Komodo `OIDC_CLIENT_SECRET`.
+6. Settings JSON: `{"server_url": "https://auth.<DOMAIN>"}`.
+
+Existing `admin` stays as break-glass. First Authelia login as **faiz** or **diana** creates a normal user; elevate **faiz** in Adventure Log. If login 404s after Authelia, the provider name is not `authelia`.
+
 Maps need outbound HTTPS from the HTPC. That is expected.
 
 ## If it fails

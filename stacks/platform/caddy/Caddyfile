@@ -16,6 +16,7 @@ https://auth.{$DOMAIN}, https://authelia.{$DOMAIN} {
 
 https://dash.{$DOMAIN}, https://homepage.{$DOMAIN} {
 	tls internal
+	import authelia_gate
 	reverse_proxy homepage:3000
 }
 
@@ -178,11 +179,13 @@ https://convert.{$DOMAIN}, https://transmute.{$DOMAIN} {
 
 https://pdf.{$DOMAIN}, https://bentopdf.{$DOMAIN} {
 	tls internal
+	import authelia_gate
 	reverse_proxy bentopdf:8080
 }
 
 https://translate.{$DOMAIN}, https://libretranslate.{$DOMAIN} {
 	tls internal
+	import authelia_gate
 	reverse_proxy {$HTPC_UPSTREAM}:5000
 }
 
@@ -199,6 +202,7 @@ https://read.{$DOMAIN}, https://openreader.{$DOMAIN}, https://reader.{$DOMAIN} {
 
 https://it.{$DOMAIN}, https://tools.{$DOMAIN}, https://it-tools.{$DOMAIN} {
 	tls internal
+	import authelia_gate
 	reverse_proxy it-tools:80
 }
 
@@ -260,16 +264,19 @@ https://stats.{$DOMAIN}, https://monitoring.{$DOMAIN}, https://grafana.{$DOMAIN}
 
 https://metrics.{$DOMAIN}, https://prometheus.{$DOMAIN} {
 	tls internal
+	import authelia_gate
 	reverse_proxy {$HTPC_UPSTREAM}:9090
 }
 
 https://glances.{$DOMAIN}, https://glances-core.{$DOMAIN} {
 	tls internal
+	import authelia_gate
 	reverse_proxy glances:61208
 }
 
 https://glances2.{$DOMAIN}, https://glances-periphery.{$DOMAIN} {
 	tls internal
+	import authelia_gate
 	reverse_proxy {$HTPC_UPSTREAM}:61208
 }
 

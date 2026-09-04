@@ -16,6 +16,15 @@ services:
       DISABLE_ACCOUNTS: "false"
       DISABLE_INTERNAL_ACCOUNTS: "false"
       ALLOWED_HOSTS: snippets.${DOMAIN},bytestash.${DOMAIN}
+      OIDC_ENABLED: "true"
+      OIDC_DISPLAY_NAME: Authelia
+      OIDC_ISSUER_URL: https://auth.${DOMAIN}
+      OIDC_CLIENT_ID: bytestash
+      OIDC_CLIENT_SECRET: ${OIDC_CLIENT_SECRET}
+      OIDC_SCOPES: openid profile email
+      NODE_TLS_REJECT_UNAUTHORIZED: "0"
+    extra_hosts:
+      - "auth.${DOMAIN}:${NAS_LAN_IP}"
     volumes:
       - ${DATA_ROOT}/system/bytestash:/data/snippets
     networks:

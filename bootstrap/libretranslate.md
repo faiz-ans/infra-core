@@ -1,6 +1,6 @@
 # LibreTranslate first-run
 
-LibreTranslate runs on **periphery**. Argos models are a local HTPC volume (`libretranslate-models`), not NFS. Caddy is `https://translate.<DOMAIN>` (`libretranslate.` is an alias).
+LibreTranslate runs on **periphery**. Argos models are a local HTPC volume (`libretranslate-models`), not NFS. Caddy is `https://translate.<DOMAIN>` (`libretranslate.` is an alias). The vhost is Authelia forward-auth (`users` — **faiz** and **diana**).
 
 No Komodo secret.
 

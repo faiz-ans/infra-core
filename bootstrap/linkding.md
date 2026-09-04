@@ -29,7 +29,7 @@ You want `linkding` **Up**. It must **not** publish 9090 on the LAN.
 
 ## 3. Login
 
-Open **`https://links.<DOMAIN>`**. Log in as `LINKDING_SUPERUSER_NAME` / `LINKDING_SUPERUSER_PASSWORD`. Changing the Komodo secret later does not update an existing Django user; use Linkding’s own password change after the first login.
+Open **`https://links.<DOMAIN>`**. Local `LINKDING_SUPERUSER_NAME` stays as break-glass. Authelia OIDC is on; first Authelia login as **faiz** or **diana** creates a Linkding user. Elevate **faiz** in Linkding. Changing the Komodo secret later does not update an existing Django user.
 
 ## If it fails
 

@@ -1,6 +1,6 @@
 # Gitea (catalog git)
 
-Gitea is the primary origin for `faiz-ans/infra-core`. GitHub stays as a **push mirror** (backup). Komodo polls Gitea over the Docker `edge` network (`gitea:3000`, HTTP). Do not put Authelia in front of Gitea (git HTTP and Komodo would hit a login wall). Do not put the live domain in ResourceSync TOML.
+Gitea is the primary origin for `faiz-ans/infra-core`. GitHub stays as a **push mirror** (backup). Komodo polls Gitea over the Docker `edge` network (`gitea:3000`, HTTP). Do not put Authelia **forward-auth** in front of Gitea (git HTTP and Komodo would hit a login wall). Browser login is Authelia OIDC (sysadmin / `faiz` only). Do not put the live domain in ResourceSync TOML.
 
 ## 1. Data dir and deploy
 
@@ -31,6 +31,23 @@ docker exec -u git gitea gitea admin user create --admin \
 ```
 
 Then log in at `https://git.<DOMAIN>`.
+
+## OIDC (Authelia)
+
+After Authelia OIDC material exists (`bootstrap/authelia.md`) and **gitea** has the current catalog:
+
+```text
+docker exec -u git gitea gitea admin auth add-oauth \
+  --name=authelia \
+  --provider=openidConnect \
+  --key=gitea \
+  --secret='OIDC_CLIENT_SECRET' \
+  --auto-discover-url='https://auth.<DOMAIN>/.well-known/openid-configuration' \
+  --skip-tls-verify \
+  --scopes='openid email profile groups'
+```
+
+The authentication name **must** be `authelia` (that is the callback path Authelia allows). If the source already exists, Gitea will say so — do not add a second one. Local `admin` stays as break-glass. First Authelia login as **faiz** creates a normal Gitea user; elevate that user to admin in Gitea.
 
 Connect Komodo Core to `edge` if it is not already (needed later for `gitea:3000`):
 

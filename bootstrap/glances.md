@@ -1,6 +1,6 @@
 # Glances first-run
 
-Glances feeds Homepage host stats (header widgets and System → Platform tiles). The **web UI** is on Caddy. Homepage still scrapes internally (not through Caddy).
+Glances feeds Homepage host stats (header widgets and System → Platform tiles). The **web UI** is on Caddy and is Authelia forward-auth (`admins` / **faiz** only). Homepage still scrapes internally (not through Caddy).
 
 ## Core
 

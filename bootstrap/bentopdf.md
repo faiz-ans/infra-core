@@ -1,6 +1,6 @@
 # BentoPDF first-run
 
-BentoPDF runs on **Core** (edge network). It is a client-side WASM PDF toolkit; files never leave the browser. Caddy is `https://pdf.<DOMAIN>` (`bentopdf.` is an alias).
+BentoPDF runs on **Core** (edge network). It is a client-side WASM PDF toolkit; files never leave the browser. Caddy is `https://pdf.<DOMAIN>` (`bentopdf.` is an alias). The vhost is Authelia forward-auth (`users` — **faiz** and **diana**).
 
 No Komodo secret. No data directory.
 

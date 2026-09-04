@@ -6,6 +6,7 @@ directives:
   connect-src:
     - '''self'''
     - 'blob:'
+    - 'https://${IDP_DOMAIN|auth.example}/'
     - 'https://raw.githubusercontent.com/opencloud-eu/awesome-apps/'
     - 'https://update.opencloud.eu/'
     - 'https://tile.openstreetmap.org/'
@@ -21,6 +22,7 @@ directives:
     - 'https://embed.diagrams.net/'
     - 'https://${COLLABORA_DOMAIN|office.example}/'
     - 'https://docs.opencloud.eu'
+    - 'https://${IDP_DOMAIN|auth.example}/'
   img-src:
     - '''self'''
     - 'data:'
@@ -38,6 +40,7 @@ directives:
   script-src:
     - '''self'''
     - '''unsafe-inline'''
+    - 'https://${IDP_DOMAIN|auth.example}/'
   style-src:
     - '''self'''
     - '''unsafe-inline'''

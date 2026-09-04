@@ -27,7 +27,23 @@ You want `immich` **Up** with `2283->2283`, `immich-db` **Up (healthy)**, plus `
 
 ## 3. Wizard
 
-Open **`https://photos.<DOMAIN>`**. Create the Immich admin account (this is not `IMMICH_DB_PASSWORD`).
+Open **`https://photos.<DOMAIN>`**. Create the Immich admin account (this is not `IMMICH_DB_PASSWORD`). That local admin is break-glass.
+
+## OIDC (Authelia)
+
+Administration → Settings → OAuth (wording varies slightly by Immich version):
+
+| Field | Value |
+|---|---|
+| Issuer URL | `https://auth.<DOMAIN>` |
+| Client ID | `immich` |
+| Client Secret | Komodo secret `OIDC_CLIENT_SECRET` |
+| Scope | `openid profile email` |
+| Token Endpoint Auth Method | `client_secret_basic` |
+| Auto Register | on |
+| Button text | `Login with Authelia` |
+
+The HTPC must reach `https://auth.<DOMAIN>` (Pi-hole → Caddy). Caddy uses internal TLS; if token exchange fails, import the Caddy root CA into Docker Desktop / the Windows trust store. First Authelia login as **faiz** or **diana** creates a normal Immich user. Elevate **faiz** in Immich.
 
 ## 4. External Libraries
 

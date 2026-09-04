@@ -26,15 +26,17 @@ Mark items tagged **secret** as secrets in Komodo.
 
 | Key | Secret | Used by |
 |---|---|---|
-| `AUTHELIA_JWT_SECRET` | secret | Authelia |
+| `AUTHELIA_JWT_SECRET` | secret | Authelia (unused by current config; kept for older stacks) |
 | `AUTHELIA_SESSION_SECRET` | secret | Authelia |
 | `AUTHELIA_STORAGE_ENCRYPTION_KEY` | secret | Authelia |
+| `AUTHELIA_OIDC_HMAC_SECRET` | secret | Authelia OIDC HMAC |
+| `OIDC_CLIENT_SECRET` | secret | Shared confidential OIDC client secret (Grafana, Gitea, Komodo, Immich, Linkding, Jotty, Transmute, ByteStash, Adventure Log). Authelia stores the hash on disk, not this value. |
 | `WG_HOST` | | wg-easy INIT_HOST. Public DNS name that resolves off-LAN to the WAN IPv4 (Dynamic DNS if the WAN moves). Not a LAN-only name. |
 | `WG_UI_PASSWORD` | secret | wg-easy v15 admin password (plaintext; used only at first start) |
 | `PIHOLE_WEBPASSWORD` | secret | Core Pi-hole web/API password (`FTLCONF_webserver_api_password`). Empty disables the login page. |
 | `PIHOLE_PERIPHERY_WEBPASSWORD` | secret | HTPC Pi-hole web/API password. Empty disables the login page. |
 
-Authelia user hashes live in `${DATA_ROOT}/system/authelia/users.yml` on the NAS (written by bootstrap), not in Komodo.
+Authelia user hashes live in `${DATA_ROOT}/system/authelia/users.yml` on the NAS (written by bootstrap / `bootstrap/authelia-oidc.sh`), not in Komodo. Users are `faiz` (groups `admins` + `users`) and `diana` (group `users`). OIDC JWKS and the client-secret digest are `${DATA_ROOT}/system/authelia/oidc.pem` and `client_secret_digest`. See `bootstrap/authelia.md`.
 
 ## Vaultwarden
 

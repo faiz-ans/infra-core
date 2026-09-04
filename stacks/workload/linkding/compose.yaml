@@ -8,7 +8,17 @@ services:
       TZ: ${TZ}
       LD_SUPERUSER_NAME: ${LINKDING_SUPERUSER_NAME}
       LD_SUPERUSER_PASSWORD: ${LINKDING_SUPERUSER_PASSWORD}
-      LD_CSRF_TRUSTED_ORIGINS: https://links.${DOMAIN},https://bookmarks.${DOMAIN},https://linkding.${DOMAIN}
+      LD_CSRF_TRUSTED_ORIGINS: https://links.${DOMAIN},https://bookmarks.${DOMAIN},https://linkding.${DOMAIN},https://auth.${DOMAIN}
+      LD_ENABLE_OIDC: "True"
+      OIDC_RP_CLIENT_ID: linkding
+      OIDC_RP_CLIENT_SECRET: ${OIDC_CLIENT_SECRET}
+      OIDC_OP_AUTHORIZATION_ENDPOINT: https://auth.${DOMAIN}/api/oidc/authorization
+      OIDC_OP_TOKEN_ENDPOINT: https://auth.${DOMAIN}/api/oidc/token
+      OIDC_OP_USER_ENDPOINT: https://auth.${DOMAIN}/api/oidc/userinfo
+      OIDC_OP_JWKS_ENDPOINT: https://auth.${DOMAIN}/jwks.json
+      OIDC_VERIFY_SSL: "False"
+    extra_hosts:
+      - "auth.${DOMAIN}:${NAS_LAN_IP}"
     volumes:
       - ${DATA_ROOT}/system/linkding:/etc/linkding/data
     networks:

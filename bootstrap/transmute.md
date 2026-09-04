@@ -27,7 +27,7 @@ You want `transmute` **Up** (healthy after the first minute). Video conversions 
 
 ## 3. Admin
 
-Open **`https://convert.<DOMAIN>`**. First visit creates the household admin. OIDC is out of scope (edge gate is still off).
+Open **`https://convert.<DOMAIN>`**. Local admin stays as break-glass. Authelia OIDC is on (`Login with Authelia`). First Authelia login as **faiz** or **diana** creates a Transmute user (`OIDC_AUTO_CREATE_USERS`). Elevate **faiz** in Transmute.
 
 ## If it fails
 

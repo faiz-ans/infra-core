@@ -1,6 +1,8 @@
 # Authelia's template env() refuses names that start with AUTHELIA_ and
 # end in SECRET/KEY. Pass the same values as JWT_SECRET / SESSION_SECRET /
-# STORAGE_ENCRYPTION_KEY instead.
+# STORAGE_ENCRYPTION_KEY / OIDC_HMAC_SECRET instead.
+# OIDC client_secret digest and JWKS live under /config/userdb (DATA_ROOT),
+# not git — Docker Compose would eat the `$` in a pbkdf2 digest.
 
 server:
   address: tcp://0.0.0.0:9091
@@ -19,10 +21,39 @@ authentication_backend:
     disable: true
 
 access_control:
-  default_policy: one_factor
+  default_policy: deny
   rules:
     - domain: 'auth.{{ env "DOMAIN" }}'
       policy: bypass
+    - domain:
+        - 'dash.{{ env "DOMAIN" }}'
+        - 'homepage.{{ env "DOMAIN" }}'
+        - 'pdf.{{ env "DOMAIN" }}'
+        - 'bentopdf.{{ env "DOMAIN" }}'
+        - 'it.{{ env "DOMAIN" }}'
+        - 'tools.{{ env "DOMAIN" }}'
+        - 'it-tools.{{ env "DOMAIN" }}'
+        - 'translate.{{ env "DOMAIN" }}'
+        - 'libretranslate.{{ env "DOMAIN" }}'
+      subject: 'group:users'
+      policy: one_factor
+    - domain:
+        - 'metrics.{{ env "DOMAIN" }}'
+        - 'prometheus.{{ env "DOMAIN" }}'
+        - 'glances.{{ env "DOMAIN" }}'
+        - 'glances-core.{{ env "DOMAIN" }}'
+        - 'glances2.{{ env "DOMAIN" }}'
+        - 'glances-periphery.{{ env "DOMAIN" }}'
+      subject: 'group:admins'
+      policy: one_factor
+    - domain:
+        - 'pw.{{ env "DOMAIN" }}'
+        - 'pass.{{ env "DOMAIN" }}'
+        - 'vaultwarden.{{ env "DOMAIN" }}'
+      resources:
+        - '^/admin([/?].*)?$'
+      subject: 'group:admins'
+      policy: one_factor
 
 session:
   secret: '{{ env "SESSION_SECRET" }}'
@@ -40,3 +71,330 @@ storage:
 notifier:
   filesystem:
     filename: /data/notification.txt
+
+identity_providers:
+  oidc:
+    hmac_secret: '{{ env "OIDC_HMAC_SECRET" }}'
+    jwks:
+      - key: |
+{{ secret "/config/userdb/oidc.pem" | mindent 10 "|" }}
+    cors:
+      endpoints:
+        - authorization
+        - token
+        - revocation
+        - introspection
+        - userinfo
+      allowed_origins_from_client_redirect_uris: true
+    authorization_policies:
+      admins:
+        default_policy: deny
+        rules:
+          - policy: one_factor
+            subject: 'group:admins'
+      users:
+        default_policy: deny
+        rules:
+          - policy: one_factor
+            subject: 'group:users'
+    clients:
+      - client_id: opencloud
+        client_name: OpenCloud
+        public: true
+        authorization_policy: users
+        consent_mode: implicit
+        require_pkce: true
+        pkce_challenge_method: S256
+        scopes:
+          - openid
+          - offline_access
+          - groups
+          - profile
+          - email
+        redirect_uris:
+          - 'https://cloud.{{ env "DOMAIN" }}/'
+          - 'https://cloud.{{ env "DOMAIN" }}/oidc-callback.html'
+          - 'https://cloud.{{ env "DOMAIN" }}/oidc-silent-redirect.html'
+          - 'https://oc.{{ env "DOMAIN" }}/'
+          - 'https://oc.{{ env "DOMAIN" }}/oidc-callback.html'
+          - 'https://oc.{{ env "DOMAIN" }}/oidc-silent-redirect.html'
+          - 'https://opencloud.{{ env "DOMAIN" }}/'
+          - 'https://opencloud.{{ env "DOMAIN" }}/oidc-callback.html'
+          - 'https://opencloud.{{ env "DOMAIN" }}/oidc-silent-redirect.html'
+        response_types:
+          - code
+        grant_types:
+          - authorization_code
+          - refresh_token
+        access_token_signed_response_alg: RS256
+        userinfo_signed_response_alg: none
+        token_endpoint_auth_method: none
+      - client_id: opencloud-android
+        client_name: OpenCloud Android
+        public: true
+        authorization_policy: users
+        consent_mode: implicit
+        require_pkce: true
+        pkce_challenge_method: S256
+        redirect_uris:
+          - oc://android.opencloud.eu
+        scopes:
+          - openid
+          - offline_access
+          - groups
+          - profile
+          - email
+        response_types:
+          - code
+        grant_types:
+          - authorization_code
+          - refresh_token
+        access_token_signed_response_alg: RS256
+        userinfo_signed_response_alg: none
+        token_endpoint_auth_method: none
+      - client_id: opencloud-ios
+        client_name: OpenCloud iOS
+        public: true
+        authorization_policy: users
+        consent_mode: implicit
+        require_pkce: true
+        pkce_challenge_method: S256
+        redirect_uris:
+          - oc://ios.opencloud.eu
+          - oc.ios://ios.opencloud.eu
+        scopes:
+          - openid
+          - offline_access
+          - groups
+          - profile
+          - email
+        grant_types:
+          - authorization_code
+          - refresh_token
+        access_token_signed_response_alg: RS256
+        userinfo_signed_response_alg: none
+        token_endpoint_auth_method: none
+      - client_id: opencloud-desktop
+        client_name: OpenCloud Desktop
+        public: true
+        authorization_policy: users
+        consent_mode: implicit
+        require_pkce: true
+        pkce_challenge_method: S256
+        scopes:
+          - openid
+          - offline_access
+          - groups
+          - profile
+          - email
+        redirect_uris:
+          - http://127.0.0.1
+          - http://localhost
+        response_types:
+          - code
+        grant_types:
+          - authorization_code
+          - refresh_token
+        access_token_signed_response_alg: RS256
+        userinfo_signed_response_alg: none
+        token_endpoint_auth_method: none
+      - client_id: immich
+        client_name: Immich
+        client_secret: '{{ secret "/config/userdb/client_secret_digest" }}'
+        public: false
+        authorization_policy: users
+        consent_mode: implicit
+        require_pkce: true
+        pkce_challenge_method: S256
+        redirect_uris:
+          - 'https://photos.{{ env "DOMAIN" }}/auth/login'
+          - 'https://photos.{{ env "DOMAIN" }}/user-settings'
+          - 'https://gallery.{{ env "DOMAIN" }}/auth/login'
+          - 'https://gallery.{{ env "DOMAIN" }}/user-settings'
+          - 'https://immich.{{ env "DOMAIN" }}/auth/login'
+          - 'https://immich.{{ env "DOMAIN" }}/user-settings'
+          - app.immich:///oauth-callback
+        scopes:
+          - openid
+          - profile
+          - email
+        response_types:
+          - code
+        grant_types:
+          - authorization_code
+        access_token_signed_response_alg: none
+        userinfo_signed_response_alg: none
+        token_endpoint_auth_method: client_secret_basic
+      - client_id: grafana
+        client_name: Grafana
+        client_secret: '{{ secret "/config/userdb/client_secret_digest" }}'
+        public: false
+        authorization_policy: admins
+        consent_mode: implicit
+        require_pkce: true
+        pkce_challenge_method: S256
+        redirect_uris:
+          - 'https://stats.{{ env "DOMAIN" }}/login/generic_oauth'
+          - 'https://monitoring.{{ env "DOMAIN" }}/login/generic_oauth'
+          - 'https://grafana.{{ env "DOMAIN" }}/login/generic_oauth'
+        scopes:
+          - openid
+          - profile
+          - groups
+          - email
+        response_types:
+          - code
+        grant_types:
+          - authorization_code
+        access_token_signed_response_alg: none
+        userinfo_signed_response_alg: none
+        token_endpoint_auth_method: client_secret_basic
+      - client_id: gitea
+        client_name: Gitea
+        client_secret: '{{ secret "/config/userdb/client_secret_digest" }}'
+        public: false
+        authorization_policy: admins
+        consent_mode: implicit
+        require_pkce: false
+        redirect_uris:
+          - 'https://git.{{ env "DOMAIN" }}/user/oauth2/authelia/callback'
+        scopes:
+          - openid
+          - email
+          - profile
+          - groups
+        response_types:
+          - code
+        grant_types:
+          - authorization_code
+        access_token_signed_response_alg: none
+        userinfo_signed_response_alg: none
+        token_endpoint_auth_method: client_secret_basic
+      - client_id: komodo
+        client_name: Komodo
+        client_secret: '{{ secret "/config/userdb/client_secret_digest" }}'
+        public: false
+        authorization_policy: admins
+        consent_mode: implicit
+        require_pkce: true
+        pkce_challenge_method: S256
+        redirect_uris:
+          - 'https://ops.{{ env "DOMAIN" }}/auth/oidc/callback'
+          - 'https://komodo.{{ env "DOMAIN" }}/auth/oidc/callback'
+        scopes:
+          - openid
+          - profile
+          - email
+        response_types:
+          - code
+        grant_types:
+          - authorization_code
+        access_token_signed_response_alg: none
+        userinfo_signed_response_alg: none
+        token_endpoint_auth_method: client_secret_basic
+      - client_id: linkding
+        client_name: Linkding
+        client_secret: '{{ secret "/config/userdb/client_secret_digest" }}'
+        public: false
+        authorization_policy: users
+        consent_mode: implicit
+        require_pkce: false
+        redirect_uris:
+          - 'https://links.{{ env "DOMAIN" }}/oidc/callback/'
+          - 'https://bookmarks.{{ env "DOMAIN" }}/oidc/callback/'
+          - 'https://linkding.{{ env "DOMAIN" }}/oidc/callback/'
+        scopes:
+          - openid
+          - email
+          - profile
+        access_token_signed_response_alg: none
+        userinfo_signed_response_alg: none
+        token_endpoint_auth_method: client_secret_post
+      - client_id: jotty
+        client_name: Jotty
+        client_secret: '{{ secret "/config/userdb/client_secret_digest" }}'
+        public: false
+        authorization_policy: users
+        consent_mode: implicit
+        require_pkce: true
+        pkce_challenge_method: S256
+        redirect_uris:
+          - 'https://notes.{{ env "DOMAIN" }}/api/oidc/callback'
+          - 'https://jotty.{{ env "DOMAIN" }}/api/oidc/callback'
+        scopes:
+          - openid
+          - profile
+          - email
+          - groups
+        response_types:
+          - code
+        grant_types:
+          - authorization_code
+        access_token_signed_response_alg: none
+        userinfo_signed_response_alg: none
+        token_endpoint_auth_method: client_secret_basic
+      - client_id: transmute
+        client_name: Transmute
+        client_secret: '{{ secret "/config/userdb/client_secret_digest" }}'
+        public: false
+        authorization_policy: users
+        consent_mode: implicit
+        require_pkce: false
+        redirect_uris:
+          - 'https://convert.{{ env "DOMAIN" }}/api/oidc/callback'
+          - 'https://transmute.{{ env "DOMAIN" }}/api/oidc/callback'
+        scopes:
+          - openid
+          - profile
+          - email
+        response_types:
+          - code
+        grant_types:
+          - authorization_code
+          - refresh_token
+        access_token_signed_response_alg: none
+        userinfo_signed_response_alg: none
+        token_endpoint_auth_method: client_secret_basic
+      - client_id: bytestash
+        client_name: ByteStash
+        client_secret: '{{ secret "/config/userdb/client_secret_digest" }}'
+        public: false
+        authorization_policy: users
+        consent_mode: implicit
+        require_pkce: false
+        redirect_uris:
+          - 'https://snippets.{{ env "DOMAIN" }}/api/oauth/openid'
+          - 'https://bytestash.{{ env "DOMAIN" }}/api/oauth/openid'
+        scopes:
+          - openid
+          - profile
+          - email
+        response_types:
+          - code
+        grant_types:
+          - authorization_code
+        access_token_signed_response_alg: none
+        userinfo_signed_response_alg: none
+        token_endpoint_auth_method: client_secret_basic
+      - client_id: adventurelog
+        client_name: Adventure Log
+        client_secret: '{{ secret "/config/userdb/client_secret_digest" }}'
+        public: false
+        authorization_policy: users
+        consent_mode: implicit
+        require_pkce: false
+        redirect_uris:
+          - 'https://travel.{{ env "DOMAIN" }}/accounts/oidc/authelia/login/callback/'
+          - 'https://trips.{{ env "DOMAIN" }}/accounts/oidc/authelia/login/callback/'
+          - 'https://adventurelog.{{ env "DOMAIN" }}/accounts/oidc/authelia/login/callback/'
+        scopes:
+          - openid
+          - email
+          - profile
+        response_types:
+          - code
+        grant_types:
+          - authorization_code
+        access_token_signed_response_alg: none
+        userinfo_signed_response_alg: none
+        token_endpoint_auth_method: client_secret_post
