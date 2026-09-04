@@ -34,9 +34,11 @@ Then log in at `https://git.<DOMAIN>`.
 
 ## OIDC (Authelia)
 
-Gitea’s `admin auth add-oauth` has **no** `--skip-tls-verify` (that flag is LDAP/SMTP only). Discovery is `https://auth.<DOMAIN>/`, which uses Caddy’s `tls internal` CA. Trust that CA in the Gitea container **before** Redeploy **gitea**.
+The **gitea-oidc** oneshot registers source `authelia` after Gitea is healthy. Caddy’s `caddy-ca` sidecar writes `${DATA_ROOT}/system/authelia/caddy-root.crt` (tls internal). First Authelia login as **faiz** creates a normal Gitea user; elevate that user to admin in Gitea. Local `admin` stays as break-glass.
 
-On Core, with Caddy already running:
+The authentication name **must** stay `authelia` (that is the callback path Authelia allows). Do not add a second source.
+
+If `gitea-oidc` is restarting, the CA file is still empty or Authelia is down. Wait for **caddy** (and `caddy-ca` Exited 0), then Redeploy **gitea**. Manual fallback:
 
 ```text
 CA="${DATA_ROOT}/system/authelia/caddy-root.crt"
@@ -45,11 +47,6 @@ sudo mkdir -p "${DATA_ROOT}/system/authelia"
 sudo rm -rf "${CA}"
 sudo docker exec caddy cat /data/caddy/pki/authorities/local/root.crt | sudo tee "${CA}" >/dev/null
 sudo chmod 644 "${CA}"
-```
-
-Then Redeploy **gitea** so the CA bind-mount is a file. After Authelia OIDC material exists (`bootstrap/authelia.md`) and Gitea is healthy:
-
-```text
 docker exec -u git gitea gitea admin auth add-oauth \
   --name=authelia \
   --provider=openidConnect \
@@ -59,7 +56,7 @@ docker exec -u git gitea gitea admin auth add-oauth \
   --scopes='openid email profile groups'
 ```
 
-The authentication name **must** be `authelia` (that is the callback path Authelia allows). If the source already exists, Gitea will say so — do not add a second one. Local `admin` stays as break-glass. First Authelia login as **faiz** creates a normal Gitea user; elevate that user to admin in Gitea.
+Gitea’s `admin auth add-oauth` has **no** `--skip-tls-verify` (that flag is LDAP/SMTP only).
 
 Connect Komodo Core to `edge` if it is not already (needed later for `gitea:3000`):
 

@@ -139,8 +139,8 @@ echo "If this host already has /etc/komodo/core.config.toml, also append those"
 echo "two keys there so a later core.sh re-run keeps them."
 echo
 echo "Then Redeploy: authelia, caddy, opencloud, gitea, jotty, linkding, bytestash,"
-echo "homepage, transmute, monitoring. Recreate Komodo Core after editing"
+echo "homepage, transmute, monitoring, adventurelog. Recreate Komodo Core after editing"
 echo "/etc/komodo/bootstrap/compose.env (see bootstrap/authelia.md)."
 echo
-echo "Gitea, Immich, and Adventure Log still need a one-time OIDC click in their UI"
-echo "(or the gitea admin auth command). Built-in admin accounts stay as break-glass."
+echo "Immich still needs Admin → OAuth once (no compose OAuth). Gitea and Adventure Log"
+echo "seed Authelia on deploy. Built-in admin accounts stay as break-glass."

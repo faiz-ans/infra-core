@@ -46,6 +46,28 @@ services:
       retries: 5
       start_period: 60s
 
+  gitea-oidc:
+    image: gitea/gitea:latest
+    container_name: gitea-oidc
+    depends_on:
+      gitea:
+        condition: service_healthy
+    restart: on-failure
+    environment:
+      TZ: ${TZ}
+      OIDC_CLIENT_SECRET: ${OIDC_CLIENT_SECRET}
+      DOMAIN: ${DOMAIN}
+      SSL_CERT_DIR: /etc/ssl/certs:/etc/ssl/caddy
+    extra_hosts:
+      - "auth.${DOMAIN}:${NAS_LAN_IP}"
+    volumes:
+      - ${DATA_ROOT}/system/gitea:/data
+      - ${DATA_ROOT}/system/authelia/caddy-root.crt:/etc/ssl/caddy/caddy-root.crt:ro
+      - ./seed-oidc.sh:/seed-oidc.sh:ro
+    networks:
+      - edge
+    entrypoint: ["/bin/bash", "/seed-oidc.sh"]
+
 networks:
   edge:
     external: true

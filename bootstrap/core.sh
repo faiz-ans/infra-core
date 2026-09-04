@@ -610,6 +610,18 @@ mkdir -p \
   "${DATA_ROOT}/shared/cameras" \
   "${DATA_ROOT}/users"
 # mkdir -p "${DATA_ROOT}/users/<user>/{files,photos}" as you add household users.
+# Bind-mounts must be files before first stack start. Docker creates a
+# directory when the host path is missing (breaks Gitea/Komodo CA trust).
+for _ca in caddy-root.crt ca-bundle.crt; do
+  _capath="${DATA_ROOT}/system/authelia/${_ca}"
+  if [[ -d "${_capath}" ]]; then
+    rm -rf "${_capath}"
+  fi
+  if [[ ! -e "${_capath}" ]]; then
+    : > "${_capath}"
+    chmod 644 "${_capath}"
+  fi
+done
 chown -R "${PUID}:${PGID}" "${DATA_ROOT}/system/opencloud"
 chown -R "${PUID}:${PGID}" "${DATA_ROOT}/system/jotty"
 
@@ -910,6 +922,7 @@ echo "  ${DATA_ROOT}/users/<user>/{files,photos}"
 echo "  NFS exports /shared and /users to the HTPC IP only (not disk root, not system/)."
 echo "  Komodo NFS_EXPORT=/shared NFS_USERS=/users"
 echo "  HTPC /config is a local Docker volume; media/photos/cameras stay on NFS; OpenCloud on Core uses local binds."
+echo "  After ResourceSync deploys caddy, caddy-ca writes system/authelia/caddy-root.crt (Gitea/Komodo TLS)."
 echo "  First-run: bootstrap/authelia.md, bootstrap/vaultwarden.md, bootstrap/opencloud.md, bootstrap/immich.md, bootstrap/jotty.md, bootstrap/linkding.md, bootstrap/rustdesk.md, bootstrap/adventurelog.md, bootstrap/scriberr.md, bootstrap/frigate.md, bootstrap/transmute.md, bootstrap/bentopdf.md, bootstrap/libretranslate.md, bootstrap/openreader.md, bootstrap/it-tools.md, bootstrap/n8n.md, bootstrap/bytestash.md, bootstrap/glances.md."
 echo "  Pi-hole stack names: pihole (Core) and pihole-periphery (HTPC)."
 echo "  Router DHCP DNS: ${NAS_LAN_IP} first, then ${HTPC_UPSTREAM}. No public resolver as a third server."

@@ -42,6 +42,8 @@ services:
       SECRET_KEY: ${ADVENTURELOG_ADMIN_PASSWORD}
       DISABLE_REGISTRATION: "True"
       SOCIALACCOUNT_ALLOW_SIGNUP: "True"
+      DOMAIN: ${DOMAIN}
+      OIDC_CLIENT_SECRET: ${OIDC_CLIENT_SECRET}
       PYTHONPATH: /tmp/oidc-hooks
     extra_hosts:
       - "auth.${DOMAIN}:${NAS_LAN_IP}"
@@ -53,6 +55,7 @@ services:
       - adventurelog-media:/code/media
       - ./entrypoint-oidc.sh:/oidc-ca.sh:ro
       - ./sitecustomize-oidc.py:/oidc-sitecustomize.py:ro
+      - ./seed-oidc.py:/oidc-seed.py:ro
 
 volumes:
   adventurelog-postgres:

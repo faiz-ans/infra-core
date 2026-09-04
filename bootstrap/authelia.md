@@ -49,10 +49,12 @@ KOMODO_DISABLE_OIDC_USER_REGISTRATION=false
 
 `KOMODO_DISABLE_USER_REGISTRATION=true` blocks **OIDC** as well as local sign-up. First Authelia login as **faiz** must be allowed to create the Komodo user (`faiz` is not the bootstrap `admin`). Local sign-up stays off.
 
-`KOMODO_LOCAL_AUTH` stays `true` (break-glass). Copy the current `bootstrap/komodo/compose.yaml` to `/etc/komodo/bootstrap/compose.yaml` (it mounts `ca-bundle.crt`). The bundle must be a **file** before recreate:
+`KOMODO_LOCAL_AUTH` stays `true` (break-glass). Copy the current `bootstrap/komodo/compose.yaml` to `/etc/komodo/bootstrap/compose.yaml` (it mounts `ca-bundle.crt`). The bundle must be a **file** before recreate. After **caddy** is up, the `caddy-ca` sidecar writes both cert files; if they are still empty, dump once:
 
 ```text
 CA="${DATA_ROOT}/system/authelia"
+sudo mkdir -p "${CA}"
+sudo rm -rf "${CA}/caddy-root.crt"
 sudo docker exec caddy cat /data/caddy/pki/authorities/local/root.crt | sudo tee "${CA}/caddy-root.crt" >/dev/null
 sudo cat /etc/ssl/certs/ca-certificates.crt "${CA}/caddy-root.crt" | sudo tee "${CA}/ca-bundle.crt" >/dev/null
 sudo chmod 644 "${CA}/caddy-root.crt" "${CA}/ca-bundle.crt"
@@ -72,9 +74,9 @@ First Authelia login as **faiz**. If Komodo creates the user disabled, enable it
 Push this catalog to Gitea. Wait for ResourceSync. Then **Redeploy** in this order:
 
 1. **authelia** (must see `oidc.pem` and `client_secret_digest` or it will not start)
-2. **caddy** (forward-auth gates + `--watch` is not enough if you only redeploy other stacks)
+2. **caddy** (forward-auth gates, Host pins, CA export; `--watch` is not enough)
 3. **opencloud**, **gitea**, **jotty**, **linkding**, **bytestash**, **homepage**
-4. On the HTPC sync: **transmute**, **monitoring**
+4. On the HTPC sync: **transmute**, **monitoring**, **adventurelog**
 
 Confirm Authelia is up:
 
@@ -85,14 +87,16 @@ docker exec caddy wget -S -O- --timeout=10 http://authelia:9091/api/health | hea
 
 You want HTTP 200 and no JWKS / template errors.
 
-## 4. One-time app clicks
+## 4. First Authelia login (not catalog debugging)
 
-| App | What to do |
+Compose and seed scripts register Authelia. First login as **faiz** or **diana** creates the app user; elevate **faiz** inside each app. Keep the built-in `admin` (or equivalent) as break-glass.
+
+| App | What is left |
 |---|---|
-| **Gitea** | See [gitea.md](gitea.md) § OIDC. `gitea admin auth add-oauth` once. Name must be `authelia`. |
-| **Immich** | See [immich.md](immich.md) § OIDC. Admin → OAuth. Issuer `https://auth.<DOMAIN>`. Client `immich`. Secret is `OIDC_CLIENT_SECRET`. Auto-register on. |
-| **Adventure Log** | See [adventurelog.md](adventurelog.md) § OIDC. Django admin social app named `authelia`. |
-| **OpenCloud / Grafana / Linkding / Jotty / Transmute / ByteStash** | Env is already in compose. First Authelia login creates a normal user. Elevate **faiz** inside each app. Keep the built-in `admin` (or equivalent) as break-glass. |
+| **Gitea** | OIDC source `authelia` is seeded when the stack is healthy. Create the local `admin` user once ([gitea.md](gitea.md)) for break-glass. |
+| **Immich** | Immich has no compose OAuth. After the admin wizard, set Admin → OAuth once ([immich.md](immich.md)). |
+| **Adventure Log** | Social app is seeded on boot. Use **Login** → **Authelia** (Sign Up stays closed). |
+| **OpenCloud / Grafana / Komodo / Linkding / Jotty / Transmute / ByteStash** | Env is already in compose. |
 
 DAV/mobile that cannot do OIDC: OpenCloud **App Token**; Immich mobile uses the Immich OAuth redirect `app.immich:///oauth-callback`.
 
@@ -142,7 +146,7 @@ Homepage (`dash.` / `homepage.`) has no Authelia gate. Widgets scrape internal U
 | Forward-auth site returns 401 instead of the login page | Redeploy **caddy** so `authelia_url` is on the `forward_auth` URI. |
 | Diana can open Grafana/Komodo/Gitea login but Authelia denies | Expected. Those clients are `admins` only. |
 | OpenCloud CSP / blank login | `IDP_DOMAIN=auth.<DOMAIN>` and Redeploy **opencloud**. Confirm `csp.yaml` lists `https://auth.<DOMAIN>/`. |
-| Gitea `flag provided but not defined: -skip-tls-verify` | That flag is not on `gitea admin auth add-oauth`. Dump the Caddy CA and Redeploy **gitea**, then run the command in [gitea.md](gitea.md) (no skip-tls flag). |
+| Gitea `flag provided but not defined: -skip-tls-verify` | That flag is not on `gitea admin auth add-oauth`. Wait for `caddy-ca` to write the CA (or dump it), then Redeploy **gitea** so `gitea-oidc` can seed. |
 | Immich OAuth “can’t reach the server” | Redeploy **immich** after `extra_hosts` + `NODE_TLS_REJECT_UNAUTHORIZED`. The image has no `wget` — use `docker exec -e NODE_TLS_REJECT_UNAUTHORIZED=0 immich node -e "fetch('https://auth.<DOMAIN>/.well-known/openid-configuration').then(async r=>{console.log(r.status);console.log(await r.text())}).catch(e=>{console.error(e);process.exit(1)})"`. `ENOTFOUND` means the stack was not recreated with `extra_hosts`. Timeout to the NAS IP means Docker LAN overlap ([periphery.md](periphery.md) §7). |
 | Firefox “can’t find” `*.home.lan`, Edge works | AAAA NXDOMAIN from Pi-hole (`address=/` IPv4-only). Firefox will not try A. See [periphery.md](periphery.md) §3. |
 | Komodo OIDC “Provider not available” | Core cannot verify Caddy TLS. Write `ca-bundle.crt` (see §2), copy `bootstrap/komodo/compose.yaml` onto the box, set `DATA_ROOT` in `compose.env`, recreate Core. |

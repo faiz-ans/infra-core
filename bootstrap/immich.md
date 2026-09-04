@@ -31,7 +31,7 @@ Open **`https://photos.<DOMAIN>`**. Create the Immich admin account (this is not
 
 ## OIDC (Authelia)
 
-Administration → Settings → OAuth (wording varies slightly by Immich version):
+Immich has no compose OAuth (config file would freeze every admin setting). After the wizard, set Administration → Settings → OAuth once:
 
 | Field | Value |
 |---|---|

@@ -23,6 +23,21 @@ services:
     networks:
       - edge
 
+  # Writes caddy-root.crt + ca-bundle.crt for Gitea/Komodo. Exits 0 once.
+  caddy-ca:
+    image: caddy:2
+    container_name: caddy-ca
+    depends_on:
+      - caddy
+    restart: on-failure
+    volumes:
+      - caddy-data:/data:ro
+      - ./export-ca.sh:/export-ca.sh:ro
+      - ${DATA_ROOT}/system/authelia:/export-ca
+    entrypoint: ["/bin/sh", "/export-ca.sh"]
+    networks:
+      - edge
+
 networks:
   edge:
     external: true

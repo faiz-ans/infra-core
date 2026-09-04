@@ -19,7 +19,9 @@ for dest_dir in site.getsitepackages():
         print("adventurelog-oidc: skip", dest_dir, exc, flush=True)
 print("adventurelog-oidc: PYTHONPATH sitecustomize ready", flush=True)
 PY
-if [ "$#" -eq 0 ]; then
-  exec /aio/entrypoint.sh supervisord -c /aio/supervisord.conf
+# aio entrypoint migrates, then exec "$@". Seed the SocialApp after migrate.
+if [ "$#" -eq 0 ] || [ "$1" = "supervisord" ]; then
+  exec /aio/entrypoint.sh bash -c \
+    'python3 /oidc-seed.py || echo "adventurelog-oidc: seed failed (non-fatal)" >&2; exec supervisord -c /aio/supervisord.conf'
 fi
 exec /aio/entrypoint.sh "$@"

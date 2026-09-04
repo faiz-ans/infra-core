@@ -109,6 +109,17 @@ chmod 700 "${DATA_ROOT}/system"
 setfacl -b "${DATA_ROOT}/system" || true
 chown -R "${PUID}:${PGID}" "${DATA_ROOT}/system/opencloud"
 chown -R "${PUID}:${PGID}" "${DATA_ROOT}/system/jotty"
+# Placeholder files so Docker never turns these bind-mounts into directories.
+for _ca in caddy-root.crt ca-bundle.crt; do
+  _capath="${DATA_ROOT}/system/authelia/${_ca}"
+  if [[ -d "${_capath}" ]]; then
+    rm -rf "${_capath}"
+  fi
+  if [[ ! -e "${_capath}" ]]; then
+    : > "${_capath}"
+    chmod 644 "${_capath}"
+  fi
+done
 
 # linuxserver containers (Radarr/qBit/Jellyfin) write as PUID:PGID over NFS.
 acl_shared="g:${SHARED_GROUP}:rwx,u:${PUID}:rwx,g:${PGID}:rwx"
