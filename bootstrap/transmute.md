@@ -35,4 +35,4 @@ Open **`https://convert.<DOMAIN>`** (Caddy sends `transmute.` there). Local admi
 |---|---|
 | `convert.<DOMAIN>` does not load while the container is Up | Redeploy **caddy**. From Core: `docker exec caddy wget -S -O- --timeout=10 http://<HTPC_UPSTREAM>:3313/ \| head` |
 | Logged out after Redeploy | `TRANSMUTE_AUTH_SECRET_KEY` must be set and unchanged |
-| Authelia succeeds, then Internal Server Error | Callback token/JWKS is server-side. Catalog uses `OIDC_INTERNAL_URL=http://auth.<DOMAIN>` (Caddy HTTP, no `tls internal`). Redeploy **caddy** then **transmute**. From the HTPC: `docker logs transmute` around the callback. |
+| Authelia button → Internal Server Error | Token exchange hits `https://auth.<DOMAIN>` (Caddy `tls internal`). Redeploy **caddy** and **transmute**. `docker logs transmute` should show `transmute-oidc: PYTHONPATH sitecustomize ready` at start. |
