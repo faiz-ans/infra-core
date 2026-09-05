@@ -56,19 +56,11 @@ services:
         condition: service_healthy
     extra_hosts:
       - "cloud.${DOMAIN}:${NAS_LAN_IP}"
-      - "office.${DOMAIN}:${NAS_LAN_IP}"
-      - "auth.${DOMAIN}:${NAS_LAN_IP}"
     environment:
       TZ: ${TZ}
       DONT_GEN_SSL_CERT: "YES"
       SSL_CERT_FILE: /ca/ca-bundle.crt
-      # Public name only (no :443 / :9980). :443 makes the editor expect
-      # Origin https://office.${DOMAIN}:443; browsers send it without the port.
-      # Unset/wrong server_name advertises wss://office.${DOMAIN}:9980 (HTPC).
-      server_name: office.${DOMAIN}
-      # Must match COLLABORATION_WOPI_SRC. Official overlay omits :443 on
-      # default HTTPS; CODE treats host and host:443 as different WOPI hosts.
-      aliasgroup1: https://cloud.${DOMAIN},https://cloud.${DOMAIN}:443
+      aliasgroup1: https://cloud.${DOMAIN}
       extra_params: "--o:ssl.enable=false --o:ssl.ssl_verification=false --o:ssl.termination=true --o:welcome.enable=false --o:net.frame_ancestors=cloud.${DOMAIN} --o:net.lok_allow.host[14]=cloud.${DOMAIN}"
     volumes:
       - collabora-ca:/ca:ro

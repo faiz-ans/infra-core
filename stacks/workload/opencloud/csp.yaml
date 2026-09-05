@@ -7,8 +7,6 @@ directives:
     - '''self'''
     - 'blob:'
     - 'https://${IDP_DOMAIN|auth.example}/'
-    - 'https://${COLLABORA_DOMAIN|office.example}/'
-    - 'wss://${COLLABORA_DOMAIN|office.example}/'
     - 'https://raw.githubusercontent.com/opencloud-eu/awesome-apps/'
     - 'https://update.opencloud.eu/'
     - 'https://tile.openstreetmap.org/'
