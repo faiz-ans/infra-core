@@ -1,5 +1,9 @@
 # Collabora Online on periphery. Caddy terminates TLS at office.${DOMAIN}.
-# OpenCloud WOPI allowlist is aliasgroup1 (the public cloud hostname).
+# Official overlay: https://github.com/opencloud-eu/opencloud-compose/blob/main/weboffice/collabora.yml
+# WOPI allowlist is aliasgroup1 (OpenCloud public hostname). ssl.enable is
+# false because Caddy terminates TLS. Collabora still HTTPS-calls
+# https://cloud.${DOMAIN} for CheckFileInfo; entrypoint-ca.sh installs
+# Caddy's tls-internal CA (CODE ignores ssl.ssl_verification on that path).
 services:
   collabora:
     image: collabora/code:latest
@@ -7,10 +11,23 @@ services:
     restart: unless-stopped
     extra_hosts:
       - "cloud.${DOMAIN}:${NAS_LAN_IP}"
+      - "office.${DOMAIN}:${NAS_LAN_IP}"
+      - "auth.${DOMAIN}:${NAS_LAN_IP}"
+    entrypoint: ["/bin/bash", "/entrypoint-ca.sh"]
     environment:
       TZ: ${TZ}
+      DONT_GEN_SSL_CERT: "YES"
+      server_name: office.${DOMAIN}
       aliasgroup1: https://cloud.${DOMAIN}:443
-      extra_params: "--o:ssl.enable=false --o:ssl.ssl_verification=false --o:ssl.termination=true --o:welcome.enable=false --o:net.frame_ancestors=cloud.${DOMAIN}"
+      extra_params: >
+        --o:ssl.enable=false
+        --o:ssl.ssl_verification=false
+        --o:ssl.termination=true
+        --o:welcome.enable=false
+        --o:net.frame_ancestors=cloud.${DOMAIN}
+        --o:net.lok_allow.host[14]=cloud.${DOMAIN}
+    volumes:
+      - ./entrypoint-ca.sh:/entrypoint-ca.sh:ro
     ports:
       - "9980:9980"
     cap_add:
@@ -18,3 +35,4 @@ services:
       - SYS_ADMIN
     security_opt:
       - seccomp:unconfined
+      - apparmor:unconfined
