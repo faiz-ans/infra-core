@@ -1,15 +1,15 @@
 # Collabora Online on periphery. Caddy terminates TLS at office.${DOMAIN}.
 # Official overlay: https://github.com/opencloud-eu/opencloud-compose/blob/main/weboffice/collabora.yml
 # CODE 26 is distroless (no bash/curl). Do not wrap the image entrypoint.
-# WOPI CheckFileInfo still HTTPS-calls https://cloud.${DOMAIN}; collabora-ca
-# writes Caddy's tls-internal CA into a volume and Collabora trusts it via
-# SSL_CERT_FILE. extra_params must be one line so --probe --use-env-vars
-# sees ssl.enable=false (image HEALTHCHECK otherwise dials https://127.0.0.1:9980).
+# Image HEALTHCHECK (coolwsd --probe) dials https://127.0.0.1:9980 even with
+# ssl.enable=false (CollaboraOnline/online#16032). Disable it so Komodo is
+# not stuck Unhealthy. WOPI still HTTPS-calls cloud.${DOMAIN}; collabora-ca
+# stays up with Caddy's tls-internal CA on a volume (SSL_CERT_FILE).
 services:
   collabora-ca:
     image: alpine:3.21
     container_name: collabora-ca
-    restart: "no"
+    restart: unless-stopped
     extra_hosts:
       - "auth.${DOMAIN}:${NAS_LAN_IP}"
     environment:
@@ -26,13 +26,19 @@ services:
           if curl -kfsSL --max-time 5 "$$CADDY_CA_URL" -o /ca/caddy-local.crt; then
             cat /etc/ssl/certs/ca-certificates.crt /ca/caddy-local.crt > /ca/ca-bundle.crt
             echo "collabora-ca: wrote /ca/ca-bundle.crt"
-            exit 0
+            exec sleep infinity
           fi
           i=$$((i + 1))
           sleep 2
         done
         echo "collabora-ca: could not fetch $$CADDY_CA_URL" >&2
         exit 1
+    healthcheck:
+      test: ["CMD-SHELL", "test -s /ca/ca-bundle.crt"]
+      interval: 5s
+      timeout: 3s
+      retries: 30
+      start_period: 15s
 
   collabora:
     image: collabora/code:latest
@@ -40,7 +46,7 @@ services:
     restart: unless-stopped
     depends_on:
       collabora-ca:
-        condition: service_completed_successfully
+        condition: service_healthy
     extra_hosts:
       - "cloud.${DOMAIN}:${NAS_LAN_IP}"
       - "office.${DOMAIN}:${NAS_LAN_IP}"
@@ -52,10 +58,6 @@ services:
       server_name: office.${DOMAIN}
       aliasgroup1: https://cloud.${DOMAIN}:443
       extra_params: "--o:ssl.enable=false --o:ssl.ssl_verification=false --o:ssl.termination=true --o:welcome.enable=false --o:net.frame_ancestors=cloud.${DOMAIN} --o:net.lok_allow.host[14]=cloud.${DOMAIN}"
-    command:
-      - "--o:ssl.enable=false"
-      - "--o:ssl.ssl_verification=false"
-      - "--o:ssl.termination=true"
     volumes:
       - collabora-ca:/ca:ro
     ports:
@@ -67,11 +69,7 @@ services:
       - seccomp:unconfined
       - apparmor:unconfined
     healthcheck:
-      test: ["CMD", "/usr/bin/coolwsd", "--probe", "--use-env-vars"]
-      interval: 30s
-      timeout: 10s
-      retries: 3
-      start_period: 120s
+      disable: true
 
 volumes:
   collabora-ca:
