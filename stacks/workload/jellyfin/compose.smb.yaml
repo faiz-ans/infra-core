@@ -1,0 +1,26 @@
+# Household data via Docker CIFS (OMV SMB). /config stays a local volume.
+# Use on Docker Desktop when NFS mounts hang/ESTALE. Do not merge with compose.nfs.yaml.
+services:
+  jellyfin:
+    image: lscr.io/linuxserver/jellyfin:latest
+    container_name: jellyfin
+    restart: unless-stopped
+    environment:
+      TZ: ${TZ}
+      PUID: ${PUID}
+      PGID: ${PGID}
+    ports:
+      - "8096:8096"
+    volumes:
+      - jellyfin-config:/config
+      - jellyfin-media:/data/media
+
+volumes:
+  jellyfin-config:
+    name: jellyfin-config
+  jellyfin-media:
+    driver: local
+    driver_opts:
+      type: cifs
+      o: username=${SMB_USER},password=${SMB_PASSWORD},vers=3.0,noperm,iocharset=utf8,uid=${PUID},gid=${PGID}
+      device: "//${NAS_LAN_IP}/shared/media"
