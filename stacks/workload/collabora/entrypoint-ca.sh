@@ -5,11 +5,11 @@
 # install it, then start CODE.
 set -euo pipefail
 
-CA_URL="https://auth.${DOMAIN}/pki/local-root.crt"
+CA_URL="${CADDY_CA_URL:?set CADDY_CA_URL in compose}"
 CA_DST=/usr/local/share/ca-certificates/caddy-local.crt
 
 i=0
-while [ "$i" -lt 30 ]; do
+while [ "$i" -lt 8 ]; do
   if command -v curl >/dev/null 2>&1; then
     if curl -kfsSL --max-time 5 "${CA_URL}" -o "${CA_DST}"; then
       break

@@ -16,6 +16,8 @@ services:
     entrypoint: ["/bin/bash", "/entrypoint-ca.sh"]
     environment:
       TZ: ${TZ}
+      DOMAIN: ${DOMAIN}
+      CADDY_CA_URL: https://auth.${DOMAIN}/pki/local-root.crt
       DONT_GEN_SSL_CERT: "YES"
       server_name: office.${DOMAIN}
       aliasgroup1: https://cloud.${DOMAIN}:443
@@ -36,3 +38,11 @@ services:
     security_opt:
       - seccomp:unconfined
       - apparmor:unconfined
+    # Official overlay: probe must read extra_params. Image default assumes
+    # ssl.enable=true and marks the container unhealthy on HTTP:9980.
+    healthcheck:
+      test: ["CMD", "/usr/bin/coolwsd", "--probe", "--use-env-vars"]
+      interval: 15s
+      timeout: 10s
+      retries: 5
+      start_period: 90s
