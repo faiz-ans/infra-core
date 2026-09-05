@@ -12,8 +12,8 @@ OpenCloud SHALL deploy on server `core`, attach to the `edge` Docker network, an
 - **THEN** that user's personal space files appear at `${DATA_ROOT}/users/alice` including `files/` and `photos/` as ordinary directories
 
 #### Scenario: Household shared is a Project Space
-- **WHEN** an admin creates a Project Space named `shared` with PosixFS general path template `projects/{{.SpaceName}}`
-- **THEN** that Space's files appear at `${DATA_ROOT}/shared` and are visible over SMB to household users who are Space members
+- **WHEN** an admin creates a Project Space named `shared` with PosixFS general path template `projects/{{.SpaceName}}` and parent bind `${DATA_ROOT}/system/opencloud/projects` → `/posix/projects`
+- **THEN** that Space's files live at `${DATA_ROOT}/system/opencloud/projects/shared` and SHALL be bind-mounted to `${DATA_ROOT}/shared` for SMB/NFS
 ### Requirement: Phone ingest into photos
 OpenCloud SHALL be the phone camera ingest path. First-run documentation SHALL instruct operators to set mobile automatic picture and video upload destination to the personal-space `photos` folder (not a default `CameraUpload` path). Caddy MUST NOT apply Authelia forward-auth to the whole OpenCloud hostname (DAV/TUS clients).
 

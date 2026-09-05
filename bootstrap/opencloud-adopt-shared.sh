@@ -1,15 +1,20 @@
 #!/usr/bin/env bash
-# OpenCloud CreateStorageSpace refuses a path that already exists and does
-# not stamp xattrs. Household ${DATA_ROOT}/shared is bound at
-# /posix/projects/shared (Space name must be exactly "shared").
+# Household ${DATA_ROOT}/shared as OpenCloud Project Space "shared".
+#
+# CreateStorageSpace refuses a path that already exists. Binding shared/ as
+# the space root therefore always fails. Same pattern as personal homes:
+# parent bind system/opencloud/projects → /posix/projects; OpenCloud mkdir's
+# projects/shared with xattrs; we bind-mount that onto DATA_ROOT/shared for
+# SMB/NFS.
 #
 #   sudo DATA_ROOT=/srv/dev-disk-by-uuid-… bash bootstrap/opencloud-adopt-shared.sh park
-#   # browser: Spaces → New Space → name exactly "shared"; add faiz + diana
-#   sudo DATA_ROOT=/srv/dev-disk-by-uuid-… bash bootstrap/opencloud-adopt-shared.sh restore
+#   # Redeploy opencloud if compose still had shared→/posix/projects/shared
+#   # browser: Spaces → New Space → name exactly "shared"; add diana
+#   sudo DATA_ROOT=… bash bootstrap/opencloud-adopt-shared.sh publish
+#   sudo DATA_ROOT=… bash bootstrap/opencloud-adopt-shared.sh restore
 #
-# park moves shared content to system/opencloud/incoming/shared and leaves an
-# empty shared/ so NFS/SMB paths stay valid. Immich will see an empty tree
-# until restore — pause Immich library scans if you care.
+# park moves content to system/opencloud/incoming/shared. Immich sees empty
+# shared/ until publish+restore.
 set -euo pipefail
 
 if [[ ${EUID:-0} -ne 0 ]]; then
@@ -19,11 +24,14 @@ fi
 
 DATA_ROOT="${DATA_ROOT:-/srv/dev-disk-by-uuid-d6e267fd-109f-4971-bfb1-26b3d99e0d47}"
 SHARED="${DATA_ROOT}/shared"
+PROJECTS="${DATA_ROOT}/system/opencloud/projects"
+SPACE="${PROJECTS}/shared"
 INCOMING="${DATA_ROOT}/system/opencloud/incoming"
 PARKED="${INCOMING}/shared"
+FSTAB_TAG="opencloud-shared-bind"
 
 usage() {
-  echo "Usage: $0 park|restore|status"
+  echo "Usage: $0 park|publish|restore|status"
   exit 1
 }
 
@@ -33,18 +41,28 @@ space_id() {
   getfattr -n user.oc.space.id --only-values "$1" 2>/dev/null || true
 }
 
+shared_is_bind() {
+  findmnt -n -R --target "${SHARED}" 2>/dev/null | awk -v s="${SPACE}" '$1 == s || index($0, s) { found=1 } END { exit !found }'
+}
+
 status() {
   echo "shared/: ${SHARED}"
-  if [[ ! -d "${SHARED}" ]]; then
-    echo "missing"
-    return
-  fi
-  local sid
-  sid="$(space_id "${SHARED}")"
-  if [[ -n "${sid}" ]]; then
-    echo "  space id ${sid}"
+  echo "space/:  ${SPACE}"
+  if [[ -d "${SPACE}" ]]; then
+    local sid
+    sid="$(space_id "${SPACE}")"
+    if [[ -n "${sid}" ]]; then
+      echo "  space id ${sid}"
+    else
+      echo "  no user.oc.space.id on projects/shared"
+    fi
   else
-    echo "  no user.oc.space.id"
+    echo "  projects/shared missing (create Space named shared after Redeploy)"
+  fi
+  if findmnt -n --target "${SHARED}" >/dev/null 2>&1; then
+    echo "  mount: $(findmnt -n -o SOURCE,TARGET --target "${SHARED}")"
+  else
+    echo "  mount: ${SHARED} is not a bind mount (run publish after create)"
   fi
   if [[ -d "${PARKED}" ]]; then
     echo "  parked content: ${PARKED}"
@@ -52,8 +70,8 @@ status() {
 }
 
 park() {
-  if [[ -n "$(space_id "${SHARED}")" ]]; then
-    echo "skip: ${SHARED} already has user.oc.space.id"
+  if [[ -n "$(space_id "${SPACE}" 2>/dev/null || true)" ]] && shared_is_bind; then
+    echo "skip: shared space already published"
     exit 0
   fi
   if [[ -e "${PARKED}" ]]; then
@@ -64,20 +82,58 @@ park() {
     echo "refusing: ${SHARED} missing"
     exit 1
   fi
+  if findmnt -n --target "${SHARED}" >/dev/null 2>&1; then
+    echo "refusing: ${SHARED} is mounted. umount it first if re-parking."
+    exit 1
+  fi
 
   docker stop opencloud
-  mkdir -p "${INCOMING}"
+  mkdir -p "${INCOMING}" "${PROJECTS}"
+  chown "${PUID:-1000}:${PGID:-1000}" "${PROJECTS}" 2>/dev/null || true
   mv "${SHARED}" "${PARKED}"
   mkdir -p "${SHARED}"
-  # Keep NFS/SMB export path; perms restored after restore via data-root-perms.
   chown root:sharedwrite "${SHARED}" 2>/dev/null || chown root:root "${SHARED}"
   chmod 2775 "${SHARED}"
   docker start opencloud
   echo
   echo "Parked shared content -> system/opencloud/incoming/shared"
-  echo "In the browser (admin): Spaces → New Space → name exactly: shared"
-  echo "Members: add faiz and diana (Editor or Manager)."
-  echo "Then run: $0 restore"
+  echo "1. Komodo → opencloud → Redeploy (projects parent bind, not shared leaf)."
+  echo "2. Browser: Spaces → New Space → name exactly: shared; add diana."
+  echo "3. $0 publish"
+  echo "4. $0 restore"
+}
+
+publish() {
+  mkdir -p "${PROJECTS}"
+  if [[ ! -d "${SPACE}" ]]; then
+    echo "refusing: ${SPACE} missing. Create Project Space named exactly shared first."
+    exit 1
+  fi
+  if [[ -z "$(space_id "${SPACE}")" ]]; then
+    echo "refusing: ${SPACE} has no user.oc.space.id."
+    echo "Create Project Space named exactly shared, then retry."
+    exit 1
+  fi
+  if [[ ! -d "${SHARED}" ]]; then
+    mkdir -p "${SHARED}"
+  fi
+  if findmnt -n --target "${SHARED}" >/dev/null 2>&1; then
+    echo "already mounted: $(findmnt -n -o SOURCE,TARGET --target "${SHARED}")"
+  else
+    # Mountpoint must be empty
+    if find "${SHARED}" -mindepth 1 -print -quit 2>/dev/null | grep -q .; then
+      echo "refusing: ${SHARED} is not empty. park first, or move leftovers aside."
+      exit 1
+    fi
+    mount --bind "${SPACE}" "${SHARED}"
+    echo "mounted ${SPACE} -> ${SHARED}"
+  fi
+  if ! grep -q "${FSTAB_TAG}" /etc/fstab 2>/dev/null; then
+    echo "${SPACE} ${SHARED} none bind 0 0  # ${FSTAB_TAG}" >> /etc/fstab
+    echo "added fstab line (${FSTAB_TAG})"
+  fi
+  echo
+  echo "SMB/NFS path ${SHARED} is now the OpenCloud space. Run: $0 restore"
 }
 
 restore() {
@@ -85,13 +141,12 @@ restore() {
     echo "skip: no parked content at ${PARKED}"
     exit 0
   fi
-  if [[ ! -d "${SHARED}" ]]; then
-    echo "refusing: ${SHARED} missing. Create the Space named shared first."
+  if [[ -z "$(space_id "${SPACE}")" ]]; then
+    echo "refusing: ${SPACE} has no user.oc.space.id. create + publish first."
     exit 1
   fi
-  if [[ -z "$(space_id "${SHARED}")" ]]; then
-    echo "refusing: ${SHARED} has no user.oc.space.id."
-    echo "Create Project Space named exactly shared, then retry."
+  if ! findmnt -n --target "${SHARED}" >/dev/null 2>&1; then
+    echo "refusing: ${SHARED} is not bind-mounted. Run publish first."
     exit 1
   fi
 
@@ -119,15 +174,15 @@ restore() {
   shopt -u dotglob nullglob
   rmdir "${PARKED}"
   docker start opencloud
-  echo "Scanning project space so SMB files show up:"
+  echo "Scanning project space (large trees like media/games take time):"
   docker exec opencloud opencloud posixfs scan /posix/projects/shared || true
   echo
   echo "Re-run data-root-perms.sh to restore household ACLs (xattrs are kept)."
-  echo "Immich External Library for shared/photos can scan again."
 }
 
 case "$1" in
   park) park ;;
+  publish) publish ;;
   restore) restore ;;
   status) status ;;
   *) usage ;;

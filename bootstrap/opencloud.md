@@ -109,26 +109,32 @@ The Android app treats “no Personal space” as User Light even when the admin
 
 ## 3b. Household shared/ Project Space
 
-Catalog binds `${DATA_ROOT}/shared` → `/posix/projects/shared`. General path template is `projects/{{.SpaceName}}`, so the Project Space **name must be exactly `shared`**. Do not create separate Spaces for `files` or `photos` (nested binds under PosixFS already failed here).
+CreateStorageSpace **refuses a path that already exists**. Binding `${DATA_ROOT}/shared` as the space root therefore always fails (even when empty after park). Catalog uses the same pattern as personal homes:
 
-Pre-existing `shared/` blocks CreateStorageSpace the same way homes did. Adopt:
+- Parent bind: `${DATA_ROOT}/system/opencloud/projects` → `/posix/projects`
+- Space name **`shared`** creates `projects/shared` with xattrs
+- `opencloud-adopt-shared.sh publish` bind-mounts that onto `${DATA_ROOT}/shared` (SMB/NFS) and adds an `/etc/fstab` line
+
+Do not create separate Spaces for `files` or `photos`.
+
+If you already parked (content in `incoming/shared`, empty `shared/`):
+
+1. Push this catalog; Komodo → **opencloud** → **Redeploy**.
+2. As **faiz**: Spaces → New Space → name **`shared`** → add **diana**.
+3. Confirm: `getfattr -d $DATA/system/opencloud/projects/shared` shows `user.oc.space.id`.
+4. Publish + restore:
 
 ```text
-sudo DATA_ROOT=/srv/dev-disk-by-uuid-d6e267fd-109f-4971-bfb1-26b3d99e0d47 bash bootstrap/opencloud-adopt-shared.sh park
-```
-
-Immich will see an empty `shared/` until restore (NFS path stays; content is in `system/opencloud/incoming/shared`). Then in OpenCloud as **faiz** (Authelia `admins` → OpenCloud admin):
-
-1. **Spaces** → **New Space** → name **`shared`** (lowercase, exact).
-2. Members: add **diana** (and faiz if not already owner) as Editor or Manager.
-3. Confirm `getfattr -d $DATA/shared` shows `user.oc.space.id`.
-
-```text
-sudo DATA_ROOT=/srv/dev-disk-by-uuid-d6e267fd-109f-4971-bfb1-26b3d99e0d47 bash bootstrap/opencloud-adopt-shared.sh restore
+sudo DATA_ROOT=/srv/dev-disk-by-uuid-d6e267fd-109f-4971-bfb1-26b3d99e0d47 \
+  bash bootstrap/opencloud-adopt-shared.sh publish
+sudo DATA_ROOT=/srv/dev-disk-by-uuid-d6e267fd-109f-4971-bfb1-26b3d99e0d47 \
+  bash bootstrap/opencloud-adopt-shared.sh restore
 sudo bash bootstrap/data-root-perms.sh
 ```
 
-`STORAGE_USERS_POSIX_WATCH_FS=true` keeps SMB and OpenCloud in sync on `shared/` the same as personal. Do **not** put Samba `force user` on the household `shared` share (homes only). `data-root-perms.sh` already grants `u:${PUID}:rwx` on `shared/` for xattrs.
+Fresh site (not yet parked): `park` → Redeploy → create Space → `publish` → `restore`.
+
+`STORAGE_USERS_POSIX_WATCH_FS=true` keeps SMB and OpenCloud in sync. First scan of a large `shared/` (media/games) can take a long time. Do **not** put Samba `force user` on the household `shared` share.
 
 ## 4. Phone auto-upload (camera backup)
 
@@ -204,7 +210,7 @@ Do **not** delete NFS volumes or files under `shared/` and `users/`.
 | Permission denied on `users/<name>` | Re-run `bootstrap/data-root-perms.sh` as root. |
 | Admin Settings → Spaces is empty / faiz has no Personal | Household `users/<name>` already existed, so CreateStorageSpace never indexed a space. Run `opencloud-adopt-homes.sh park`, log in as each user, then `restore`. Confirm with `getfattr -d ${DATA_ROOT}/users/faiz` (`user.oc.space.id`). |
 | Creating a Space fails / `node.Xattrs /posix/projects/photos: no data available` | Do not bind `shared/files` or `shared/photos` as nested mounts. Use one Space named **`shared`** on the whole `${DATA_ROOT}/shared` bind. Drop leftover nested binds, `rm -rf …/posix/projects` children that are not the bind, Redeploy **opencloud**. |
-| `shared` Space create fails / no space id on `$DATA/shared` | Path already had content. `opencloud-adopt-shared.sh park`, create Space named exactly `shared`, add members, `restore`, then `data-root-perms.sh`. |
+| `shared` Space create fails / no space id | Do not bind `${DATA_ROOT}/shared` as the space root. Use parent bind `system/opencloud/projects`, create Space **`shared`**, then `opencloud-adopt-shared.sh publish` + `restore`. |
 | Collabora iframe white / `unable to get local issuer certificate` | Collabora WOPI-fetches `https://cloud.<DOMAIN>` and must trust Caddy `tls internal`. Redeploy **collabora**. `docker logs collabora-ca` should show `wrote /ca/ca-bundle.crt`. CODE 26 is distroless — do not wrap it with a bash entrypoint. |
 | Collabora `Unauthorized WOPI host` / CheckFileInfo 500 / OpenCloud `ProofKeys verification failed` | CODE sent no `X-WOPI-Proof` (distroless, no proof key). Catalog disables proof checks and writes `/etc/coolwsd/proof_key` via `collabora-ca`. Redeploy **opencloud** then **collabora**. |
 | Collabora Unhealthy | CODE's `coolwsd --probe` dials HTTPS on 9980 while this stack uses HTTP behind Caddy. Catalog disables that healthcheck. `collabora-ca` must stay Up (not Exited). Redeploy **collabora**. |

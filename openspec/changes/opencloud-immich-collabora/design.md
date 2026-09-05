@@ -28,11 +28,11 @@ This change splits the jobs: OpenCloud writes files on Core local disk; Immich i
 
 OpenCloud joins the `edge` network (Caddy `opencloud:9200`). Config/state under `${DATA_ROOT}/system/opencloud`. PosixFS root is `/posix` (`${DATA_ROOT}/system/opencloud/posix`), not under `/var/lib/opencloud` (Docker nested binds there create `storage/` as root and PUID cannot write the xattr check or `storage/metadata`):
 
-- `${DATA_ROOT}/system/opencloud/posix` → `/posix` (indexes, uploads; other project dirs under `projects/`).
+- `${DATA_ROOT}/system/opencloud/posix` → `/posix` (indexes, uploads).
 - `${DATA_ROOT}/users` → `/posix/users` (personal space `users/{{.User.Username}}` = `users/<user>/`).
-- `${DATA_ROOT}/shared` → `/posix/projects/shared` (one Project Space; Space name must be exactly `shared`; template `projects/{{.SpaceName}}`).
+- `${DATA_ROOT}/system/opencloud/projects` → `/posix/projects` (Project Spaces; Space `shared` → `projects/shared`). Adopt script bind-mounts `projects/shared` onto `${DATA_ROOT}/shared` for SMB/NFS.
 - Do **not** bind `users/` as POSIX_ROOT: `uploads/` then sits next to homes and CreateStorageSpace fails (`node.Xattrs /posix/uploads`).
-- Do **not** bind `shared/files` or `shared/photos` as nested mounts under PosixFS (xattrs / watch break). `${PUID}` needs write on `users/` and `shared/` (ACL from `data-root-perms.sh`).
+- Do **not** bind `${DATA_ROOT}/shared` as the space root (CreateStorageSpace refuses an existing path). Do **not** nest `shared/files` or `shared/photos` mounts. `${PUID}` needs write on `users/` and project dirs (ACL from `data-root-perms.sh`).
 
 `STORAGE_USERS_POSIX_WATCH_FS=true` so SMB/Finder writes are noticed. Container UID is `${PUID}:${PGID}`. `OC_INSECURE=true` and `PROXY_ENABLE_BASIC_AUTH=true` because Caddy uses internal TLS and mobile DAV is not OIDC yet.
 
