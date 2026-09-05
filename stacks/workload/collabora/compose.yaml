@@ -55,9 +55,11 @@ services:
       TZ: ${TZ}
       DONT_GEN_SSL_CERT: "YES"
       SSL_CERT_FILE: /ca/ca-bundle.crt
-      server_name: office.${DOMAIN}
+      # hostname:443 so the editor opens wss://office.${DOMAIN}/… not :9980
+      # (9980 is published on the HTPC; browsers reach Collabora only via Caddy :443).
+      server_name: office.${DOMAIN}:443
       aliasgroup1: https://cloud.${DOMAIN}:443
-      extra_params: "--o:ssl.enable=false --o:ssl.ssl_verification=false --o:ssl.termination=true --o:welcome.enable=false --o:net.frame_ancestors=cloud.${DOMAIN} --o:net.lok_allow.host[14]=cloud.${DOMAIN}"
+      extra_params: "--o:ssl.enable=false --o:ssl.ssl_verification=false --o:ssl.termination=true --o:welcome.enable=false --o:server_name=office.${DOMAIN}:443 --o:net.frame_ancestors=cloud.${DOMAIN} --o:net.lok_allow.host[14]=cloud.${DOMAIN}"
     volumes:
       - collabora-ca:/ca:ro
     ports:
