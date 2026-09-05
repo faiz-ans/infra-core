@@ -56,6 +56,12 @@ services:
       PROXY_AUTOPROVISION_CLAIM_EMAIL: email
       PROXY_AUTOPROVISION_CLAIM_DISPLAYNAME: name
       PROXY_AUTOPROVISION_CLAIM_GROUPS: groups
+      # Authelia groups → OpenCloud roles (see config/opencloud/proxy.yaml).
+      # faiz is in admins (+ users); diana is in users only.
+      PROXY_ROLE_ASSIGNMENT_DRIVER: oidc
+      PROXY_ROLE_ASSIGNMENT_OIDC_CLAIM: groups
+      GRAPH_ASSIGN_DEFAULT_USER_ROLE: "false"
+      GRAPH_USERNAME_MATCH: none
       WEBFINGER_WEB_OIDC_CLIENT_ID: opencloud
       WEBFINGER_WEB_OIDC_CLIENT_SCOPES: openid profile email groups offline_access
       WEBFINGER_ANDROID_OIDC_CLIENT_ID: opencloud-android
@@ -65,7 +71,6 @@ services:
       WEBFINGER_DESKTOP_OIDC_CLIENT_ID: opencloud-desktop
       WEBFINGER_DESKTOP_OIDC_CLIENT_SCOPES: openid profile email groups offline_access
       OC_EXCLUDE_RUN_SERVICES: idp
-      GRAPH_ASSIGN_DEFAULT_USER_ROLE: "true"
       COLLABORA_DOMAIN: office.${DOMAIN}
       PROXY_CSP_CONFIG_FILE_LOCATION: /etc/opencloud/csp.yaml
       OC_ADD_RUN_SERVICES: collaboration

@@ -67,11 +67,20 @@ sudo docker logs -f opencloud
 
 ## 3. Login and users
 
-Open **`https://cloud.<DOMAIN>`**. Web login is Authelia OIDC (`faiz` and `diana`). The built-in **`admin`** / `OPENCLOUD_ADMIN_PASSWORD` stays as break-glass (DAV / App Tokens / `PROXY_ENABLE_BASIC_AUTH`). First Authelia login autoprovisions a normal User. Elevate **faiz** to admin in OpenCloud. Most CalDAV/CardDAV clients still cannot use OIDC — create an **App Token**.
+Open **`https://cloud.<DOMAIN>`**. Web login is Authelia OIDC (`faiz` and `diana`). The browser always goes to Authelia; there is no local `admin` password form while OIDC is on. Built-in **`admin`** / `OPENCLOUD_ADMIN_PASSWORD` remains break-glass for DAV / App Tokens (`PROXY_ENABLE_BASIC_AUTH`), not for elevating users in the UI.
 
-Authelia autoprovisions `faiz` and `diana` with usernames that must match `users/<name>`. Do not create those users by hand unless Authelia is down. Set the role to **User**, not **User Light**, then elevate **faiz** to admin.
+Roles come from Authelia **groups** (OIDC claim `groups`):
 
-A **User cannot create Spaces**. Personal appears on first login.
+| Authelia group | OpenCloud role |
+|---|---|
+| `admins` | `admin` (faiz) |
+| `users` | `user` (diana; faiz also has this, but `admins` wins) |
+
+After Redeploy with that mapping: log out of OpenCloud, sign in again as **faiz**, then create Project Spaces. Most CalDAV/CardDAV clients still cannot use OIDC — create an **App Token**.
+
+Authelia autoprovisions `faiz` and `diana` with usernames that must match `users/<name>`. Do not create those users by hand unless Authelia is down.
+
+A **User cannot create Spaces**. **Admin** (and Space Admin) can. Personal appears on first login.
 
 PosixFS root must be `system/opencloud/posix` (so `indexes/` and `uploads/` are not next to homes). Personal path is `users/<username>` via a bind of `${DATA_ROOT}/users` → `/posix/users`. If `users/` was used as POSIX_ROOT, CreateStorageSpace fails with `node.Xattrs /posix/uploads: no data available`.
 
@@ -108,10 +117,10 @@ Pre-existing `shared/` blocks CreateStorageSpace the same way homes did. Adopt:
 sudo DATA_ROOT=/srv/dev-disk-by-uuid-d6e267fd-109f-4971-bfb1-26b3d99e0d47 bash bootstrap/opencloud-adopt-shared.sh park
 ```
 
-Immich will see an empty `shared/` until restore (NFS path stays; content is in `system/opencloud/incoming/shared`). Then in OpenCloud as **admin**:
+Immich will see an empty `shared/` until restore (NFS path stays; content is in `system/opencloud/incoming/shared`). Then in OpenCloud as **faiz** (Authelia `admins` → OpenCloud admin):
 
 1. **Spaces** → **New Space** → name **`shared`** (lowercase, exact).
-2. Members: add **faiz** and **diana** (Editor or Manager).
+2. Members: add **diana** (and faiz if not already owner) as Editor or Manager.
 3. Confirm `getfattr -d $DATA/shared` shows `user.oc.space.id`.
 
 ```text

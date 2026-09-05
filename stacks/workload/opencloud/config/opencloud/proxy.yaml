@@ -1,6 +1,19 @@
-# This adds four additional routes to the proxy. Forwarding
-# request on '/carddav/', '/caldav/' and the respective '/.well-knwown'
-# endpoints to the radicale container and setting the required headers.
+# OpenCloud proxy overlay (Radicale routes + Authelia group → role map).
+# Official Radicale routes:
+# https://github.com/opencloud-eu/opencloud-compose/blob/main/config/opencloud/proxy.yaml
+# Role mapping: Authelia claim "groups" (faiz ∈ admins, diana ∈ users).
+# First matching mapping wins (admin before user).
+role_assignment:
+  driver: oidc
+  oidc_role_mapper:
+    role_claim: groups
+    role_mapping:
+      - role_name: admin
+        claim_value: admins
+      - role_name: user
+        claim_value: users
+
+# Forward /caldav, /carddav and .well-known to radicale with X-Remote-User.
 additional_policies:
   - name: default
     routes:
