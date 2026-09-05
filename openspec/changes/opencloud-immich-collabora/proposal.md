@@ -5,7 +5,7 @@ Nextcloud was the HTPC consumer of `shared/{files,photos}` and `users/<user>/{fi
 ## What Changes
 
 - **BREAKING:** Remove the Nextcloud stack (compose, NFS variant, first-run doc, Komodo ResourceSync entry, secrets, Homepage tile, Caddy HTPC upstream on `:8080`).
-- Add **OpenCloud** on `core` (edge network): PosixFS on local binds of `users/` and `shared/`, phone/desktop ingest, sharing. Personal space root is `users/<user>/`; camera auto-upload target is `photos/`.
+- Add **OpenCloud** on `core` (edge network): PosixFS on local binds of `users/` and `shared/`, phone/desktop ingest, sharing. Personal space root is `users/<user>/`; household Project Space `shared` is `${DATA_ROOT}/shared`; camera auto-upload target is `photos/`.
 - Add **Immich** on `periphery`: gallery only. External Libraries of `shared/photos` and `users/<user>/photos`. Postgres/Redis/ML/thumbnails on local HTPC volumes. Do not use Immich mobile backup as the NAS ingest path.
 - Add **Collabora Online** on `periphery`: WOPI office editing for OpenCloud. Caddy hostname `office.{$DOMAIN}`.
 - Caddy: `cloud.` → OpenCloud on edge; `photos.` → Immich; `office.` → Collabora. Redirect `nextcloud.` / `nc.` to `cloud.`.

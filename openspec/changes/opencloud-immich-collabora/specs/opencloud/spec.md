@@ -1,7 +1,7 @@
 ## ADDED Requirements
 
 ### Requirement: OpenCloud on Core with PosixFS
-OpenCloud SHALL deploy on server `core`, attach to the `edge` Docker network, and SHALL NOT publish a host port. Caddy SHALL proxy `cloud.{$DOMAIN}` (and `oc.` / `opencloud.` aliases) to the OpenCloud service by container name on port 9200. Storage SHALL use the PosixFS driver with collaborative watch enabled. Config and OpenCloud-internal state SHALL live under `${DATA_ROOT}/system/opencloud`. Personal spaces SHALL map to `${DATA_ROOT}/users/<username>`. The stack MUST NOT bind `${DATA_ROOT}/shared/files` or `shared/photos` under the PosixFS root (nested Docker mounts break space xattrs and the filesystem watch). Household shared trees remain SMB and Immich NFS. The container MUST run as `${PUID}:${PGID}`. The stack MUST NOT use DecomposedFS or store personal files only as opaque blobs.
+OpenCloud SHALL deploy on server `core`, attach to the `edge` Docker network, and SHALL NOT publish a host port. Caddy SHALL proxy `cloud.{$DOMAIN}` (and `oc.` / `opencloud.` aliases) to the OpenCloud service by container name on port 9200. Storage SHALL use the PosixFS driver with collaborative watch enabled. Config and OpenCloud-internal state SHALL live under `${DATA_ROOT}/system/opencloud`. Personal spaces SHALL map to `${DATA_ROOT}/users/<username>`. The household `${DATA_ROOT}/shared` tree SHALL be one Project Space whose on-disk path is `/posix/projects/shared` (Space name `shared`), via a single bind of the whole `shared/` directory. The stack MUST NOT bind `${DATA_ROOT}/shared/files` or `shared/photos` as nested mounts under the PosixFS root (nested Docker mounts break space xattrs and the filesystem watch). Immich MAY continue to index `shared/photos` over NFS. The container MUST run as `${PUID}:${PGID}`. The stack MUST NOT use DecomposedFS or store personal files only as opaque blobs.
 
 #### Scenario: Caddy reaches OpenCloud on edge
 - **WHEN** a client opens `https://cloud.{$DOMAIN}`
@@ -11,6 +11,9 @@ OpenCloud SHALL deploy on server `core`, attach to the `edge` Docker network, an
 - **WHEN** OpenCloud user `alice` is created and PosixFS is in use
 - **THEN** that user's personal space files appear at `${DATA_ROOT}/users/alice` including `files/` and `photos/` as ordinary directories
 
+#### Scenario: Household shared is a Project Space
+- **WHEN** an admin creates a Project Space named `shared` with PosixFS general path template `projects/{{.SpaceName}}`
+- **THEN** that Space's files appear at `${DATA_ROOT}/shared` and are visible over SMB to household users who are Space members
 ### Requirement: Phone ingest into photos
 OpenCloud SHALL be the phone camera ingest path. First-run documentation SHALL instruct operators to set mobile automatic picture and video upload destination to the personal-space `photos` folder (not a default `CameraUpload` path). Caddy MUST NOT apply Authelia forward-auth to the whole OpenCloud hostname (DAV/TUS clients).
 

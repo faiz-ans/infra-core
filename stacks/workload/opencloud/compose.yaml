@@ -3,7 +3,9 @@
 # ${DATA_ROOT}/users → /posix/users. Do not mount users/ as POSIX_ROOT:
 # uploads/ then sits next to homes and CreateStorageSpace fails with
 # "node.Xattrs /posix/uploads: no data available".
-# shared/files and shared/photos stay SMB / Immich NFS, not OpenCloud Spaces.
+# Household shared/ is one Project Space: bind whole tree at
+# /posix/projects/shared (Space name must be exactly "shared"). Do not bind
+# shared/files or shared/photos as nested mounts (breaks xattrs / watch).
 services:
   radicale:
     # Official overlay: https://github.com/opencloud-eu/opencloud-compose/blob/main/radicale/radicale.yml
@@ -84,7 +86,9 @@ services:
       STORAGE_USERS_POSIX_WATCH_FS: "true"
       STORAGE_USERS_POSIX_ROOT: /posix
       STORAGE_USERS_POSIX_PERSONAL_SPACE_PATH_TEMPLATE: "users/{{.User.Username}}"
-      STORAGE_USERS_POSIX_GENERAL_SPACE_PATH_TEMPLATE: "projects/{{.SpaceId}}"
+      # SpaceName (not SpaceId) so the household Project Space lands on the
+      # predictable bind ${DATA_ROOT}/shared → /posix/projects/shared.
+      STORAGE_USERS_POSIX_GENERAL_SPACE_PATH_TEMPLATE: "projects/{{.SpaceName}}"
     volumes:
       - ${DATA_ROOT}/system/opencloud/config:/etc/opencloud
       - ./csp.yaml:/etc/opencloud/csp.yaml:ro
@@ -92,6 +96,7 @@ services:
       - ${DATA_ROOT}/system/opencloud/data:/var/lib/opencloud
       - ${DATA_ROOT}/system/opencloud/posix:/posix
       - ${DATA_ROOT}/users:/posix/users
+      - ${DATA_ROOT}/shared:/posix/projects/shared
     networks:
       - edge
 

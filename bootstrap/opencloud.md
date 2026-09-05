@@ -1,6 +1,6 @@
 # OpenCloud first-run
 
-OpenCloud runs on **Core** (edge network). Personal space is PosixFS on `users/<username>/`. Household `shared/files` and `shared/photos` stay SMB (and Immich NFS). Do not point OpenCloud at HTPC NFS, and do not bind those shared trees as OpenCloud Spaces.
+OpenCloud runs on **Core** (edge network). Personal space is PosixFS on `users/<username>/`. Household `shared/` is one Project Space (name exactly `shared`) on the same disk, synced with SMB like personal homes. Immich still indexes `shared/photos` over NFS. Do not point OpenCloud at HTPC NFS, and do not bind `shared/files` or `shared/photos` as nested mounts.
 
 Caddy is `https://cloud.<DOMAIN>`. `nextcloud.` and `nc.` redirect here.
 
@@ -98,7 +98,28 @@ After Redeploy, confirm `TPL=users/{{.User.Username}}` and a bind `$DATA/users` 
 
 The Android app treats “no Personal space” as User Light even when the admin role is User. When Personal works in the browser, remove the account from the app and add it again.
 
-Do **not** create project Spaces for `shared/files` or `shared/photos`. Those stay SMB; Immich indexes them over NFS.
+## 3b. Household shared/ Project Space
+
+Catalog binds `${DATA_ROOT}/shared` → `/posix/projects/shared`. General path template is `projects/{{.SpaceName}}`, so the Project Space **name must be exactly `shared`**. Do not create separate Spaces for `files` or `photos` (nested binds under PosixFS already failed here).
+
+Pre-existing `shared/` blocks CreateStorageSpace the same way homes did. Adopt:
+
+```text
+sudo DATA_ROOT=/srv/dev-disk-by-uuid-d6e267fd-109f-4971-bfb1-26b3d99e0d47 bash bootstrap/opencloud-adopt-shared.sh park
+```
+
+Immich will see an empty `shared/` until restore (NFS path stays; content is in `system/opencloud/incoming/shared`). Then in OpenCloud as **admin**:
+
+1. **Spaces** → **New Space** → name **`shared`** (lowercase, exact).
+2. Members: add **faiz** and **diana** (Editor or Manager).
+3. Confirm `getfattr -d $DATA/shared` shows `user.oc.space.id`.
+
+```text
+sudo DATA_ROOT=/srv/dev-disk-by-uuid-d6e267fd-109f-4971-bfb1-26b3d99e0d47 bash bootstrap/opencloud-adopt-shared.sh restore
+sudo bash bootstrap/data-root-perms.sh
+```
+
+`STORAGE_USERS_POSIX_WATCH_FS=true` keeps SMB and OpenCloud in sync on `shared/` the same as personal. Do **not** put Samba `force user` on the household `shared` share (homes only). `data-root-perms.sh` already grants `u:${PUID}:rwx` on `shared/` for xattrs.
 
 ## 4. Phone auto-upload (camera backup)
 
@@ -173,7 +194,8 @@ Do **not** delete NFS volumes or files under `shared/` and `users/`.
 | `extended attributes not supported` | Data disk must allow `user_xattr`. Do not move OpenCloud to HTPC NFS. |
 | Permission denied on `users/<name>` | Re-run `bootstrap/data-root-perms.sh` as root. |
 | Admin Settings → Spaces is empty / faiz has no Personal | Household `users/<name>` already existed, so CreateStorageSpace never indexed a space. Run `opencloud-adopt-homes.sh park`, log in as each user, then `restore`. Confirm with `getfattr -d ${DATA_ROOT}/users/faiz` (`user.oc.space.id`). |
-| Creating a Space fails / `node.Xattrs /posix/projects/photos: no data available` | Do not create project Spaces for `shared/files` or `shared/photos`. Personal space is `users/<name>`. Drop those nested binds (catalog), `rm -rf …/posix/projects`, Redeploy **opencloud**. |
+| Creating a Space fails / `node.Xattrs /posix/projects/photos: no data available` | Do not bind `shared/files` or `shared/photos` as nested mounts. Use one Space named **`shared`** on the whole `${DATA_ROOT}/shared` bind. Drop leftover nested binds, `rm -rf …/posix/projects` children that are not the bind, Redeploy **opencloud**. |
+| `shared` Space create fails / no space id on `$DATA/shared` | Path already had content. `opencloud-adopt-shared.sh park`, create Space named exactly `shared`, add members, `restore`, then `data-root-perms.sh`. |
 | Collabora iframe white / `unable to get local issuer certificate` | Collabora WOPI-fetches `https://cloud.<DOMAIN>` and must trust Caddy `tls internal`. Redeploy **collabora**. `docker logs collabora-ca` should show `wrote /ca/ca-bundle.crt`. CODE 26 is distroless — do not wrap it with a bash entrypoint. |
 | Collabora `Unauthorized WOPI host` / CheckFileInfo 500 / OpenCloud `ProofKeys verification failed` | CODE sent no `X-WOPI-Proof` (distroless, no proof key). Catalog disables proof checks and writes `/etc/coolwsd/proof_key` via `collabora-ca`. Redeploy **opencloud** then **collabora**. |
 | Collabora Unhealthy | CODE's `coolwsd --probe` dials HTTPS on 9980 while this stack uses HTTP behind Caddy. Catalog disables that healthcheck. `collabora-ca` must stay Up (not Exited). Redeploy **collabora**. |

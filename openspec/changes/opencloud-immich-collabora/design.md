@@ -28,10 +28,11 @@ This change splits the jobs: OpenCloud writes files on Core local disk; Immich i
 
 OpenCloud joins the `edge` network (Caddy `opencloud:9200`). Config/state under `${DATA_ROOT}/system/opencloud`. PosixFS root is `/posix` (`${DATA_ROOT}/system/opencloud/posix`), not under `/var/lib/opencloud` (Docker nested binds there create `storage/` as root and PUID cannot write the xattr check or `storage/metadata`):
 
-- `${DATA_ROOT}/system/opencloud/posix` → `/posix` (indexes, uploads, project spaces).
+- `${DATA_ROOT}/system/opencloud/posix` → `/posix` (indexes, uploads; other project dirs under `projects/`).
 - `${DATA_ROOT}/users` → `/posix/users` (personal space `users/{{.User.Username}}` = `users/<user>/`).
+- `${DATA_ROOT}/shared` → `/posix/projects/shared` (one Project Space; Space name must be exactly `shared`; template `projects/{{.SpaceName}}`).
 - Do **not** bind `users/` as POSIX_ROOT: `uploads/` then sits next to homes and CreateStorageSpace fails (`node.Xattrs /posix/uploads`).
-- Do **not** bind `shared/` under PosixFS. Shared trees stay SMB + Immich NFS. `${PUID}` needs write on `users/` to mkdir new homes.
+- Do **not** bind `shared/files` or `shared/photos` as nested mounts under PosixFS (xattrs / watch break). `${PUID}` needs write on `users/` and `shared/` (ACL from `data-root-perms.sh`).
 
 `STORAGE_USERS_POSIX_WATCH_FS=true` so SMB/Finder writes are noticed. Container UID is `${PUID}:${PGID}`. `OC_INSECURE=true` and `PROXY_ENABLE_BASIC_AUTH=true` because Caddy uses internal TLS and mobile DAV is not OIDC yet.
 
@@ -73,6 +74,7 @@ Replace bootstrap/Komodo `NEXTCLOUD_*` with `OPENCLOUD_ADMIN_PASSWORD` (`IDM_ADM
 - **[PosixFS xattrs missing on the OMV disk]** → First-run doc: confirm `user_xattr` on the data filesystem; fail closed rather than switching to DecomposedFS.
 - **[OpenCloud UID cannot write `users/<user>` mode 700]** → `data-root-perms.sh` grants `u:${PUID}:rwx` on homes; OpenCloud runs as PUID:PGID.
 - **[Pre-existing `users/<name>` blocks Personal]** → CreateStorageSpace returns already-exists without xattrs/index. First-run: `opencloud-adopt-homes.sh park`, login, `restore`.
+- **[Pre-existing `shared/` blocks Project Space]** → Same as homes. First-run: `opencloud-adopt-shared.sh park`, create Space named `shared`, add members, `restore`.
 - **[Collabora cannot reach WOPI / OpenCloud cannot reach Collabora]** → `extra_hosts` to `NAS_LAN_IP`; `OC_INSECURE` / Collabora `ssl.ssl_verification=false`.
 - **[Immich NFS inotify]** → Periodic External Library scan, not live watch.
 - **[Android generic folder auto-upload missing]** → Camera photos/videos only; share-sheet for other files.
@@ -82,7 +84,7 @@ Replace bootstrap/Komodo `NEXTCLOUD_*` with `OPENCLOUD_ADMIN_PASSWORD` (`IDM_ADM
 
 1. Add Komodo secrets `OPENCLOUD_ADMIN_PASSWORD`, `IMMICH_DB_PASSWORD`.
 2. Sync catalog; deploy `opencloud` (Core), then `immich` and `collabora` (periphery).
-3. First-run: OpenCloud admin, household users matching `users/<name>`, Spaces `files`/`photos` if wanted, phone auto-upload destination `photos`.
+3. First-run: OpenCloud admin, household users matching `users/<name>`, adopt homes, adopt `shared` Project Space (name `shared`, members faiz/diana), phone auto-upload destination `photos`.
 4. Immich: create admin, External Libraries, disable mobile backup.
 5. Remove Nextcloud stack in Komodo; `docker rm` leftover containers/volumes (`nextcloud-config`, `nextcloud-postgres` only).
 6. Rollback: restore previous catalog commit and Nextcloud stack; trees on disk are unchanged.
