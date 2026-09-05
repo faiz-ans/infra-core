@@ -75,6 +75,10 @@ services:
       COLLABORATION_APP_ICON: https://office.${DOMAIN}/favicon.ico
       COLLABORATION_APP_INSECURE: "true"
       COLLABORATION_CS3API_DATAGATEWAY_INSECURE: "true"
+      # CODE 26 distroless does not generate /etc/coolwsd/proof_key. CheckFileInfo
+      # then arrives with empty X-WOPI-Proof / TimeStamp and collaboration returns
+      # 500 "ProofKeys verification failed" / "Invalid timestamp".
+      COLLABORATION_APP_PROOF_DISABLE: "true"
       STORAGE_USERS_DRIVER: posix
       STORAGE_USERS_ID_CACHE_STORE: nats-js-kv
       STORAGE_USERS_POSIX_WATCH_FS: "true"

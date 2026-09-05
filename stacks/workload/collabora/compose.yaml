@@ -20,7 +20,14 @@ services:
       - /bin/sh
       - -ec
       - |
-        apk add --no-cache ca-certificates curl
+        apk add --no-cache ca-certificates curl openssl
+        if [ ! -s /ca/proof_key ]; then
+          openssl genrsa -traditional -out /ca/proof_key.tmp 4096
+          chown 1001:1001 /ca/proof_key.tmp
+          chmod 400 /ca/proof_key.tmp
+          mv /ca/proof_key.tmp /ca/proof_key
+          echo "collabora-ca: wrote /ca/proof_key"
+        fi
         i=0
         while [ "$$i" -lt 30 ]; do
           if curl -kfsSL --max-time 5 "$$CADDY_CA_URL" -o /ca/caddy-local.crt; then
@@ -34,7 +41,7 @@ services:
         echo "collabora-ca: could not fetch $$CADDY_CA_URL" >&2
         exit 1
     healthcheck:
-      test: ["CMD-SHELL", "test -s /ca/ca-bundle.crt"]
+      test: ["CMD-SHELL", "test -s /ca/ca-bundle.crt && test -s /ca/proof_key"]
       interval: 5s
       timeout: 3s
       retries: 30
@@ -65,6 +72,14 @@ services:
       extra_params: "--o:ssl.enable=false --o:ssl.ssl_verification=false --o:ssl.termination=true --o:welcome.enable=false --o:net.frame_ancestors=cloud.${DOMAIN} --o:net.lok_allow.host[14]=cloud.${DOMAIN}"
     volumes:
       - collabora-ca:/ca:ro
+      # Official overlay mounts proof_key at this path (opencloud-compose weboffice/collabora.yml).
+      # Generated in collabora-ca so the init container can stay Up (Komodo).
+      - type: volume
+        source: collabora-ca
+        target: /etc/coolwsd/proof_key
+        read_only: true
+        volume:
+          subpath: proof_key
     ports:
       - "9980:9980"
     cap_add:
