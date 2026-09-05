@@ -41,8 +41,10 @@ space_id() {
   getfattr -n user.oc.space.id --only-values "$1" 2>/dev/null || true
 }
 
-shared_is_bind() {
-  findmnt -n -R --target "${SHARED}" 2>/dev/null | awk -v s="${SPACE}" '$1 == s || index($0, s) { found=1 } END { exit !found }'
+published() {
+  # Same device+inode means SHARED is a bind of SPACE (not merely "on the data disk").
+  [[ -d "${SPACE}" && -d "${SHARED}" ]] || return 1
+  [[ "$(stat -c '%d:%i' "${SHARED}")" == "$(stat -c '%d:%i' "${SPACE}")" ]]
 }
 
 status() {
@@ -59,10 +61,10 @@ status() {
   else
     echo "  projects/shared missing (create Space named shared after Redeploy)"
   fi
-  if findmnt -n --target "${SHARED}" >/dev/null 2>&1; then
-    echo "  mount: $(findmnt -n -o SOURCE,TARGET --target "${SHARED}")"
+  if published; then
+    echo "  publish: OK (shared and projects/shared are the same inode)"
   else
-    echo "  mount: ${SHARED} is not a bind mount (run publish after create)"
+    echo "  publish: NOT bound (run publish after create; do not trust findmnt alone)"
   fi
   if [[ -d "${PARKED}" ]]; then
     echo "  parked content: ${PARKED}"
@@ -70,7 +72,7 @@ status() {
 }
 
 park() {
-  if [[ -n "$(space_id "${SPACE}" 2>/dev/null || true)" ]] && shared_is_bind; then
+  if [[ -n "$(space_id "${SPACE}" 2>/dev/null || true)" ]] && published; then
     echo "skip: shared space already published"
     exit 0
   fi
@@ -82,8 +84,8 @@ park() {
     echo "refusing: ${SHARED} missing"
     exit 1
   fi
-  if findmnt -n --target "${SHARED}" >/dev/null 2>&1; then
-    echo "refusing: ${SHARED} is mounted. umount it first if re-parking."
+  if published; then
+    echo "refusing: ${SHARED} is already the space bind. umount it first if re-parking."
     exit 1
   fi
 
@@ -117,15 +119,22 @@ publish() {
   if [[ ! -d "${SHARED}" ]]; then
     mkdir -p "${SHARED}"
   fi
-  if findmnt -n --target "${SHARED}" >/dev/null 2>&1; then
-    echo "already mounted: $(findmnt -n -o SOURCE,TARGET --target "${SHARED}")"
+  if published; then
+    echo "already published: $(stat -c '%d:%i' "${SHARED}") == $(stat -c '%d:%i' "${SPACE}")"
   else
-    # Mountpoint must be empty
+    # Mountpoint must be empty (content belongs in SPACE, then bind)
     if find "${SHARED}" -mindepth 1 -print -quit 2>/dev/null | grep -q .; then
-      echo "refusing: ${SHARED} is not empty. park first, or move leftovers aside."
+      echo "refusing: ${SHARED} is not empty and is not yet a bind of ${SPACE}."
+      echo "If restore already ran into shared/ by mistake, move those dirs into"
+      echo "  ${SPACE}/"
+      echo "then re-run publish (empty shared/, then mount --bind)."
       exit 1
     fi
     mount --bind "${SPACE}" "${SHARED}"
+    if ! published; then
+      echo "refusing: mount --bind ran but inodes still differ"
+      exit 1
+    fi
     echo "mounted ${SPACE} -> ${SHARED}"
   fi
   if ! grep -q "${FSTAB_TAG}" /etc/fstab 2>/dev/null; then
@@ -145,8 +154,9 @@ restore() {
     echo "refusing: ${SPACE} has no user.oc.space.id. create + publish first."
     exit 1
   fi
-  if ! findmnt -n --target "${SHARED}" >/dev/null 2>&1; then
-    echo "refusing: ${SHARED} is not bind-mounted. Run publish first."
+  if ! published; then
+    echo "refusing: ${SHARED} is not bind-mounted to ${SPACE}. Run publish first."
+    echo "Check: stat -c '%d:%i' ${SHARED} ${SPACE}"
     exit 1
   fi
 
@@ -178,6 +188,7 @@ restore() {
   docker exec opencloud opencloud posixfs scan /posix/projects/shared || true
   echo
   echo "Re-run data-root-perms.sh to restore household ACLs (xattrs are kept)."
+  echo "Then: DATA_ROOT=${DATA_ROOT} bash bootstrap/opencloud-check.sh"
 }
 
 case "$1" in

@@ -51,6 +51,14 @@ status() {
       echo "  ${name}: no user.oc.space.id"
     fi
   done
+  echo "incoming/: ${INCOMING}"
+  if [[ -d "${INCOMING}" ]]; then
+    for d in "${INCOMING}"/*; do
+      [[ -d "${d}" ]] || continue
+      name="$(basename "${d}")"
+      echo "  parked: ${name}"
+    done
+  fi
 }
 
 park() {
@@ -132,6 +140,7 @@ restore() {
   docker exec opencloud opencloud posixfs scan /posix || true
   echo
   echo "Re-run data-root-perms.sh to restore household ACLs (xattrs are kept)."
+  echo "After shared adopt + perms: DATA_ROOT=${DATA_ROOT} bash bootstrap/opencloud-check.sh"
 }
 
 case "$1" in

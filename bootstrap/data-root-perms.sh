@@ -8,6 +8,10 @@
 #   household   — R/W shared/ and users/<self> only (cannot enter system/)
 #   periphery   — R/W shared/ and users/ (cannot enter system/)
 #   SSH admin   — list/enter users/* (system/ is root-only)
+#
+# Service layout dirs (media, cameras, files/photos, …) are root-owned with a
+# sticky bit on their parents so SMB/OpenCloud users can write *inside* them
+# but cannot rename, move, or delete the layout nodes themselves.
 set -euo pipefail
 
 if [[ ${EUID:-0} -ne 0 ]]; then
@@ -65,6 +69,42 @@ if [[ "${HAVE_HTPC}" -eq 1 ]]; then
   usermod -aG "${HTPC_GROUP}" "${HTPC}"
 fi
 
+# Relative to shared/. Parents get sticky so these names cannot be unlinked by
+# household users (they do not own the nodes after protect_layout).
+PROTECTED_SHARED=(
+  photos
+  media
+  media/tv
+  media/movies
+  games
+  games/web
+  games/assets
+  games/assets/launcher
+  games/assets/collection
+  games/assets/category
+  games/assets/source
+  games/roms
+  games/steam
+  games/steam/steamapps
+  games/steam/steamapps/downloading
+  games/steam/steamapps/temp
+  games/steam/steamapps/workshop
+  games/steam/steamapps/shadercache
+  games/steam/steamapps/common
+  files
+  cameras
+  cameras/exports
+  cameras/clips
+  cameras/clips/thumbs
+  cameras/clips/review
+  cameras/clips/cache
+  cameras/clips/export
+  cameras/recordings
+  downloads
+  downloads/complete
+  downloads/incomplete
+)
+
 mkdir -p \
   "${DATA_ROOT}/system/authelia" \
   "${DATA_ROOT}/system/vaultwarden" \
@@ -85,16 +125,11 @@ mkdir -p \
   "${DATA_ROOT}/system/linkding" \
   "${DATA_ROOT}/system/rustdesk" \
   "${DATA_ROOT}/system/bytestash" \
-  "${DATA_ROOT}/shared/media" \
-  "${DATA_ROOT}/shared/media/movies" \
-  "${DATA_ROOT}/shared/media/tv" \
-  "${DATA_ROOT}/shared/downloads" \
-  "${DATA_ROOT}/shared/downloads/complete" \
-  "${DATA_ROOT}/shared/downloads/incomplete" \
-  "${DATA_ROOT}/shared/files" \
-  "${DATA_ROOT}/shared/photos" \
-  "${DATA_ROOT}/shared/cameras" \
   "${DATA_ROOT}/users"
+
+for rel in "${PROTECTED_SHARED[@]}"; do
+  mkdir -p "${DATA_ROOT}/shared/${rel}"
+done
 
 if [[ "${HAVE_HTPC}" -eq 1 ]]; then
   chown root:"${HTPC_GROUP}" "${DATA_ROOT}"
@@ -108,7 +143,19 @@ fi
 chown root:root "${DATA_ROOT}/system"
 chmod 700 "${DATA_ROOT}/system"
 setfacl -b "${DATA_ROOT}/system" || true
-chown -R "${PUID}:${PGID}" "${DATA_ROOT}/system/opencloud"
+# OpenCloud must own config/data/posix/radicale (and the projects parent) before
+# first Deploy. Do not chown -R projects/: when shared is bind-mounted there,
+# recursion would rewrite the whole household tree.
+mkdir -p \
+  "${DATA_ROOT}/system/opencloud/projects" \
+  "${DATA_ROOT}/system/opencloud/radicale/collections" \
+  "${DATA_ROOT}/system/opencloud/posix"
+chown -R "${PUID}:${PGID}" \
+  "${DATA_ROOT}/system/opencloud/config" \
+  "${DATA_ROOT}/system/opencloud/data" \
+  "${DATA_ROOT}/system/opencloud/posix" \
+  "${DATA_ROOT}/system/opencloud/radicale"
+chown "${PUID}:${PGID}" "${DATA_ROOT}/system/opencloud" "${DATA_ROOT}/system/opencloud/projects"
 chown -R "${PUID}:${PGID}" "${DATA_ROOT}/system/jotty"
 # Placeholder files so Docker never turns these bind-mounts into directories.
 for _ca in caddy-root.crt ca-bundle.crt; do
@@ -138,6 +185,27 @@ chgrp -R "${SHARED_GROUP}" "${DATA_ROOT}/shared"
 setfacl -R -m "${acl_shared}" "${DATA_ROOT}/shared"
 setfacl -R -d -m "${acl_shared}" "${DATA_ROOT}/shared"
 
+# Root-own layout nodes; sticky on parents (find 2775 clears +t, so do this last).
+protect_shared_layout() {
+  local rel d parent
+  declare -A sticky_parents=()
+  sticky_parents["${DATA_ROOT}"]=1
+  sticky_parents["${DATA_ROOT}/shared"]=1
+  for rel in "${PROTECTED_SHARED[@]}"; do
+    d="${DATA_ROOT}/shared/${rel}"
+    [[ -d "${d}" ]] || continue
+    chown root:"${SHARED_GROUP}" "${d}"
+    parent="$(dirname "${d}")"
+    sticky_parents["${parent}"]=1
+  done
+  local p
+  for p in "${!sticky_parents[@]}"; do
+    [[ -d "${p}" ]] || continue
+    chmod +t "${p}"
+  done
+}
+protect_shared_layout
+
 # Drop leftover OMV ACLs on users/ (they override chmod and block even 'other').
 setfacl -b "${DATA_ROOT}/users" || true
 # PUID must mkdir users/<name> (OpenCloud CreateStorageSpace) and write the
@@ -154,20 +222,28 @@ if [[ "${HAVE_HTPC}" -eq 1 ]]; then
 fi
 setfacl -m "${users_acl}" "${DATA_ROOT}/users"
 setfacl -d -m "${users_acl}" "${DATA_ROOT}/users"
+chmod +t "${DATA_ROOT}/users"
 
 apply_home() {
   local user="$1"
   local home="${DATA_ROOT}/users/${user}"
+  local parked="${DATA_ROOT}/system/opencloud/incoming/${user}"
   # Do not recreate a home that opencloud-adopt-homes.sh has parked.
-  if [[ -d "${home}.__oc_incoming" || -d "${DATA_ROOT}/system/opencloud/incoming/${user}" ]]; then
-    echo "Skipping ${user}: parked (do not mkdir a stub home)."
+  if [[ -d "${home}.__oc_incoming" || -d "${parked}" ]]; then
+    echo "Skipping ${user}: parked at ${parked:-${home}.__oc_incoming}"
+    echo "  Log in as ${user} (OpenCloud), then: opencloud-adopt-homes.sh restore"
     return
   fi
   mkdir -p "${home}/files" "${home}/photos"
+  # Home and layout dirs are root-owned so sticky on users/ (and on the home)
+  # blocks rename/delete by the household user. Contents stay writable via ACL.
   if getent group "${user}" >/dev/null; then
     chown -R "${user}:${user}" "${home}"
+    chown root:"${user}" "${home}" "${home}/files" "${home}/photos"
   else
     chown -R "${user}" "${home}"
+    chown root:"${user}" "${home}" "${home}/files" "${home}/photos" 2>/dev/null \
+      || chown root:root "${home}" "${home}/files" "${home}/photos"
   fi
   find "${home}" -type d -exec chmod 700 {} +
   find "${home}" -type f -exec chmod 600 {} +
@@ -181,11 +257,17 @@ apply_home() {
   fi
   setfacl -R -m "${home_acl}" "${home}"
   setfacl -R -d -m "${home_acl}" "${home}"
+  chmod +t "${home}"
 }
 
 for u in "${PRESENT_HOUSEHOLD[@]}"; do
   apply_home "${u}"
 done
+
+# users/admin is OpenCloud's built-in break-glass Personal space — leave it.
+if [[ -d "${DATA_ROOT}/users/admin" ]]; then
+  echo "Note: users/admin is OpenCloud local admin (break-glass), not a household home."
+fi
 
 echo "Done. Reconnect household SMB sessions. HTPC apps use NFS; remount/redeploy those stacks if needed."
 echo
