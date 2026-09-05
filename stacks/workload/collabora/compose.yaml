@@ -1,35 +1,63 @@
 # Collabora Online on periphery. Caddy terminates TLS at office.${DOMAIN}.
 # Official overlay: https://github.com/opencloud-eu/opencloud-compose/blob/main/weboffice/collabora.yml
-# WOPI allowlist is aliasgroup1 (OpenCloud public hostname). ssl.enable is
-# false because Caddy terminates TLS. Collabora still HTTPS-calls
-# https://cloud.${DOMAIN} for CheckFileInfo; entrypoint-ca.sh installs
-# Caddy's tls-internal CA (CODE ignores ssl.ssl_verification on that path).
+# CODE 26 is distroless (no bash/curl). Do not wrap the image entrypoint.
+# WOPI CheckFileInfo still HTTPS-calls https://cloud.${DOMAIN}; collabora-ca
+# writes Caddy's tls-internal CA into a volume and Collabora trusts it via
+# SSL_CERT_FILE. extra_params must be one line so --probe --use-env-vars
+# sees ssl.enable=false (image HEALTHCHECK otherwise dials https://127.0.0.1:9980).
 services:
+  collabora-ca:
+    image: alpine:3.21
+    container_name: collabora-ca
+    restart: "no"
+    extra_hosts:
+      - "auth.${DOMAIN}:${NAS_LAN_IP}"
+    environment:
+      CADDY_CA_URL: https://auth.${DOMAIN}/pki/local-root.crt
+    volumes:
+      - collabora-ca:/ca
+    command:
+      - /bin/sh
+      - -ec
+      - |
+        apk add --no-cache ca-certificates curl
+        i=0
+        while [ "$$i" -lt 30 ]; do
+          if curl -kfsSL --max-time 5 "$$CADDY_CA_URL" -o /ca/caddy-local.crt; then
+            cat /etc/ssl/certs/ca-certificates.crt /ca/caddy-local.crt > /ca/ca-bundle.crt
+            echo "collabora-ca: wrote /ca/ca-bundle.crt"
+            exit 0
+          fi
+          i=$$((i + 1))
+          sleep 2
+        done
+        echo "collabora-ca: could not fetch $$CADDY_CA_URL" >&2
+        exit 1
+
   collabora:
     image: collabora/code:latest
     container_name: collabora
     restart: unless-stopped
+    depends_on:
+      collabora-ca:
+        condition: service_completed_successfully
     extra_hosts:
       - "cloud.${DOMAIN}:${NAS_LAN_IP}"
       - "office.${DOMAIN}:${NAS_LAN_IP}"
       - "auth.${DOMAIN}:${NAS_LAN_IP}"
-    entrypoint: ["/bin/bash", "/entrypoint-ca.sh"]
     environment:
       TZ: ${TZ}
-      DOMAIN: ${DOMAIN}
-      CADDY_CA_URL: https://auth.${DOMAIN}/pki/local-root.crt
       DONT_GEN_SSL_CERT: "YES"
+      SSL_CERT_FILE: /ca/ca-bundle.crt
       server_name: office.${DOMAIN}
       aliasgroup1: https://cloud.${DOMAIN}:443
-      extra_params: >
-        --o:ssl.enable=false
-        --o:ssl.ssl_verification=false
-        --o:ssl.termination=true
-        --o:welcome.enable=false
-        --o:net.frame_ancestors=cloud.${DOMAIN}
-        --o:net.lok_allow.host[14]=cloud.${DOMAIN}
+      extra_params: "--o:ssl.enable=false --o:ssl.ssl_verification=false --o:ssl.termination=true --o:welcome.enable=false --o:net.frame_ancestors=cloud.${DOMAIN} --o:net.lok_allow.host[14]=cloud.${DOMAIN}"
+    command:
+      - "--o:ssl.enable=false"
+      - "--o:ssl.ssl_verification=false"
+      - "--o:ssl.termination=true"
     volumes:
-      - ./entrypoint-ca.sh:/entrypoint-ca.sh:ro
+      - collabora-ca:/ca:ro
     ports:
       - "9980:9980"
     cap_add:
@@ -38,11 +66,12 @@ services:
     security_opt:
       - seccomp:unconfined
       - apparmor:unconfined
-    # Official overlay: probe must read extra_params. Image default assumes
-    # ssl.enable=true and marks the container unhealthy on HTTP:9980.
     healthcheck:
       test: ["CMD", "/usr/bin/coolwsd", "--probe", "--use-env-vars"]
-      interval: 15s
+      interval: 30s
       timeout: 10s
-      retries: 5
-      start_period: 90s
+      retries: 3
+      start_period: 120s
+
+volumes:
+  collabora-ca:
