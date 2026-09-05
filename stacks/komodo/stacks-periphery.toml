@@ -1,6 +1,8 @@
 # ResourceSync source for the remote Periphery host.
 # Komodo does not interpolate [[VAR]] in server/repo — those must be literals.
 # Apply this file only after the periphery server is connected.
+# deploy = false: ResourceSync must NOT mass-start HTPC stacks (Docker Desktop
+# wedges if every compose pulls/mounts at once). Deploy one stack at a time in the UI.
 # webhook_enabled is false; poll on-site.
 # repo path stays faiz-ans/infra-core. After Gitea is up, the same Komodo git
 # provider (gitea:3000) is used here; GitHub is a push mirror.
@@ -14,7 +16,7 @@
 # compose.smb.yaml: media on OMV SMB; /config is local (survives Core down).
 [[stack]]
 name = "jellyfin"
-deploy = true
+deploy = false
 [stack.config]
 server = "periphery"
 repo = "faiz-ans/infra-core"
@@ -35,7 +37,7 @@ SMB_PASSWORD = [[SMB_PASSWORD]]
 # Local volume only. Setup wizard talks to Jellyfin/Radarr/Sonarr over HTPC published ports.
 [[stack]]
 name = "seerr"
-deploy = true
+deploy = false
 [stack.config]
 server = "periphery"
 repo = "faiz-ans/infra-core"
@@ -51,7 +53,7 @@ TZ = [[TZ]]
 # compose.smb.yaml: media/downloads on SMB; Sonarr/Radarr/Prowlarr /config is local (SQLite).
 [[stack]]
 name = "arr"
-deploy = true
+deploy = false
 [stack.config]
 server = "periphery"
 repo = "faiz-ans/infra-core"
@@ -72,7 +74,7 @@ SMB_PASSWORD = [[SMB_PASSWORD]]
 # compose.smb.yaml: downloads/media on SMB; /config is local (survives Core down).
 [[stack]]
 name = "qbittorrent"
-deploy = true
+deploy = false
 [stack.config]
 server = "periphery"
 repo = "faiz-ans/infra-core"
@@ -96,7 +98,7 @@ SMB_PASSWORD = [[SMB_PASSWORD]]
 # compose.smb.yaml: photos/users on SMB; Postgres, Redis, ML, and upload are local.
 [[stack]]
 name = "immich"
-deploy = true
+deploy = false
 [stack.config]
 server = "periphery"
 repo = "faiz-ans/infra-core"
@@ -116,7 +118,7 @@ IMMICH_DB_PASSWORD = [[IMMICH_DB_PASSWORD]]
 
 [[stack]]
 name = "collabora"
-deploy = true
+deploy = false
 [stack.config]
 server = "periphery"
 repo = "faiz-ans/infra-core"
@@ -134,7 +136,7 @@ NAS_LAN_IP = [[NAS_LAN_IP]]
 # Local volumes for PostGIS and media. Caddy proxies :8015.
 [[stack]]
 name = "adventurelog"
-deploy = true
+deploy = false
 [stack.config]
 server = "periphery"
 repo = "faiz-ans/infra-core"
@@ -160,7 +162,7 @@ OIDC_CLIENT_SECRET = [[OIDC_CLIENT_SECRET]]
 # Local volumes for SQLite and Whisper models. Caddy proxies :8085.
 [[stack]]
 name = "scriberr"
-deploy = true
+deploy = false
 [stack.config]
 server = "periphery"
 repo = "faiz-ans/infra-core"
@@ -179,7 +181,7 @@ PGID = [[PGID]]
 # Local volume for uploads/SQLite. Caddy proxies :3313.
 [[stack]]
 name = "transmute"
-deploy = true
+deploy = false
 [stack.config]
 server = "periphery"
 repo = "faiz-ans/infra-core"
@@ -203,7 +205,7 @@ OIDC_CLIENT_SECRET = [[OIDC_CLIENT_SECRET]]
 # Local volume for Argos models. Caddy proxies :5000.
 [[stack]]
 name = "libretranslate"
-deploy = true
+deploy = false
 [stack.config]
 server = "periphery"
 repo = "faiz-ans/infra-core"
@@ -219,7 +221,7 @@ TZ = [[TZ]]
 # Local docstore volume. Caddy proxies :3003 (not SeaweedFS :8333).
 [[stack]]
 name = "openreader"
-deploy = true
+deploy = false
 [stack.config]
 server = "periphery"
 repo = "faiz-ans/infra-core"
@@ -237,7 +239,7 @@ OPENREADER_AUTH_SECRET = [[OPENREADER_AUTH_SECRET]]
 # Local SQLite volume. Caddy proxies :5678.
 [[stack]]
 name = "n8n"
-deploy = true
+deploy = false
 [stack.config]
 server = "periphery"
 repo = "faiz-ans/infra-core"
@@ -256,7 +258,7 @@ N8N_ENCRYPTION_KEY = [[N8N_ENCRYPTION_KEY]]
 # MQTT :1883 is LAN-only for Home Assistant (not in Caddy).
 [[stack]]
 name = "frigate"
-deploy = true
+deploy = false
 [stack.config]
 server = "periphery"
 repo = "faiz-ans/infra-core"
@@ -279,7 +281,7 @@ SMB_PASSWORD = [[SMB_PASSWORD]]
 # HA /config is a local volume only (no household share mount). File name is historical.
 [[stack]]
 name = "homeassistant"
-deploy = true
+deploy = false
 [stack.config]
 server = "periphery"
 repo = "faiz-ans/infra-core"
@@ -301,7 +303,7 @@ NAS_LAN_IP = [[NAS_LAN_IP]]
 # ResourceSync names are global — must not reuse "glances" from stacks-core.toml.
 [[stack]]
 name = "glances-periphery"
-deploy = true
+deploy = false
 [stack.config]
 server = "periphery"
 repo = "faiz-ans/infra-core"
@@ -321,7 +323,7 @@ TZ = [[TZ]]
 # ResourceSync matches stacks by name globally — must not reuse "pihole" from stacks-core.toml.
 [[stack]]
 name = "pihole-periphery"
-deploy = true
+deploy = false
 [stack.config]
 server = "periphery"
 repo = "faiz-ans/infra-core"
@@ -341,7 +343,7 @@ PIHOLE_PERIPHERY_WEBPASSWORD = [[PIHOLE_PERIPHERY_WEBPASSWORD]]
 # Read-only Docker API for Homepage. LAN bind only; not in Caddy.
 [[stack]]
 name = "dockerproxy"
-deploy = true
+deploy = false
 [stack.config]
 server = "periphery"
 repo = "faiz-ans/infra-core"
@@ -357,7 +359,7 @@ HTPC_UPSTREAM = [[HTPC_UPSTREAM]]
 
 [[stack]]
 name = "monitoring"
-deploy = true
+deploy = false
 [stack.config]
 server = "periphery"
 repo = "faiz-ans/infra-core"
