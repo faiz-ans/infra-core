@@ -187,7 +187,7 @@ restore() {
   echo "Scanning project space (large trees like media/games take time):"
   docker exec opencloud opencloud posixfs scan /posix/projects/shared || true
   echo
-  echo "Re-run data-root-perms.sh to restore household ACLs (xattrs are kept)."
+  echo "Re-run data-root-layout.sh to restore household ACLs (xattrs are kept)."
   echo "Then: DATA_ROOT=${DATA_ROOT} bash bootstrap/opencloud-check.sh"
 }
 

@@ -1,101 +1,84 @@
-# OpenCloud first-run
+# OpenCloud first-run (greenfield)
 
-OpenCloud on **Core** (edge): PosixFS personal homes under `users/<username>/`, household Project Space **`shared`** (name exact) under `system/opencloud/projects/shared`, bind-mounted onto `${DATA_ROOT}/shared` for SMB/NFS. Collabora on periphery (`office.<DOMAIN>`). Radicale in the same stack for CalDAV/CardDAV. Immich still indexes `shared/photos` over NFS.
+OpenCloud on **Core** (edge): PosixFS personal homes under `users/<username>/`, household Project Space **`shared`** under `system/opencloud/projects/shared`, bind-mounted onto `${DATA_ROOT}/shared` for SMB/NFS. Collabora on its topology-assigned server (`office.<DOMAIN>`). Radicale ships in the OpenCloud stack.
 
-Follow this checklist **in order**. Do not bind `shared/` as the space root, and do not nest `shared/files` or `shared/photos` mounts. Failure recovery is in the appendix at the bottom.
+**Default path:** empty disk → OpenCloud creates space roots → publish → layout.  
+**Park/restore** (`opencloud-adopt-homes.sh`, `opencloud-adopt-shared.sh`) are utilities when homes or `shared/` content already exist. Failure recovery is in the appendix.
 
-## 0. Prerequisites
+## Greenfield checklist
 
-- Authelia users **faiz** / **diana** exist (`bootstrap/authelia.md`).
-- Komodo secret **`OPENCLOUD_ADMIN_PASSWORD`** set (new sites: `core.sh` writes it).
-- Catalog synced; **caddy** Redeployed if the Caddyfile just gained `cloud.` / `office.`.
+### 0. Topology and host prep
+
+1. Edit `stacks/komodo/topology.toml` (servers + stack phases). Regenerate: `python3 stacks/komodo/generate-stacks.py` (see `stacks/komodo/README.md`).
+2. Bootstrap Core (`core.sh`): Docker, OMV, Komodo, Authelia `users.yml`, **`data-root-prep.sh`** (`system/`, empty `users/`, OpenCloud host dirs).
+3. Komodo secrets include **`OPENCLOUD_ADMIN_PASSWORD`**.
+
+### 1. Phase A ResourceSync
+
+Apply **`stacks/komodo/stacks-bootstrap.toml`** only (Caddy, Authelia, Pi-hole, Glances, Homepage, OpenCloud, Collabora as assigned). Redeploy **caddy** if the Caddyfile just gained `cloud.` / `office.`.
+
+New Homepage: copy `stacks/platform/homepage/config.seed/*` → `config/` once (do not overwrite a customized site).
 
 ```text
-sudo DATA_ROOT=/srv/dev-disk-by-uuid-… bash bootstrap/data-root-perms.sh
+docker ps --filter name='opencloud|radicale|collabora|caddy|authelia' --format 'table {{.Names}}\t{{.Status}}'
 ```
 
-That creates layout dirs, ACLs, and PUID-owned `system/opencloud/{posix,projects,radicale}`.
+### 2. Login and roles
 
-## 1. Deploy
+Open `https://cloud.<DOMAIN>` → Authelia as an **admins** user (creates Personal space + xattrs). Then each household user. Roles: Authelia `admins` → OpenCloud admin, `users` → user.
 
-Komodo → **opencloud** → **Deploy**. Periphery → **collabora** → **Deploy**.
+`users/admin` on disk is break-glass OpenCloud admin — leave it. Create an **App Token** for CalDAV/clients.
 
-```text
-docker ps --filter name='opencloud|radicale|collabora' --format 'table {{.Names}}\t{{.Status}}'
-```
+### 3. Space `shared` + publish
 
-Want: `opencloud` Up, `radicale` Up, `collabora` Up, `collabora-ca` Up (healthy). OpenCloud must **not** publish 9200 on the LAN.
-
-## 2. Login and roles
-
-Open `https://cloud.<DOMAIN>` → Authelia as **faiz**. Roles come from Authelia groups (`admins` → OpenCloud admin, `users` → user). Sign out/in once after first Deploy if Spaces UI is empty.
-
-Built-in **`admin`** / `OPENCLOUD_ADMIN_PASSWORD` is break-glass (DAV / App Tokens via basic auth), not the browser login while OIDC is on. `users/admin` on disk is that Personal space — leave it; household homes are only **faiz** and **diana**.
-
-Create an **App Token** for CalDAV/CardDAV and most mobile clients.
-
-## 3. Personal homes (adopt)
-
-Pre-created `users/<name>` blocks CreateStorageSpace (path exists, no xattrs). Always park → login → restore on a site that already ran `data-root-perms`:
+As an OpenCloud admin: Spaces → New Space → name exactly **`shared`** → add household members.
 
 ```text
 DATA=/srv/dev-disk-by-uuid-…
-sudo DATA_ROOT=$DATA bash bootstrap/opencloud-adopt-homes.sh park
-# Browser: sign in as faiz, then diana (each creates users/<name> + space xattrs)
-sudo getfattr -d $DATA/users/faiz | grep space.id
-sudo getfattr -d $DATA/users/diana | grep space.id
-sudo DATA_ROOT=$DATA bash bootstrap/opencloud-adopt-homes.sh restore
-```
-
-If a home is “missing” but perms said **parked**, content is under `system/opencloud/incoming/<user>` — finish login + restore; do not mkdir a stub.
-
-## 4. Household Space `shared` (adopt)
-
-Same rule: do **not** bind `${DATA_ROOT}/shared` as `/posix/projects/shared`. Catalog uses parent bind `system/opencloud/projects` → `/posix/projects`.
-
-```text
-sudo DATA_ROOT=$DATA bash bootstrap/opencloud-adopt-shared.sh park
-# Komodo → opencloud → Redeploy if the stack was never on the projects parent bind
-# Browser (faiz): Spaces → New Space → name exactly shared → add diana
 sudo getfattr -d $DATA/system/opencloud/projects/shared | grep space.id
+# shared/ mountpoint must be empty (no media tree yet)
 sudo DATA_ROOT=$DATA bash bootstrap/opencloud-adopt-shared.sh publish
-# publish MUST report same inode (not “already mounted” via findmnt alone)
-sudo DATA_ROOT=$DATA bash bootstrap/opencloud-adopt-shared.sh restore
+# same inode required
+sudo stat -c '%d:%i' $DATA/shared $DATA/system/opencloud/projects/shared
 ```
 
-`publish` bind-mounts `projects/shared` → `shared/` and adds an `/etc/fstab` line (`# opencloud-shared-bind`). `restore` merges parked content and runs `posixfs scan` (large media/games trees take time).
-
-## 5. ACLs and protected layout dirs
-
-After every home/shared restore:
+### 4. Protected layout + shares
 
 ```text
-sudo DATA_ROOT=$DATA bash bootstrap/data-root-perms.sh
+sudo DATA_ROOT=$DATA bash bootstrap/data-root-layout.sh
 ```
 
-This restores household ACLs and root-owns service layout dirs (media, cameras, `files`/`photos`, games layout, …) with sticky parents so SMB/OpenCloud can write **inside** them but cannot rename/delete those nodes. Reconnect SMB sessions afterward. Do **not** put Samba `force user` on the household `shared` share.
+Creates `shared/media`, `photos`, `users/<name>/files|photos`, ACL/sticky. Then OMV SMB/NFS (`bootstrap/omv-nfs.md`) for `shared` and `users`.
 
-## 6. Collabora (office)
+Optional scan: `sudo docker exec opencloud opencloud posixfs scan /posix`
 
-Catalog already sets `COLLABORATION_APP_PROOF_DISABLE=true` and Collabora mounts a generated `proof_key` plus Caddy CA bundle (`collabora-ca`). After **collabora** is healthy, open a document from OpenCloud once.
+### 5. Phase B stacks
 
-## 7. Calendar / contacts (Radicale)
+Apply **`stacks-core.toml`** and **`stacks-periphery.toml`** (or generated per-server files). Deploy Immich, Jellyfin, etc.
 
-URL: `https://cloud.<DOMAIN>` (well-known). Username = OpenCloud username (`faiz`, not an email). Password = **App Token**. No calendar UI in OpenCloud.
-
-## 8. Phone auto-upload
-
-App server: `https://cloud.<DOMAIN>`. Upload target: Personal → **`photos`**. Leave Immich mobile backup off.
-
-## 9. Verify
+### 6. Verify
 
 ```text
 sudo DATA_ROOT=$DATA bash bootstrap/opencloud-check.sh
 ```
 
-Exit 0 means containers, space xattrs, shared bind, sticky sample, Radicale ownership, and proof-disable look ready. Fix anything it prints, then re-run.
+### Collabora / Radicale / phone
 
-Optional: `sudo DATA_ROOT=$DATA bash bootstrap/opencloud-adopt-homes.sh status` and `…/opencloud-adopt-shared.sh status`.
+- Collabora: catalog `COLLABORATION_APP_PROOF_DISABLE` + `collabora-ca`; open a document once.
+- CalDAV: `https://cloud.<DOMAIN>`, username = OpenCloud user, password = App Token.
+- Phone upload → Personal **`photos`**. Immich mobile backup off.
+
+---
+
+## If content already exists (park utilities)
+
+```text
+sudo DATA_ROOT=$DATA bash bootstrap/opencloud-adopt-homes.sh park
+# login each user → restore
+sudo DATA_ROOT=$DATA bash bootstrap/opencloud-adopt-shared.sh park
+# create Space shared → publish → restore
+sudo DATA_ROOT=$DATA bash bootstrap/data-root-layout.sh
+```
 
 ---
 
@@ -103,35 +86,11 @@ Optional: `sudo DATA_ROOT=$DATA bash bootstrap/opencloud-adopt-homes.sh status` 
 
 | Symptom | What to do |
 |---|---|
-| `cloud.<DOMAIN>` dead while `opencloud` Up | Redeploy **caddy**. `docker exec caddy wget -S -O- --timeout=10 http://opencloud:9200/ \| head` |
-| `posixfs-xattr-check` / `storage/metadata: permission denied` | Stop opencloud; `chown -R ${PUID}:${PGID}` `system/opencloud`; ensure `posix/` exists; Redeploy |
-| `error parsing mapping JSON` / search | Stop; `rm -rf system/opencloud/data/search`; start |
-| Login HTTP 500 | Wipe **both** `system/opencloud/config` and `…/data` (not `posix`, `users`, `shared`, `radicale`); start so `init` reseeds. Use `find … -mindepth 1 -delete`, not a glob |
-| `extended attributes not supported` | Data disk needs `user_xattr`; keep OpenCloud on Core local disk |
-| Permission denied on homes / SMB lost on `shared` | `data-root-perms.sh`; check sticky (`t`/`T`) and root-owned layout nodes |
-| No Personal / Spaces empty for faiz | `adopt-homes.sh park` → login each user → `restore`; confirm `user.oc.space.id` |
-| Space create / `node.Xattrs …/photos` | No nested `files`/`photos` mounts; one Space named **`shared`** |
-| `shared` empty in UI but SMB has files | Bind never took: content in real `shared/`, space is empty `projects/shared`. Move content into `projects/shared`, empty `shared/`, `mount --bind`, confirm same inode, scan |
-| `publish` said already mounted but inodes differ | Old script used `findmnt`; use current adopt-shared (inode check) |
-| Collabora white iframe / local issuer | Redeploy **collabora**; `collabora-ca` must write `ca-bundle.crt` |
-| Collabora Unauthorized WOPI / ProofKeys failed | Need `COLLABORATION_APP_PROOF_DISABLE` + `proof_key` volume; Redeploy opencloud then collabora |
-| Collabora Unhealthy | CODE probe expects HTTPS; catalog disables healthcheck. `collabora-ca` must stay Up |
-| CalDAV discovery fails | App Token; `wget` `.well-known/caldav` via caddy→opencloud |
-| `radicale` permission denied on collections | `chown -R ${PUID}:${PGID}` the radicale data bind (see `docker inspect`); `data-root-perms` should have done this |
-| Radicale `IsADirectoryError` on config | Official bind must be a **file** `config/radicale/config`; remove leftover dirs in the stack clone; Redeploy |
-| Secret mismatch after change | `IDM_ADMIN_PASSWORD` only applies on init; `opencloud idm resetpassword` or wipe config+data |
-
-### Manual config/data wipe (last resort)
-
-```text
-sudo docker stop opencloud
-sudo find $DATA/system/opencloud/config -mindepth 1 -delete
-sudo find $DATA/system/opencloud/data -mindepth 1 -delete
-sudo chown -R 1000:1000 $DATA/system/opencloud
-sudo docker start opencloud
-sudo docker logs -f opencloud   # must show init, not “config already exists”
-```
-
-### Remove leftover Nextcloud
-
-After ResourceSync drops `nextcloud`, delete that stack. On HTPC stop/rm containers and config volumes only — **not** NFS `shared/` / `users/` data.
+| `cloud.<DOMAIN>` dead while `opencloud` Up | Redeploy **caddy** |
+| Permission / xattr on first start | Re-run **prep**; `chown` OpenCloud dirs to PUID |
+| Login HTTP 500 | Wipe **both** `system/opencloud/config` and `…/data` (not posix/users/shared/radicale) |
+| No Personal / no space id | Path already existed — use **park** utilities |
+| `shared` empty in UI but SMB has files | Bind missing — fix publish (inode check), not findmnt alone |
+| Collabora white iframe / ProofKeys | Redeploy collabora + opencloud; proof disable + CA |
+| `radicale` permission denied | prep should have PUID-owned radicale data |
+| Layout sticky missing | Re-run **data-root-layout.sh** after publish |

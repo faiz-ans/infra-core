@@ -1,0 +1,12 @@
+title: Home
+theme: dark
+headerStyle: clean
+hideVersion: true
+statusStyle: dot
+target: _top
+
+layout:
+  Bootstrap:
+    header: false
+    style: row
+    columns: 3

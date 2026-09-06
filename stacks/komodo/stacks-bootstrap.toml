@@ -1,0 +1,187 @@
+# GENERATED from topology.toml — do not hand-edit.
+# Regenerate: python3 stacks/komodo/generate-stacks.py
+#
+# Phase A (bootstrap): identity, DNS, edge, OpenCloud (+ Collabora).
+# May list stacks on multiple Komodo servers. Apply this ResourceSync path first
+# on a greenfield site before stacks-core.toml / stacks-periphery.toml.
+# Komodo does not interpolate [[VAR]] in server/repo — those must be literals.
+# Environment [[VAR]] still interpolates at deploy from Core [secrets] / Variables.
+# webhook_enabled is false; poll on-site.
+
+[[stack]]
+name = "caddy"
+deploy = true
+[stack.config]
+server = "core"
+repo = "faiz-ans/infra-core"
+branch = "main"
+run_directory = "stacks/platform/caddy"
+file_paths = ["compose.yaml"]
+config_files = [
+  { path = "Caddyfile", requires = "Redeploy" },
+  { path = "entrypoint.sh", requires = "Redeploy" },
+  { path = "export-ca.sh", requires = "Redeploy" },
+]
+webhook_enabled = false
+poll_for_updates = true
+environment = """
+DOMAIN = [[DOMAIN]]
+HTPC_UPSTREAM = [[HTPC_UPSTREAM]]
+NAS_LAN_IP = [[NAS_LAN_IP]]
+TZ = [[TZ]]
+DATA_ROOT = [[DATA_ROOT]]
+"""
+
+[[stack]]
+name = "authelia"
+deploy = true
+after = ["caddy"]
+[stack.config]
+server = "core"
+repo = "faiz-ans/infra-core"
+branch = "main"
+run_directory = "stacks/platform/authelia"
+file_paths = ["compose.yaml"]
+config_files = [
+  { path = "configuration.yml", requires = "Redeploy" },
+]
+webhook_enabled = false
+poll_for_updates = true
+environment = """
+DOMAIN = [[DOMAIN]]
+TZ = [[TZ]]
+DATA_ROOT = [[DATA_ROOT]]
+AUTHELIA_JWT_SECRET = [[AUTHELIA_JWT_SECRET]]
+AUTHELIA_SESSION_SECRET = [[AUTHELIA_SESSION_SECRET]]
+AUTHELIA_STORAGE_ENCRYPTION_KEY = [[AUTHELIA_STORAGE_ENCRYPTION_KEY]]
+AUTHELIA_OIDC_HMAC_SECRET = [[AUTHELIA_OIDC_HMAC_SECRET]]
+"""
+
+# Name is global across ResourceSync files. The HTPC copy is "pihole-periphery".
+
+[[stack]]
+name = "pihole"
+deploy = true
+after = ["caddy"]
+[stack.config]
+server = "core"
+repo = "faiz-ans/infra-core"
+branch = "main"
+run_directory = "stacks/platform/pihole"
+file_paths = ["compose.yaml"]
+webhook_enabled = false
+poll_for_updates = true
+environment = """
+DOMAIN = [[DOMAIN]]
+NAS_LAN_IP = [[NAS_LAN_IP]]
+TZ = [[TZ]]
+DATA_ROOT = [[DATA_ROOT]]
+PIHOLE_WEBPASSWORD = [[PIHOLE_WEBPASSWORD]]
+"""
+
+[[stack]]
+name = "glances"
+deploy = true
+after = ["caddy"]
+[stack.config]
+server = "core"
+repo = "faiz-ans/infra-core"
+branch = "main"
+run_directory = "stacks/platform/glances"
+file_paths = ["compose.yaml"]
+config_files = [
+  { path = "glances.conf", requires = "Redeploy" },
+]
+webhook_enabled = false
+poll_for_updates = true
+environment = """
+TZ = [[TZ]]
+DATA_ROOT = [[DATA_ROOT]]
+"""
+
+[[stack]]
+name = "homepage"
+deploy = true
+after = ["caddy", "authelia", "glances"]
+[stack.config]
+server = "core"
+repo = "faiz-ans/infra-core"
+branch = "main"
+run_directory = "stacks/platform/homepage"
+file_paths = ["compose.yaml"]
+config_files = [
+  { path = "config/services.yaml", requires = "Redeploy" },
+  { path = "config/settings.yaml", requires = "Redeploy" },
+  { path = "config/docker.yaml", requires = "Redeploy" },
+  { path = "config/widgets.yaml", requires = "Redeploy" },
+]
+webhook_enabled = false
+poll_for_updates = true
+environment = """
+DOMAIN = [[DOMAIN]]
+TZ = [[TZ]]
+DATA_ROOT = [[DATA_ROOT]]
+HOMEPAGE_VAR_DOMAIN = [[DOMAIN]]
+HOMEPAGE_VAR_HTPC_UPSTREAM = [[HTPC_UPSTREAM]]
+HOMEPAGE_VAR_NAS_LAN_IP = [[NAS_LAN_IP]]
+HOMEPAGE_VAR_PIHOLE_TOKEN = [[PIHOLE_WEBPASSWORD]]
+HOMEPAGE_VAR_JELLYFIN_KEY = [[HOMEPAGE_VAR_JELLYFIN_KEY]]
+HOMEPAGE_VAR_SONARR_KEY = [[HOMEPAGE_VAR_SONARR_KEY]]
+HOMEPAGE_VAR_RADARR_KEY = [[HOMEPAGE_VAR_RADARR_KEY]]
+HOMEPAGE_VAR_PROWLARR_KEY = [[HOMEPAGE_VAR_PROWLARR_KEY]]
+HOMEPAGE_VAR_QBIT_USERNAME = [[HOMEPAGE_VAR_QBIT_USERNAME]]
+HOMEPAGE_VAR_QBIT_PASSWORD = [[HOMEPAGE_VAR_QBIT_PASSWORD]]
+HOMEPAGE_VAR_GRAFANA_KEY = [[HOMEPAGE_VAR_GRAFANA_KEY]]
+HOMEPAGE_VAR_WGEASY_PASSWORD = [[HOMEPAGE_VAR_WGEASY_PASSWORD]]
+WEATHER_LATITUDE = [[WEATHER_LATITUDE]]
+WEATHER_LONGITUDE = [[WEATHER_LONGITUDE]]
+HOMEPAGE_VAR_WEATHER_LATITUDE = [[WEATHER_LATITUDE]]
+HOMEPAGE_VAR_WEATHER_LONGITUDE = [[WEATHER_LONGITUDE]]
+HOMEPAGE_ALLOWED_HOSTS = dash.[[DOMAIN]]
+"""
+
+[[stack]]
+name = "opencloud"
+deploy = true
+after = ["caddy"]
+[stack.config]
+server = "core"
+repo = "faiz-ans/infra-core"
+branch = "main"
+run_directory = "stacks/workload/opencloud"
+file_paths = ["compose.yaml"]
+config_files = [
+  { path = "csp.yaml", requires = "Redeploy" },
+  { path = "config/opencloud/proxy.yaml", requires = "Redeploy" },
+  { path = "config/radicale/config", requires = "Redeploy" },
+]
+webhook_enabled = false
+poll_for_updates = true
+environment = """
+DOMAIN = [[DOMAIN]]
+TZ = [[TZ]]
+DATA_ROOT = [[DATA_ROOT]]
+NAS_LAN_IP = [[NAS_LAN_IP]]
+PUID = [[PUID]]
+PGID = [[PGID]]
+OPENCLOUD_ADMIN_PASSWORD = [[OPENCLOUD_ADMIN_PASSWORD]]
+"""
+
+[[stack]]
+name = "collabora"
+deploy = false
+[stack.config]
+server = "periphery"
+repo = "faiz-ans/infra-core"
+branch = "main"
+run_directory = "stacks/workload/collabora"
+file_paths = ["compose.yaml"]
+webhook_enabled = false
+poll_for_updates = true
+environment = """
+TZ = [[TZ]]
+DOMAIN = [[DOMAIN]]
+NAS_LAN_IP = [[NAS_LAN_IP]]
+"""
+
+# Local volumes for PostGIS and media. Caddy proxies :8015.

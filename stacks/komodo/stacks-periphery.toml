@@ -1,20 +1,14 @@
-# ResourceSync source for the remote Periphery host.
-# Komodo does not interpolate [[VAR]] in server/repo — those must be literals.
-# Apply this file only after the periphery server is connected.
-# deploy = false: ResourceSync updates definitions without mass-starting HTPC
-# stacks. First bring-up / cold image cache: Deploy one stack at a time in the UI.
-# After the site is warm, you may set deploy = true if you want sync-driven deploys.
+# GENERATED from topology.toml — do not hand-edit.
+# Regenerate: python3 stacks/komodo/generate-stacks.py
+#
+# Phase B stacks for server "periphery" (excludes bootstrap phase).
+# Apply after the periphery server is connected.
+# deploy = false in fragments: ResourceSync updates definitions without mass-starting.
 # webhook_enabled is false; poll on-site.
-# repo path stays faiz-ans/infra-core. After Gitea is up, the same Komodo git
-# provider (gitea:3000) is used here; GitHub is a push mirror.
 # Storage: /config is always a local volume. Household data: compose.yaml +
 # DATA_ROOT, or compose.nfs.yaml (this site). Do not list two transport files.
-# Docker Desktop: run bootstrap/periphery-docker-engine.ps1 (or merge
-# windows/docker-engine.json) before applying this file. Cap Desktop disk image
-# size so C: cannot fill. Factory 172.18–172.31 /16 pools overlap the LAN
-# (bootstrap/periphery.md §1).
+# Docker Desktop: bootstrap/periphery-docker-engine.ps1 before applying.
 
-# compose.nfs.yaml: media on NFS; /config is local (survives Core down).
 [[stack]]
 name = "jellyfin"
 deploy = false
@@ -35,6 +29,7 @@ NFS_EXPORT = [[NFS_EXPORT]]
 """
 
 # Local volume only. Setup wizard talks to Jellyfin/Radarr/Sonarr over HTPC published ports.
+
 [[stack]]
 name = "seerr"
 deploy = false
@@ -51,6 +46,7 @@ TZ = [[TZ]]
 """
 
 # compose.nfs.yaml: media/downloads on NFS; Sonarr/Radarr/Prowlarr /config is local (SQLite).
+
 [[stack]]
 name = "arr"
 deploy = false
@@ -71,6 +67,7 @@ NFS_EXPORT = [[NFS_EXPORT]]
 """
 
 # compose.nfs.yaml: downloads/media on NFS; /config is local (survives Core down).
+
 [[stack]]
 name = "qbittorrent"
 deploy = false
@@ -94,6 +91,7 @@ NFS_EXPORT = [[NFS_EXPORT]]
 """
 
 # compose.nfs.yaml: photos/users on NFS; Postgres, Redis, ML, and upload are local.
+
 [[stack]]
 name = "immich"
 deploy = false
@@ -114,24 +112,6 @@ NFS_USERS = [[NFS_USERS]]
 IMMICH_DB_PASSWORD = [[IMMICH_DB_PASSWORD]]
 """
 
-[[stack]]
-name = "collabora"
-deploy = false
-[stack.config]
-server = "periphery"
-repo = "faiz-ans/infra-core"
-branch = "main"
-run_directory = "stacks/workload/collabora"
-file_paths = ["compose.yaml"]
-webhook_enabled = false
-poll_for_updates = true
-environment = """
-TZ = [[TZ]]
-DOMAIN = [[DOMAIN]]
-NAS_LAN_IP = [[NAS_LAN_IP]]
-"""
-
-# Local volumes for PostGIS and media. Caddy proxies :8015.
 [[stack]]
 name = "adventurelog"
 deploy = false
@@ -158,6 +138,7 @@ OIDC_CLIENT_SECRET = [[OIDC_CLIENT_SECRET]]
 """
 
 # Local volumes for SQLite and Whisper models. Caddy proxies :8085.
+
 [[stack]]
 name = "scriberr"
 deploy = false
@@ -177,6 +158,7 @@ PGID = [[PGID]]
 """
 
 # Local volume for uploads/SQLite. Caddy proxies :3313.
+
 [[stack]]
 name = "transmute"
 deploy = false
@@ -201,6 +183,7 @@ OIDC_CLIENT_SECRET = [[OIDC_CLIENT_SECRET]]
 """
 
 # Local volume for Argos models. Caddy proxies :5000.
+
 [[stack]]
 name = "libretranslate"
 deploy = false
@@ -217,6 +200,7 @@ TZ = [[TZ]]
 """
 
 # Local docstore volume. Caddy proxies :3003 (not SeaweedFS :8333).
+
 [[stack]]
 name = "openreader"
 deploy = false
@@ -235,6 +219,7 @@ OPENREADER_AUTH_SECRET = [[OPENREADER_AUTH_SECRET]]
 """
 
 # Local SQLite volume. Caddy proxies :5678.
+
 [[stack]]
 name = "n8n"
 deploy = false
@@ -254,6 +239,7 @@ N8N_ENCRYPTION_KEY = [[N8N_ENCRYPTION_KEY]]
 
 # Recordings on NFS (shared/cameras). /config is local. Caddy proxies :8971.
 # MQTT :1883 is LAN-only for Home Assistant (not in Caddy).
+
 [[stack]]
 name = "frigate"
 deploy = false
@@ -276,6 +262,7 @@ NFS_EXPORT = [[NFS_EXPORT]]
 """
 
 # HA /config is a local volume. trusted_proxies is written at container start (ensure-http/).
+
 [[stack]]
 name = "homeassistant"
 deploy = false
@@ -298,6 +285,7 @@ NAS_LAN_IP = [[NAS_LAN_IP]]
 
 # Host stats for Homepage. LAN bind :61208; Caddy proxies glances2.<DOMAIN>.
 # ResourceSync names are global — must not reuse "glances" from stacks-core.toml.
+
 [[stack]]
 name = "glances-periphery"
 deploy = false
@@ -318,6 +306,7 @@ TZ = [[TZ]]
 
 # Local volume. Same wildcard as Core (*.DOMAIN → NAS_LAN_IP / Caddy).
 # ResourceSync matches stacks by name globally — must not reuse "pihole" from stacks-core.toml.
+
 [[stack]]
 name = "pihole-periphery"
 deploy = false
@@ -338,6 +327,7 @@ PIHOLE_PERIPHERY_WEBPASSWORD = [[PIHOLE_PERIPHERY_WEBPASSWORD]]
 """
 
 # Read-only Docker API for Homepage. LAN bind only; not in Caddy.
+
 [[stack]]
 name = "dockerproxy"
 deploy = false
@@ -374,6 +364,7 @@ OIDC_CLIENT_SECRET = [[OIDC_CLIENT_SECRET]]
 """
 
 # Off until the 4TB IronWolf is the backup target. Do not apply this stack yet.
+
 [[stack]]
 name = "restic-rest"
 deploy = false

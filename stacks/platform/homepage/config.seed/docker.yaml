@@ -1,0 +1,4 @@
+# Seed: Core Docker API only (sidecar). Add periphery after phase B if needed.
+core:
+  host: homepage-dockerproxy
+  port: 2375

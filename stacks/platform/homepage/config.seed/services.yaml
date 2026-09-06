@@ -1,0 +1,28 @@
+# Minimal Homepage for phase-A / new sites.
+# Copy into config/ once, then customize (do not overwrite an existing site config):
+#   cp -n stacks/platform/homepage/config.seed/* stacks/platform/homepage/config/
+# Or on a fresh clone with empty config/: copy these files into config/.
+
+- Bootstrap:
+
+    - Access:
+        - Komodo:
+            href: http://{{HOMEPAGE_VAR_NAS_LAN_IP}}:9120
+            icon: mdi-rocket-launch
+            description: Deploy / ResourceSync
+        - OMV:
+            href: http://{{HOMEPAGE_VAR_NAS_LAN_IP}}:90
+            icon: openmediavault.svg
+            description: Storage / SMB / NFS
+        - Authelia:
+            href: https://auth.{{HOMEPAGE_VAR_DOMAIN}}
+            icon: authelia.svg
+            description: SSO
+        - Pi-hole:
+            href: https://dns.{{HOMEPAGE_VAR_DOMAIN}}/admin
+            icon: pi-hole.svg
+            description: DNS
+        - OpenCloud:
+            href: https://cloud.{{HOMEPAGE_VAR_DOMAIN}}
+            icon: open-cloud-dark.svg
+            description: Files

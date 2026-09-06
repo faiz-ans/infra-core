@@ -139,8 +139,8 @@ restore() {
   echo "Scanning spaces so files/ and photos/ show up:"
   docker exec opencloud opencloud posixfs scan /posix || true
   echo
-  echo "Re-run data-root-perms.sh to restore household ACLs (xattrs are kept)."
-  echo "After shared adopt + perms: DATA_ROOT=${DATA_ROOT} bash bootstrap/opencloud-check.sh"
+  echo "Re-run data-root-layout.sh to restore household ACLs (xattrs are kept)."
+  echo "After shared adopt + layout: DATA_ROOT=${DATA_ROOT} bash bootstrap/opencloud-check.sh"
 }
 
 case "$1" in

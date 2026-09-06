@@ -3,6 +3,8 @@
 #   sudo DATA_ROOT=/srv/dev-disk-by-uuid-… bash bootstrap/opencloud-check.sh
 #
 # Exit 0 only if all required checks pass. Does not mount, chown, or deploy.
+# Greenfield: run after publish + data-root-layout.sh (see bootstrap/opencloud.md).
+# Prep alone (data-root-prep.sh) is not enough for sticky/layout checks.
 set -euo pipefail
 
 DATA_ROOT="${DATA_ROOT:-/srv/dev-disk-by-uuid-d6e267fd-109f-4971-bfb1-26b3d99e0d47}"
@@ -116,14 +118,14 @@ if [[ -d "${SHARED}" ]]; then
   if stat -c '%A' "${SHARED}" | grep -q '[tT]'; then
     pass "shared/: sticky bit set ($(stat -c '%A' "${SHARED}"))"
   else
-    fail "shared/: sticky bit missing (re-run data-root-perms.sh)"
+    fail "shared/: sticky bit missing (re-run data-root-layout.sh after publish)"
   fi
   if [[ -d "${SHARED}/photos" ]]; then
     own="$(stat -c '%U' "${SHARED}/photos")"
     if [[ "${own}" == root ]]; then
       pass "shared/photos: owner root"
     else
-      fail "shared/photos: owner ${own} (want root; re-run data-root-perms.sh)"
+      fail "shared/photos: owner ${own} (want root; re-run data-root-layout.sh)"
     fi
   fi
 fi
@@ -135,7 +137,7 @@ for u in "${HOUSEHOLD[@]}"; do
   if [[ "${own}" == root ]]; then
     pass "users/${u}/files: owner root"
   else
-    fail "users/${u}/files: owner ${own} (want root; re-run data-root-perms.sh)"
+    fail "users/${u}/files: owner ${own} (want root; re-run data-root-layout.sh)"
   fi
 done
 
@@ -145,7 +147,7 @@ if [[ -d "${RADICALE}" ]]; then
   if [[ "${own}" == "${PUID}:${PGID}" ]]; then
     pass "radicale data owned by ${PUID}:${PGID}"
   else
-    fail "radicale data owned by ${own} (want ${PUID}:${PGID}; chown or data-root-perms)"
+    fail "radicale data owned by ${own} (want ${PUID}:${PGID}; chown or data-root-prep.sh)"
   fi
 else
   fail "radicale data dir missing: ${RADICALE}"
@@ -171,5 +173,5 @@ if [[ "${FAILS}" -eq 0 ]]; then
   echo "All required checks passed."
   exit 0
 fi
-echo "${FAILS} check(s) failed. See bootstrap/opencloud.md happy path."
+echo "${FAILS} check(s) failed. See bootstrap/opencloud.md (greenfield) or adopt utilities."
 exit 1

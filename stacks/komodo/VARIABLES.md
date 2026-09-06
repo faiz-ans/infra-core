@@ -1,8 +1,17 @@
-# Komodo variable and secret keys
+## Site secrets (topology-driven)
 
-Values are **not** stored in this repository. Define these in Komodo (UI Variables, or Core/Periphery `[secrets]` written by bootstrap).
+`bootstrap/core.sh` and `bootstrap/sync-komodo-secrets.sh` write Komodo `[secrets]` from **enabled topology stacks** (and always-on Caddy / Authelia / Pi-hole / OpenCloud). Keys for stacks with `deploy = false` in their fragment are skipped until you enable Deploy and re-run sync.
 
-Mark items tagged **secret** as secrets in Komodo.
+After adding a stack to `topology.toml` and regenerating TOML:
+
+```bash
+sudo bash bootstrap/sync-komodo-secrets.sh
+# recreate Komodo Core so it reloads [secrets]
+```
+
+Do not create those variables by hand in the Komodo UI.
+
+Mark items tagged **secret** as secrets in Komodo when inspecting the file.
 
 ## Site
 

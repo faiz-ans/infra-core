@@ -10,6 +10,8 @@ Export **`shared/`** and **`users/`** only. Do not export the disk root or `syst
 
 ## 1. Shared folders (once)
 
+On a **greenfield** site, create Shared Folders / NFS **after** OpenCloud publish and `data-root-layout.sh` (so `shared/` is the bound space and layout dirs exist). See `bootstrap/opencloud.md`.
+
 Workbench: **Storage → Shared Folders**. Add two folders on the uuid data disk if they do not exist:
 
 | Name | Relative path | Becomes NFSv4 path |
