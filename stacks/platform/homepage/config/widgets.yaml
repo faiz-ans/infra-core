@@ -29,16 +29,16 @@
     uptime: true
     disk:
       - /mnt/data
- #   label: Core
+    label: Core
 
 # Periphery Glances
-#- glances:
-#    url: http://{{HOMEPAGE_VAR_HTPC_UPSTREAM}}:61208
-#    href: https://glances2.{{HOMEPAGE_VAR_DOMAIN}}
-#    version: 4
-#    cpu: true
-#    mem: true
-#    uptime: true
-#    disk:
-#      - /mnt/windows
-#    label: Periphery
+- glances:
+    url: http://{{HOMEPAGE_VAR_HTPC_UPSTREAM}}:61208
+    href: https://glances2.{{HOMEPAGE_VAR_DOMAIN}}
+    version: 4
+    cpu: true
+    mem: true
+    uptime: true
+    disk:
+      - /mnt/windows
+    label: Periphery

@@ -37,19 +37,23 @@
   margin-left: auto;
 }
 
-/* Row 2 — Core left, Periphery right */
+/* Row 2 — size to content; pin to opposite ends (do not force 50% width) */
 #widgets-wrap > .information-widget-glances:nth-child(1) {
   order: 1;
-  flex: 1 1 45%;
-  max-width: 50%;
-  justify-content: flex-start !important;
+  flex: 0 0 auto;
+  max-width: none;
 }
 
 #widgets-wrap > .information-widget-glances:nth-child(2) {
   order: 2;
-  flex: 1 1 45%;
-  max-width: 50%;
+  flex: 0 0 auto;
+  max-width: none;
   margin-left: auto;
-  display: flex !important;
-  justify-content: flex-end !important;
+}
+
+/* Keep glances metrics on one row with default spacing */
+#widgets-wrap > .information-widget-glances .flex.flex-row.flex-wrap {
+  flex-wrap: nowrap !important;
+  justify-content: flex-start !important;
+  gap: 0 !important;
 }
