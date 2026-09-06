@@ -123,7 +123,14 @@ New `users/faiz` must still show `user.oc.space.id`. If it does not, the copy dr
 
 Workbench **Storage → Shared Folders**: edit **`shared`** and **`users`**. Change the filesystem/device from the USB uuid disk to the IronWolf uuid disk. Keep relative paths `shared` and `users`. Save, **Apply**.
 
-NFS (`/shared`, `/users`) and SMB keep the same names. Confirm **Services → NFS** still exports those two folders to the HTPC IP with `insecure,no_root_squash,subtree_check`.
+NFS (`/shared`, `/users`) and SMB keep the same names. Re-run so ShareMgmt/`/export` track the IronWolf (avoids a hollow `/export/shared`):
+
+```text
+sudo HTPC_IP=<HTPC_LAN_IP> DATA_ROOT=/srv/dev-disk-by-uuid-<NEW_UUID> bash bootstrap/omv-nfs.sh
+ls /export/shared/media /export/shared/photos
+```
+
+Confirm **Services → NFS** still exports those two folders to the **HTPC host IP only** (not a LAN `/24`) with `insecure,no_root_squash,subtree_check`.
 
 Optional check:
 
@@ -193,5 +200,5 @@ Keep the USB intact (unmounted) for a day if you want a rollback copy. After tha
 | `setMountPoint` / disk missing in OMV | Disk was mounted via a plain fstab line first. Unmount, remove that line, then setMountPoint / Workbench Mount. |
 | `getfattr` empty on `${NEW}/users/faiz` | Recopy with `-aAXH`. Do not change `DATA_ROOT` yet. |
 | OpenCloud blank after switch | Inspect mounts: still on `OLD` uuid means Komodo `DATA_ROOT` or Redeploy did not apply. |
-| NFS `permission denied` from HTPC | Shared folders still on the USB mntent. Edit `shared`/`users` to the IronWolf, Apply NFS. |
+| NFS `permission denied` / HTPC `:/shared` hangs | Hollow `/export/shared` or duplicate NFS clients. Re-run `omv-nfs.sh` with new `DATA_ROOT`; `ls /export/shared/media` must work on Core. |
 | Pi-hole / Authelia unhappy | Those bind `${DATA_ROOT}/system/...`. Redeploy those stacks after the variable change. |

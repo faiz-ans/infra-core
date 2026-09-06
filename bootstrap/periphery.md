@@ -14,29 +14,39 @@ winget import -i windows\packages.json
 
 Or install `Docker.DockerDesktop` alone. Enable WSL2 backend. Share only the USB volume used as `BACKUP_DRIVE` (Settings → Resources → File sharing). Do not share an SMB-mapped `Z:` (or similar) for app data.
 
-### Engine JSON (required before ResourceSync)
+### Engine JSON + disk cap (required before ResourceSync)
 
 Each Komodo stack is its own Compose project and gets a Docker bridge. Factory pools are `/16`s in `172.18.0.0`–`172.31.0.0` (~12 user networks). The next project is assigned `192.168.0.0/16`, which includes Core. Windows can still reach the NAS; every container, including Periphery, times out and Komodo shows **Not OK**.
 
-Do this **once**, after Desktop is installed and **before** `stacks-periphery.toml` is applied (and before you grow past ~12 HTPC stacks on an existing site):
+An uncapped WSL data VHD plus unbounded container logs can fill `C:` and corrupt the engine (NFS then looks “broken”). Do this **once**, after Desktop is installed and **before** `stacks-periphery.toml` is applied:
 
 ```text
 powershell -ExecutionPolicy Bypass -File bootstrap/periphery-docker-engine.ps1
 ```
 
-That merges [`windows/docker-engine.json`](../windows/docker-engine.json) into `%USERPROFILE%\.docker\daemon.json` and leaves other Engine keys alone. Then **restart Docker Desktop**.
+That script:
 
-Alternatively: Settings → **Docker Engine** → paste the `default-address-pools` object from that file → Apply & restart.
+1. Merges [`windows/docker-engine.json`](../windows/docker-engine.json) into `%USERPROFILE%\.docker\daemon.json` (address pools + `log-driver` / `log-opts` `10m`×3).
+2. Sets `DiskSizeMiB` (~80 GiB) in `%APPDATA%\Docker\settings-store.json` (WSL2 often has no disk slider under Resources → Advanced).
+3. Clears `%LOCALAPPDATA%\Temp\wsl-crashes\*.dmp` if present (WSL crash dumps can be 100+ GB).
+
+Then **fully quit and restart Docker Desktop**. New containers pick up log caps; after changing daemon.json on an existing site, Redeploy (recreate) stacks so `docker inspect` shows `max-size` / `max-file`.
+
+Alternatively for the Engine JSON only: Settings → **Docker Engine** → merge the pools + log-opts from that file → Apply & restart. Still run the script (or set `DiskSizeMiB` yourself) for the VHD cap.
 
 ```json
 {
   "default-address-pools": [
     { "base": "10.200.0.0/16", "size": 24 }
-  ]
+  ],
+  "log-driver": "json-file",
+  "log-opts": { "max-size": "10m", "max-file": "3" }
 }
 ```
 
-`10.200.0.0/16` as `/24`s is 256 networks and does not overlap this catalog’s usual LAN (`192.168.1.0/24`) or existing `172.x` bridges. Core-only sites skip this. If Periphery is already **Not OK**, §7.
+`10.200.0.0/16` as `/24`s is 256 networks and does not overlap this catalog’s usual LAN (`192.168.1.0/24`) or existing `172.x` bridges. Core-only sites skip the HTPC script. If Periphery is already **Not OK**, §7.
+
+**First HTPC bring-up:** after Periphery is OK, Deploy stacks **one at a time** (cold image pulls). Mass Deploy on an empty engine can fill the disk and wedge NFS mounts. `stacks-periphery.toml` ships with `deploy = false` so ResourceSync does not auto-start everything; flip to `true` after the site is warm if you want sync-driven deploys.
 
 ## 2. NAS data: pick a transport per stack
 
@@ -47,7 +57,7 @@ Workload compose is transport-agnostic. Komodo `file_paths` chooses one file (ne
 | `compose.yaml` | Local disk, or a host mount of NFS/SMB/CIFS at `DATA_ROOT` | `DATA_ROOT` |
 | `compose.nfs.yaml` | Docker engine mounts OMV NFS itself (this HTPC) | `NAS_LAN_IP`, `NFS_EXPORT`, `NFS_USERS` (Immich) |
 
-This site’s `stacks-periphery.toml` uses `compose.nfs.yaml` for Jellyfin, Arr, qBittorrent, Immich, and Frigate. Follow `bootstrap/omv-nfs.md`, then set `NAS_LAN_IP`, `NFS_EXPORT=/shared`, and `NFS_USERS=/users`. Do not set those stacks’ `DATA_ROOT` to `Z:`. Cap Docker Desktop’s disk image size and run `periphery-docker-engine.ps1` (log rotation) so C: cannot fill again.
+This site’s `stacks-periphery.toml` uses `compose.nfs.yaml` for Jellyfin, Arr, qBittorrent, Immich, and Frigate. Follow `bootstrap/omv-nfs.md`, then set `NAS_LAN_IP`, `NFS_EXPORT=/shared`, and `NFS_USERS=/users`. Do not set those stacks’ `DATA_ROOT` to `Z:`. Run `periphery-docker-engine.ps1` before ResourceSync (§1).
 
 Home Assistant’s HTPC file is also named `compose.nfs.yaml`, but `/config` is a **local Docker volume**. `trusted_proxies` is written into that volume at start (`ensure-http/`); do not bind-mount `configuration.yaml` (Docker Desktop drops single-file binds, which produces Caddy 400s). `.storage` is not on DATA_ROOT.
 

@@ -1,8 +1,10 @@
 # ResourceSync source for the remote Periphery host.
 # Komodo does not interpolate [[VAR]] in server/repo — those must be literals.
 # Apply this file only after the periphery server is connected.
-# deploy = false after a Docker purge / cold image cache (optional safety). Flip
-# to true once the HTPC engine is healthy and images are warm. webhook_enabled false.
+# deploy = false: ResourceSync updates definitions without mass-starting HTPC
+# stacks. First bring-up / cold image cache: Deploy one stack at a time in the UI.
+# After the site is warm, you may set deploy = true if you want sync-driven deploys.
+# webhook_enabled is false; poll on-site.
 # repo path stays faiz-ans/infra-core. After Gitea is up, the same Komodo git
 # provider (gitea:3000) is used here; GitHub is a push mirror.
 # Storage: /config is always a local volume. Household data: compose.yaml +
