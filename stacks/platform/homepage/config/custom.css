@@ -1,6 +1,6 @@
 /* Header widgets: two rows
  * Row 1: datetime (left) | openmeteo (right)
- * Row 2: Core glances (left) | Periphery glances (right)
+ * Row 2: NAS glances (left) | HTPC glances (right)
  */
 
 #widgets-wrap {
@@ -17,6 +17,7 @@
   width: 100% !important;
   max-width: 100% !important;
   margin: 0 !important;
+  padding-bottom: 8px;
   display: flex !important;
   flex-wrap: nowrap !important;
   justify-content: space-between !important;
@@ -37,7 +38,7 @@
   margin-left: auto;
 }
 
-/* Row 2 — size to content; pin to opposite ends (do not force 50% width) */
+/* Row 2 — size to content; pin to opposite ends */
 #widgets-wrap > .information-widget-glances:nth-child(1) {
   order: 1;
   flex: 0 0 auto;
@@ -51,6 +52,22 @@
   margin-left: auto;
 }
 
+/* Label left of stats (Homepage uses flex-col + label after metrics) */
+#widgets-wrap > .information-widget-glances {
+  flex-direction: row !important;
+  flex-wrap: nowrap !important;
+  align-items: center;
+}
+
+#widgets-wrap > .information-widget-glances .information-widget-label {
+  order: -1;
+  align-self: center;
+  font-weight: bold;
+  padding-top: 0 !important;
+  padding-right: 12px;
+  text-align: left;
+}
+
 /* Keep glances metrics on one row with default spacing */
 #widgets-wrap > .information-widget-glances .flex.flex-row.flex-wrap {
   flex-wrap: nowrap !important;
@@ -58,9 +75,7 @@
   gap: 0 !important;
 }
 
-/* Label above stats (Homepage renders it after the metrics) */
-#widgets-wrap > .information-widget-glances .information-widget-label {
-  order: -1;
-  padding-top: 0 !important;
-  padding-bottom: 0.25rem;
+/* Drop Homepage's min-w-[85px] on each resource */
+#widgets-wrap > .information-widget-glances .information-widget-resource > div.min-w-\[85px\] {
+  min-width: 0 !important;
 }
