@@ -71,7 +71,7 @@
             server: periphery
             container: adventurelog
             icon: adventure-log.svg
-            description: Travel Log
+            description: Travel Logs
         - Home Assistant:
             id: homeassistant
             href: https://auto.{{HOMEPAGE_VAR_DOMAIN}}
@@ -85,7 +85,7 @@
             server: periphery
             container: frigate
             icon: frigate.svg
-            description: Home Surveillance
+            description: Home NVR
 
     - Utilities:
         - Transmute:
@@ -94,7 +94,7 @@
             server: periphery
             container: transmute
             icon: https://cdn.jsdelivr.net/gh/selfhst/icons/svg/transmute.svg
-            description: File Conversion
+            description: File Convert
         - BentoPDF:
             id: bentopdf
             href: https://pdf.{{HOMEPAGE_VAR_DOMAIN}}
