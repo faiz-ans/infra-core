@@ -1,5 +1,6 @@
 # Transmute on periphery. FFmpeg conversions are local HTPC volumes (not NFS).
 # Caddy terminates TLS at convert.${DOMAIN}. First visit creates the admin.
+# NVIDIA for FFmpeg when the image supports NVENC. Docker Desktop GPU required.
 services:
   transmute:
     image: ghcr.io/transmute-app/transmute:latest
@@ -16,6 +17,8 @@ services:
       OIDC_DISPLAY_NAME: Authelia
       OIDC_AUTO_CREATE_USERS: "true"
       OIDC_AUTO_LAUNCH: "false"
+      NVIDIA_VISIBLE_DEVICES: all
+      NVIDIA_DRIVER_CAPABILITIES: compute,video,utility
     extra_hosts:
       - "auth.${DOMAIN}:${NAS_LAN_IP}"
     entrypoint: ["/bin/bash", "/oidc-ca.sh"]
@@ -25,6 +28,13 @@ services:
       - transmute-data:/app/data
       - ./entrypoint-oidc.sh:/oidc-ca.sh:ro
       - ./sitecustomize-oidc.py:/oidc-sitecustomize.py:ro
+    deploy:
+      resources:
+        reservations:
+          devices:
+            - driver: nvidia
+              count: 1
+              capabilities: [gpu]
     healthcheck:
       test:
         - "CMD"

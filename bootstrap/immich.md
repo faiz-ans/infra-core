@@ -25,6 +25,8 @@ docker ps --filter name=immich --format "table {{.Names}}\t{{.Status}}\t{{.Ports
 
 You want `immich` **Up** with `2283->2283`, `immich-db` **Up (healthy)**, plus `immich-ml` and `immich-redis`. `immich-db` must **not** list `5432` on the host.
 
+`immich-ml` uses the **`release-cuda`** image and needs Docker Desktop GPU (`bootstrap/periphery.md`). Check: `docker exec immich-ml nvidia-smi`.
+
 ## 3. Wizard
 
 Open **`https://photos.<DOMAIN>`**. Create the Immich admin account (this is not `IMMICH_DB_PASSWORD`). That local admin is break-glass.
@@ -89,3 +91,4 @@ Do **not** delete `immich-photos` / `immich-users` (NFS) or files under `shared/
 | `password authentication failed` | Secret does not match the volume. Set `IMMICH_DB_PASSWORD` in Komodo, wipe `immich-postgres`, Deploy. |
 | `immich-db` never healthy | Stack env missing `IMMICH_DB_PASSWORD`. Add the secret, Deploy. |
 | Empty timeline | External Library paths wrong or scan not run. Confirm `/mnt/photos` and `/mnt/users/<user>/photos` inside the `immich` container. |
+| `immich-ml` won't start / no CUDA | Docker Desktop → Resources → GPU. Current NVIDIA Windows driver. `docker exec immich-ml nvidia-smi` |

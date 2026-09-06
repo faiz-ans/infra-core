@@ -17,7 +17,7 @@ This change splits the jobs: OpenCloud writes files on Core local disk; Immich i
 **Non-Goals:**
 
 - Authelia OIDC for OpenCloud/Immich (later, when the edge gate is turned on).
-- Immich hardware transcoding / ML GPU.
+- Immich server hardware video transcoding (ML uses CUDA in compose).
 - Generic Android folder auto-upload beyond pictures/videos (OpenCloud app limitation).
 - Running OpenCloud or PosixFS on the HTPC over NFS.
 - DecomposedFS / S3 blob layout.

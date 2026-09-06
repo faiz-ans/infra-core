@@ -23,7 +23,16 @@ If Komodo shows Periphery **Not OK** and the Scriberr container is Up, that is t
 
 Open **`https://scribe.<DOMAIN>`**. Create the household admin in the setup wizard.
 
-Speaker diarization and optional Ollama/OpenAI chat are configured in the app UI, not in this catalog. CUDA images are not in the catalog (Docker Desktop GPU is out of scope).
+Speaker diarization and optional Ollama/OpenAI chat are configured in the app UI, not in this catalog. The catalog uses **`scriberr-cuda`** (RTX 20-series). Docker Desktop GPU must be on (`bootstrap/periphery.md`).
+
+If this site previously ran the CPU image, wipe the Whisper env volume once so CUDA deps reinstall:
+
+```text
+docker stop scriberr
+docker volume rm scriberr-whisperx
+```
+
+Then Redeploy **scriberr**. Keep `scriberr-data` (transcripts / admin).
 
 ## If it fails
 
@@ -32,5 +41,7 @@ Speaker diarization and optional Ollama/OpenAI chat are configured in the app UI
 | `scribe.<DOMAIN>` does not load while the container is Up | Redeploy **caddy**. From Core: `docker exec caddy wget -S -O- --timeout=10 http://<HTPC_UPSTREAM>:8085/ \| head` |
 | Still starting / no UI | Watch logs until `Scriberr is ready`. Do not treat a slow first pull as a crash |
 | SQLite / permission denied | Confirm Komodo `PUID`/`PGID` match the HTPC. Named volumes `scriberr-data` and `scriberr-whisperx` |
+| CUDA / no GPU | Docker Desktop → Resources → GPU. `docker exec scriberr nvidia-smi` |
+| Whisper env broken after CPU→CUDA | Remove `scriberr-whisperx` (above), Redeploy |
 | Unable to load audio stream | Caddy must be HTTPS (`tls internal`). Do not set `SECURE_COOKIES=false` |
 | CORS / blocked browser request | `ALLOWED_ORIGINS` must include the hostname you used. Redeploy **scriberr** after the catalog pull |

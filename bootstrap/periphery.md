@@ -14,6 +14,17 @@ winget import -i windows\packages.json
 
 Or install `Docker.DockerDesktop` alone. Enable WSL2 backend. Share only the USB volume used as `BACKUP_DRIVE` (Settings → Resources → File sharing). Do not share an SMB-mapped `Z:` (or similar) for app data.
 
+### NVIDIA GPU (Immich ML, Scriberr, Jellyfin, Transmute, Glances)
+
+This site’s HTPC uses an RTX 2060. Install a current **NVIDIA Windows driver** (WSL). In Docker Desktop → **Settings → Resources → GPU**, enable the GPU. Without that, stacks that reserve `driver: nvidia` fail to start or fall back to CPU.
+
+Smoke check after Deploy:
+
+```text
+docker exec glances-periphery nvidia-smi
+docker exec immich-ml nvidia-smi
+```
+
 ### Engine JSON + disk cap (required before ResourceSync)
 
 Each Komodo stack is its own Compose project and gets a Docker bridge. Factory pools are `/16`s in `172.18.0.0`–`172.31.0.0` (~12 user networks). The next project is assigned `192.168.0.0/16`, which includes Core. Windows can still reach the NAS; every container, including Periphery, times out and Komodo shows **Not OK**.
@@ -75,7 +86,7 @@ Allow inbound TCP from the LAN (Caddy on Core) on the published ports:
 |---|---|
 | 53/tcp+udp | Pi-hole (bind `HTPC_UPSTREAM` only) |
 | 8083 | Pi-hole admin (`dns2.${DOMAIN}` via Caddy; LAN fallback if Core is up) |
-| 8096 | Jellyfin |
+| 8096 | Jellyfin (enable **NVIDIA NVENC** in Dashboard → Playback → Transcoding after GPU is visible) |
 | 5055 | Seerr (`request.${DOMAIN}` via Caddy) |
 | 8123 | Home Assistant |
 | 2283 | Immich (`photos.${DOMAIN}` via Caddy) |

@@ -1,5 +1,7 @@
 # Media on Docker NFS. /config is local so the app can start if Core/NFS is down.
 # Deploy this file instead of compose.yaml (do not merge both).
+# NVIDIA NVENC: Docker Desktop → Settings → Resources → GPU, then enable
+# NVIDIA NVENC under Jellyfin Dashboard → Playback → Transcoding.
 services:
   jellyfin:
     image: lscr.io/linuxserver/jellyfin:latest
@@ -9,11 +11,20 @@ services:
       TZ: ${TZ}
       PUID: ${PUID}
       PGID: ${PGID}
+      NVIDIA_VISIBLE_DEVICES: all
+      NVIDIA_DRIVER_CAPABILITIES: compute,video,utility
     ports:
       - "8096:8096"
     volumes:
       - jellyfin-config:/config
       - jellyfin-media:/data/media
+    deploy:
+      resources:
+        reservations:
+          devices:
+            - driver: nvidia
+              count: 1
+              capabilities: [gpu]
 
 volumes:
   # New name so Compose does not reuse the old NFS volume (jellyfin_jellyfin-config).

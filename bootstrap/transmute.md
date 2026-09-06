@@ -23,7 +23,7 @@ On the HTPC, allow Windows Firewall TCP **3313** from the LAN (Caddy). See `boot
 docker ps --filter name=transmute --format "table {{.Names}}\t{{.Status}}"
 ```
 
-You want `transmute` **Up** (healthy after the first minute). Video conversions use the HTPC CPU; that is expected.
+You want `transmute` **Up** (healthy after the first minute). The stack reserves the HTPC NVIDIA GPU for FFmpeg when the image can use NVENC; Docker Desktop GPU must be on (`bootstrap/periphery.md`).
 
 ## 3. Admin
 

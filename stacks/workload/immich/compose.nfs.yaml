@@ -29,13 +29,23 @@ services:
       - immich-users:/mnt/users
 
   immich-machine-learning:
-    image: ghcr.io/immich-app/immich-machine-learning:release
+    # CUDA ML (RTX 2060). Docker Desktop → Settings → Resources → GPU.
+    image: ghcr.io/immich-app/immich-machine-learning:release-cuda
     container_name: immich-ml
     restart: unless-stopped
     environment:
       TZ: ${TZ}
+      NVIDIA_VISIBLE_DEVICES: all
+      NVIDIA_DRIVER_CAPABILITIES: compute,utility
     volumes:
       - immich-ml-cache:/cache
+    deploy:
+      resources:
+        reservations:
+          devices:
+            - driver: nvidia
+              count: 1
+              capabilities: [gpu]
 
   redis:
     image: docker.io/valkey/valkey:9

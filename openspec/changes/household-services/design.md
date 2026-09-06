@@ -18,7 +18,7 @@ The catalog already splits always-on Core apps (edge network + Caddy by containe
 - RustDesk Server Pro (web console on 21114).
 - Migrating `DATA_ROOT` onto the IronWolf.
 - Opening WireGuard or Caddy 80/443 policy beyond what already exists.
-- Scriberr CUDA/GPU images (Docker Desktop GPU passthrough).
+- Scriberr Blackwell-only images (this site uses `scriberr-cuda` for RTX 20-series).
 
 ## Decisions
 
@@ -77,7 +77,7 @@ Official `ghcr.io/rishikanthc/scriberr:latest`. Publish `8085:8080`. Named volum
 
 **Alternative considered:** Scriberr on Core. Rejected: Whisper + model download on a 4GB NAS.
 
-**Alternative considered:** CUDA image. Rejected: this site’s periphery is Docker Desktop; GPU passthrough is out of scope.
+**Alternative considered:** CPU-only image. Rejected for this site: Docker Desktop exposes the RTX 2060; catalog uses `scriberr-cuda` with an NVIDIA device reservation.
 
 ### 6. Homepage
 
