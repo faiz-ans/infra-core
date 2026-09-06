@@ -1,6 +1,6 @@
 - Apps:
 
-    - Data:
+    - Personal:
         - OpenCloud:
             id: opencloud
             href: https://cloud.{{HOMEPAGE_VAR_DOMAIN}}
@@ -8,13 +8,6 @@
             container: opencloud
             icon: open-cloud-dark.svg
             description: Files
-        - Immich:
-            id: immich
-            href: https://photos.{{HOMEPAGE_VAR_DOMAIN}}
-            server: periphery
-            container: immich
-            icon: immich.svg
-            description: Photos
         - Jotty:
             id: jotty
             href: https://notes.{{HOMEPAGE_VAR_DOMAIN}}
@@ -22,13 +15,6 @@
             container: jotty
             icon: jotty.svg
             description: Notes
-        - Scriberr:
-            id: scriberr
-            href: https://voice.{{HOMEPAGE_VAR_DOMAIN}}
-            server: periphery
-            container: scriberr
-            icon: scriberr.svg
-            description: Transcription
         - Linkding:
             id: linkding
             href: https://links.{{HOMEPAGE_VAR_DOMAIN}}
@@ -36,13 +22,13 @@
             container: linkding
             icon: linkding.svg
             description: Bookmarks
-        - Vaultwarden:
-            id: vaultwarden
-            href: https://pass.{{HOMEPAGE_VAR_DOMAIN}}
-            server: core
-            container: vaultwarden
-            icon: bitwarden.svg
-            description: Passwords
+        - Scriberr:
+            id: scriberr
+            href: https://voice.{{HOMEPAGE_VAR_DOMAIN}}
+            server: periphery
+            container: scriberr
+            icon: scriberr.svg
+            description: Transcription
         - ByteStash:
             id: bytestash
             href: https://snip.{{HOMEPAGE_VAR_DOMAIN}}
@@ -50,6 +36,56 @@
             container: bytestash
             icon: bytestash.svg
             description: Snippets
+        - Vaultwarden:
+            id: vaultwarden
+            href: https://pass.{{HOMEPAGE_VAR_DOMAIN}}
+            server: core
+            container: vaultwarden
+            icon: bitwarden.svg
+            description: Passwords
+            
+    - Media & Home:
+        - Immich:
+            id: immich
+            href: https://photos.{{HOMEPAGE_VAR_DOMAIN}}
+            server: periphery
+            container: immich
+            icon: immich.svg
+            description: Photos    
+        - Jellyfin:
+            id: jellyfin
+            href: https://watch.{{HOMEPAGE_VAR_DOMAIN}}
+            server: periphery
+            container: jellyfin
+            icon: jellyfin.svg
+            description: Watch Movies & TV
+        - Seerr:
+            href: https://request.{{HOMEPAGE_VAR_DOMAIN}}
+            server: periphery
+            container: seerr
+            icon: seerr.svg
+            description: Request Movies & TV
+        - Adventure Log:
+            id: adventurelog
+            href: https://travel.{{HOMEPAGE_VAR_DOMAIN}}
+            server: periphery
+            container: adventurelog
+            icon: adventure-log.svg
+            description: Travel Log
+        - Home Assistant:
+            id: homeassistant
+            href: https://auto.{{HOMEPAGE_VAR_DOMAIN}}
+            server: periphery
+            container: homeassistant
+            icon: home-assistant.svg
+            description: Home Automation
+        - Frigate:
+            id: frigate
+            href: https://cam.{{HOMEPAGE_VAR_DOMAIN}}
+            server: periphery
+            container: frigate
+            icon: frigate.svg
+            description: Home Surveillance
 
     - Utilities:
         - Transmute:
@@ -94,42 +130,6 @@
             container: it-tools
             icon: it-tools.svg
             description: Developer Utilities
-
-    - Household:
-        - Jellyfin:
-            id: jellyfin
-            href: https://watch.{{HOMEPAGE_VAR_DOMAIN}}
-            server: periphery
-            container: jellyfin
-            icon: jellyfin.svg
-            description: Watch Movies & TV
-        - Seerr:
-            href: https://request.{{HOMEPAGE_VAR_DOMAIN}}
-            server: periphery
-            container: seerr
-            icon: seerr.svg
-            description: Request Movies & TV
-        - Adventure Log:
-            id: adventurelog
-            href: https://travel.{{HOMEPAGE_VAR_DOMAIN}}
-            server: periphery
-            container: adventurelog
-            icon: adventure-log.svg
-            description: Travel Log
-        - Home Assistant:
-            id: homeassistant
-            href: https://auto.{{HOMEPAGE_VAR_DOMAIN}}
-            server: periphery
-            container: homeassistant
-            icon: home-assistant.svg
-            description: Home Automation
-        - Frigate:
-            id: frigate
-            href: https://cam.{{HOMEPAGE_VAR_DOMAIN}}
-            server: periphery
-            container: frigate
-            icon: frigate.svg
-            description: Home Surveillance
 
     - Web:
         - Gmail:
