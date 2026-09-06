@@ -1,19 +1,18 @@
 # ResourceSync source for the remote Periphery host.
 # Komodo does not interpolate [[VAR]] in server/repo — those must be literals.
 # Apply this file only after the periphery server is connected.
-# deploy = false: ResourceSync must NOT mass-start HTPC stacks (Docker Desktop
-# wedges if every compose pulls/mounts at once). Deploy one stack at a time in the UI.
-# webhook_enabled is false; poll on-site.
+# deploy = false after a Docker purge / cold image cache (optional safety). Flip
+# to true once the HTPC engine is healthy and images are warm. webhook_enabled false.
 # repo path stays faiz-ans/infra-core. After Gitea is up, the same Komodo git
 # provider (gitea:3000) is used here; GitHub is a push mirror.
-# Storage: /config is always a local volume. Household data is either
-# compose.yaml + DATA_ROOT binds, compose.nfs.yaml (Linux NFS), or compose.smb.yaml
-# (Docker Desktop CIFS — this site). Do not list two transport files.
+# Storage: /config is always a local volume. Household data: compose.yaml +
+# DATA_ROOT, or compose.nfs.yaml (this site). Do not list two transport files.
 # Docker Desktop: run bootstrap/periphery-docker-engine.ps1 (or merge
-# windows/docker-engine.json) before applying this file. Factory 172.18–172.31
-# /16 pools then overlap the LAN and Periphery loses Core (bootstrap/periphery.md §1).
+# windows/docker-engine.json) before applying this file. Cap Desktop disk image
+# size so C: cannot fill. Factory 172.18–172.31 /16 pools overlap the LAN
+# (bootstrap/periphery.md §1).
 
-# compose.smb.yaml: media on OMV SMB; /config is local (survives Core down).
+# compose.nfs.yaml: media on NFS; /config is local (survives Core down).
 [[stack]]
 name = "jellyfin"
 deploy = false
@@ -22,7 +21,7 @@ server = "periphery"
 repo = "faiz-ans/infra-core"
 branch = "main"
 run_directory = "stacks/workload/jellyfin"
-file_paths = ["compose.smb.yaml"]
+file_paths = ["compose.nfs.yaml"]
 webhook_enabled = false
 poll_for_updates = true
 environment = """
@@ -30,8 +29,7 @@ TZ = [[TZ]]
 PUID = [[PUID]]
 PGID = [[PGID]]
 NAS_LAN_IP = [[NAS_LAN_IP]]
-SMB_USER = [[SMB_USER]]
-SMB_PASSWORD = [[SMB_PASSWORD]]
+NFS_EXPORT = [[NFS_EXPORT]]
 """
 
 # Local volume only. Setup wizard talks to Jellyfin/Radarr/Sonarr over HTPC published ports.
@@ -50,7 +48,7 @@ environment = """
 TZ = [[TZ]]
 """
 
-# compose.smb.yaml: media/downloads on SMB; Sonarr/Radarr/Prowlarr /config is local (SQLite).
+# compose.nfs.yaml: media/downloads on NFS; Sonarr/Radarr/Prowlarr /config is local (SQLite).
 [[stack]]
 name = "arr"
 deploy = false
@@ -59,7 +57,7 @@ server = "periphery"
 repo = "faiz-ans/infra-core"
 branch = "main"
 run_directory = "stacks/workload/arr"
-file_paths = ["compose.smb.yaml"]
+file_paths = ["compose.nfs.yaml"]
 webhook_enabled = false
 poll_for_updates = true
 environment = """
@@ -67,11 +65,10 @@ TZ = [[TZ]]
 PUID = [[PUID]]
 PGID = [[PGID]]
 NAS_LAN_IP = [[NAS_LAN_IP]]
-SMB_USER = [[SMB_USER]]
-SMB_PASSWORD = [[SMB_PASSWORD]]
+NFS_EXPORT = [[NFS_EXPORT]]
 """
 
-# compose.smb.yaml: downloads/media on SMB; /config is local (survives Core down).
+# compose.nfs.yaml: downloads/media on NFS; /config is local (survives Core down).
 [[stack]]
 name = "qbittorrent"
 deploy = false
@@ -80,7 +77,7 @@ server = "periphery"
 repo = "faiz-ans/infra-core"
 branch = "main"
 run_directory = "stacks/workload/qbittorrent"
-file_paths = ["compose.smb.yaml"]
+file_paths = ["compose.nfs.yaml"]
 config_files = [
   { path = "custom-cont-init.d/10-webui.sh", requires = "Redeploy" },
 ]
@@ -91,11 +88,10 @@ TZ = [[TZ]]
 PUID = [[PUID]]
 PGID = [[PGID]]
 NAS_LAN_IP = [[NAS_LAN_IP]]
-SMB_USER = [[SMB_USER]]
-SMB_PASSWORD = [[SMB_PASSWORD]]
+NFS_EXPORT = [[NFS_EXPORT]]
 """
 
-# compose.smb.yaml: photos/users on SMB; Postgres, Redis, ML, and upload are local.
+# compose.nfs.yaml: photos/users on NFS; Postgres, Redis, ML, and upload are local.
 [[stack]]
 name = "immich"
 deploy = false
@@ -104,15 +100,15 @@ server = "periphery"
 repo = "faiz-ans/infra-core"
 branch = "main"
 run_directory = "stacks/workload/immich"
-file_paths = ["compose.smb.yaml"]
+file_paths = ["compose.nfs.yaml"]
 webhook_enabled = false
 poll_for_updates = true
 environment = """
 TZ = [[TZ]]
 DOMAIN = [[DOMAIN]]
 NAS_LAN_IP = [[NAS_LAN_IP]]
-SMB_USER = [[SMB_USER]]
-SMB_PASSWORD = [[SMB_PASSWORD]]
+NFS_EXPORT = [[NFS_EXPORT]]
+NFS_USERS = [[NFS_USERS]]
 IMMICH_DB_PASSWORD = [[IMMICH_DB_PASSWORD]]
 """
 
@@ -254,7 +250,7 @@ DOMAIN = [[DOMAIN]]
 N8N_ENCRYPTION_KEY = [[N8N_ENCRYPTION_KEY]]
 """
 
-# Recordings on SMB (shared/cameras). /config is local. Caddy proxies :8971.
+# Recordings on NFS (shared/cameras). /config is local. Caddy proxies :8971.
 # MQTT :1883 is LAN-only for Home Assistant (not in Caddy).
 [[stack]]
 name = "frigate"
@@ -264,7 +260,7 @@ server = "periphery"
 repo = "faiz-ans/infra-core"
 branch = "main"
 run_directory = "stacks/workload/frigate"
-file_paths = ["compose.smb.yaml"]
+file_paths = ["compose.nfs.yaml"]
 config_files = [
   { path = "seed/config.yml", requires = "Redeploy" },
   { path = "mosquitto/mosquitto.conf", requires = "Redeploy" },
@@ -274,11 +270,10 @@ poll_for_updates = true
 environment = """
 TZ = [[TZ]]
 NAS_LAN_IP = [[NAS_LAN_IP]]
-SMB_USER = [[SMB_USER]]
-SMB_PASSWORD = [[SMB_PASSWORD]]
+NFS_EXPORT = [[NFS_EXPORT]]
 """
 
-# HA /config is a local volume only (no household share mount). File name is historical.
+# HA /config is a local volume. trusted_proxies is written at container start (ensure-http/).
 [[stack]]
 name = "homeassistant"
 deploy = false

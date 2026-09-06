@@ -13,13 +13,11 @@ Mark items tagged **secret** as secrets in Komodo.
 | `PERIPHERY_SERVER` | | Remote Periphery `connect_as`. Must match TOML `server = "periphery"` |
 | `DOMAIN` | | Caddy, Authelia, Pi-hole, Homepage, Vaultwarden public URL |
 | `TZ` | | Most containers |
-| `NAS_LAN_IP` | | Pi-hole wildcard (`*.DOMAIN` → Caddy), Homepage/Prometheus scrape, periphery NFS/CIFS `addr=` / `//host/` |
+| `NAS_LAN_IP` | | Pi-hole wildcard (`*.DOMAIN` → Caddy), Homepage/Prometheus scrape, periphery NFS `addr=` |
 | `HTPC_UPSTREAM` | | Caddy upstreams, Homepage HTPC widgets, NAS restic client |
-| `DATA_ROOT` | | Bind-mount compose (`compose.yaml`). Core app state is `${DATA_ROOT}/system/<app>`. Periphery `/config` is a local volume; household data uses `${DATA_ROOT}/shared` and `${DATA_ROOT}/users`. A stack that uses `compose.nfs.yaml` / `compose.smb.yaml` does not set this. |
-| `NFS_EXPORT` | | Docker-NFS path of the OMV `shared` share (`/shared`). Used with `compose.nfs.yaml` only. No quotes, not a drive letter |
-| `NFS_USERS` | | Docker-NFS path of the OMV `users` share (`/users`). Immich + `compose.nfs.yaml` only. No quotes |
-| `SMB_USER` | | OMV SMB username for `compose.smb.yaml` on Docker Desktop (same account as Explorer) |
-| `SMB_PASSWORD` | secret | OMV SMB password for `compose.smb.yaml` |
+| `DATA_ROOT` | | Bind-mount compose (`compose.yaml`). Core app state is `${DATA_ROOT}/system/<app>`. Periphery `/config` is a local volume; household data uses `${DATA_ROOT}/shared` and `${DATA_ROOT}/users`. A stack that uses `compose.nfs.yaml` does not set this. |
+| `NFS_EXPORT` | | Docker-NFS path of the OMV `shared` share (`/shared`). Used as `:${NFS_EXPORT}/media` etc. No quotes, not a drive letter |
+| `NFS_USERS` | | Docker-NFS path of the OMV `users` share (`/users`). Immich External Libraries. No quotes |
 | `BACKUP_DRIVE` | | HTPC Restic REST data directory |
 | `PUID` | | linuxserver images on both hosts |
 | `PGID` | | linuxserver images on both hosts |

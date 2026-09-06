@@ -576,6 +576,10 @@ if ! command -v docker >/dev/null 2>&1; then
   systemctl enable --now docker
 fi
 
+# Cap container json-file logs on the OS disk (/var/lib/docker). DATA_ROOT is separate.
+# sudo bash bootstrap/core-docker-engine.sh
+bash "${SCRIPT_DIR}/core-docker-engine.sh"
+
 # Host-network WireGuard NATs on the real NIC. Persist forwarding (Docker
 # often sets this already; required if Core starts WG before Docker does).
 # echo net.ipv4.ip_forward=1 > /etc/sysctl.d/99-ip-forward.conf

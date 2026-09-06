@@ -45,10 +45,9 @@ Workload compose is transport-agnostic. Komodo `file_paths` chooses one file (ne
 | File | When | Komodo env |
 |---|---|---|
 | `compose.yaml` | Local disk, or a host mount of NFS/SMB/CIFS at `DATA_ROOT` | `DATA_ROOT` |
-| `compose.nfs.yaml` | Docker engine mounts OMV NFS itself | `NAS_LAN_IP`, `NFS_EXPORT`, `NFS_USERS` (Immich) |
-| `compose.smb.yaml` | Docker engine mounts OMV SMB (Docker Desktop when NFS hangs) | `NAS_LAN_IP`, `SMB_USER`, `SMB_PASSWORD` |
+| `compose.nfs.yaml` | Docker engine mounts OMV NFS itself (this HTPC) | `NAS_LAN_IP`, `NFS_EXPORT`, `NFS_USERS` (Immich) |
 
-This site’s `stacks-periphery.toml` uses `compose.smb.yaml` for Jellyfin, Arr, qBittorrent, Immich, and Frigate. Set `NAS_LAN_IP`, `SMB_USER`, and `SMB_PASSWORD` (OMV SMB account). Keep SMB enabled on OMV for those shares. Do not set those stacks’ `DATA_ROOT` to `Z:`.
+This site’s `stacks-periphery.toml` uses `compose.nfs.yaml` for Jellyfin, Arr, qBittorrent, Immich, and Frigate. Follow `bootstrap/omv-nfs.md`, then set `NAS_LAN_IP`, `NFS_EXPORT=/shared`, and `NFS_USERS=/users`. Do not set those stacks’ `DATA_ROOT` to `Z:`. Cap Docker Desktop’s disk image size and run `periphery-docker-engine.ps1` (log rotation) so C: cannot fill again.
 
 Home Assistant’s HTPC file is also named `compose.nfs.yaml`, but `/config` is a **local Docker volume**. `trusted_proxies` is written into that volume at start (`ensure-http/`); do not bind-mount `configuration.yaml` (Docker Desktop drops single-file binds, which produces Caddy 400s). `.storage` is not on DATA_ROOT.
 

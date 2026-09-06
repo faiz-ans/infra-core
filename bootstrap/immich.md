@@ -1,6 +1,6 @@
 # Immich first-run (External Libraries)
 
-Immich on the HTPC is the **gallery**. Photo originals stay on NFS (`shared/photos`, `users/<user>/photos`). Postgres, Redis, ML, and Immich’s own upload volume are local Docker volumes.
+Immich on the HTPC is the **gallery**. Photo originals stay on NFS (`shared/photos`, `users/<user>/photos`). Postgres, Redis, ML, and Immich’s own upload volume are local Docker volumes. This site uses **`compose.nfs.yaml`** (not SMB for `users/`).
 
 Phone camera ingest is **OpenCloud**, not Immich. See [`bootstrap/opencloud.md`](opencloud.md).
 
