@@ -29,7 +29,7 @@
     uptime: true
     disk:
       - /mnt/data
-    label: Core
+    label: NAS
 
 # Periphery Glances
 - glances:
@@ -41,4 +41,4 @@
     uptime: true
     disk:
       - /mnt/windows
-    label: Periphery
+    label: HTPC
