@@ -1,0 +1,55 @@
+/* Header widgets: two rows
+ * Row 1: datetime (left) | openmeteo (right)
+ * Row 2: Core glances (left) | Periphery glances (right)
+ */
+
+#widgets-wrap {
+  display: flex !important;
+  flex-wrap: wrap !important;
+  width: 100% !important;
+  align-items: center;
+}
+
+/* Row 1 — datetime + openmeteo full width, opposite ends */
+#information-widgets-right {
+  order: -1;
+  flex: 0 0 100% !important;
+  width: 100% !important;
+  max-width: 100% !important;
+  margin: 0 !important;
+  display: flex !important;
+  flex-wrap: nowrap !important;
+  justify-content: space-between !important;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+#information-widgets-right .information-widget-datetime {
+  flex: 0 1 auto;
+}
+
+#information-widgets-right .information-widget-datetime .grow {
+  justify-content: flex-start !important;
+}
+
+#information-widgets-right .information-widget-openmeteo {
+  flex: 0 1 auto;
+  margin-left: auto;
+}
+
+/* Row 2 — Core left, Periphery right */
+#widgets-wrap > .information-widget-glances:nth-child(1) {
+  order: 1;
+  flex: 1 1 45%;
+  max-width: 50%;
+  justify-content: flex-start !important;
+}
+
+#widgets-wrap > .information-widget-glances:nth-child(2) {
+  order: 2;
+  flex: 1 1 45%;
+  max-width: 50%;
+  margin-left: auto;
+  display: flex !important;
+  justify-content: flex-end !important;
+}
