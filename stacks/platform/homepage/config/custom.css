@@ -1,13 +1,16 @@
 /* Header widgets: two rows
  * Row 1: datetime (left) | openmeteo (right)
  * Row 2: NAS glances (left) | HTPC glances (right)
+ * Narrow: HTPC wraps under NAS, left-aligned; stats wrap within each widget
  */
 
 #widgets-wrap {
   display: flex !important;
   flex-wrap: wrap !important;
   width: 100% !important;
+  max-width: 100%;
   align-items: center;
+  justify-content: space-between !important;
 }
 
 /* Row 1 — datetime + openmeteo full width, opposite ends */
@@ -38,41 +41,47 @@
   margin-left: auto;
 }
 
-/* Row 2 — size to content; pin to opposite ends */
-#widgets-wrap > .information-widget-glances:nth-child(1) {
+/* Row 2 — opposite ends when side-by-side; left-aligned when HTPC wraps alone
+ * (no margin-left: auto — space-between places a lone wrapped item at the start)
+ */
+#widgets-wrap > .information-widget-glances:nth-child(1),
+#widgets-wrap > .information-widget-glances:nth-child(2) {
   order: 1;
-  flex: 0 0 auto;
-  max-width: none;
+  flex: 0 1 auto;
+  max-width: 100%;
+  min-width: 0;
+  box-sizing: border-box;
 }
 
 #widgets-wrap > .information-widget-glances:nth-child(2) {
   order: 2;
-  flex: 0 0 auto;
-  max-width: none;
-  margin-left: auto;
 }
 
-/* Label left of stats (Homepage uses flex-col + label after metrics) */
+/* Label left of stats */
 #widgets-wrap > .information-widget-glances {
   flex-direction: row !important;
   flex-wrap: nowrap !important;
-  align-items: center;
+  align-items: flex-start;
 }
 
 #widgets-wrap > .information-widget-glances .information-widget-label {
   order: -1;
-  align-self: center;
+  flex: 0 0 auto;
+  align-self: flex-start;
   font-weight: bold;
-  padding-top: 0 !important;
+  padding-top: 0.375rem;
   padding-right: 12px;
   text-align: left;
 }
 
-/* Keep glances metrics on one row with default spacing */
+/* Let individual stats wrap on narrow viewports */
 #widgets-wrap > .information-widget-glances .flex.flex-row.flex-wrap {
-  flex-wrap: nowrap !important;
+  flex: 1 1 auto;
+  flex-wrap: wrap !important;
   justify-content: flex-start !important;
   gap: 0 !important;
+  min-width: 0;
+  max-width: 100%;
 }
 
 /* Drop Homepage's min-w-[85px] on each resource */
