@@ -14,6 +14,8 @@ fi
 cat > /etc/sysctl.d/99-komodo-net.conf <<'EOF'
 net.ipv4.ip_forward=1
 net.ipv4.conf.all.src_valid_mark=1
+net.ipv4.conf.all.rp_filter=2
+net.ipv4.conf.default.rp_filter=2
 net.ipv6.conf.all.disable_ipv6=1
 net.ipv6.conf.default.disable_ipv6=1
 EOF
@@ -23,7 +25,7 @@ rm -f /etc/sysctl.d/99-ip-forward.conf
 
 sysctl --system >/dev/null
 sysctl net.ipv4.ip_forward net.ipv4.conf.all.src_valid_mark \
-  net.ipv6.conf.all.disable_ipv6
+  net.ipv4.conf.all.rp_filter net.ipv6.conf.all.disable_ipv6
 
 echo "Default IPv4 route:"
 ip -4 route show default || true
