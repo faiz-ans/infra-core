@@ -19,7 +19,7 @@ python3 stacks/komodo/generate-stacks.py
 
 Do **not** hand-edit the generated `stacks-*.toml` files; change topology or fragments, then regenerate.
 
-Topology `linked_repo` is the Komodo Repo name ResourceSync Selects. Stacks clone GitHub themselves (`repo = "faiz-ans/infra-core"`). `select_repo = true` on a stack is opt-in Select Repo.
+Topology `linked_repo` is the Komodo Repo name ResourceSync Selects. Stacks clone GitHub themselves (`repo = "faiz-ans/infra-core"`). Homepage sets `select_repo = true` so it uses that same Repo checkout — Komodo’s per-stack clone for Homepage is empty after write (`Missing files: compose.yaml, config/…`). Compose `run_directory` / `file_paths` stay the same as other stacks.
 
 ### This reference site
 

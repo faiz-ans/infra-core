@@ -8,8 +8,8 @@
 servers = ["core", "periphery"]
 repo = "faiz-ans/infra-core"
 branch = "main"
-# Komodo Repo resource name (ResourceSync Select Repo). Stacks clone GitHub
-# themselves via fragment `repo`. Opt-in Select Repo with select_repo = true.
+# Komodo Repo resource name (ResourceSync). Stacks clone GitHub themselves
+# unless select_repo = true (Homepage: per-stack clone is empty after write).
 linked_repo = "infra-core"
 
 # phase: bootstrap → stacks-bootstrap.toml (mixed servers OK)
@@ -35,6 +35,7 @@ phase = "bootstrap"
 [stacks.homepage]
 server = "core"
 phase = "bootstrap"
+select_repo = true
 
 [stacks.opencloud]
 server = "core"
