@@ -11,7 +11,7 @@ Layer 1  Komodo         Variables and secrets; polls git; no GitHub webhooks
 Layer 2  this repo      stacks/ + windows/
 ```
 
-Komodo server names in generated ResourceSync TOML are literals from topology (this reference site: **`core`** and **`periphery`**). Komodo does not interpolate `[[VAR]]` on `server`/`repo`. Bootstrap `CORE_SERVER` / `PERIPHERY_SERVER` must match. Edit topology and run `python3 stacks/komodo/generate-stacks.py` (see [`stacks/komodo/README.md`](stacks/komodo/README.md)). Stacks clone GitHub themselves. ResourceSync Selects the Komodo Repo named **`infra-core`**. Komodo Core is on `edge` and `core-default`; `core-default` is the internet gateway so GitHub and `gitea:3000` both work (see `bootstrap/komodo/compose.yaml`).
+Komodo server names in generated ResourceSync TOML are literals from topology (this reference site: **`core`** and **`periphery`**). Komodo does not interpolate `[[VAR]]` on `server`/`repo`. Bootstrap `CORE_SERVER` / `PERIPHERY_SERVER` must match. Edit topology and run `python3 stacks/komodo/generate-stacks.py` (see [`stacks/komodo/README.md`](stacks/komodo/README.md)). Stacks clone GitHub themselves. ResourceSync Selects the Komodo Repo named **`infra-core`**. Komodo Core is on `edge` and the compose default network; default is the internet gateway so GitHub and `gitea:3000` both work (see `bootstrap/komodo/compose.yaml`).
 
 ## Target state (after bootstrap + ResourceSync)
 

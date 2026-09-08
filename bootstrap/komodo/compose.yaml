@@ -52,9 +52,9 @@ services:
     # Dual-homed: default is internet (GitHub); edge is gitea:3000 / Caddy mesh.
     # Engine 28+: gw_priority (higher = default route). Older engines: last
     # network attached becomes the gateway, so compose `priority` is inverted
-    # (edge connected first, default last). Name `core-default` sorts before
-    # `edge` as a further tie-break. Recreate via this file — do not
-    # `docker network connect` on a running Core.
+    # (edge connected first, default last). Do not rename `default` (that
+    # deletes `{project}_default` and leaves postgres/ferretdb stuck).
+    # Recreate via this file — do not `docker network connect` on a running Core.
     sysctls:
       net.ipv6.conf.all.disable_ipv6: 1
     networks:
@@ -84,8 +84,6 @@ volumes:
   keys:
 
 networks:
-  default:
-    name: core-default
   edge:
     external: true
     name: edge

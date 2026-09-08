@@ -6,7 +6,7 @@
 # Environment [[VAR]] still interpolates at deploy from Core [secrets] / Variables.
 # webhook_enabled is false; poll on-site.
 # After Gitea is origin, set the Komodo Repo git provider to gitea:3000
-# (HTTP). Core is dual-homed; core-default stays the internet gateway.
+# (HTTP). Core is dual-homed; compose default stays the internet gateway.
 
 [[stack]]
 name = "gitea"
