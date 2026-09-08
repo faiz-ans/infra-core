@@ -15,7 +15,6 @@ deploy = false
 [stack.config]
 server = "periphery"
 repo = "faiz-ans/infra-core"
-linked_repo = "infra-core"
 branch = "main"
 run_directory = "stacks/workload/jellyfin"
 file_paths = ["compose.nfs.yaml"]
@@ -37,7 +36,6 @@ deploy = false
 [stack.config]
 server = "periphery"
 repo = "faiz-ans/infra-core"
-linked_repo = "infra-core"
 branch = "main"
 run_directory = "stacks/workload/seerr"
 file_paths = ["compose.yaml"]
@@ -55,7 +53,6 @@ deploy = false
 [stack.config]
 server = "periphery"
 repo = "faiz-ans/infra-core"
-linked_repo = "infra-core"
 branch = "main"
 run_directory = "stacks/workload/arr"
 file_paths = ["compose.nfs.yaml"]
@@ -77,7 +74,6 @@ deploy = false
 [stack.config]
 server = "periphery"
 repo = "faiz-ans/infra-core"
-linked_repo = "infra-core"
 branch = "main"
 run_directory = "stacks/workload/qbittorrent"
 file_paths = ["compose.nfs.yaml"]
@@ -102,7 +98,6 @@ deploy = false
 [stack.config]
 server = "periphery"
 repo = "faiz-ans/infra-core"
-linked_repo = "infra-core"
 branch = "main"
 run_directory = "stacks/workload/immich"
 file_paths = ["compose.nfs.yaml"]
@@ -123,7 +118,6 @@ deploy = false
 [stack.config]
 server = "periphery"
 repo = "faiz-ans/infra-core"
-linked_repo = "infra-core"
 branch = "main"
 run_directory = "stacks/workload/adventurelog"
 file_paths = ["compose.yaml"]
@@ -151,7 +145,6 @@ deploy = false
 [stack.config]
 server = "periphery"
 repo = "faiz-ans/infra-core"
-linked_repo = "infra-core"
 branch = "main"
 run_directory = "stacks/workload/scriberr"
 file_paths = ["compose.yaml"]
@@ -172,7 +165,6 @@ deploy = false
 [stack.config]
 server = "periphery"
 repo = "faiz-ans/infra-core"
-linked_repo = "infra-core"
 branch = "main"
 run_directory = "stacks/workload/transmute"
 file_paths = ["compose.yaml"]
@@ -198,7 +190,6 @@ deploy = false
 [stack.config]
 server = "periphery"
 repo = "faiz-ans/infra-core"
-linked_repo = "infra-core"
 branch = "main"
 run_directory = "stacks/workload/libretranslate"
 file_paths = ["compose.yaml"]
@@ -216,7 +207,6 @@ deploy = false
 [stack.config]
 server = "periphery"
 repo = "faiz-ans/infra-core"
-linked_repo = "infra-core"
 branch = "main"
 run_directory = "stacks/workload/openreader"
 file_paths = ["compose.yaml"]
@@ -236,7 +226,6 @@ deploy = false
 [stack.config]
 server = "periphery"
 repo = "faiz-ans/infra-core"
-linked_repo = "infra-core"
 branch = "main"
 run_directory = "stacks/workload/n8n"
 file_paths = ["compose.yaml"]
@@ -257,7 +246,6 @@ deploy = false
 [stack.config]
 server = "periphery"
 repo = "faiz-ans/infra-core"
-linked_repo = "infra-core"
 branch = "main"
 run_directory = "stacks/workload/frigate"
 file_paths = ["compose.nfs.yaml"]
@@ -281,7 +269,6 @@ deploy = false
 [stack.config]
 server = "periphery"
 repo = "faiz-ans/infra-core"
-linked_repo = "infra-core"
 branch = "main"
 run_directory = "stacks/workload/homeassistant"
 file_paths = ["compose.nfs.yaml"]
@@ -305,7 +292,6 @@ deploy = false
 [stack.config]
 server = "periphery"
 repo = "faiz-ans/infra-core"
-linked_repo = "infra-core"
 branch = "main"
 run_directory = "stacks/platform/glances"
 file_paths = ["compose.periphery.yaml"]
@@ -327,7 +313,6 @@ deploy = false
 [stack.config]
 server = "periphery"
 repo = "faiz-ans/infra-core"
-linked_repo = "infra-core"
 branch = "main"
 run_directory = "stacks/platform/pihole"
 file_paths = ["compose.periphery.yaml"]
@@ -349,7 +334,6 @@ deploy = false
 [stack.config]
 server = "periphery"
 repo = "faiz-ans/infra-core"
-linked_repo = "infra-core"
 branch = "main"
 run_directory = "stacks/platform/dockerproxy"
 file_paths = ["compose.yaml"]
@@ -366,7 +350,6 @@ deploy = false
 [stack.config]
 server = "periphery"
 repo = "faiz-ans/infra-core"
-linked_repo = "infra-core"
 branch = "main"
 run_directory = "stacks/platform/monitoring"
 file_paths = ["compose.yaml"]
@@ -388,7 +371,6 @@ deploy = false
 [stack.config]
 server = "periphery"
 repo = "faiz-ans/infra-core"
-linked_repo = "infra-core"
 branch = "main"
 run_directory = "stacks/platform/restic-rest"
 file_paths = ["compose.yaml"]

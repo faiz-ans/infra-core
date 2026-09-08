@@ -456,12 +456,9 @@ fi
 # sudo bash bootstrap/core-docker-engine.sh
 bash "${SCRIPT_DIR}/core-docker-engine.sh"
 
-# Host-network WireGuard NATs on the real NIC. Persist forwarding (Docker
-# often sets this already; required if Core starts WG before Docker does).
-# echo net.ipv4.ip_forward=1 > /etc/sysctl.d/99-ip-forward.conf
-# sysctl -w net.ipv4.ip_forward=1
-echo 'net.ipv4.ip_forward=1' > /etc/sysctl.d/99-ip-forward.conf
-sysctl -w net.ipv4.ip_forward=1
+# Host-network WireGuard NAT + IPv6 off (AAAA timeouts on dual-NIC boards).
+# sudo bash bootstrap/core-net.sh
+bash "${SCRIPT_DIR}/core-net.sh"
 
 # --- DATA_ROOT tree ---
 # Core app state under system/<app>. Periphery /config is local on the HTPC.

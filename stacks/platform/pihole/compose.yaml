@@ -20,6 +20,8 @@ services:
       - ${DATA_ROOT}/system/pihole:/etc/pihole
     cap_add:
       - NET_ADMIN
+    sysctls:
+      net.ipv6.conf.all.disable_ipv6: 1
     networks:
       - edge
 

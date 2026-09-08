@@ -49,9 +49,18 @@ services:
       - ${COMPOSE_KOMODO_BACKUPS_PATH}:/backups
       - ${KOMODO_CORE_CONFIG_TOML}:/config/config.toml:ro
       - ${DATA_ROOT}/system/authelia/ca-bundle.crt:/etc/ssl/caddy/ca-bundle.crt:ro
+    # Dual-homed: default is internet (GitHub); edge is gitea:3000 / Caddy mesh.
+    # gw_priority (Engine 28+) pins the default route. Network name
+    # `core-default` sorts before `edge` so older engines pick the same GW.
+    # Recreate via this file. Do not `docker network connect` on a running Core
+    # (last connect becomes the default route).
     networks:
-      - default
-      - edge
+      default:
+        priority: 1000
+        gw_priority: 1
+      edge:
+        priority: 100
+        gw_priority: 0
 
   periphery:
     image: ghcr.io/moghtech/komodo-periphery:${COMPOSE_KOMODO_IMAGE_TAG:-2}
@@ -71,8 +80,9 @@ volumes:
   ferretdb-state:
   keys:
 
-# HTTP clone of Gitea as gitea:3000 (no live domain in ResourceSync TOML).
 networks:
+  default:
+    name: core-default
   edge:
     external: true
     name: edge

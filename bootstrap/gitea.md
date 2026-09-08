@@ -58,13 +58,7 @@ docker exec -u git gitea gitea admin auth add-oauth \
 
 Gitea’s `admin auth add-oauth` has **no** `--skip-tls-verify` (that flag is LDAP/SMTP only).
 
-Connect Komodo Core to `edge` if it is not already (needed later for `gitea:3000`):
-
-```text
-docker network connect edge "$(docker ps -qf ancestor=ghcr.io/moghtech/komodo-core)"
-```
-
-If that matches more than one container, pass the Core container name explicitly. New bootstrap compose attaches Core to `edge` on recreate.
+Komodo Core is dual-homed: compose `default` (`core-default`) is the internet gateway (GitHub); `edge` reaches `gitea:3000`. Caddy/Gitea/Homepage stay on `edge` only. Recreate Core from `bootstrap/komodo/compose.yaml` (`gw_priority` on `default`). Do **not** run `docker network connect` on a running Core — that ignores compose and can make `edge` the default route (`Could not resolve host: github.com`). If that already happened: `docker compose --env-file compose.env -f compose.yaml up -d` from `/etc/komodo/bootstrap` (after copying this compose file).
 
 ## 2. Transfer GitHub → Gitea
 
@@ -117,7 +111,7 @@ Settings → Providers → add a git provider:
 | Account | Gitea username |
 | Token | Gitea access token (repo read) |
 
-Do **not** add `git_provider` on each stack in generated `stacks-*.toml` (the generator would wipe it). Set the provider on the Komodo **Repo** named `infra-core` (topology `linked_repo`). ResourceSync and the generated stacks already Select that Repo:
+Do **not** add `git_provider` on each stack in generated `stacks-*.toml` (the generator would wipe it). Set the provider on the Komodo **Repo** named `infra-core` (topology `linked_repo`):
 
 | Field | Value |
 |---|---|
@@ -125,7 +119,7 @@ Do **not** add `git_provider` on each stack in generated `stacks-*.toml` (the ge
 | Repo | `faiz-ans/infra-core` |
 | Branch | `main` |
 
-The provider change lives on the Repo resource. Execute ResourceSync after this catalog includes `linked_repo` on stacks.
+The provider change lives on the Repo resource (ResourceSync). Stacks still clone GitHub via inline `repo` until you point them at that Repo. Core is already on `edge` so `gitea:3000` resolves.
 
 `repo` stays `faiz-ans/infra-core`. Do not write `git.home.lan` (or any live domain) in git.
 

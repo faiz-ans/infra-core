@@ -70,6 +70,21 @@ Workload compose is transport-agnostic. Komodo `file_paths` chooses one file (ne
 
 This site’s `stacks-periphery.toml` uses `compose.nfs.yaml` for Jellyfin, Arr, qBittorrent, Immich, and Frigate. Follow `bootstrap/omv-nfs.md`, then set `NAS_LAN_IP`, `NFS_EXPORT=/shared`, and `NFS_USERS=/users`. Do not set those stacks’ `DATA_ROOT` to `Z:`. Run `periphery-docker-engine.ps1` before ResourceSync (§1).
 
+If Core’s LAN IP changed (NIC swap, new DHCP reservation), Komodo `NAS_LAN_IP` must match, OMV NFS clients must allow the HTPC IP, **and** Docker NFS volumes on the HTPC must be recreated (they bake `addr=` at `docker volume create`). Hung `hard` mounts look like unhealthy/restarting stacks. `Pull` then fails with `Missing compose file at compose.nfs.yaml` if the git checkout was wiped during that mess — **Redeploy**, do not Pull, after NFS is healthy.
+
+On the HTPC (Docker Desktop running; quit Docker first if `volume rm` hangs):
+
+```text
+docker ps -a --format "{{.Names}} {{.Status}}"
+wsl --shutdown
+# start Docker Desktop again, then:
+docker volume ls
+# remove only NFS data volumes (jellyfin-media, arr downloads/media, etc.), not *-config
+docker compose ls
+```
+
+Then Komodo → each NFS stack → **Redeploy** (clone + compose up). Confirm `NAS_LAN_IP` is the live Core address first.
+
 Home Assistant’s HTPC file is also named `compose.nfs.yaml`, but `/config` is a **local Docker volume**. `trusted_proxies` is written into that volume at start (`ensure-http/`); do not bind-mount `configuration.yaml` (Docker Desktop drops single-file binds, which produces Caddy 400s). `.storage` is not on DATA_ROOT.
 
 A future single-host or Linux engine can point a stack at `compose.yaml` and a local/host `DATA_ROOT`.

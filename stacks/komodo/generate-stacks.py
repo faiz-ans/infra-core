@@ -30,7 +30,7 @@ BOOTSTRAP_HEADER = """\
 # Komodo does not interpolate [[VAR]] in server/repo — those must be literals.
 # Environment [[VAR]] still interpolates at deploy from Core [secrets] / Variables.
 # webhook_enabled is false; poll on-site.
-# linked_repo is topology's Komodo Repo name so stacks share ResourceSync's clone.
+# Stacks clone GitHub per stack (`repo`). ResourceSync uses topology linked_repo.
 
 """
 
@@ -42,8 +42,8 @@ CORE_HEADER = """\
 # Komodo does not interpolate [[VAR]] in server/repo — those must be literals.
 # Environment [[VAR]] still interpolates at deploy from Core [secrets] / Variables.
 # webhook_enabled is false; poll on-site.
-# linked_repo is topology's Komodo Repo name. After Gitea is up, set that Repo's
-# git provider to gitea:3000 (HTTP, Core on the edge network). GitHub is a push mirror.
+# After Gitea is origin, set the Komodo Repo git provider to gitea:3000
+# (HTTP). Core is dual-homed; core-default stays the internet gateway.
 
 """
 
@@ -175,7 +175,9 @@ def emit(path: Path, header: str, names: list[str], topo: dict) -> None:
         if meta.get("enabled", True) is False:
             continue
         body = set_server(fragment_for(name), meta["server"])
-        body = set_linked_repo(body, linked_repo)
+        # Default: per-stack GitHub clone. select_repo = true → linked_repo.
+        select = meta.get("select_repo") is True
+        body = set_linked_repo(body, linked_repo if select else "")
         parts.append(body.rstrip() + "\n\n")
     path.write_text("".join(parts).rstrip() + "\n")
     repo = ROOT.parent.parent

@@ -17,7 +17,7 @@ Mark items tagged **secret** as secrets in Komodo when inspecting the file.
 
 | Key | Secret | Used by |
 |---|---|---|
-| `CATALOG_REPO` | | Informational. Catalog git path is `faiz-ans/infra-core`. Stacks use topology `linked_repo` (this site: `infra-core`) so they share ResourceSync’s clone. After Gitea exists, set that Repo’s git provider to `gitea:3000` (see `bootstrap/gitea.md`). |
+| `CATALOG_REPO` | | Informational. Catalog git path is `faiz-ans/infra-core`. Stacks clone GitHub; ResourceSync Selects the Komodo Repo named `infra-core`. After Gitea is origin, set that Repo’s git provider to `gitea:3000` (see `bootstrap/gitea.md`). |
 | `CORE_SERVER` | | Bootstrap `connect_as` / first server. Must match TOML `server = "core"` |
 | `PERIPHERY_SERVER` | | Remote Periphery `connect_as`. Must match TOML `server = "periphery"` |
 | `DOMAIN` | | Caddy, Authelia, Pi-hole, Homepage, Vaultwarden public URL |
@@ -82,7 +82,7 @@ Authelia user hashes live in `${DATA_ROOT}/system/authelia/users.yml` on the NAS
 
 `WEATHER_LATITUDE` and `WEATHER_LONGITUDE` are decimal degrees for the Homepage Open-Meteo widget (home location, not each browser). West of Greenwich is negative. Names must be exactly those two keys (not `HOMEPAGE_VAR_WEATHER_*`). After creating them, Redeploy **homepage** so Komodo rewrites `.env` and recreates the container. Empty values fall back to browser geolocation. Units are imperial. Timezone is mapped from `TZ`.
 
-`HOMEPAGE_VAR_DOMAIN` and `HOMEPAGE_VAR_HTPC_UPSTREAM` are **mapped from** `DOMAIN` and `HTPC_UPSTREAM` in the Homepage stack environment. `HOMEPAGE_VAR_PIHOLE_TOKEN` is **mapped from** `PIHOLE_WEBPASSWORD`. Do not duplicate live values in git. Homepage only substitutes `{{HOMEPAGE_VAR_*}}` in YAML (not `${{PIHOLE_WEBPASSWORD}}`).
+`HOMEPAGE_VAR_DOMAIN` and `HOMEPAGE_VAR_HTPC_UPSTREAM` are **mapped from** `DOMAIN` and `HTPC_UPSTREAM` in the Homepage stack environment. `HOMEPAGE_VAR_PIHOLE_TOKEN` is **mapped from** `PIHOLE_WEBPASSWORD` (Pi-hole v6 web/API password, or an app password from Pi-hole Settings → API if the widget shows API Error). Do not duplicate live values in git. Homepage only substitutes `{{HOMEPAGE_VAR_*}}` in YAML (not `${{PIHOLE_WEBPASSWORD}}`).
 
 ## Notes and bookmarks
 
