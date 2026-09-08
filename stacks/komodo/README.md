@@ -19,7 +19,9 @@ python3 stacks/komodo/generate-stacks.py
 
 Do **not** hand-edit the generated `stacks-*.toml` files; change topology or fragments, then regenerate.
 
-Topology `linked_repo` is the Komodo Repo name ResourceSync Selects. Stacks clone GitHub themselves (`repo = "faiz-ans/infra-core"`). Homepage sets `select_repo = true` so it uses that same Repo checkout — Komodo’s per-stack clone for Homepage is empty after write (`Missing files: compose.yaml, config/…`). Compose `run_directory` / `file_paths` stay the same as other stacks.
+Topology `linked_repo` is the Komodo Repo name ResourceSync Selects. Stacks clone GitHub themselves (`repo = "faiz-ans/infra-core"`).
+
+If Deploy reports missing `compose.yaml` after a failed git pull, that stack’s clone under `/etc/komodo/stacks/<name>` is empty. Delete that directory and Deploy again. Do not Select Repo to paper over it.
 
 ### This reference site
 

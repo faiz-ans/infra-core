@@ -30,8 +30,7 @@ BOOTSTRAP_HEADER = """\
 # Komodo does not interpolate [[VAR]] in server/repo — those must be literals.
 # Environment [[VAR]] still interpolates at deploy from Core [secrets] / Variables.
 # webhook_enabled is false; poll on-site.
-# Stacks clone GitHub per stack (`repo`). Homepage Selects topology linked_repo
-# (Komodo writes an empty per-stack clone for that stack otherwise).
+# Stacks clone GitHub per stack (`repo`). ResourceSync uses topology linked_repo.
 
 """
 
@@ -176,7 +175,7 @@ def emit(path: Path, header: str, names: list[str], topo: dict) -> None:
         if meta.get("enabled", True) is False:
             continue
         body = set_server(fragment_for(name), meta["server"])
-        # Homepage: select_repo so Komodo uses the ResourceSync clone.
+        # Opt-in: topology select_repo = true → linked_repo.
         select = meta.get("select_repo") is True
         body = set_linked_repo(body, linked_repo if select else "")
         parts.append(body.rstrip() + "\n\n")

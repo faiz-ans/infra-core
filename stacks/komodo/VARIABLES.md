@@ -17,7 +17,7 @@ Mark items tagged **secret** as secrets in Komodo when inspecting the file.
 
 | Key | Secret | Used by |
 |---|---|---|
-| `CATALOG_REPO` | | Informational. Catalog git path is `faiz-ans/infra-core`. Stacks clone GitHub; Homepage Selects the Komodo Repo named `infra-core` (same as ResourceSync). After Gitea is origin, set that Repo’s git provider to `gitea:3000` (see `bootstrap/gitea.md`). |
+| `CATALOG_REPO` | | Informational. Catalog git path is `faiz-ans/infra-core`. Stacks clone GitHub; ResourceSync Selects the Komodo Repo named `infra-core`. After Gitea is origin, set that Repo’s git provider to `gitea:3000` (see `bootstrap/gitea.md`). |
 | `CORE_SERVER` | | Bootstrap `connect_as` / first server. Must match TOML `server = "core"` |
 | `PERIPHERY_SERVER` | | Remote Periphery `connect_as`. Must match TOML `server = "periphery"` |
 | `DOMAIN` | | Caddy, Authelia, Pi-hole, Homepage, Vaultwarden public URL |
