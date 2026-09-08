@@ -30,6 +30,7 @@ BOOTSTRAP_HEADER = """\
 # Komodo does not interpolate [[VAR]] in server/repo — those must be literals.
 # Environment [[VAR]] still interpolates at deploy from Core [secrets] / Variables.
 # webhook_enabled is false; poll on-site.
+# linked_repo is topology's Komodo Repo name so stacks share ResourceSync's clone.
 
 """
 
@@ -41,8 +42,8 @@ CORE_HEADER = """\
 # Komodo does not interpolate [[VAR]] in server/repo — those must be literals.
 # Environment [[VAR]] still interpolates at deploy from Core [secrets] / Variables.
 # webhook_enabled is false; poll on-site.
-# repo path stays faiz-ans/infra-core. After Gitea is up, point the Komodo git
-# provider at gitea:3000 (HTTP, Core on the edge network). GitHub is a push mirror.
+# linked_repo is topology's Komodo Repo name. After Gitea is up, set that Repo's
+# git provider to gitea:3000 (HTTP, Core on the edge network). GitHub is a push mirror.
 
 """
 
@@ -64,6 +65,7 @@ PERIPHERY_HEADER = """\
 def parse_topology(text: str) -> dict:
     """Minimal parser for topology.toml (servers list + [stacks.*] tables)."""
     servers: list[str] = []
+    catalog: dict[str, str] = {}
     stacks: dict[str, dict] = {}
     current: str | None = None
 
@@ -80,20 +82,25 @@ def parse_topology(text: str) -> dict:
             current = m.group(1)
             stacks[current] = {}
             continue
-        if current is None:
-            continue
         m = re.match(r'^(\w+)\s*=\s*"([^"]*)"\s*$', line)
         if m:
-            stacks[current][m.group(1)] = m.group(2)
+            key, value = m.group(1), m.group(2)
+            if current is None:
+                if key in ("repo", "branch", "linked_repo"):
+                    catalog[key] = value
+                continue
+            stacks[current][key] = value
             continue
         m = re.match(r'^(\w+)\s*=\s*(true|false)\s*$', line)
         if m:
+            if current is None:
+                continue
             stacks[current][m.group(1)] = m.group(2) == "true"
             continue
 
     if not servers or not stacks:
         sys.exit("topology.toml must define servers and [stacks.*] tables")
-    return {"servers": servers, "stacks": stacks}
+    return {"servers": servers, "stacks": stacks, **catalog}
 
 
 def load_topology() -> dict:
@@ -120,6 +127,31 @@ def set_server(body: str, server: str) -> str:
     return new
 
 
+def set_linked_repo(body: str, linked_repo: str) -> str:
+    """Insert or replace linked_repo under [stack.config]. Empty clears it."""
+    if not linked_repo:
+        return re.sub(r'^linked_repo\s*=\s*"[^"]*"\n', "", body, flags=re.M)
+    new, n = re.subn(
+        r'^linked_repo\s*=\s*"[^"]*"',
+        f'linked_repo = "{linked_repo}"',
+        body,
+        count=1,
+        flags=re.M,
+    )
+    if n == 1:
+        return new
+    new, n = re.subn(
+        r'^(repo\s*=\s*"[^"]*"\n)',
+        rf'\1linked_repo = "{linked_repo}"\n',
+        body,
+        count=1,
+        flags=re.M,
+    )
+    if n != 1:
+        sys.exit(f"could not set linked_repo in fragment (replacements={n})")
+    return new
+
+
 def header_for(server: str | None, *, bootstrap: bool) -> str:
     if bootstrap:
         return BOOTSTRAP_HEADER
@@ -136,12 +168,14 @@ def header_for(server: str | None, *, bootstrap: bool) -> str:
 
 def emit(path: Path, header: str, names: list[str], topo: dict) -> None:
     stacks = topo["stacks"]
+    linked_repo = topo.get("linked_repo", "")
     parts = [header]
     for name in names:
         meta = stacks[name]
         if meta.get("enabled", True) is False:
             continue
         body = set_server(fragment_for(name), meta["server"])
+        body = set_linked_repo(body, linked_repo)
         parts.append(body.rstrip() + "\n\n")
     path.write_text("".join(parts).rstrip() + "\n")
     repo = ROOT.parent.parent

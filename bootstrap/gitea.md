@@ -117,14 +117,16 @@ Settings → Providers → add a git provider:
 | Account | Gitea username |
 | Token | Gitea access token (repo read) |
 
-On **every** stack in `stacks/komodo/stacks-core.toml` and `stacks-periphery.toml`, under `[stack.config]`, add:
+Do **not** add `git_provider` on each stack in generated `stacks-*.toml` (the generator would wipe it). Set the provider on the Komodo **Repo** named `infra-core` (topology `linked_repo`). ResourceSync and the generated stacks already Select that Repo:
 
-```toml
-git_provider = "gitea:3000"
-```
+| Field | Value |
+|---|---|
+| Git provider | `gitea:3000` |
+| Repo | `faiz-ans/infra-core` |
+| Branch | `main` |
 
-Also set that provider on the ResourceSync resource in the Komodo UI (the sync that reads those TOML files). Commit and push that TOML change to **Gitea**. Then execute the sync.
+The provider change lives on the Repo resource. Execute ResourceSync after this catalog includes `linked_repo` on stacks.
 
 `repo` stays `faiz-ans/infra-core`. Do not write `git.home.lan` (or any live domain) in git.
 
-Until those `git_provider` lines exist, stacks keep cloning from GitHub. Apply this catalog from GitHub first so Gitea itself can start.
+Until Gitea exists, that same Repo clones from GitHub so phase A can deploy. Apply this catalog from GitHub first so Gitea itself can start.

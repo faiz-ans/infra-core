@@ -7,6 +7,7 @@
 # Komodo does not interpolate [[VAR]] in server/repo — those must be literals.
 # Environment [[VAR]] still interpolates at deploy from Core [secrets] / Variables.
 # webhook_enabled is false; poll on-site.
+# linked_repo is topology's Komodo Repo name so stacks share ResourceSync's clone.
 
 [[stack]]
 name = "caddy"
@@ -14,6 +15,7 @@ deploy = true
 [stack.config]
 server = "core"
 repo = "faiz-ans/infra-core"
+linked_repo = "infra-core"
 branch = "main"
 run_directory = "stacks/platform/caddy"
 file_paths = ["compose.yaml"]
@@ -39,6 +41,7 @@ after = ["caddy"]
 [stack.config]
 server = "core"
 repo = "faiz-ans/infra-core"
+linked_repo = "infra-core"
 branch = "main"
 run_directory = "stacks/platform/authelia"
 file_paths = ["compose.yaml"]
@@ -66,6 +69,7 @@ after = ["caddy"]
 [stack.config]
 server = "core"
 repo = "faiz-ans/infra-core"
+linked_repo = "infra-core"
 branch = "main"
 run_directory = "stacks/platform/pihole"
 file_paths = ["compose.yaml"]
@@ -86,6 +90,7 @@ after = ["caddy"]
 [stack.config]
 server = "core"
 repo = "faiz-ans/infra-core"
+linked_repo = "infra-core"
 branch = "main"
 run_directory = "stacks/platform/glances"
 file_paths = ["compose.yaml"]
@@ -106,6 +111,7 @@ after = ["caddy", "authelia", "glances"]
 [stack.config]
 server = "core"
 repo = "faiz-ans/infra-core"
+linked_repo = "infra-core"
 branch = "main"
 run_directory = "stacks/platform/homepage"
 file_paths = ["compose.yaml"]
@@ -147,6 +153,7 @@ after = ["caddy"]
 [stack.config]
 server = "core"
 repo = "faiz-ans/infra-core"
+linked_repo = "infra-core"
 branch = "main"
 run_directory = "stacks/workload/opencloud"
 file_paths = ["compose.yaml"]
@@ -173,6 +180,7 @@ deploy = false
 [stack.config]
 server = "periphery"
 repo = "faiz-ans/infra-core"
+linked_repo = "infra-core"
 branch = "main"
 run_directory = "stacks/workload/collabora"
 file_paths = ["compose.yaml"]

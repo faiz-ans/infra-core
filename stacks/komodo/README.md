@@ -19,6 +19,8 @@ python3 stacks/komodo/generate-stacks.py
 
 Do **not** hand-edit the generated `stacks-*.toml` files; change topology or fragments, then regenerate.
 
+Topology `linked_repo` is the Komodo Repo name (Select Repo). ResourceSync does not attach that Repo to stacks it creates; the generator writes `linked_repo` onto every stack so a fresh deploy uses the same clone and credentials. `repo = "faiz-ans/infra-core"` alone is an independent GitHub clone.
+
 ### This reference site
 
 Servers remain **`core`** and **`periphery`** with the same placement as before, except phase-A stacks are carved into `stacks-bootstrap.toml`.

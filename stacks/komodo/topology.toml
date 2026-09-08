@@ -8,6 +8,10 @@
 servers = ["core", "periphery"]
 repo = "faiz-ans/infra-core"
 branch = "main"
+# Komodo Repo resource name. Generated stacks set linked_repo so ResourceSync
+# attaches Select Repo (same clone/credentials as the sync). Inline `repo` alone
+# does not inherit the sync's Repo; a fresh stack write then misses compose/config.
+linked_repo = "infra-core"
 
 # phase: bootstrap → stacks-bootstrap.toml (mixed servers OK)
 # phase: full → stacks-<server>.toml
