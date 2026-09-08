@@ -16,18 +16,29 @@ if [ -f /seed-mtu.mjs ] && [ -f /etc/wireguard/wg-easy.db ]; then
   node /seed-mtu.mjs || true
 fi
 
-# First start creates the DB after node is up; apply once it appears.
+# First start creates the DB after node is up. wg-easy PostUp then writes
+# MASQUERADE -o <Device from DB>, which can still be the old NIC — re-seed
+# after wg0 exists so live NAT follows the default route.
 (
   i=0
+  seeded=0
   while [ "${i}" -lt 45 ]; do
     if [ -f /etc/wireguard/wg-easy.db ] && [ -f /seed-mtu.mjs ]; then
-      sleep 2
       node /seed-mtu.mjs || true
-      break
+      seeded=1
+      if grep -q '^ *wg0:' /proc/net/dev 2>/dev/null; then
+        sleep 2
+        node /seed-mtu.mjs || true
+        break
+      fi
     fi
     i=$((i + 1))
     sleep 1
   done
+  if [ "${seeded}" -eq 1 ]; then
+    sleep 5
+    node /seed-mtu.mjs || true
+  fi
 ) &
 
 exec /usr/bin/dumb-init node server/index.mjs

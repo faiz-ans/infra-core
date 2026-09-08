@@ -1,27 +1,48 @@
 # Seed catalog defaults in wg-easy v15 SQLite. No INIT_MTU / INIT_DEVICE.
 # - Factory client MTU 1420 → 1280 (operator-chosen MTU is left alone).
 # - Device + live MASQUERADE follow the current default IPv4 route iface.
-#   Handshake + LAN with no WAN means NAT still points at a dead NIC.
+#   Default iface comes from /proc/net/route (host netns; no `ip` in the image).
+#   Re-apply after wg-easy PostUp, which otherwise restores -o eth0.
 import { execSync } from 'node:child_process'
 import { DatabaseSync } from 'node:sqlite'
-import { existsSync } from 'node:fs'
+import { existsSync, readFileSync } from 'node:fs'
 
 const dbPath = '/etc/wireguard/wg-easy.db'
 if (!existsSync(dbPath)) process.exit(0)
 
 function sh(cmd) {
   try {
-    return execSync(cmd, { encoding: 'utf8' })
+    return execSync(cmd, { encoding: 'utf8', shell: '/bin/sh' })
   } catch {
     return ''
   }
 }
 
+function skipIface(dev) {
+  return !dev || /^(wg|docker|br-|lo)/.test(dev)
+}
+
 function defaultDev() {
-  const m = sh('ip -4 route show default').match(/\bdev\s+(\S+)/)
+  try {
+    const lines = readFileSync('/proc/net/route', 'utf8').trim().split('\n').slice(1)
+    let best = { metric: Infinity, dev: '' }
+    for (const line of lines) {
+      const cols = line.trim().split(/\s+/)
+      const iface = cols[0]
+      const dest = cols[1]
+      const metric = Number.parseInt(cols[6], 10)
+      if (dest !== '00000000' || skipIface(iface)) continue
+      if (metric < best.metric) best = { metric, dev: iface }
+    }
+    if (best.dev) return best.dev
+  } catch {
+    /* fall through */
+  }
+  const m = sh('ip -4 route show default 2>/dev/null; /sbin/ip -4 route show default 2>/dev/null').match(
+    /\bdev\s+(\S+)/
+  )
   const dev = m ? m[1] : ''
-  if (!dev || /^(wg|docker|br-|lo)/.test(dev)) return ''
-  return dev
+  return skipIface(dev) ? '' : dev
 }
 
 function natLines() {
