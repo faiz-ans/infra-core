@@ -50,13 +50,16 @@ services:
       - ${KOMODO_CORE_CONFIG_TOML}:/config/config.toml:ro
       - ${DATA_ROOT}/system/authelia/ca-bundle.crt:/etc/ssl/caddy/ca-bundle.crt:ro
     # Dual-homed: default is internet (GitHub); edge is gitea:3000 / Caddy mesh.
-    # gw_priority (Engine 28+) pins the default route. Network name
-    # `core-default` sorts before `edge` so older engines pick the same GW.
-    # Recreate via this file. Do not `docker network connect` on a running Core
-    # (last connect becomes the default route).
+    # Engine 28+: gw_priority (higher = default route). Older engines: last
+    # network attached becomes the gateway, so compose `priority` is inverted
+    # (edge connected first, default last). Name `core-default` sorts before
+    # `edge` as a further tie-break. Recreate via this file — do not
+    # `docker network connect` on a running Core.
+    sysctls:
+      net.ipv6.conf.all.disable_ipv6: 1
     networks:
       default:
-        priority: 1000
+        priority: 0
         gw_priority: 1
       edge:
         priority: 100

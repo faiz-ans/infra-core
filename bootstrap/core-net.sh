@@ -27,5 +27,5 @@ sysctl net.ipv4.ip_forward net.ipv4.conf.all.src_valid_mark \
 
 echo "Default IPv4 route:"
 ip -4 route show default || true
-echo "Apply linux/docker-engine.json (ipv6 false) with: sudo bash bootstrap/core-docker-engine.sh"
+echo "Apply docker ipv6 false with: sudo bash bootstrap/core-docker-engine.sh"
 echo "Then Redeploy wireguard so seed-mtu.mjs rewrites NAT to this iface."

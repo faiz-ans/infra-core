@@ -14,12 +14,13 @@ fi
 
 here="$(cd "$(dirname "$0")" && pwd)"
 repo="$(cd "${here}/.." && pwd)"
-fragment="${repo}/linux/docker-engine.json"
+# Prefer next to this script (a bootstrap/ tree on Core). linux/ is the repo copy.
+fragment="${here}/docker-engine.json"
 if [[ ! -f "${fragment}" ]]; then
-  fragment="${here}/docker-engine.json"
+  fragment="${repo}/linux/docker-engine.json"
 fi
 if [[ ! -f "${fragment}" ]]; then
-  echo "linux/docker-engine.json not found."
+  echo "docker-engine.json not found (bootstrap/ or linux/)."
   exit 1
 fi
 

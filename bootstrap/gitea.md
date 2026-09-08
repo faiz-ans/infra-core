@@ -58,7 +58,7 @@ docker exec -u git gitea gitea admin auth add-oauth \
 
 Gitea’s `admin auth add-oauth` has **no** `--skip-tls-verify` (that flag is LDAP/SMTP only).
 
-Komodo Core is dual-homed: compose `default` (`core-default`) is the internet gateway (GitHub); `edge` reaches `gitea:3000`. Caddy/Gitea/Homepage stay on `edge` only. Recreate Core from `bootstrap/komodo/compose.yaml` (`gw_priority` on `default`). Do **not** run `docker network connect` on a running Core — that ignores compose and can make `edge` the default route (`Could not resolve host: github.com`). If that already happened: `docker compose --env-file compose.env -f compose.yaml up -d` from `/etc/komodo/bootstrap` (after copying this compose file).
+Komodo Core is dual-homed: compose `default` (`core-default`) is the internet gateway (GitHub); `edge` reaches `gitea:3000`. Caddy/Gitea/Homepage stay on `edge` only. Copy `bootstrap/komodo/compose.yaml` onto `/etc/komodo/bootstrap/compose.yaml` from a **current** checkout, then `docker compose up -d` as root (Core must show **Started**/Recreated, not already Running). Do **not** `docker network connect` on a running Core. On Engine 27 and older the last attached network is the default route; this file connects `edge` first and `default` last.
 
 ## 2. Transfer GitHub → Gitea
 
