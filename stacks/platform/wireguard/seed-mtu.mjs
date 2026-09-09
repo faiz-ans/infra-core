@@ -112,21 +112,32 @@ function natLines(bin) {
     .filter(Boolean)
 }
 
+function masqCount(bin, cidr, dev) {
+  return natLines(bin).filter(
+    (l) =>
+      l.includes('MASQUERADE') &&
+      l.includes(`-s ${cidr}`) &&
+      l.includes(`-o ${dev}`)
+  ).length
+}
+
 function syncMasq(cidr, dev) {
   if (!cidr || !dev) return
   const bin = iptablesBin()
-  let kept = false
   for (const line of natLines(bin)) {
     if (!line.includes('MASQUERADE') || !line.includes(`-s ${cidr}`)) continue
     const om = line.match(/-o\s+(\S+)/)
     const odev = om ? om[1] : ''
-    if (odev === dev && !kept) {
-      kept = true
-      continue
+    if (odev && odev !== dev) {
+      sh(`${bin} -t nat -D POSTROUTING -s ${cidr} -o ${odev} -j MASQUERADE`)
     }
-    sh(`${bin} -t nat -D POSTROUTING ${line.replace(/^-A POSTROUTING\s+/, '')}`)
   }
-  if (!kept) {
+  let n = masqCount(bin, cidr, dev)
+  while (n > 1) {
+    sh(`${bin} -t nat -D POSTROUTING -s ${cidr} -o ${dev} -j MASQUERADE`)
+    n = masqCount(bin, cidr, dev)
+  }
+  if (n === 0) {
     sh(`${bin} -t nat -A POSTROUTING -s ${cidr} -o ${dev} -j MASQUERADE`)
   }
 }
