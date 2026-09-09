@@ -4,10 +4,12 @@ services:
     image: pihole/pihole:latest
     container_name: pihole
     restart: unless-stopped
-    # Bind DNS to the LAN IP only so systemd-resolved on 127.0.0.53 keeps :53.
+    # 0.0.0.0:53 (not ${NAS_LAN_IP}:53): docker-proxy is up before DHCP assigns
+    # the LAN address. Binding a specific IP fails at create and stays dead
+    # until recreate. 127.0.0.53 (systemd-resolved) is a different socket.
     ports:
-      - "${NAS_LAN_IP}:53:53/tcp"
-      - "${NAS_LAN_IP}:53:53/udp"
+      - "53:53/tcp"
+      - "53:53/udp"
     environment:
       TZ: ${TZ}
       FTLCONF_dns_listeningMode: ALL

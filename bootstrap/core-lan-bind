@@ -45,16 +45,15 @@ wait_addr() {
 }
 
 dns_up() {
-  local ip=$1
-  ss -uln 2>/dev/null | grep -q "${ip}:53" && return 0
-  ss -tln 2>/dev/null | grep -q "${ip}:53" && return 0
+  ss -uln 2>/dev/null | grep -qE ':53([[:space:]]|$)' && return 0
+  ss -tln 2>/dev/null | grep -qE ':53([[:space:]]|$)' && return 0
   return 1
 }
 
 wait_dns() {
-  local ip=$1 i=0
+  local i=0
   while [[ "${i}" -lt 30 ]]; do
-    if dns_up "${ip}"; then
+    if dns_up; then
       return 0
     fi
     i=$((i + 1))
@@ -162,23 +161,29 @@ if [[ -z "${IP}" ]]; then
 fi
 
 wait_docker || exit 1
-wait_addr "${IP}" || exit 1
 
-if ! recreate_one pihole; then
-  dump_pihole
-  exit 1
+# Prefer 0.0.0.0:53 (compose after Redeploy). Do not wait on DHCP before
+# HTTPS: that wait + Pi-hole recreate was the post-reboot delay.
+if dns_up; then
+  echo "core-lan-bind: :53 already published; skip Pi-hole recreate."
+else
+  wait_addr "${IP}" || exit 1
+  if ! recreate_one pihole; then
+    dump_pihole
+    exit 1
+  fi
+  if ! wait_dns; then
+    echo "core-lan-bind: :53 still not published after recreate."
+    dump_pihole
+    exit 1
+  fi
 fi
 
-if ! wait_dns "${IP}"; then
-  echo "core-lan-bind: ${IP}:53 still not published after recreate."
-  dump_pihole
-  exit 1
-fi
-
+restart_one caddy
+wait_addr "${IP}" || true
 restart_one wireguard
 fix_wg_nat
-restart_one caddy
 restart_one bootstrap-core-1
 
-echo "core-lan-bind: done (${IP}:53 published)."
+echo "core-lan-bind: done (${IP}; DNS up)."
 exit 0
