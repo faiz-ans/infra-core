@@ -33,8 +33,7 @@ if [ -f /seed-mtu.mjs ] && [ -f /etc/wireguard/wg-easy.db ]; then
   SEED_IPTABLES=0 node /seed-mtu.mjs || true
 fi
 
-# PostUp runs after node brings wg0 up (may still use -o eth0). Rewrite once
-# the iface exists; do not keep adding rules — flush + one PostUp -A is enough.
+# PostUp runs after node brings wg0 up. Rewrite Device/NAT once wg0 exists.
 (
   i=0
   while [ "${i}" -lt 30 ]; do

@@ -19,7 +19,6 @@ poll_for_updates = true
 environment = """
 DOMAIN = [[DOMAIN]]
 TZ = [[TZ]]
-DATA_ROOT = [[DATA_ROOT]]
 HOMEPAGE_VAR_DOMAIN = [[DOMAIN]]
 HOMEPAGE_VAR_HTPC_UPSTREAM = [[HTPC_UPSTREAM]]
 HOMEPAGE_VAR_NAS_LAN_IP = [[NAS_LAN_IP]]

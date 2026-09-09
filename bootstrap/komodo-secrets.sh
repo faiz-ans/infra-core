@@ -9,9 +9,6 @@
 _komodo_lib_dir="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 _komodo_repo_root="$(cd "${_komodo_lib_dir}/.." && pwd)"
 _komodo_topology="${KOMODO_TOPOLOGY:-${_komodo_repo_root}/stacks/komodo/topology.inc}"
-if [[ ! -f "${_komodo_topology}" && -f "${_komodo_repo_root}/stacks/komodo/topology.toml" ]]; then
-  _komodo_topology="${_komodo_repo_root}/stacks/komodo/topology.toml"
-fi
 _komodo_fragments="${KOMODO_FRAGMENTS:-${_komodo_repo_root}/stacks/komodo/fragments}"
 _komodo_site_vars_py="${_komodo_lib_dir}/komodo-site-vars.py"
 

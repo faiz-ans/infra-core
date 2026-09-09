@@ -460,7 +460,7 @@ bash "${SCRIPT_DIR}/core-docker-engine.sh"
 # sudo bash bootstrap/core-net.sh
 bash "${SCRIPT_DIR}/core-net.sh"
 
-# Pi-hole publishes NAS_LAN_IP:53; Docker can start before DHCP. Rebind after.
+# LAN :53 REDIRECT to Pi-hole on 127.0.0.1:15353; Docker starts without wait-online.
 # sudo bash bootstrap/core-lan-bind.sh
 bash "${SCRIPT_DIR}/core-lan-bind.sh"
 
@@ -475,7 +475,6 @@ mkdir -p \
   "${DATA_ROOT}/system/vaultwarden" \
   "${DATA_ROOT}/system/gitea" \
   "${DATA_ROOT}/system/pihole" \
-  "${DATA_ROOT}/system/homepage/images" \
   "${DATA_ROOT}/system/wireguard" \
   "${DATA_ROOT}/system/restic" \
   "${DATA_ROOT}/system/opencloud/config" \
@@ -761,7 +760,7 @@ echo "Server '${CORE_SERVER}' is KOMODO_FIRST_SERVER_NAME / PERIPHERY_CONNECT_AS
 echo "Remote Periphery should connect_as '${PERIPHERY_SERVER}'."
 echo
 echo "Create a Komodo Repo (leave Server empty), then a ResourceSync (webhooks disabled):"
-echo "  Repo name:       infra-core   (must match topology.toml linked_repo)"
+echo "  Repo name:       infra-core   (must match topology.inc linked_repo)"
 echo "  repo:            faiz-ans/infra-core"
 echo "  git provider:    GitHub until Gitea exists, then gitea:3000 (see bootstrap/gitea.md)"
 echo "  branch:          main"
@@ -784,14 +783,14 @@ echo "  After ResourceSync deploys caddy, it writes system/authelia/caddy-root.c
 echo "  Core Docker log caps: /etc/docker/daemon.json (core-docker-engine.sh). Recreate containers after first apply."
 echo "  HTPC: bootstrap/periphery-docker-engine.ps1 (pools + logs + DiskSizeMiB); Deploy periphery stacks one at a time first."
 echo "  Cage fan: sudo bash bootstrap/core-fan.sh (PWM from max CPU/HDD; see bootstrap/core-fan.md)."
-echo "  After reboot: core-lan-bind.service recreates Pi-hole once NAS_LAN_IP is on the NIC (docker restart cannot rebind :53), then restarts caddy/wireguard/Komodo."
+echo "  After reboot: core-lan-bind.service REDIRECTs NAS_LAN_IP:53 to 127.0.0.1:15353."
 echo "  First-run: bootstrap/authelia.md, bootstrap/vaultwarden.md, bootstrap/opencloud.md, bootstrap/immich.md, bootstrap/jotty.md, bootstrap/linkding.md, bootstrap/rustdesk.md, bootstrap/adventurelog.md, bootstrap/scriberr.md, bootstrap/frigate.md, bootstrap/transmute.md, bootstrap/bentopdf.md, bootstrap/libretranslate.md, bootstrap/openreader.md, bootstrap/it-tools.md, bootstrap/n8n.md, bootstrap/bytestash.md, bootstrap/glances.md."
 echo "  Pi-hole stack names: pihole (Core) and pihole-periphery (HTPC)."
 echo "  Router DHCP DNS: ${NAS_LAN_IP} first, then ${HTPC_UPSTREAM}. No public resolver as a third server."
 echo "  Each Pi-hole fetches its own Gravity."
 echo
 echo "Komodo [secrets] were written to ${KOMODO_DIR}/core.config.toml (topology-filtered)."
-echo "After adding stacks to topology.toml: sudo bash bootstrap/sync-komodo-secrets.sh"
+echo "After adding stacks to topology.inc: sudo bash bootstrap/sync-komodo-secrets.sh"
 echo "Homepage widget API keys stay empty until you set them via sync or answers (not the Komodo UI)."
 echo "Follow bootstrap/periphery.md on the HTPC (Docker Desktop engine script, firewall, Periphery env)."
 echo

@@ -1,9 +1,10 @@
 [Unit]
-Description=Recreate Pi-hole :53 after LAN DHCP, then restart Caddy/WireGuard/Komodo
-# Do not After=network-online.target: wait-online often never completes on
-# DHCP/USB NICs, so this unit never runs and LAN DNS stays dead.
-After=docker.service
-Wants=docker.service
+Description=Redirect LAN DNS :53 to Pi-hole on 127.0.0.1:15353
+# Not After=docker.service (socket activation) or network-online (wait-online
+# can hang for minutes). Script starts docker --no-block, then REDIRECTs once
+# the LAN address and 127.0.0.1:15353 both exist.
+After=local-fs.target docker.socket
+Wants=docker.socket docker.service
 
 [Service]
 Type=oneshot

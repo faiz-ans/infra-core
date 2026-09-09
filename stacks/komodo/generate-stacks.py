@@ -8,7 +8,7 @@ Writes:
   stacks/komodo/stacks-bootstrap.toml
   stacks/komodo/stacks-<server>.toml  (for each server with phase=full stacks)
 
-Requires Python 3.9+. Uses stdlib only (minimal topology.toml parser).
+Requires Python 3.9+. Uses stdlib only (minimal topology.inc parser).
 """
 from __future__ import annotations
 
@@ -17,11 +17,11 @@ import sys
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parent
-TOPOLOGY = ROOT / "topology.inc" if (ROOT / "topology.inc").is_file() else ROOT / "topology.toml"
+TOPOLOGY = ROOT / "topology.inc"
 FRAGMENTS = ROOT / "fragments"
 
 BOOTSTRAP_HEADER = """\
-# GENERATED from topology.toml — do not hand-edit.
+# GENERATED from topology.inc — do not hand-edit.
 # Regenerate: python3 stacks/komodo/generate-stacks.py
 #
 # Phase A (bootstrap): identity, DNS, edge, OpenCloud (+ Collabora).
@@ -35,7 +35,7 @@ BOOTSTRAP_HEADER = """\
 """
 
 CORE_HEADER = """\
-# GENERATED from topology.toml — do not hand-edit.
+# GENERATED from topology.inc — do not hand-edit.
 # Regenerate: python3 stacks/komodo/generate-stacks.py
 #
 # Phase B stacks for server "core" (excludes bootstrap phase).
@@ -48,7 +48,7 @@ CORE_HEADER = """\
 """
 
 PERIPHERY_HEADER = """\
-# GENERATED from topology.toml — do not hand-edit.
+# GENERATED from topology.inc — do not hand-edit.
 # Regenerate: python3 stacks/komodo/generate-stacks.py
 #
 # Phase B stacks for server "periphery" (excludes bootstrap phase).
@@ -63,7 +63,7 @@ PERIPHERY_HEADER = """\
 
 
 def parse_topology(text: str) -> dict:
-    """Minimal parser for topology.toml (servers list + [stacks.*] tables)."""
+    """Minimal parser for topology.inc (servers list + [stacks.*] tables)."""
     servers: list[str] = []
     catalog: dict[str, str] = {}
     stacks: dict[str, dict] = {}
@@ -99,7 +99,7 @@ def parse_topology(text: str) -> dict:
             continue
 
     if not servers or not stacks:
-        sys.exit("topology.toml must define servers and [stacks.*] tables")
+        sys.exit("topology.inc must define servers and [stacks.*] tables")
     return {"servers": servers, "stacks": stacks, **catalog}
 
 
@@ -161,7 +161,7 @@ def header_for(server: str | None, *, bootstrap: bool) -> str:
     if server == "periphery":
         return PERIPHERY_HEADER
     return (
-        "# GENERATED from topology.toml — do not hand-edit.\n"
+        "# GENERATED from topology.inc — do not hand-edit.\n"
         f"# Phase B stacks for server \"{server}\".\n"
         "# Regenerate: python3 stacks/komodo/generate-stacks.py\n\n"
     )

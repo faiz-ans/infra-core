@@ -17,7 +17,6 @@ poll_for_updates = true
 environment = """
 DOMAIN = [[DOMAIN]]
 HTPC_UPSTREAM = [[HTPC_UPSTREAM]]
-NAS_LAN_IP = [[NAS_LAN_IP]]
 TZ = [[TZ]]
 DATA_ROOT = [[DATA_ROOT]]
 """

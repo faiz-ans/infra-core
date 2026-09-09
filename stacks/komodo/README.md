@@ -2,7 +2,7 @@
 
 ## Topology (source of truth)
 
-Edit [`topology.toml`](topology.toml) to assign each stack to a Komodo server, set `phase` (`bootstrap` or `full`), or omit a stack with `enabled = false`.
+Edit [`topology.inc`](topology.inc) to assign each stack to a Komodo server, set `phase` (`bootstrap` or `full`), or omit a stack with `enabled = false`.
 
 Stack bodies live in [`fragments/`](fragments/) (one `[[stack]]` file per name). Regenerate committed TOML:
 
@@ -43,7 +43,7 @@ Add a ResourceSync resource path for `stacks/komodo/stacks-bootstrap.toml` (same
 
 ### Adding a stack later
 
-1. Enable it in `topology.toml` (and set `deploy = true` in `fragments/<name>.toml` if it was cold).
+1. Enable it in `topology.inc` (and set `deploy = true` in `fragments/<name>.inc` if it was cold).
 2. `python3 stacks/komodo/generate-stacks.py`
 3. On Core: `sudo bash bootstrap/sync-komodo-secrets.sh` (prompts/generates only **new** keys; no Komodo UI)
 4. Recreate Komodo Core compose so `[secrets]` reload; Redeploy the new stack.

@@ -13,14 +13,9 @@ if [[ ${EUID:-0} -ne 0 ]]; then
 fi
 
 here="$(cd "$(dirname "$0")" && pwd)"
-repo="$(cd "${here}/.." && pwd)"
-# Prefer next to this script (a bootstrap/ tree on Core). linux/ is the repo copy.
 fragment="${here}/docker-engine.json"
 if [[ ! -f "${fragment}" ]]; then
-  fragment="${repo}/linux/docker-engine.json"
-fi
-if [[ ! -f "${fragment}" ]]; then
-  echo "docker-engine.json not found (bootstrap/ or linux/)."
+  echo "docker-engine.json not found next to this script."
   exit 1
 fi
 

@@ -1,6 +1,6 @@
 # infra-core
 
-Public catalog, environment-agnostic. Site values (domain, IPs, disk paths, secrets, server names) live only in Komodo on-site. Stack-to-server placement is declared in [`stacks/komodo/topology.toml`](stacks/komodo/topology.toml) and generated into ResourceSync TOML. **Gitea on Core is origin**; GitHub is a push mirror (see [`bootstrap/gitea.md`](bootstrap/gitea.md)).
+Public catalog, environment-agnostic. Site values (domain, IPs, disk paths, secrets, server names) live only in Komodo on-site. Stack-to-server placement is declared in [`stacks/komodo/topology.inc`](stacks/komodo/topology.inc) and generated into ResourceSync TOML. **Gitea on Core is origin**; GitHub is a push mirror (see [`bootstrap/gitea.md`](bootstrap/gitea.md)).
 
 ## Layers
 
@@ -32,7 +32,7 @@ ${DATA_ROOT}/
 
 ## Bootstrap order (greenfield)
 
-1. **Topology:** edit `stacks/komodo/topology.toml`, regenerate TOML (`stacks/komodo/README.md`).
+1. **Topology:** edit `stacks/komodo/topology.inc`, regenerate TOML (`stacks/komodo/README.md`).
 2. Copy `bootstrap/` to Core; run `core.sh` as root. It runs **`data-root-prep.sh`** (system/ + empty users/ + OpenCloud dirs), not full household layout.
 3. Komodo: confirm `core`. ResourceSync path **`stacks/komodo/stacks-bootstrap.toml`** first (phase A: Caddy, Authelia, Pi-hole, Homepage, OpenCloud, Collabora, …). Homepage for a new site: copy `stacks/platform/homepage/config.seed/` → `config/` once (never overwrite a customized `config/`).
 4. OpenCloud greenfield: login → Space **`shared`** → publish bind → **`data-root-layout.sh`** → OMV SMB/NFS (`bootstrap/omv-nfs.md`). Details: [`bootstrap/opencloud.md`](bootstrap/opencloud.md). Check: `bootstrap/opencloud-check.sh`.

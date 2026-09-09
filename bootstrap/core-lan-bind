@@ -19,30 +19,16 @@ lan_ip() {
   printf '%s' "${ip}"
 }
 
-wait_docker() {
-  local i=0
-  while [[ "${i}" -lt 30 ]]; do
-    if docker info >/dev/null 2>&1; then
-      return 0
-    fi
-    i=$((i + 1))
-    sleep 2
-  done
-  echo "core-lan-bind: docker is not ready."
-  return 1
-}
-
-wait_addr() {
-  local ip=$1 i=0
-  while [[ "${i}" -lt 60 ]]; do
-    if ip -4 addr show | grep -q "inet ${ip}/"; then
-      return 0
-    fi
-    i=$((i + 1))
-    sleep 2
-  done
-  echo "core-lan-bind: ${ip} never appeared on a host iface."
-  return 1
+start_exited_containers() {
+  local ids
+  ids=$(docker ps -aq --filter status=exited --filter status=created --filter status=dead 2>/dev/null || true)
+  if [[ -z "${ids}" ]]; then
+    echo "core-lan-bind: no stopped containers"
+    return 0
+  fi
+  echo "core-lan-bind: starting stopped containers"
+  # shellcheck disable=SC2086
+  docker start ${ids} >/dev/null || true
 }
 
 proxy_up() {
@@ -91,7 +77,7 @@ label() {
   docker inspect -f "{{index .Config.Labels \"$2\"}}" "$1" 2>/dev/null || true
 }
 
-# Recreate so Docker evaluates HostIp:53 again. Restart keeps dead bindings.
+# Recreate so Docker re-publishes 127.0.0.1:15353. Restart keeps dead bindings.
 recreate_one() {
   local name=$1
   local wd proj svc files f
@@ -132,15 +118,23 @@ recreate_one() {
   NAS_LAN_IP="${IP}" docker compose "${args[@]}" up -d --force-recreate --no-deps "${svc}"
 }
 
-restart_one() {
-  local name=$1
-  if docker inspect "${name}" >/dev/null 2>&1; then
-    echo "core-lan-bind: restart ${name}"
-    docker restart "${name}" >/dev/null
+# DNS REDIRECT does not require bouncing Caddy. Restarting it is what took
+# HTTPS down after a successful bind.
+ensure_caddy() {
+  if ! docker inspect caddy >/dev/null 2>&1; then
+    echo "core-lan-bind: caddy not present; skip"
+    return 0
   fi
+  if docker inspect caddy --format '{{.State.Running}}' 2>/dev/null | grep -q true \
+    && ss -tln 2>/dev/null | grep -qE ':443[[:space:]]'; then
+    echo "core-lan-bind: caddy already on :443; skip restart"
+    return 0
+  fi
+  echo "core-lan-bind: start/restart caddy"
+  docker start caddy >/dev/null 2>&1 || docker restart caddy >/dev/null
 }
 
-# Host netns: wg-easy PostUp often leaves MASQUERADE -o eth0 after a NIC swap.
+# Host netns: wg-easy PostUp can leave MASQUERADE on a stale uplink iface.
 fix_wg_nat() {
   local cidr=10.8.0.0/24 dev odev extra
   dev=$(ip -4 route get 1.1.1.1 2>/dev/null | awk '{for (i=1;i<=NF;i++) if ($i=="dev") {print $(i+1); exit}}')
@@ -185,30 +179,61 @@ if [[ -z "${IP}" ]]; then
   exit 1
 fi
 
-wait_docker || exit 1
-docker start pihole >/dev/null 2>&1 || true
+# Kick dockerd immediately. Do not REDIRECT until 15353 is listening — an
+# early REDIRECT black-holes LAN DNS and blocks failover to the HTPC Pi-hole.
+systemctl start --no-block docker.socket docker.service 2>/dev/null || true
+echo "core-lan-bind: ${IP}:53 via 127.0.0.1:${DNS_PROXY_PORT} (not 0.0.0.0:53)"
 
-if ! wait_proxy; then
-  echo "core-lan-bind: 127.0.0.1:${DNS_PROXY_PORT} not up; recreate Pi-hole."
-  if ! recreate_one pihole; then
-    dump_pihole
-    exit 1
+docker_ready=0
+started_ct=0
+i=0
+while [[ "${i}" -lt 150 ]]; do
+  if [[ "${docker_ready}" -eq 0 ]] && docker info >/dev/null 2>&1; then
+    echo "core-lan-bind: docker is up"
+    docker_ready=1
   fi
-  if ! wait_proxy; then
-    echo "core-lan-bind: Pi-hole DNS proxy still not published."
-    dump_pihole
-    exit 1
+  if [[ "${docker_ready}" -eq 1 && "${started_ct}" -eq 0 ]]; then
+    start_exited_containers
+    docker start pihole caddy authelia homepage >/dev/null 2>&1 || true
+    started_ct=1
   fi
+  if ip -4 addr show | grep -q "inet ${IP}/" && proxy_up; then
+    del_dns_redirects
+    add_dns_redirects "${IP}"
+    ensure_caddy
+    fix_wg_nat
+    echo "core-lan-bind: done (${IP}:53 -> 127.0.0.1:${DNS_PROXY_PORT})."
+    exit 0
+  fi
+  if [[ $((i % 5)) -eq 0 ]]; then
+    echo "core-lan-bind: waiting (docker=${docker_ready} proxy=$(proxy_up && echo 1 || echo 0) addr=$(ip -4 addr show | grep -q "inet ${IP}/" && echo 1 || echo 0))"
+  fi
+  i=$((i + 1))
+  sleep 2
+done
+
+if [[ "${docker_ready}" -eq 0 ]]; then
+  echo "core-lan-bind: docker is not ready."
+  exit 1
+fi
+if ! ip -4 addr show | grep -q "inet ${IP}/"; then
+  echo "core-lan-bind: ${IP} never appeared on a host iface."
+  exit 1
 fi
 
-wait_addr "${IP}" || exit 1
+echo "core-lan-bind: 127.0.0.1:${DNS_PROXY_PORT} not up; recreate Pi-hole."
+if ! recreate_one pihole; then
+  dump_pihole
+  exit 1
+fi
+if ! wait_proxy; then
+  echo "core-lan-bind: Pi-hole DNS proxy still not published."
+  dump_pihole
+  exit 1
+fi
 del_dns_redirects
 add_dns_redirects "${IP}"
-
-restart_one caddy
-restart_one wireguard
+ensure_caddy
 fix_wg_nat
-restart_one bootstrap-core-1
-
 echo "core-lan-bind: done (${IP}:53 -> 127.0.0.1:${DNS_PROXY_PORT})."
 exit 0

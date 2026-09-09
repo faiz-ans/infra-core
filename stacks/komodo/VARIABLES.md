@@ -2,7 +2,7 @@
 
 `bootstrap/core.sh` and `bootstrap/sync-komodo-secrets.sh` write Komodo `[secrets]` from **enabled topology stacks** (and always-on Caddy / Authelia / Pi-hole / OpenCloud). Keys for stacks with `deploy = false` in their fragment are skipped until you enable Deploy and re-run sync.
 
-After adding a stack to `topology.toml` and regenerating TOML:
+After adding a stack to `topology.inc` and regenerating TOML:
 
 ```bash
 sudo bash bootstrap/sync-komodo-secrets.sh

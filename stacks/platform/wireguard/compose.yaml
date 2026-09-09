@@ -1,8 +1,6 @@
-# Host network: VPN uses Core's NIC (DNS at NAS_LAN_IP, NAT on the real
-# uplink). Caddy stays on edge and reaches the UI at host.docker.internal:51821.
-# Do not attach this container to edge. seed-mtu.mjs rewrites factory MTU
-# 1420 → 1280 and sets Device + MASQUERADE to the current default IPv4
-# route iface (NIC swaps). Operator-chosen MTU is left alone.
+# Host network: VPN uses Core's NIC (DNS at NAS_LAN_IP, NAT on the default
+# IPv4 route iface). Caddy stays on edge and reaches the UI at
+# host.docker.internal:51821. Do not attach this container to edge.
 
 services:
   wireguard:

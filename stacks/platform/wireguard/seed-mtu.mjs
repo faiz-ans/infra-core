@@ -1,10 +1,7 @@
 // Seed catalog defaults in wg-easy v15 SQLite. No INIT_MTU / INIT_DEVICE.
-// - Factory client MTU 1420 → 1280 (operator-chosen MTU is left alone).
-// - Device + live MASQUERADE follow the current default IPv4 route iface.
-//   Prefer the NIC that holds NAS_LAN_IP. Skip DOWN / no-carrier (NIC swaps
-//   leave a stale default on eth0). Node often has no /usr/sbin on PATH, so
-//   PostUp writes iptables and this seed never sees the rule.
-//   Re-apply after wg-easy PostUp, which otherwise restores -o eth0.
+// Factory client MTU 1420 → 1280 (operator-chosen MTU is left alone).
+// Device + MASQUERADE follow the NIC that holds NAS_LAN_IP, else the
+// current default IPv4 route. Skip DOWN / no-carrier ifaces.
 import { execSync } from 'node:child_process'
 import { networkInterfaces } from 'node:os'
 import { DatabaseSync } from 'node:sqlite'
@@ -66,8 +63,6 @@ function ifaceForAddr(ip) {
 
 function defaultDev() {
   const lan = ifaceForAddr(process.env.INIT_DNS || process.env.NAS_LAN_IP || '')
-  // Single-uplink NAS: NAT out the NIC that holds the LAN address. A stale
-  // default on eth0 (NIC swap) otherwise wins on metric.
   if (lan) return lan
 
   const cands = []
