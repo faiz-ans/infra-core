@@ -133,9 +133,11 @@ function syncMasq(cidr, dev) {
     }
   }
   let n = masqCount(bin, cidr, dev)
-  while (n > 1) {
+  let guard = 8
+  while (n > 1 && guard > 0) {
     sh(`${bin} -t nat -D POSTROUTING -s ${cidr} -o ${dev} -j MASQUERADE`)
     n = masqCount(bin, cidr, dev)
+    guard -= 1
   }
   if (n === 0) {
     sh(`${bin} -t nat -A POSTROUTING -s ${cidr} -o ${dev} -j MASQUERADE`)

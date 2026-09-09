@@ -18,14 +18,22 @@ if [ -f /seed-mtu.mjs ] && [ -f /etc/wireguard/wg-easy.db ]; then
   node /seed-mtu.mjs || true
 fi
 
-# Keep MASQUERADE on the current uplink. wg-easy PostUp rewrites -o eth0
-# after our first seed, and a stale eth0 default wins inside the container.
+# Host-network NAT survives docker stop. wg-easy PostUp then adds a second
+# identical MASQUERADE. Collapse every second until wg0 is up, then periodically.
 (
-  while true; do
+  i=0
+  while [ "${i}" -lt 45 ]; do
     if [ -f /seed-mtu.mjs ] && [ -f /etc/wireguard/wg-easy.db ]; then
       node /seed-mtu.mjs || true
     fi
-    sleep 15
+    i=$((i + 1))
+    sleep 1
+  done
+  while true; do
+    sleep 30
+    if [ -f /seed-mtu.mjs ] && [ -f /etc/wireguard/wg-easy.db ]; then
+      node /seed-mtu.mjs || true
+    fi
   done
 ) &
 
