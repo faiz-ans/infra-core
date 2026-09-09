@@ -174,8 +174,10 @@ try {
         /* no hooks_table */
       }
     }
-    for (const cidr of cidrs) syncMasq(cidr, dev)
-    console.error(`seed-mtu: MASQUERADE -o ${dev}`)
+    if (process.env.SEED_IPTABLES !== '0') {
+      for (const cidr of cidrs) syncMasq(cidr, dev)
+      console.error(`seed-mtu: MASQUERADE -o ${dev}`)
+    }
   }
 } catch (err) {
   console.error(`seed-mtu: ${err}`)

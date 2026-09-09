@@ -28,8 +28,9 @@ flush_wg_masq() {
 }
 flush_wg_masq
 
+# Update Device in SQLite only. Do not -A here: PostUp always -A after node starts.
 if [ -f /seed-mtu.mjs ] && [ -f /etc/wireguard/wg-easy.db ]; then
-  node /seed-mtu.mjs || true
+  SEED_IPTABLES=0 node /seed-mtu.mjs || true
 fi
 
 # PostUp runs after node brings wg0 up (may still use -o eth0). Rewrite once
