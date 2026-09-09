@@ -41,6 +41,8 @@ services:
       - "auth.${DOMAIN}:${NAS_LAN_IP}"
     environment:
       KOMODO_DATABASE_ADDRESS: ferretdb:27017
+      # Skip type-to-confirm on Deploy/Stop/etc. Delete still confirms.
+      KOMODO_DISABLE_CONFIRM_DIALOG: "true"
       # rustls: Caddy tls internal + public CAs (see bootstrap/authelia-oidc.sh).
       SSL_CERT_FILE: /etc/ssl/caddy/ca-bundle.crt
     volumes:

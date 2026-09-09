@@ -1,11 +1,15 @@
 [Unit]
 Description=Recreate Pi-hole :53 after LAN DHCP, then restart Caddy/WireGuard/Komodo
-After=docker.service network-online.target
-Wants=network-online.target
-Requires=docker.service
+# Do not After=network-online.target: wait-online often never completes on
+# DHCP/USB NICs, so this unit never runs and LAN DNS stays dead.
+After=docker.service
+Wants=docker.service
 
 [Service]
 Type=oneshot
+TimeoutStartSec=300
+Restart=on-failure
+RestartSec=15
 ExecStart=/usr/local/sbin/core-lan-bind
 RemainAfterExit=yes
 
