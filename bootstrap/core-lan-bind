@@ -1,9 +1,10 @@
 #!/usr/bin/env bash
-# After reboot, Docker starts before DHCP on USB/PCIe NICs. Pi-hole publishes
-# ${NAS_LAN_IP}:53; if that address is missing at *create* time, the container
-# can be healthy with no host :53. docker restart does not rebind ports —
-# compose must recreate the container after the LAN address exists.
+# After reboot, Docker can start before DHCP. Pi-hole publishes
+# 127.0.0.1:15353 (always bindable). This unit REDIRECTs ${NAS_LAN_IP}:53
+# there once the LAN address exists. Do not bind 0.0.0.0:53 (systemd-resolved).
 set -u
+
+DNS_PROXY_PORT=15353
 
 ENV_FILE=/etc/komodo/bootstrap/compose.env
 
@@ -44,22 +45,46 @@ wait_addr() {
   return 1
 }
 
-dns_up() {
-  ss -uln 2>/dev/null | grep -qE ':53([[:space:]]|$)' && return 0
-  ss -tln 2>/dev/null | grep -qE ':53([[:space:]]|$)' && return 0
+proxy_up() {
+  ss -uln 2>/dev/null | grep -q "127.0.0.1:${DNS_PROXY_PORT}" && return 0
+  ss -tln 2>/dev/null | grep -q "127.0.0.1:${DNS_PROXY_PORT}" && return 0
   return 1
 }
 
-wait_dns() {
+wait_proxy() {
   local i=0
   while [[ "${i}" -lt 30 ]]; do
-    if dns_up; then
+    if proxy_up; then
       return 0
     fi
     i=$((i + 1))
     sleep 1
   done
   return 1
+}
+
+del_dns_redirects() {
+  local chain line spec n
+  for chain in PREROUTING OUTPUT; do
+    n=0
+    while [[ "${n}" -lt 16 ]]; do
+      line=$(iptables -t nat -S "${chain}" 2>/dev/null | grep -- "--to-ports ${DNS_PROXY_PORT}" | head -n 1 || true)
+      [[ -z "${line}" ]] && break
+      spec=${line#-A ${chain} }
+      # shellcheck disable=SC2086
+      iptables -t nat -D "${chain}" ${spec} 2>/dev/null || break
+      n=$((n + 1))
+    done
+  done
+}
+
+add_dns_redirects() {
+  local ip=$1 proto
+  for proto in udp tcp; do
+    iptables -t nat -A PREROUTING -d "${ip}" -p "${proto}" --dport 53 -j REDIRECT --to-ports "${DNS_PROXY_PORT}"
+    iptables -t nat -A OUTPUT -d "${ip}" -p "${proto}" --dport 53 -j REDIRECT --to-ports "${DNS_PROXY_PORT}"
+  done
+  echo "core-lan-bind: REDIRECT ${ip}:53 -> 127.0.0.1:${DNS_PROXY_PORT}"
 }
 
 label() {
@@ -161,29 +186,29 @@ if [[ -z "${IP}" ]]; then
 fi
 
 wait_docker || exit 1
+docker start pihole >/dev/null 2>&1 || true
 
-# Prefer 0.0.0.0:53 (compose after Redeploy). Do not wait on DHCP before
-# HTTPS: that wait + Pi-hole recreate was the post-reboot delay.
-if dns_up; then
-  echo "core-lan-bind: :53 already published; skip Pi-hole recreate."
-else
-  wait_addr "${IP}" || exit 1
+if ! wait_proxy; then
+  echo "core-lan-bind: 127.0.0.1:${DNS_PROXY_PORT} not up; recreate Pi-hole."
   if ! recreate_one pihole; then
     dump_pihole
     exit 1
   fi
-  if ! wait_dns; then
-    echo "core-lan-bind: :53 still not published after recreate."
+  if ! wait_proxy; then
+    echo "core-lan-bind: Pi-hole DNS proxy still not published."
     dump_pihole
     exit 1
   fi
 fi
 
+wait_addr "${IP}" || exit 1
+del_dns_redirects
+add_dns_redirects "${IP}"
+
 restart_one caddy
-wait_addr "${IP}" || true
 restart_one wireguard
 fix_wg_nat
 restart_one bootstrap-core-1
 
-echo "core-lan-bind: done (${IP}; DNS up)."
+echo "core-lan-bind: done (${IP}:53 -> 127.0.0.1:${DNS_PROXY_PORT})."
 exit 0
