@@ -11,6 +11,8 @@ if [ -x /usr/sbin/iptables-nft ]; then
     --slave /usr/sbin/ip6tables-save ip6tables-save /usr/sbin/ip6tables-nft-save
 fi
 
+export PATH="/usr/sbin:/sbin:/usr/bin:/bin:${PATH}"
+
 # After first init the DB exists: rewrite factory 1420 → 1280 before node starts.
 if [ -f /seed-mtu.mjs ] && [ -f /etc/wireguard/wg-easy.db ]; then
   node /seed-mtu.mjs || true
@@ -37,6 +39,8 @@ fi
   done
   if [ "${seeded}" -eq 1 ]; then
     sleep 5
+    node /seed-mtu.mjs || true
+    sleep 15
     node /seed-mtu.mjs || true
   fi
 ) &

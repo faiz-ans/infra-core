@@ -49,6 +49,7 @@ mkdir -p \
   "${DATA_ROOT}/system/vaultwarden" \
   "${DATA_ROOT}/system/gitea" \
   "${DATA_ROOT}/system/pihole" \
+  "${DATA_ROOT}/system/homepage/images" \
   "${DATA_ROOT}/system/wireguard" \
   "${DATA_ROOT}/system/restic" \
   "${DATA_ROOT}/system/opencloud/config" \

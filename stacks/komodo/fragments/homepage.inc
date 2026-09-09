@@ -13,6 +13,7 @@ config_files = [
   { path = "config/settings.yaml", requires = "Redeploy" },
   { path = "config/docker.yaml", requires = "Redeploy" },
   { path = "config/widgets.yaml", requires = "Redeploy" },
+  { path = "seed-images.sh", requires = "Redeploy" },
 ]
 webhook_enabled = false
 poll_for_updates = true

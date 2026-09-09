@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Generate ResourceSync TOML from topology.toml + fragments/.
+"""Generate ResourceSync TOML from topology.inc + fragments/*.inc.
 
 Usage (from repo root):
   python3 stacks/komodo/generate-stacks.py
@@ -17,7 +17,7 @@ import sys
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parent
-TOPOLOGY = ROOT / "topology.toml"
+TOPOLOGY = ROOT / "topology.inc" if (ROOT / "topology.inc").is_file() else ROOT / "topology.toml"
 FRAGMENTS = ROOT / "fragments"
 
 BOOTSTRAP_HEADER = """\
@@ -108,10 +108,11 @@ def load_topology() -> dict:
 
 
 def fragment_for(name: str) -> str:
-    path = FRAGMENTS / f"{name}.toml"
-    if not path.is_file():
-        sys.exit(f"missing fragment: {path}")
-    return path.read_text()
+    for ext in (".inc", ".toml"):
+        path = FRAGMENTS / f"{name}{ext}"
+        if path.is_file():
+            return path.read_text()
+    sys.exit(f"missing fragment: {FRAGMENTS / (name + '.inc')}")
 
 
 def set_server(body: str, server: str) -> str:
