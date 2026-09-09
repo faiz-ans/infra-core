@@ -74,6 +74,7 @@ webhook_enabled = false
 poll_for_updates = true
 environment = """
 DOMAIN = [[DOMAIN]]
+CORE_SERVER = [[CORE_SERVER]]
 NAS_LAN_IP = [[NAS_LAN_IP]]
 TZ = [[TZ]]
 DATA_ROOT = [[DATA_ROOT]]
