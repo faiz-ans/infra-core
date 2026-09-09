@@ -460,6 +460,10 @@ bash "${SCRIPT_DIR}/core-docker-engine.sh"
 # sudo bash bootstrap/core-net.sh
 bash "${SCRIPT_DIR}/core-net.sh"
 
+# X1509 12V PWM cage fan (max of CPU and HDD). May ask for a reboot.
+# sudo bash bootstrap/core-fan.sh
+bash "${SCRIPT_DIR}/core-fan.sh"
+
 # --- DATA_ROOT tree ---
 # Core app state under system/<app>. Periphery /config is local on the HTPC.
 mkdir -p \
@@ -773,6 +777,7 @@ echo "  HTPC /config is a local Docker volume; media/photos/cameras stay on NFS;
 echo "  After ResourceSync deploys caddy, it writes system/authelia/caddy-root.crt (Gitea/Komodo TLS)."
 echo "  Core Docker log caps: /etc/docker/daemon.json (core-docker-engine.sh). Recreate containers after first apply."
 echo "  HTPC: bootstrap/periphery-docker-engine.ps1 (pools + logs + DiskSizeMiB); Deploy periphery stacks one at a time first."
+echo "  Cage fan: sudo bash bootstrap/core-fan.sh (PWM from max CPU/HDD; see bootstrap/core-fan.md)."
 echo "  First-run: bootstrap/authelia.md, bootstrap/vaultwarden.md, bootstrap/opencloud.md, bootstrap/immich.md, bootstrap/jotty.md, bootstrap/linkding.md, bootstrap/rustdesk.md, bootstrap/adventurelog.md, bootstrap/scriberr.md, bootstrap/frigate.md, bootstrap/transmute.md, bootstrap/bentopdf.md, bootstrap/libretranslate.md, bootstrap/openreader.md, bootstrap/it-tools.md, bootstrap/n8n.md, bootstrap/bytestash.md, bootstrap/glances.md."
 echo "  Pi-hole stack names: pihole (Core) and pihole-periphery (HTPC)."
 echo "  Router DHCP DNS: ${NAS_LAN_IP} first, then ${HTPC_UPSTREAM}. No public resolver as a third server."

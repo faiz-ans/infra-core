@@ -27,18 +27,32 @@ sysctl --system >/dev/null
 sysctl net.ipv4.ip_forward net.ipv4.conf.all.src_valid_mark \
   net.ipv4.conf.all.rp_filter net.ipv6.conf.all.disable_ipv6
 
-# macOS uses mDNS (core.local / smb://core), not Windows LLMNR. With IPv6
-# off, Avahi must advertise on IPv4 or Macs never see the hostname.
-if [[ -f /etc/avahi/avahi-daemon.conf ]]; then
-  sed -i \
-    -e 's/^#\?use-ipv4=.*/use-ipv4=yes/' \
-    -e 's/^#\?use-ipv6=.*/use-ipv6=no/' \
-    /etc/avahi/avahi-daemon.conf
-  if systemctl restart avahi-daemon 2>/dev/null; then
-    echo "Avahi: IPv4 on, IPv6 off (macOS LAN name)."
-  else
-    echo "Edit /etc/avahi/avahi-daemon.conf (use-ipv6=no) and restart avahi-daemon."
+# macOS resolves the short hostname via mDNS (Bonjour), not the router's
+# device nickname and not Windows LLMNR. Host IPv6-off leaves Avahi on a
+# dead inet6 socket unless use-ipv6=no.
+avahi_conf=/etc/avahi/avahi-daemon.conf
+if [[ -f "${avahi_conf}" ]]; then
+  avahi_kv() {
+    local key=$1 val=$2
+    if grep -q "^#\?${key}=" "${avahi_conf}"; then
+      sed -i "s/^#\?${key}=.*/${key}=${val}/" "${avahi_conf}"
+    elif grep -q '^\[server\]' "${avahi_conf}"; then
+      sed -i "/^\[server\]/a ${key}=${val}" "${avahi_conf}"
+    fi
+  }
+  avahi_kv use-ipv4 yes
+  avahi_kv use-ipv6 no
+  avahi_kv host-name "$(hostname -s)"
+  avahi_kv publish-workstation yes
+  if grep -q "^#\?deny-interfaces=" "${avahi_conf}"; then
+    sed -i 's/^#\?deny-interfaces=.*/deny-interfaces=docker0/' "${avahi_conf}"
   fi
+  if systemctl restart avahi-daemon 2>/dev/null; then
+    echo "Avahi: $(hostname -s).local on IPv4 (macOS smb://$(hostname -s))."
+  else
+    echo "Restart avahi-daemon after checking ${avahi_conf}."
+  fi
+  systemctl try-restart nmbd wsdd2 2>/dev/null || true
 fi
 
 echo "Default IPv4 route:"

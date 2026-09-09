@@ -1,0 +1,278 @@
+#!/usr/bin/env bash
+# Drive the X1509 12V PWM header from max(CPU, HDD). Manual pwm-fan mode
+# so the kernel CPU-only curve does not fight this loop.
+#
+#   /usr/local/sbin/core-fan-control
+#   /usr/local/sbin/core-fan-control --once
+#   /usr/local/sbin/core-fan-control --test
+#   /usr/local/sbin/core-fan-control --once --fake-cpu 75 --fake-hdd 40
+#
+# Fake temps (Celsius on the flags; millidegC in CORE_FAN_CPU_MC / CORE_FAN_HDD_MC)
+# skip the sensors. Stop core-fan.service first so it does not overwrite PWM.
+set -euo pipefail
+
+INTERVAL="${CORE_FAN_INTERVAL:-15}"
+HYST_MC="${CORE_FAN_HYST_MC:-2000}"
+SPINUP_PWM="${CORE_FAN_SPINUP_PWM:-90}"
+# This P12 Pro on the X1509 header dies above ~124 (spools up, then stops).
+MAX_PWM="${CORE_FAN_MAX_PWM:-124}"
+INVERT="${CORE_FAN_INVERT:-0}"
+FAKE_CPU_MC=""
+FAKE_HDD_MC=""
+
+# Measured on this cage. Floor 50 is inaudible with useful airflow.
+# 70 warm, 90 hot, 110 danger, 124 hardware ceiling.
+CPU_CURVE="60000:50 68000:70 75000:90 80000:110 85000:124"
+HDD_CURVE="40000:50 43000:70 46000:90 50000:110 55000:124"
+
+lerp_pwm() {
+  local temp_mc="$1" points="$2"
+  awk -v t="${temp_mc}" -v pts="${points}" 'BEGIN {
+    n = split(pts, pt, " ")
+    split(pt[1], a, ":")
+    if (t <= a[1] + 0) { print a[2] + 0; exit }
+    for (i = 1; i < n; i++) {
+      split(pt[i], a, ":")
+      split(pt[i+1], b, ":")
+      if (t <= b[1] + 0) {
+        if (b[1] == a[1]) { print b[2] + 0; exit }
+        print int(a[2] + (b[2] - a[2]) * (t - a[1]) / (b[1] - a[1]))
+        exit
+      }
+    }
+    split(pt[n], a, ":")
+    print a[2] + 0
+  }'
+}
+
+find_pwm() {
+  local p n
+  for p in /sys/devices/platform/cooling_fan/hwmon/hwmon*/pwm1; do
+    if [[ -e "${p}" ]]; then
+      echo "${p}"
+      return 0
+    fi
+  done
+  for p in /sys/class/hwmon/hwmon*/pwm1; do
+    [[ -e "${p}" ]] || continue
+    n=$(cat "$(dirname "${p}")/name" 2>/dev/null || true)
+    if [[ "${n}" == pwmfan || "${n}" == pwm-fan ]]; then
+      echo "${p}"
+      return 0
+    fi
+  done
+  return 1
+}
+
+wait_pwm() {
+  local i
+  for i in $(seq 1 60); do
+    if PWM=$(find_pwm); then
+      echo "${PWM}"
+      return 0
+    fi
+    sleep 1
+  done
+  echo "core-fan: cooling_fan pwm1 not found (dtparam=cooling_fan=on and reboot?)" >&2
+  return 1
+}
+
+cpu_mc() {
+  local z t
+  if [[ -n "${FAKE_CPU_MC}" ]]; then
+    echo "${FAKE_CPU_MC}"
+    return 0
+  fi
+  for z in /sys/class/thermal/thermal_zone*/temp; do
+    [[ -e "${z}" ]] || continue
+    t=$(cat "${z}" 2>/dev/null || true)
+    if [[ "${t}" =~ ^[0-9]+$ ]] && [[ "${t}" -gt 0 ]]; then
+      echo "${t}"
+      return 0
+    fi
+  done
+  echo 0
+}
+
+hdd_mc() {
+  local h name t best=0 raw dev
+  if [[ -n "${FAKE_HDD_MC}" ]]; then
+    echo "${FAKE_HDD_MC}"
+    return 0
+  fi
+  for h in /sys/class/hwmon/hwmon*; do
+    [[ -e "${h}/name" ]] || continue
+    name=$(cat "${h}/name" 2>/dev/null || true)
+    if [[ "${name}" != drivetemp ]]; then
+      continue
+    fi
+    t=$(cat "${h}/temp1_input" 2>/dev/null || true)
+    if [[ "${t}" =~ ^[0-9]+$ ]] && [[ "${t}" -gt "${best}" ]]; then
+      best="${t}"
+    fi
+  done
+  if [[ "${best}" -gt 0 ]]; then
+    echo "${best}"
+    return 0
+  fi
+  if ! command -v smartctl >/dev/null 2>&1; then
+    echo 0
+    return 0
+  fi
+  while read -r dev; do
+    [[ -n "${dev}" ]] || continue
+    raw=$(smartctl -A -n never "${dev}" 2>/dev/null | awk '
+      /Current Drive Temperature/ { print $4; exit }
+      $2 == "Temperature_Celsius" { print $10; exit }
+      $2 == "Airflow_Temperature_Cel" { print $10; exit }
+    ' || true)
+    if [[ "${raw}" =~ ^[0-9]+$ ]]; then
+      t=$((raw * 1000))
+      if [[ "${t}" -gt "${best}" ]]; then
+        best="${t}"
+      fi
+    fi
+  done < <(lsblk -dn -o NAME,TRAN,TYPE | awk '$3=="disk" && $2=="sata" { print "/dev/" $1 }')
+  echo "${best}"
+}
+
+clamp_pwm() {
+  local v="$1"
+  if [[ "${v}" -lt 0 ]]; then
+    echo 0
+  elif [[ "${v}" -gt "${MAX_PWM}" ]]; then
+    echo "${MAX_PWM}"
+  else
+    echo "${v}"
+  fi
+}
+
+set_manual() {
+  local pwm="$1"
+  local en="${pwm%/*}/pwm1_enable"
+  if [[ -w "${en}" ]]; then
+    echo 1 > "${en}" || true
+  fi
+}
+
+to_hw() {
+  local logical="$1"
+  local hw
+  logical=$(clamp_pwm "${logical}")
+  if [[ "${INVERT}" -eq 1 ]]; then
+    hw=$((255 - logical))
+  else
+    hw="${logical}"
+  fi
+  echo "${hw}"
+}
+
+apply_pwm() {
+  local path="$1" pwm="$2" last="$3"
+  local hw spin_hw
+  set_manual "${path}"
+  hw=$(to_hw "${pwm}")
+  if [[ "${last}" -eq 0 && "${pwm}" -gt 0 ]]; then
+    spin_hw=$(to_hw "${SPINUP_PWM}")
+    echo "${spin_hw}" > "${path}"
+    set_manual "${path}"
+    sleep 1
+  fi
+  echo "${hw}" > "${path}"
+  set_manual "${path}"
+}
+
+FAKE_CPU_MC="${CORE_FAN_CPU_MC:-}"
+FAKE_HDD_MC="${CORE_FAN_HDD_MC:-}"
+mode=loop
+while [[ $# -gt 0 ]]; do
+  case "$1" in
+    --once) mode=once; shift ;;
+    --test) mode=test; shift ;;
+    --fake-cpu)
+      FAKE_CPU_MC=$((${2:?--fake-cpu needs a Celsius value} * 1000))
+      shift 2
+      ;;
+    --fake-hdd)
+      FAKE_HDD_MC=$((${2:?--fake-hdd needs a Celsius value} * 1000))
+      shift 2
+      ;;
+    --fake-cpu=*)
+      FAKE_CPU_MC=$((${1#*=} * 1000))
+      shift
+      ;;
+    --fake-hdd=*)
+      FAKE_HDD_MC=$((${1#*=} * 1000))
+      shift
+      ;;
+    *)
+      echo "core-fan: unknown arg $1" >&2
+      echo "usage: core-fan-control [--once|--test] [--fake-cpu C] [--fake-hdd C]" >&2
+      exit 1
+      ;;
+  esac
+done
+
+PWM=$(wait_pwm)
+set_manual "${PWM}"
+
+if [[ "${mode}" == "test" ]]; then
+  echo "core-fan: sweep ${PWM} (stop with Ctrl-C). Speed should change if PWM is on pin 9."
+  set_manual "${PWM}"
+  for v in 0 50 70 90 110 124 90 50; do
+    echo "${v}" > "${PWM}"
+    set_manual "${PWM}"
+    echo "core-fan: hw=${v} (max ${MAX_PWM})  (sleep 4s)"
+    sleep 4
+  done
+  exit 0
+fi
+
+last_pwm=255
+last_ctrl=0
+first=1
+
+loop() {
+  local cpu hdd ctrl pwm_cpu pwm_hdd pwm cpu_l hdd_l
+  cpu=$(cpu_mc)
+  hdd=$(hdd_mc)
+  if [[ "${cpu}" -ge "${hdd}" ]]; then
+    ctrl="${cpu}"
+  else
+    ctrl="${hdd}"
+  fi
+  pwm_cpu=$(lerp_pwm "${cpu}" "${CPU_CURVE}")
+  pwm_hdd=$(lerp_pwm "${hdd}" "${HDD_CURVE}")
+  if [[ "${pwm_cpu}" -ge "${pwm_hdd}" ]]; then
+    pwm="${pwm_cpu}"
+  else
+    pwm="${pwm_hdd}"
+  fi
+  pwm=$(clamp_pwm "${pwm}")
+  if [[ "${first}" -eq 0 && "${pwm}" -lt "${last_pwm}" ]]; then
+    if [[ "${ctrl}" -gt $((last_ctrl - HYST_MC)) ]]; then
+      pwm="${last_pwm}"
+    fi
+  fi
+  apply_pwm "${PWM}" "${pwm}" "${last_pwm}"
+  if [[ "${first}" -eq 1 || "${pwm}" -ne "${last_pwm}" ]]; then
+    cpu_l="$((cpu / 1000))C"
+    hdd_l="$((hdd / 1000))C"
+    [[ -n "${FAKE_CPU_MC}" ]] && cpu_l="${cpu_l}(fake)"
+    [[ -n "${FAKE_HDD_MC}" ]] && hdd_l="${hdd_l}(fake)"
+    echo "core-fan: cpu=${cpu_l} hdd=${hdd_l} pwm=${pwm}/${MAX_PWM} hw=$(to_hw "${pwm}") invert=${INVERT}"
+  fi
+  last_pwm="${pwm}"
+  last_ctrl="${ctrl}"
+  first=0
+}
+
+if [[ "${mode}" == "once" ]]; then
+  loop
+  exit 0
+fi
+
+while true; do
+  loop
+  sleep "${INTERVAL}"
+done

@@ -1,0 +1,14 @@
+[Unit]
+Description=Core cage fan (max of CPU and HDD PWM)
+After=sysinit.target
+ConditionPathExists=/usr/local/sbin/core-fan-control
+
+[Service]
+Type=simple
+Environment=CORE_FAN_INVERT=0
+ExecStart=/usr/local/sbin/core-fan-control
+Restart=always
+RestartSec=5
+
+[Install]
+WantedBy=multi-user.target

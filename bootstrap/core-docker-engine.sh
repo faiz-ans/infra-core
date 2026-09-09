@@ -50,16 +50,30 @@ tmp.replace(dest_path)
 print(f"Wrote {dest_path}")
 sys.exit(0 if changed else 2)
 PY
-rc=$?
+json_rc=$?
 set -e
 
-if [[ $rc -eq 2 ]]; then
-  echo "daemon.json already had catalog log settings; no restart."
+# Publish 80/443 and ${NAS_LAN_IP}:53 after the LAN NIC has an address.
+# Onboard NICs are up early; USB/PCIe NICs often get DHCP after Docker starts.
+dropin_dir=/etc/systemd/system/docker.service.d
+dropin="${dropin_dir}/wait-network.conf"
+mkdir -p "${dropin_dir}"
+dropin_body=$'[Unit]\nAfter=network-online.target\nWants=network-online.target\n'
+dropin_changed=0
+if [[ ! -f "${dropin}" ]] || ! cmp -s "${dropin}" <(printf '%s' "${dropin_body}"); then
+  printf '%s' "${dropin_body}" > "${dropin}"
+  dropin_changed=1
+  echo "Wrote ${dropin} (Docker waits for LAN before publishing ports)."
+fi
+systemctl daemon-reload
+
+if [[ ${json_rc} -eq 2 && ${dropin_changed} -eq 0 ]]; then
+  echo "daemon.json and docker.service.d already applied; no restart."
   exit 0
 fi
-if [[ $rc -ne 0 ]]; then
-  exit "$rc"
+if [[ ${json_rc} -ne 0 && ${json_rc} -ne 2 ]]; then
+  exit "${json_rc}"
 fi
 
 systemctl restart docker
-echo "Restarted docker (log rotation applied)."
+echo "Restarted docker."
