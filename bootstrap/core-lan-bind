@@ -1,0 +1,153 @@
+#!/usr/bin/env bash
+# After reboot, Docker starts before DHCP on USB/PCIe NICs. Pi-hole publishes
+# ${NAS_LAN_IP}:53; if that address is missing at *create* time, the container
+# can be healthy with no host :53. docker restart does not rebind ports —
+# compose must recreate the container after the LAN address exists.
+set -u
+
+ENV_FILE=/etc/komodo/bootstrap/compose.env
+
+lan_ip() {
+  local ip=""
+  if [[ -f "${ENV_FILE}" ]]; then
+    ip=$(awk -F= '/^NAS_LAN_IP=/{gsub(/["'\'' ]/, "", $2); print $2}' "${ENV_FILE}" | tail -1)
+  fi
+  if [[ -z "${ip}" ]]; then
+    ip=$(ip -4 route get 1.1.1.1 2>/dev/null | awk '{for (i=1;i<=NF;i++) if ($i=="src") {print $(i+1); exit}}')
+  fi
+  printf '%s' "${ip}"
+}
+
+wait_docker() {
+  local i=0
+  while [[ "${i}" -lt 30 ]]; do
+    if docker info >/dev/null 2>&1; then
+      return 0
+    fi
+    i=$((i + 1))
+    sleep 2
+  done
+  echo "core-lan-bind: docker is not ready."
+  return 1
+}
+
+wait_addr() {
+  local ip=$1 i=0
+  while [[ "${i}" -lt 60 ]]; do
+    if ip -4 addr show | grep -q "inet ${ip}/"; then
+      return 0
+    fi
+    i=$((i + 1))
+    sleep 2
+  done
+  echo "core-lan-bind: ${ip} never appeared on a host iface."
+  return 1
+}
+
+dns_up() {
+  local ip=$1
+  ss -uln 2>/dev/null | grep -q "${ip}:53" && return 0
+  ss -tln 2>/dev/null | grep -q "${ip}:53" && return 0
+  return 1
+}
+
+wait_dns() {
+  local ip=$1 i=0
+  while [[ "${i}" -lt 30 ]]; do
+    if dns_up "${ip}"; then
+      return 0
+    fi
+    i=$((i + 1))
+    sleep 1
+  done
+  return 1
+}
+
+label() {
+  docker inspect -f "{{index .Config.Labels \"$2\"}}" "$1" 2>/dev/null || true
+}
+
+# Recreate so Docker evaluates HostIp:53 again. Restart keeps dead bindings.
+recreate_one() {
+  local name=$1
+  local wd proj svc files f
+  local -a args
+
+  if ! docker inspect "${name}" >/dev/null 2>&1; then
+    echo "core-lan-bind: ${name} not present; skip"
+    return 0
+  fi
+
+  wd=$(label "${name}" com.docker.compose.project.working_dir)
+  proj=$(label "${name}" com.docker.compose.project)
+  svc=$(label "${name}" com.docker.compose.service)
+  files=$(label "${name}" com.docker.compose.project.config_files)
+
+  if [[ -z "${wd}" || -z "${proj}" || -z "${svc}" ]]; then
+    echo "core-lan-bind: ${name} has no compose labels; cannot recreate ports."
+    docker inspect "${name}" --format 'core-lan-bind: bindings={{json .HostConfig.PortBindings}} status={{.State.Status}} error={{.State.Error}}'
+    return 1
+  fi
+
+  args=(-p "${proj}" --project-directory "${wd}")
+  if [[ -n "${files}" ]]; then
+    IFS=',' read -ra flist <<< "${files}"
+    for f in "${flist[@]}"; do
+      f=${f#"${f%%[![:space:]]*}"}
+      f=${f%"${f##*[![:space:]]}"}
+      if [[ -n "${f}" && "${f}" != /* ]]; then
+        f="${wd}/${f}"
+      fi
+      if [[ -n "${f}" ]]; then
+        args+=(-f "${f}")
+      fi
+    done
+  fi
+
+  echo "core-lan-bind: recreate ${name} (${svc} in ${wd})"
+  NAS_LAN_IP="${IP}" docker compose "${args[@]}" up -d --force-recreate --no-deps "${svc}"
+}
+
+restart_one() {
+  local name=$1
+  if docker inspect "${name}" >/dev/null 2>&1; then
+    echo "core-lan-bind: restart ${name}"
+    docker restart "${name}" >/dev/null
+  fi
+}
+
+dump_pihole() {
+  echo "core-lan-bind: host IPv4:"
+  ip -4 -o addr show | awk '{print "  " $2, $4}'
+  if docker inspect pihole >/dev/null 2>&1; then
+    docker inspect pihole --format 'core-lan-bind: pihole {{.State.Status}} bindings={{json .HostConfig.PortBindings}} error={{.State.Error}}'
+    docker logs pihole --tail 20 2>&1 | sed 's/^/core-lan-bind: pihole log: /'
+  fi
+}
+
+IP=$(lan_ip)
+if [[ -z "${IP}" ]]; then
+  echo "core-lan-bind: no NAS_LAN_IP."
+  exit 1
+fi
+
+wait_docker || exit 1
+wait_addr "${IP}" || exit 1
+
+if ! recreate_one pihole; then
+  dump_pihole
+  exit 1
+fi
+
+if ! wait_dns "${IP}"; then
+  echo "core-lan-bind: ${IP}:53 still not published after recreate."
+  dump_pihole
+  exit 1
+fi
+
+restart_one wireguard
+restart_one caddy
+restart_one bootstrap-core-1
+
+echo "core-lan-bind: done (${IP}:53 published)."
+exit 0

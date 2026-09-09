@@ -1,11 +1,11 @@
 #!/usr/bin/env bash
-# After editing topology.toml (and regenerating ResourceSync TOML), ingest any
+# After editing topology.inc (and regenerating ResourceSync TOML), ingest any
 # newly required Komodo [secrets] into /etc/komodo/core.config.toml without
 # using the Komodo UI.
 #
 #   sudo bash bootstrap/sync-komodo-secrets.sh
 #   # or from a clone:
-#   sudo KOMODO_TOPOLOGY=/path/to/topology.toml bash bootstrap/sync-komodo-secrets.sh
+#   sudo KOMODO_TOPOLOGY=/path/to/topology.inc bash bootstrap/sync-komodo-secrets.sh
 #
 # Existing secrets are kept. Only missing keys for enabled stacks are prompted
 # or auto-generated. Then recreate Core so Komodo reloads [secrets]:

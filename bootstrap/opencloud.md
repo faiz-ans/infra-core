@@ -9,7 +9,7 @@ OpenCloud on **Core** (edge): PosixFS personal homes under `users/<username>/`, 
 
 ### 0. Topology and host prep
 
-1. Edit `stacks/komodo/topology.toml` (servers + stack phases). Regenerate: `python3 stacks/komodo/generate-stacks.py` (see `stacks/komodo/README.md`).
+1. Edit `stacks/komodo/topology.inc` (servers + stack phases). Regenerate: `python3 stacks/komodo/generate-stacks.py` (see `stacks/komodo/README.md`).
 2. Bootstrap Core (`core.sh`): Docker, OMV, Komodo, Authelia `users.yml`, **`data-root-prep.sh`** (`system/`, empty `users/`, OpenCloud host dirs).
 3. Komodo secrets include **`OPENCLOUD_ADMIN_PASSWORD`**.
 

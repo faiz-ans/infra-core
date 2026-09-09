@@ -18,9 +18,9 @@ wait_name() {
   return 1
 }
 wait_name host.docker.internal || true
+wait_name pihole || true
 wait_name authelia || true
 wait_name homepage || true
-wait_name pihole || true
 
 /bin/sh /export-ca.sh &
 exec caddy run --config /etc/caddy/Caddyfile --adapter caddyfile

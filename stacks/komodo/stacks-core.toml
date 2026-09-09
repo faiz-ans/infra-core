@@ -1,4 +1,4 @@
-# GENERATED from topology.toml — do not hand-edit.
+# GENERATED from topology.inc — do not hand-edit.
 # Regenerate: python3 stacks/komodo/generate-stacks.py
 #
 # Phase B stacks for server "core" (excludes bootstrap phase).

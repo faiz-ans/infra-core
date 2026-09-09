@@ -1,0 +1,13 @@
+[Unit]
+Description=Recreate Pi-hole :53 after LAN DHCP, then restart Caddy/WireGuard/Komodo
+After=docker.service network-online.target
+Wants=network-online.target
+Requires=docker.service
+
+[Service]
+Type=oneshot
+ExecStart=/usr/local/sbin/core-lan-bind
+RemainAfterExit=yes
+
+[Install]
+WantedBy=multi-user.target

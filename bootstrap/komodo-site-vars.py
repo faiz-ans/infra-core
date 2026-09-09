@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""List Komodo [secrets] keys required by topology.toml + stack fragments.
+"""List Komodo [secrets] keys required by topology.inc + stack fragments.
 
 Usage:
   python3 bootstrap/komodo-site-vars.py [--topology PATH] [--fragments DIR]
@@ -19,7 +19,7 @@ import sys
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[1]
-DEFAULT_TOPOLOGY = ROOT / "stacks" / "komodo" / "topology.toml"
+DEFAULT_TOPOLOGY = ROOT / "stacks" / "komodo" / "topology.inc"
 DEFAULT_FRAGMENTS = ROOT / "stacks" / "komodo" / "fragments"
 
 # Always on every site (user requirement).
@@ -96,7 +96,7 @@ def parse_topology(text: str) -> dict:
         line = raw.split("#", 1)[0].strip()
         if not line:
             continue
-        m = re.match(r'^servers\s*=\s*\[(.*)\]\s*$', line)
+        m = re.match(r'^(?:server_names|servers)\s*=\s*\[(.*)\]\s*$', line)
         if m:
             servers = re.findall(r'"([^"]+)"', m.group(1))
             continue
@@ -144,7 +144,11 @@ def main() -> None:
     args = ap.parse_args()
 
     if not args.topology.is_file():
-        sys.exit(f"missing topology: {args.topology}")
+        alt = args.topology.with_suffix(".toml") if args.topology.suffix == ".inc" else args.topology.with_suffix(".inc")
+        if alt.is_file():
+            args.topology = alt
+        else:
+            sys.exit(f"missing topology: {args.topology}")
     topo = parse_topology(args.topology.read_text())
     enabled = {
         name
@@ -156,7 +160,9 @@ def main() -> None:
     needed: set[str] = set(ALWAYS_KEYS)
     has_remote = False
     for name in sorted(enabled):
-        frag = args.fragments / f"{name}.toml"
+        frag = args.fragments / f"{name}.inc"
+        if not frag.is_file():
+            frag = args.fragments / f"{name}.toml"
         if not frag.is_file():
             continue
         # Still note remote servers for HTPC_UPSTREAM even if deploy=false.
