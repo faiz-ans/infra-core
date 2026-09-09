@@ -97,13 +97,12 @@ function defaultDev() {
   return skipIface(dev) || !operUp(dev) ? '' : dev
 }
 
-function iptablesBins() {
-  const bins = []
-  for (const b of ['/usr/sbin/iptables', '/usr/sbin/iptables-nft', '/usr/sbin/iptables-legacy', 'iptables']) {
+function iptablesBin() {
+  for (const b of ['/usr/sbin/iptables-nft', '/usr/sbin/iptables', 'iptables']) {
     if (b.startsWith('/') && !existsSync(b)) continue
-    if (!bins.includes(b)) bins.push(b)
+    return b
   }
-  return bins.length ? bins : ['iptables']
+  return 'iptables'
 }
 
 function natLines(bin) {
@@ -115,24 +114,20 @@ function natLines(bin) {
 
 function syncMasq(cidr, dev) {
   if (!cidr || !dev) return
-  for (const bin of iptablesBins()) {
-    for (const line of natLines(bin)) {
-      if (!line.includes('MASQUERADE') || !line.includes(`-s ${cidr}`)) continue
-      const om = line.match(/-o\s+(\S+)/)
-      const odev = om ? om[1] : ''
-      if (odev && odev !== dev) {
-        sh(`${bin} -t nat -D POSTROUTING ${line.replace(/^-A POSTROUTING\s+/, '')}`)
-      }
+  const bin = iptablesBin()
+  let kept = false
+  for (const line of natLines(bin)) {
+    if (!line.includes('MASQUERADE') || !line.includes(`-s ${cidr}`)) continue
+    const om = line.match(/-o\s+(\S+)/)
+    const odev = om ? om[1] : ''
+    if (odev === dev && !kept) {
+      kept = true
+      continue
     }
-    const has = natLines(bin).some(
-      (l) =>
-        l.includes('MASQUERADE') &&
-        l.includes(`-s ${cidr}`) &&
-        l.includes(`-o ${dev}`)
-    )
-    if (!has) {
-      sh(`${bin} -t nat -A POSTROUTING -s ${cidr} -o ${dev} -j MASQUERADE`)
-    }
+    sh(`${bin} -t nat -D POSTROUTING ${line.replace(/^-A POSTROUTING\s+/, '')}`)
+  }
+  if (!kept) {
+    sh(`${bin} -t nat -A POSTROUTING -s ${cidr} -o ${dev} -j MASQUERADE`)
   }
 }
 
