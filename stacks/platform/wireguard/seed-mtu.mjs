@@ -1,10 +1,10 @@
-# Seed catalog defaults in wg-easy v15 SQLite. No INIT_MTU / INIT_DEVICE.
-# - Factory client MTU 1420 → 1280 (operator-chosen MTU is left alone).
-# - Device + live MASQUERADE follow the current default IPv4 route iface.
-#   Prefer an UP iface with a gateway. Skip DOWN / no-carrier (NIC swaps leave
-#   a stale default on eth0). Node often has no /usr/sbin on PATH, so PostUp
-#   writes iptables and this seed never sees the rule.
-#   Re-apply after wg-easy PostUp, which otherwise restores -o eth0.
+// Seed catalog defaults in wg-easy v15 SQLite. No INIT_MTU / INIT_DEVICE.
+// - Factory client MTU 1420 → 1280 (operator-chosen MTU is left alone).
+// - Device + live MASQUERADE follow the current default IPv4 route iface.
+//   Prefer the NIC that holds NAS_LAN_IP. Skip DOWN / no-carrier (NIC swaps
+//   leave a stale default on eth0). Node often has no /usr/sbin on PATH, so
+//   PostUp writes iptables and this seed never sees the rule.
+//   Re-apply after wg-easy PostUp, which otherwise restores -o eth0.
 import { execSync } from 'node:child_process'
 import { networkInterfaces } from 'node:os'
 import { DatabaseSync } from 'node:sqlite'
@@ -65,6 +65,11 @@ function ifaceForAddr(ip) {
 }
 
 function defaultDev() {
+  const lan = ifaceForAddr(process.env.INIT_DNS || process.env.NAS_LAN_IP || '')
+  // Single-uplink NAS: NAT out the NIC that holds the LAN address. A stale
+  // default on eth0 (NIC swap) otherwise wins on metric.
+  if (lan) return lan
+
   const cands = []
   try {
     const lines = readFileSync('/proc/net/route', 'utf8').trim().split('\n').slice(1)
@@ -85,10 +90,7 @@ function defaultDev() {
     /* fall through */
   }
   cands.sort((a, b) => Number(b.hasGw) - Number(a.hasGw) || a.metric - b.metric)
-  const lan = ifaceForAddr(process.env.INIT_DNS || process.env.NAS_LAN_IP || '')
-  if (lan && cands.some((c) => c.iface === lan)) return lan
   if (cands[0]) return cands[0].iface
-  if (lan) return lan
 
   const m = sh('ip -4 route get 1.1.1.1 2>/dev/null').match(/\bdev\s+(\S+)/)
   const dev = m ? m[1] : ''
@@ -145,25 +147,27 @@ try {
     .get()
   const dev = defaultDev()
   console.error(`seed-mtu: defaultDev=${dev || '(none)'} dbDevice=${row?.device || '(none)'}`)
-  if (row && dev) {
-    if (row.device !== dev) {
+  if (dev) {
+    const cidrs = new Set(['10.8.0.0/24'])
+    if (row?.ipv4_cidr) cidrs.add(row.ipv4_cidr)
+    if (row && row.device !== dev) {
       db.prepare(
         `UPDATE interfaces_table SET device = ?, updated_at = datetime('now')`
       ).run(dev)
+      try {
+        const old = row.device || 'eth0'
+        db.prepare(
+          `UPDATE hooks_table SET
+             post_up = REPLACE(REPLACE(post_up, ?, '-o {{device}}'), '-o eth0', '-o {{device}}'),
+             post_down = REPLACE(REPLACE(post_down, ?, '-o {{device}}'), '-o eth0', '-o {{device}}'),
+             updated_at = datetime('now')`
+        ).run(`-o ${old}`, `-o ${old}`)
+      } catch {
+        /* no hooks_table */
+      }
     }
-    try {
-      const old = row.device && row.device !== dev ? row.device : 'eth0'
-      db.prepare(
-        `UPDATE hooks_table SET
-           post_up = REPLACE(REPLACE(post_up, ?, '-o {{device}}'), '-o eth0', '-o {{device}}'),
-           post_down = REPLACE(REPLACE(post_down, ?, '-o {{device}}'), '-o eth0', '-o {{device}}'),
-           updated_at = datetime('now')`
-      ).run(`-o ${old}`, `-o ${old}`)
-    } catch {
-      /* no hooks_table */
-    }
-    syncMasq(row.ipv4_cidr, dev)
-    console.error(`seed-mtu: MASQUERADE -s ${row.ipv4_cidr} -o ${dev}`)
+    for (const cidr of cidrs) syncMasq(cidr, dev)
+    console.error(`seed-mtu: MASQUERADE -o ${dev}`)
   }
 } catch (err) {
   console.error(`seed-mtu: ${err}`)

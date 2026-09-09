@@ -45,14 +45,10 @@ services:
       HOMEPAGE_VAR_WEATHER_LONGITUDE: "${WEATHER_LONGITUDE}"
     sysctls:
       net.ipv6.conf.all.disable_ipv6: 1
-    entrypoint: ["/bin/sh", "/seed-images.sh"]
     volumes:
       - ./config:/app/config
-      # Next.js serves /images/* from /app/public/images. Persist on DATA_ROOT
-      # so an empty Komodo clone does not hide background.png.
-      - ${DATA_ROOT}/system/homepage/images:/app/public/images
-      - ./images:/git-images:ro
-      - ./seed-images.sh:/seed-images.sh:ro
+      # Served as /images/... — file must exist in this clone (git pull).
+      - ./images:/app/public/images
     networks:
       - edge
 

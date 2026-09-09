@@ -23,6 +23,7 @@ services:
       INIT_HOST: ${WG_HOST}
       INIT_PORT: "51820"
       INIT_DNS: ${NAS_LAN_IP}
+      NAS_LAN_IP: ${NAS_LAN_IP}
     volumes:
       - ${DATA_ROOT}/system/wireguard:/etc/wireguard
       - /lib/modules:/lib/modules:ro

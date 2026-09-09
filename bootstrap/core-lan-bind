@@ -116,6 +116,27 @@ restart_one() {
   fi
 }
 
+# Host netns: wg-easy PostUp often leaves MASQUERADE -o eth0 after a NIC swap.
+fix_wg_nat() {
+  local cidr=10.8.0.0/24 dev odev
+  dev=$(ip -4 route get 1.1.1.1 2>/dev/null | awk '{for (i=1;i<=NF;i++) if ($i=="dev") {print $(i+1); exit}}')
+  if [[ -z "${dev}" || "${dev}" == wg* ]]; then
+    echo "core-lan-bind: no uplink for WG NAT"
+    return 0
+  fi
+  while read -r line; do
+    [[ "${line}" == *MASQUERADE* && "${line}" == *"-s ${cidr}"* ]] || continue
+    odev=$(printf '%s\n' "${line}" | sed -n 's/.*-o \([^ ]*\).*/\1/p')
+    if [[ -n "${odev}" && "${odev}" != "${dev}" ]]; then
+      iptables -t nat -D POSTROUTING -s "${cidr}" -o "${odev}" -j MASQUERADE 2>/dev/null || true
+    fi
+  done < <(iptables -t nat -S POSTROUTING 2>/dev/null)
+  if ! iptables -t nat -S POSTROUTING 2>/dev/null | grep -q -- "-s ${cidr} .*-o ${dev} .*MASQUERADE"; then
+    iptables -t nat -A POSTROUTING -s "${cidr}" -o "${dev}" -j MASQUERADE
+  fi
+  echo "core-lan-bind: WG MASQUERADE -s ${cidr} -o ${dev}"
+}
+
 dump_pihole() {
   echo "core-lan-bind: host IPv4:"
   ip -4 -o addr show | awk '{print "  " $2, $4}'
@@ -146,6 +167,7 @@ if ! wait_dns "${IP}"; then
 fi
 
 restart_one wireguard
+fix_wg_nat
 restart_one caddy
 restart_one bootstrap-core-1
 
