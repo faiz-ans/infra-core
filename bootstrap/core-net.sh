@@ -27,6 +27,20 @@ sysctl --system >/dev/null
 sysctl net.ipv4.ip_forward net.ipv4.conf.all.src_valid_mark \
   net.ipv4.conf.all.rp_filter net.ipv6.conf.all.disable_ipv6
 
+# macOS uses mDNS (core.local / smb://core), not Windows LLMNR. With IPv6
+# off, Avahi must advertise on IPv4 or Macs never see the hostname.
+if [[ -f /etc/avahi/avahi-daemon.conf ]]; then
+  sed -i \
+    -e 's/^#\?use-ipv4=.*/use-ipv4=yes/' \
+    -e 's/^#\?use-ipv6=.*/use-ipv6=no/' \
+    /etc/avahi/avahi-daemon.conf
+  if systemctl restart avahi-daemon 2>/dev/null; then
+    echo "Avahi: IPv4 on, IPv6 off (macOS LAN name)."
+  else
+    echo "Edit /etc/avahi/avahi-daemon.conf (use-ipv6=no) and restart avahi-daemon."
+  fi
+fi
+
 echo "Default IPv4 route:"
 ip -4 route show default || true
 echo "Apply docker ipv6 false with: sudo bash bootstrap/core-docker-engine.sh"
