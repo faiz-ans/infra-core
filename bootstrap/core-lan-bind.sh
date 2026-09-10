@@ -26,6 +26,9 @@ fi
 
 install -m 755 "${SCRIPT_DIR}/core-lan-bind" /usr/local/sbin/core-lan-bind
 install -m 644 "${SCRIPT_DIR}/core-lan-bind.service" /etc/systemd/system/core-lan-bind.service
+if [[ -f "${SCRIPT_DIR}/core-lan-bind.timer" ]]; then
+  install -m 644 "${SCRIPT_DIR}/core-lan-bind.timer" /etc/systemd/system/core-lan-bind.timer
+fi
 
 # Drop-ins can only ADD After=/Wants=; they cannot remove network-online.
 # Shadow the vendor unit. Re-run this installer after a docker-ce upgrade.
@@ -50,8 +53,9 @@ systemctl daemon-reload
 systemctl show docker -p After -p Wants --no-pager || true
 systemctl enable docker.socket docker.service 2>/dev/null || true
 systemctl start docker.service 2>/dev/null || true
-systemctl enable core-lan-bind.service
+systemctl enable core-lan-bind.service core-lan-bind.timer 2>/dev/null || true
 systemctl restart core-lan-bind.service
-systemctl is-enabled docker.service core-lan-bind.service
+systemctl start core-lan-bind.timer 2>/dev/null || true
+systemctl is-enabled docker.service core-lan-bind.service core-lan-bind.timer
 echo "journalctl -u core-lan-bind -n 25 --no-pager"
 journalctl -u core-lan-bind -n 25 --no-pager || true

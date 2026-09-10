@@ -14,7 +14,8 @@ services:
       TZ: ${TZ}
       FTLCONF_dns_listeningMode: ALL
       FTLCONF_webserver_api_password: ${PIHOLE_PERIPHERY_WEBPASSWORD}
-      # Wildcard: *.DOMAIN → NAS. host-record: Core LAN short name (SSH/SMB).
+      # Wildcard: *.DOMAIN → NAS. dns.hosts: Core LAN short name (SSH/SMB).
+      FTLCONF_dns_hosts: "${NAS_LAN_IP} ${CORE_SERVER}"
       FTLCONF_misc_dnsmasq_lines: "local=/${DOMAIN}/;address=/${DOMAIN}/${NAS_LAN_IP};host-record=${CORE_SERVER},${NAS_LAN_IP}"
     volumes:
       - pihole-config:/etc/pihole

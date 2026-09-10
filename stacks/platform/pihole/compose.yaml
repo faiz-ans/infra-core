@@ -14,8 +14,11 @@ services:
       TZ: ${TZ}
       FTLCONF_dns_listeningMode: ALL
       FTLCONF_webserver_api_password: ${PIHOLE_WEBPASSWORD}
-      # local= : AAAA NODATA (Firefox). Wildcard: *.DOMAIN → NAS. host-record:
+      # local= : AAAA NODATA (Firefox). Wildcard: *.DOMAIN → NAS. dns.hosts:
       # LAN short name (SSH/SMB) = Core hostname (Komodo CORE_SERVER).
+      # dns.hosts is applied on every container start (v6 volume can ignore a
+      # late host-record= in misc.dnsmasq_lines).
+      FTLCONF_dns_hosts: "${NAS_LAN_IP} ${CORE_SERVER}"
       FTLCONF_misc_dnsmasq_lines: "local=/${DOMAIN}/;address=/${DOMAIN}/${NAS_LAN_IP};host-record=${CORE_SERVER},${NAS_LAN_IP}"
     volumes:
       - ${DATA_ROOT}/system/pihole:/etc/pihole

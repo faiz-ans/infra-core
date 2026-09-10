@@ -16,6 +16,8 @@ net.ipv4.ip_forward=1
 net.ipv4.conf.all.src_valid_mark=1
 net.ipv4.conf.all.rp_filter=2
 net.ipv4.conf.default.rp_filter=2
+net.ipv4.conf.all.route_localnet=1
+net.ipv4.conf.default.route_localnet=1
 net.ipv6.conf.all.disable_ipv6=1
 net.ipv6.conf.default.disable_ipv6=1
 EOF
@@ -25,7 +27,8 @@ rm -f /etc/sysctl.d/99-ip-forward.conf
 
 sysctl --system >/dev/null
 sysctl net.ipv4.ip_forward net.ipv4.conf.all.src_valid_mark \
-  net.ipv4.conf.all.rp_filter net.ipv6.conf.all.disable_ipv6
+  net.ipv4.conf.all.rp_filter net.ipv4.conf.all.route_localnet \
+  net.ipv6.conf.all.disable_ipv6
 
 # macOS resolves the short hostname via mDNS (Bonjour), not the router's
 # device nickname and not Windows LLMNR. Host IPv6-off leaves Avahi on a
@@ -59,3 +62,23 @@ echo "Default IPv4 route:"
 ip -4 route show default || true
 echo "Apply docker ipv6 false with: sudo bash bootstrap/core-docker-engine.sh"
 echo "Then Redeploy wireguard so seed-mtu.mjs rewrites NAT to this iface."
+
+# Host/Docker DNS must not depend on LAN :53 REDIRECT. DHCP often sets
+# nameserver NAS_LAN_IP; when docker/WG rebuilds iptables that REDIRECT
+# vanishes and Core cannot resolve github.com while LAN still works via
+# the HTPC Pi-hole. Query Pi-hole on 127.0.0.1:15353; fall back to public
+# DNS so GitHub still works if Pi-hole is down.
+if [[ -d /etc/systemd ]]; then
+  install -d /etc/systemd/resolved.conf.d
+  cat > /etc/systemd/resolved.conf.d/99-infra-core.conf <<'EOF'
+[Resolve]
+DNS=127.0.0.1:15353
+FallbackDNS=1.1.1.1 8.8.8.8
+EOF
+  if [[ -f /run/systemd/resolve/stub-resolv.conf ]]; then
+    ln -sfn /run/systemd/resolve/stub-resolv.conf /etc/resolv.conf
+  fi
+  systemctl reload-or-restart systemd-resolved 2>/dev/null || true
+  resolvectl flush-caches 2>/dev/null || true
+  echo "Host DNS: 127.0.0.1:15353 (Pi-hole), FallbackDNS 1.1.1.1"
+fi

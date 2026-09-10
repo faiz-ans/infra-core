@@ -34,7 +34,7 @@ else:
     daemon = {}
 
 changed = False
-for key in ("log-driver", "log-opts", "ipv6"):
+for key in ("log-driver", "log-opts", "ipv6", "dns"):
     if key in frag and daemon.get(key) != frag[key]:
         daemon[key] = frag[key]
         changed = True

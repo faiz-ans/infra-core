@@ -1,5 +1,6 @@
 {
   "ipv6": false,
+  "dns": ["127.0.0.53", "1.1.1.1"],
   "log-driver": "json-file",
   "log-opts": {
     "max-size": "10m",

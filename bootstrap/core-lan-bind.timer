@@ -1,0 +1,12 @@
+[Unit]
+Description=Re-apply LAN DNS REDIRECT and Core default route
+
+[Timer]
+OnBootSec=1min
+OnUnitInactiveSec=2min
+AccuracySec=30s
+Persistent=true
+Unit=core-lan-bind.service
+
+[Install]
+WantedBy=timers.target

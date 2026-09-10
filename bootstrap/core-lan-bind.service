@@ -12,7 +12,7 @@ TimeoutStartSec=300
 Restart=on-failure
 RestartSec=15
 ExecStart=/usr/local/sbin/core-lan-bind
-RemainAfterExit=yes
+# RemainAfterExit=no so the timer can re-run (start is a no-op if yes).
 
 [Install]
 WantedBy=multi-user.target

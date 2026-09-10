@@ -70,20 +70,15 @@ Workload compose is transport-agnostic. Komodo `file_paths` chooses one file (ne
 
 This site’s `stacks-periphery.toml` uses `compose.nfs.yaml` for Jellyfin, Arr, qBittorrent, Immich, and Frigate. Follow `bootstrap/omv-nfs.md`, then set `NAS_LAN_IP`, `NFS_EXPORT=/shared`, and `NFS_USERS=/users`. Do not set those stacks’ `DATA_ROOT` to `Z:`. Run `periphery-docker-engine.ps1` before ResourceSync (§1).
 
-If Core’s LAN IP changed (NIC swap, new DHCP reservation), Komodo `NAS_LAN_IP` must match, OMV NFS clients must allow the HTPC IP, **and** Docker NFS volumes on the HTPC must be recreated (they bake `addr=` at `docker volume create`). Hung `hard` mounts look like unhealthy/restarting stacks. `Pull` then fails with `Missing compose file at compose.nfs.yaml` if the git checkout was wiped during that mess — **Redeploy**, do not Pull, after NFS is healthy.
-
-On the HTPC (Docker Desktop running; quit Docker first if `volume rm` hangs):
+If Core’s LAN IP changed (NIC swap with a new DHCP reservation), set Komodo `NAS_LAN_IP` to the live Core address, allow that HTPC IP on OMV NFS, then on the HTPC recreate Docker NFS volumes (they bake `addr=` at `docker volume create`). A NIC rename that **keeps** the same reservation does not need this. Hung `hard` mounts look like unhealthy stacks; empty clones (`Missing compose file at compose.nfs.yaml`) were Core GitHub/DNS — **Redeploy** after Core DNS is healthy, do not Pull over a wiped checkout.
 
 ```text
-docker ps -a --format "{{.Names}} {{.Status}}"
-wsl --shutdown
-# start Docker Desktop again, then:
-docker volume ls
-# remove only NFS data volumes (jellyfin-media, arr downloads/media, etc.), not *-config
-docker compose ls
+powershell -ExecutionPolicy Bypass -File bootstrap\periphery-nfs-rebind.ps1 -NasIp <NAS_LAN_IP>
 ```
 
-Then Komodo → each NFS stack → **Redeploy** (clone + compose up). Confirm `NAS_LAN_IP` is the live Core address first.
+Then Komodo → each NFS stack → **Redeploy**. Local `*-config` volumes are not removed.
+
+If `volume rm` hangs, quit Docker Desktop, `wsl --shutdown`, start Docker, re-run the script (or `bootstrap\htpc-recover.ps1 -NasIp <NAS_LAN_IP>`).
 
 Home Assistant’s HTPC file is also named `compose.nfs.yaml`, but `/config` is a **local Docker volume**. `trusted_proxies` is written into that volume at start (`ensure-http/`); do not bind-mount `configuration.yaml` (Docker Desktop drops single-file binds, which produces Caddy 400s). `.storage` is not on DATA_ROOT.
 
@@ -126,6 +121,8 @@ Allow inbound TCP from the LAN (Caddy on Core) on the published ports:
 | 1883 | Frigate Mosquitto (Home Assistant; not Caddy) |
 
 Router DHCP DNS: Core `NAS_LAN_IP` first, then `HTPC_UPSTREAM`. Do not add a public resolver as a third DHCP DNS. Each Pi-hole fetches its own Gravity. Windows may already use :53 (ICS / another DNS); if the stack cannot bind, stop that listener.
+
+Short hostname `core` on a Mac is not covered by “DNS = the two Pi-holes” alone. macOS appends the DHCP **search domain** (`search.charter.net` on Spectrum) and does not use Windows LLMNR. `ping core` becomes `core.search.charter.net` → NXDOMAIN even while `dig @NAS_LAN_IP core` and `core.${DOMAIN}` work. Set the Mac (and, if the router allows, DHCP) search domain to `${DOMAIN}` (`home.lan` here). Windows can keep resolving `core` via LLMNR while the Mac fails. After changing Pi-hole `FTLCONF_dns_hosts`, **Redeploy** both Pi-hole stacks so the HTPC volume picks up the short name.
 
 If Edge and `curl` work but Firefox says it **can’t find** `*.home.lan` (no certificate warning): Pi-hole’s IPv4-only `address=/home.lan/…` answers **AAAA with NXDOMAIN**. Firefox follows RFC 4074 and then never queries A. Edge still tries A. Cached A records keep Homepage (and the occasional other tab) alive.
 

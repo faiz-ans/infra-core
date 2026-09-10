@@ -1,9 +1,10 @@
 # HTPC recovery after Docker Desktop hang / stale NFS / full C:.
 # Prefer fixing root causes via bootstrap/periphery-docker-engine.ps1 + Core omv-nfs.sh.
 # Usage:
-#   powershell -ExecutionPolicy Bypass -File bootstrap\htpc-recover.ps1
+#   powershell -ExecutionPolicy Bypass -File bootstrap\htpc-recover.ps1 -NasIp <NAS_LAN_IP>
 param(
-  [string]$NasIp = "192.168.1.110",
+  [Parameter(Mandatory = $true)]
+  [string]$NasIp,
   [string]$RepoRoot = ""
 )
 
@@ -40,7 +41,7 @@ $null = Read-Host
 if (-not (Wait-Docker)) { exit 1 }
 
 Write-Host "=== 2. Clear broken NFS volume state ==="
-$clearCmd = 'for m in $(mount 2>/dev/null | awk ''/nfs|192.168.1./{print $3}''); do umount -lf "$m" 2>/dev/null; done; rm -rf /var/lib/docker/volumes/nas-nfs-shared /var/lib/docker/volumes/nfs-shared-test /var/lib/docker/volumes/nfs-s-test /var/lib/docker/volumes/nfs-u-test'
+$clearCmd = "for m in `$(mount 2>/dev/null | awk '/nfs|${NasIp}/{print `$3}'); do umount -lf `"`$m`" 2>/dev/null; done; rm -rf /var/lib/docker/volumes/nas-nfs-shared /var/lib/docker/volumes/nfs-shared-test /var/lib/docker/volumes/nfs-s-test /var/lib/docker/volumes/nfs-u-test"
 wsl -d docker-desktop sh -c $clearCmd 2>$null
 docker volume rm -f nas-nfs-shared nfs-shared-test nfs-s-test nfs-u-test 2>$null
 docker volume prune -f 2>$null

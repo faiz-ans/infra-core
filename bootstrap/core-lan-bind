@@ -54,7 +54,7 @@ del_dns_redirects() {
   for chain in PREROUTING OUTPUT; do
     n=0
     while [[ "${n}" -lt 16 ]]; do
-      line=$(iptables -t nat -S "${chain}" 2>/dev/null | grep -- "--to-ports ${DNS_PROXY_PORT}" | head -n 1 || true)
+      line=$(iptables -t nat -S "${chain}" 2>/dev/null | grep -E -- "--to-ports ${DNS_PROXY_PORT}|--to-destination 127.0.0.1:${DNS_PROXY_PORT}" | head -n 1 || true)
       [[ -z "${line}" ]] && break
       spec=${line#-A ${chain} }
       # shellcheck disable=SC2086
@@ -64,13 +64,27 @@ del_dns_redirects() {
   done
 }
 
+enable_route_localnet() {
+  local f
+  echo 1 >/proc/sys/net/ipv4/conf/all/route_localnet 2>/dev/null || true
+  echo 1 >/proc/sys/net/ipv4/conf/default/route_localnet 2>/dev/null || true
+  for f in /proc/sys/net/ipv4/conf/*/route_localnet; do
+    echo 1 >"${f}" 2>/dev/null || true
+  done
+}
+
 add_dns_redirects() {
   local ip=$1 proto
+  # PREROUTING must DNAT to 127.0.0.1:15353. REDIRECT rewrites dest to the
+  # *incoming* iface address: LAN hits 192.168.x.x:15353 (nothing bound);
+  # WireGuard hits 10.8.0.1:15353. Phone DNS dies and AllowedIPs 0.0.0.0/0
+  # looks like "tunnel killed the internet".
+  enable_route_localnet
   for proto in udp tcp; do
-    iptables -t nat -A PREROUTING -d "${ip}" -p "${proto}" --dport 53 -j REDIRECT --to-ports "${DNS_PROXY_PORT}"
+    iptables -t nat -A PREROUTING -d "${ip}" -p "${proto}" --dport 53 -j DNAT --to-destination "127.0.0.1:${DNS_PROXY_PORT}"
     iptables -t nat -A OUTPUT -d "${ip}" -p "${proto}" --dport 53 -j REDIRECT --to-ports "${DNS_PROXY_PORT}"
   done
-  echo "core-lan-bind: REDIRECT ${ip}:53 -> 127.0.0.1:${DNS_PROXY_PORT}"
+  echo "core-lan-bind: DNAT ${ip}:53 -> 127.0.0.1:${DNS_PROXY_PORT} (LAN+WG)"
 }
 
 label() {
@@ -152,7 +166,6 @@ fix_wg_nat() {
   if ! iptables -t nat -S POSTROUTING 2>/dev/null | grep -q -- "-s ${cidr} .*-o ${dev} .*MASQUERADE"; then
     iptables -t nat -A POSTROUTING -s "${cidr}" -o "${dev}" -j MASQUERADE
   fi
-  # Collapse duplicate identical rules (seed used to add via nft and iptables).
   extra=0
   while read -r line; do
     [[ "${line}" == *MASQUERADE* && "${line}" == *"-s ${cidr}"* && "${line}" == *"-o ${dev}"* ]] || continue
@@ -161,7 +174,47 @@ fix_wg_nat() {
       iptables -t nat -D POSTROUTING -s "${cidr}" -o "${dev}" -j MASQUERADE 2>/dev/null || true
     fi
   done < <(iptables -t nat -S POSTROUTING 2>/dev/null)
+  if [[ -d /proc/sys/net/ipv4/conf/wg0 ]]; then
+    echo 2 >/proc/sys/net/ipv4/conf/wg0/rp_filter 2>/dev/null || true
+    echo 1 >/proc/sys/net/ipv4/conf/wg0/route_localnet 2>/dev/null || true
+    iptables -C FORWARD -i wg0 -j ACCEPT 2>/dev/null || iptables -I FORWARD 1 -i wg0 -j ACCEPT
+    iptables -C FORWARD -o wg0 -j ACCEPT 2>/dev/null || iptables -I FORWARD 1 -o wg0 -j ACCEPT
+  fi
   echo "core-lan-bind: WG MASQUERADE -s ${cidr} -o ${dev}"
+}
+
+# Dual-homed Core: edge can steal the default route so GitHub DNS/TCP dies
+# while LAN still works (HTPC Pi-hole failover). Pin default via the non-edge
+# compose network gateway (ferretdb / internet).
+pin_core_default_route() {
+  local cid pid gw
+  cid=$(docker ps -q --filter ancestor=ghcr.io/moghtech/komodo-core 2>/dev/null | head -1)
+  if [[ -z "${cid}" ]]; then
+    return 0
+  fi
+  pid=$(docker inspect -f '{{.State.Pid}}' "${cid}" 2>/dev/null || true)
+  if [[ -z "${pid}" || "${pid}" == 0 ]]; then
+    return 0
+  fi
+  gw=$(docker inspect -f '{{range $n,$c := .NetworkSettings.Networks}}{{if ne $n "edge"}}{{$c.Gateway}} {{end}}{{end}}' "${cid}" | awk '{print $1}')
+  if [[ -z "${gw}" ]]; then
+    return 0
+  fi
+  if nsenter -t "${pid}" -n ip -4 route show default 2>/dev/null | grep -q "via ${gw}"; then
+    if [[ "$(nsenter -t "${pid}" -n ip -4 route show default 2>/dev/null | wc -l)" -le 1 ]]; then
+      echo "core-lan-bind: Core default already via ${gw}"
+      return 0
+    fi
+  fi
+  nsenter -t "${pid}" -n sh -c "while ip route del default 2>/dev/null; do :; done; ip route add default via '${gw}'" 2>/dev/null || true
+  echo "core-lan-bind: Core default via ${gw} (not edge)"
+}
+
+finish_bind() {
+  ensure_caddy
+  fix_wg_nat
+  pin_core_default_route
+  echo "core-lan-bind: done (${IP}:53 -> 127.0.0.1:${DNS_PROXY_PORT})."
 }
 
 dump_pihole() {
@@ -179,8 +232,7 @@ if [[ -z "${IP}" ]]; then
   exit 1
 fi
 
-# Kick dockerd immediately. Do not REDIRECT until 15353 is listening — an
-# early REDIRECT black-holes LAN DNS and blocks failover to the HTPC Pi-hole.
+# Kick dockerd immediately. Do not install DNS NAT until 15353 is listening.
 systemctl start --no-block docker.socket docker.service 2>/dev/null || true
 echo "core-lan-bind: ${IP}:53 via 127.0.0.1:${DNS_PROXY_PORT} (not 0.0.0.0:53)"
 
@@ -200,9 +252,7 @@ while [[ "${i}" -lt 150 ]]; do
   if ip -4 addr show | grep -q "inet ${IP}/" && proxy_up; then
     del_dns_redirects
     add_dns_redirects "${IP}"
-    ensure_caddy
-    fix_wg_nat
-    echo "core-lan-bind: done (${IP}:53 -> 127.0.0.1:${DNS_PROXY_PORT})."
+    finish_bind
     exit 0
   fi
   if [[ $((i % 5)) -eq 0 ]]; then
@@ -233,7 +283,5 @@ if ! wait_proxy; then
 fi
 del_dns_redirects
 add_dns_redirects "${IP}"
-ensure_caddy
-fix_wg_nat
-echo "core-lan-bind: done (${IP}:53 -> 127.0.0.1:${DNS_PROXY_PORT})."
+finish_bind
 exit 0
