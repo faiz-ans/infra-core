@@ -47,6 +47,9 @@
   flex: 0 0 auto;
   margin: 0 !important;
   width: auto !important;
+  padding-left: 0.75rem;
+  margin-left: 0.25rem;
+  border-left: 1px solid color-mix(in srgb, currentColor 30%, transparent);
 }
 
 #information-widgets-right #myTab {
@@ -83,8 +86,8 @@
 #information-widgets-right #tabs button svg {
   display: block;
   flex-shrink: 0;
-  width: 2.5rem;
-  height: 2.5rem;
+  width: 2rem;
+  height: 2rem;
 }
 
 /* Hide full-width tab bar until custom.js relocates it into the header */
