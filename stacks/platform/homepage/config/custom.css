@@ -137,3 +137,19 @@
 #widgets-wrap > .information-widget-glances .information-widget-resource > div.min-w-\[85px\] {
   min-width: 0 !important;
 }
+
+/* Mobile (Apps single-column below Tailwind md): icon + value only */
+@media (max-width: 767px) {
+  #widgets-wrap > .information-widget-glances .information-widget-resource .pr-1 {
+    display: none !important;
+  }
+
+  #widgets-wrap > .information-widget-glances .resource-usage {
+    display: none !important;
+  }
+
+  #widgets-wrap > .information-widget-glances .information-widget-resource > div {
+    min-width: 0 !important;
+    margin-left: 0.375rem !important;
+  }
+}
