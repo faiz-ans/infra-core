@@ -56,6 +56,9 @@ services:
     # network attached becomes the gateway, so compose `priority` is inverted
     # (edge connected first, default last). Do not rename `default` (that
     # deletes `{project}_default` and leaves postgres/ferretdb stuck).
+    # Recreate the whole file (`up -d --force-recreate`). Never `--no-deps` on
+    # core — Compose then creates a new default net and cannot remove
+    # `core-default` while postgres/ferretdb/periphery are still attached.
     # Recreate via this file — do not `docker network connect` on a running Core.
     sysctls:
       net.ipv6.conf.all.disable_ipv6: 1
@@ -86,6 +89,8 @@ volumes:
   keys:
 
 networks:
+  default:
+    name: core-default
   edge:
     external: true
     name: edge

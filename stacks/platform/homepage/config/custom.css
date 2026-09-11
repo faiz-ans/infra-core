@@ -1,5 +1,5 @@
 /* Header widgets: two rows
- * Row 1: datetime (left) | openmeteo (right)
+ * Row 1: datetime (left) | openmeteo + tab icons (right)
  * Row 2: NAS glances (left) | HTPC glances (right)
  * Narrow: HTPC wraps under NAS, left-aligned; stats wrap within each widget
  */
@@ -13,7 +13,7 @@
   justify-content: space-between !important;
 }
 
-/* Row 1 — datetime + openmeteo full width, opposite ends */
+/* Row 1 — datetime left; weather + compact tab icons right */
 #information-widgets-right {
   order: -1;
   flex: 0 0 100% !important;
@@ -23,13 +23,14 @@
   padding-bottom: 10px;
   display: flex !important;
   flex-wrap: nowrap !important;
-  justify-content: space-between !important;
+  justify-content: flex-start !important;
   align-items: center;
   gap: 0.5rem;
 }
 
 #information-widgets-right .information-widget-datetime {
   flex: 0 1 auto;
+  margin-right: auto;
 }
 
 #information-widgets-right .information-widget-datetime .grow {
@@ -38,7 +39,55 @@
 
 #information-widgets-right .information-widget-openmeteo {
   flex: 0 1 auto;
-  margin-left: auto;
+  margin-left: 0;
+}
+
+/* Compact Apps / System selector (moved here by custom.js) */
+#information-widgets-right #tabs {
+  flex: 0 0 auto;
+  margin: 0 !important;
+  width: auto !important;
+}
+
+#information-widgets-right #myTab {
+  display: flex !important;
+  flex-direction: row !important;
+  width: auto !important;
+  gap: 0.15rem;
+  padding: 0.15rem;
+  border-radius: 0.5rem;
+}
+
+#information-widgets-right #tabs li {
+  width: auto !important;
+  height: auto !important;
+  flex: 0 0 auto;
+}
+
+#information-widgets-right #tabs button {
+  width: 2.25rem !important;
+  height: 2.25rem !important;
+  margin: 0 !important;
+  padding: 0 !important;
+  display: inline-flex !important;
+  align-items: center;
+  justify-content: center;
+  border-radius: 0.4rem;
+  line-height: 0;
+}
+
+#information-widgets-right #tabs button svg {
+  display: block;
+  flex-shrink: 0;
+}
+
+/* Hide full-width tab bar until custom.js relocates it into the header */
+#tabs {
+  display: none !important;
+}
+
+#information-widgets-right #tabs {
+  display: block !important;
 }
 
 /* Row 2 — opposite ends when side-by-side; left-aligned when HTPC wraps alone
