@@ -84,7 +84,7 @@
             href: https://cam.{{HOMEPAGE_VAR_DOMAIN}}
             server: periphery
             container: frigate
-            icon: frigate.svg
+            icon: https://cdn.jsdelivr.net/gh/homarr-labs/dashboard-icons/png/moonfire-nvr.png
             description: Home NVR
 
     - Utilities:
