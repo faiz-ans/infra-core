@@ -3,3 +3,8 @@
 !*.env.template
 bootstrap/komodo/compose.env
 .DS_Store
+
+# Homepage writes these into the mounted config/ at runtime
+stacks/platform/homepage/config/kubernetes.yaml
+stacks/platform/homepage/config/proxmox.yaml
+stacks/platform/homepage/config/logs/
