@@ -41,7 +41,7 @@
             href: https://pass.{{HOMEPAGE_VAR_DOMAIN}}
             server: core
             container: vaultwarden
-            icon: vaultwarden.svg
+            icon: bitwarden.svg
             description: Passwords
             
     - Media & Home:
@@ -107,7 +107,7 @@
             href: https://translate.{{HOMEPAGE_VAR_DOMAIN}}
             server: periphery
             container: libretranslate
-            icon: libretranslate.svg
+            icon: https://cdn.jsdelivr.net/gh/selfhst/icons/svg/libretranslate.svg
             description: Translate
         - OpenReader:
             id: openreader
