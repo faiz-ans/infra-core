@@ -25,7 +25,7 @@
   flex-wrap: nowrap !important;
   justify-content: flex-start !important;
   align-items: center;
-  gap: 0;
+  gap: 0.5rem;
 }
 
 #information-widgets-right .information-widget-datetime {
@@ -44,46 +44,29 @@
 
 /* Compact Apps / System selector (moved here by custom.js) */
 #information-widgets-right #tabs {
-  position: relative;
   flex: 0 0 auto;
-  margin: 0 0 0 1.5rem !important;
-  padding-left: 1.5rem;
+  margin: 0 !important;
   width: auto !important;
-}
-
-#information-widgets-right #tabs::before {
-  content: "";
-  position: absolute;
-  left: 0;
-  top: 50%;
-  transform: translateY(-50%);
-  width: 1px;
-  height: 1.5rem;
-  background: currentColor;
 }
 
 #information-widgets-right #myTab {
   display: flex !important;
   flex-direction: row !important;
   width: auto !important;
-  gap: 0.5rem;
-  padding: 0 !important;
-  background: transparent !important;
-  border-radius: 0 !important;
-  backdrop-filter: none !important;
-  box-shadow: none !important;
+  gap: 0.15rem;
+  padding: 0.15rem;
+  border-radius: 0.5rem;
 }
 
 #information-widgets-right #tabs li {
   width: auto !important;
   height: auto !important;
   flex: 0 0 auto;
-  background: transparent !important;
 }
 
 #information-widgets-right #tabs button {
-  width: 2.75rem !important;
-  height: 2.75rem !important;
+  width: 2.25rem !important;
+  height: 2.25rem !important;
   margin: 0 !important;
   padding: 0 !important;
   display: inline-flex !important;
@@ -96,8 +79,6 @@
 #information-widgets-right #tabs button svg {
   display: block;
   flex-shrink: 0;
-  width: 2rem;
-  height: 2rem;
 }
 
 /* Hide full-width tab bar until custom.js relocates it into the header */
