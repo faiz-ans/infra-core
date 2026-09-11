@@ -1,4 +1,6 @@
-/* Move Apps/System tabs into the header (after weather) as Material icon buttons. */
+/* Move Apps/System tabs into the header (after weather) as Material icon buttons.
+ * Also normalize glances uptime "1 day" → "1d" (Homepage only rewrites plural "days").
+ */
 (function () {
   const ICON_SVG = {
     Apps:
@@ -40,17 +42,40 @@
     tabs.querySelectorAll('button[role="tab"]').forEach(iconifyButton);
   }
 
+  // Homepage: uptime.replace(" days,", "d") — misses singular "1 day,"
+  function normalizeGlancesUptime() {
+    document
+      .querySelectorAll(
+        "#widgets-wrap .information-widget-glances .information-widget-resource .pl-0\\.5",
+      )
+      .forEach((el) => {
+        const text = el.textContent;
+        if (!text || !/day/i.test(text)) return;
+        const next = text.replace(/\s*days?,?\s*/i, "d ");
+        if (next !== text) el.textContent = next;
+      });
+  }
+
+  function enhance() {
+    enhanceTabs();
+    normalizeGlancesUptime();
+  }
+
   function scheduleEnhance() {
     if (scheduled) return;
     scheduled = true;
     requestAnimationFrame(() => {
       scheduled = false;
-      enhanceTabs();
+      enhance();
     });
   }
 
   const observer = new MutationObserver(scheduleEnhance);
-  observer.observe(document.documentElement, { childList: true, subtree: true });
+  observer.observe(document.documentElement, {
+    childList: true,
+    subtree: true,
+    characterData: true,
+  });
 
   if (document.readyState === "loading") {
     document.addEventListener("DOMContentLoaded", scheduleEnhance);
