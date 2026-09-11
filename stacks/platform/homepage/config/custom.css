@@ -53,20 +53,24 @@
   display: flex !important;
   flex-direction: row !important;
   width: auto !important;
-  gap: 0.15rem;
-  padding: 0.15rem;
-  border-radius: 0.5rem;
+  gap: 0.25rem;
+  padding: 0 !important;
+  background: transparent !important;
+  border-radius: 0 !important;
+  backdrop-filter: none !important;
+  box-shadow: none !important;
 }
 
 #information-widgets-right #tabs li {
   width: auto !important;
   height: auto !important;
   flex: 0 0 auto;
+  background: transparent !important;
 }
 
 #information-widgets-right #tabs button {
-  width: 2.25rem !important;
-  height: 2.25rem !important;
+  width: 2.75rem !important;
+  height: 2.75rem !important;
   margin: 0 !important;
   padding: 0 !important;
   display: inline-flex !important;
@@ -79,6 +83,8 @@
 #information-widgets-right #tabs button svg {
   display: block;
   flex-shrink: 0;
+  width: 2.5rem;
+  height: 2.5rem;
 }
 
 /* Hide full-width tab bar until custom.js relocates it into the header */
