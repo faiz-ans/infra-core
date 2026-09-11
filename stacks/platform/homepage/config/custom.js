@@ -65,10 +65,32 @@
     wrap.classList.toggle("glances-stacked", stacked);
   }
 
+  // When datetime wraps to two lines, drop the comma between date and time.
+  function syncDatetimeWrapComma() {
+    const span = document.querySelector(
+      ".information-widget-datetime span.tabular-nums",
+    );
+    if (!span) return;
+
+    const text = span.textContent;
+    if (!text) return;
+
+    const styles = getComputedStyle(span);
+    const lineHeight = parseFloat(styles.lineHeight);
+    if (!lineHeight) return;
+
+    const wrapped = span.getBoundingClientRect().height > lineHeight * 1.5;
+    if (!wrapped) return;
+
+    const next = text.replace(/,\s+(?=\d{1,2}:\d{2}\b)/, " ");
+    if (next !== text) span.textContent = next;
+  }
+
   function enhance() {
     enhanceTabs();
     normalizeGlancesUptime();
     syncGlancesStacked();
+    syncDatetimeWrapComma();
   }
 
   function scheduleEnhance() {
