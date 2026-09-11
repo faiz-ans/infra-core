@@ -1,6 +1,6 @@
 title: Home
 theme: dark
-headerStyle: underlined
+headerStyle: clean
 hideVersion: true
 statusStyle: dot
 target: _top
