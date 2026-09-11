@@ -27,6 +27,7 @@ ${DATA_ROOT}/
 - Komodo: `NFS_EXPORT=/shared`, `NFS_USERS=/users`. `restic` and `restic-rest` stay `deploy = false` until `BACKUP_DRIVE` is ready.
 - HTPC `/config` is a local Docker volume. Media stacks use NFS. OpenCloud on Core bind-mounts `users/` and `shared/` locally.
 - ResourceSync names are global: Core Pi-hole is `pihole`, HTPC is `pihole-periphery`.
+- Core host IPv4 is static (`NAS_LAN_IP` on the LAN NIC via NetworkManager). A router DHCP reservation is not required and is not sufficient after a cold plug of a USB NIC.
 - Router DHCP DNS: Core LAN IP first, HTPC second. No public resolver as a third server. Each Pi-hole fetches its own Gravity.
 - WireGuard is host-network on Core. Caddy (`edge`) proxies the VPN UI to the host. Router: UDP 51820 to Core only. Do not forward RustDesk 21115–21119; off-LAN desktop is WireGuard. `WG_HOST` is a public DNS name (not `DOMAIN` if that would make Pi-hole steal the endpoint). Client MTU 1280 (catalog rewrites wg-easy’s factory 1420).
 

@@ -5,8 +5,8 @@
 # Every live command is also shown in a nearby comment for copy-paste.
 #
 # Order: apt → external disk? → (if yes: OMV with -n -r, mount uuid path)
-#        (if no: directory on OS disk) → site prompts → Docker → DATA_ROOT tree
-#        (system/<app>, not system/core) → Komodo → NFS shared/+users/ → ACLs.
+#        (if no: directory on OS disk) → site prompts → static LAN → Docker
+#        → DATA_ROOT tree (system/<app>, not system/core) → Komodo → NFS → ACLs.
 
 set -euo pipefail
 
@@ -322,7 +322,7 @@ run_omv_installer() {
   fi
   # -n skip network setup (do not purge NetworkManager / rewrite systemd-networkd)
   # -r skip reboot
-  echo "Running vendor OMV installer with -n -r (keep DHCP/SSH, no reboot)."
+  echo "Running vendor OMV installer with -n -r (keep NetworkManager/SSH, no reboot)."
   if bash "${tmp}" -n -r; then
     rm -f "${tmp}"
     return 0
@@ -442,6 +442,11 @@ if [[ -f "${KOMODO_DIR}/core.config.toml" ]]; then
 fi
 komodo_ensure_site_vars
 save_answers
+
+# Pin NAS_LAN_IP on the uplink. Router DHCP reservation is not enough
+# (USB 2.5G NIC can link without a lease). Same IP as the live session.
+# sudo NAS_LAN_IP=192.168.1.110 bash bootstrap/core-lan-static.sh
+bash "${SCRIPT_DIR}/core-lan-static.sh"
 
 # --- Docker ---
 if ! command -v docker >/dev/null 2>&1; then
@@ -784,6 +789,7 @@ echo "  Core Docker log caps: /etc/docker/daemon.json (core-docker-engine.sh). R
 echo "  HTPC: bootstrap/periphery-docker-engine.ps1 (pools + logs + DiskSizeMiB); Deploy periphery stacks one at a time first."
 echo "  Cage fan: sudo bash bootstrap/core-fan.sh (PWM from max CPU/HDD; see bootstrap/core-fan.md)."
 echo "  After reboot: core-lan-bind.service REDIRECTs NAS_LAN_IP:53 to 127.0.0.1:15353. Host DNS is 127.0.0.1:15353 (not the LAN REDIRECT)."
+echo "  Core LAN IPv4 is static ${NAS_LAN_IP} (core-lan-static.sh). Do not depend on a router DHCP reservation for the NAS address."
 echo "  First-run: bootstrap/authelia.md, bootstrap/vaultwarden.md, bootstrap/opencloud.md, bootstrap/immich.md, bootstrap/jotty.md, bootstrap/linkding.md, bootstrap/rustdesk.md, bootstrap/adventurelog.md, bootstrap/scriberr.md, bootstrap/frigate.md, bootstrap/transmute.md, bootstrap/bentopdf.md, bootstrap/libretranslate.md, bootstrap/openreader.md, bootstrap/it-tools.md, bootstrap/n8n.md, bootstrap/bytestash.md, bootstrap/glances.md."
 echo "  Pi-hole stack names: pihole (Core) and pihole-periphery (HTPC)."
 echo "  Router DHCP DNS: ${NAS_LAN_IP} first, then ${HTPC_UPSTREAM}. No public resolver as a third server."

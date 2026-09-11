@@ -46,6 +46,13 @@ Komodo Core (and the first local Periphery) SHALL be brought up by bootstrap, no
 - **WHEN** Komodo is not yet running on the Pi
 - **THEN** bootstrap can still install and start Core without pulling a stack through ResourceSync
 
+### Requirement: Core LAN address is static
+After site prompts, bootstrap SHALL pin `NAS_LAN_IP` as a NetworkManager manual IPv4 address on the uplink NIC (gateway from the live default route, DNS left to systemd-resolved). It MUST NOT depend on a router DHCP reservation for Core to return after a reboot or cold plug. It MUST NOT change the address if `NAS_LAN_IP` does not already match the live uplink (SSH would drop). Re-running bootstrap SHALL be idempotent when the profile already matches. A router DHCP reservation MAY still exist; it is not the source of truth for the NAS address.
+
+#### Scenario: Cold plug without a DHCP lease
+- **WHEN** bootstrap has pinned `NAS_LAN_IP` and Core is power-cycled (USB NIC included)
+- **THEN** that address is on the uplink without waiting for DHCPOFFER, and SSH to `NAS_LAN_IP` works
+
 ### Requirement: Host forwarding and WireGuard operator hints
 Bootstrap SHALL persist IPv4 forwarding on Core (`net.ipv4.ip_forward=1`) so host-network WireGuard can NAT. It SHALL prompt for `WG_HOST` as a public endpoint name (not a LAN name) and SHALL print operator steps for UDP 51820-only forwarding, keeping `DOMAIN` from swallowing `WG_HOST` in Pi-hole, and confirming client MTU 1280 after the first WireGuard deploy. Live values SHALL stay on-box.
 

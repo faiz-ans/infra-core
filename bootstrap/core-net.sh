@@ -63,11 +63,12 @@ ip -4 route show default || true
 echo "Apply docker ipv6 false with: sudo bash bootstrap/core-docker-engine.sh"
 echo "Then Redeploy wireguard so seed-mtu.mjs rewrites NAT to this iface."
 
-# Host/Docker DNS must not depend on LAN :53 REDIRECT. DHCP often sets
-# nameserver NAS_LAN_IP; when docker/WG rebuilds iptables that REDIRECT
-# vanishes and Core cannot resolve github.com while LAN still works via
-# the HTPC Pi-hole. Query Pi-hole on 127.0.0.1:15353; fall back to public
-# DNS so GitHub still works if Pi-hole is down.
+# Host/Docker DNS must not depend on LAN :53 REDIRECT. A DHCP lease (or a
+# leftover resolv.conf) often sets nameserver NAS_LAN_IP; when docker/WG
+# rebuilds iptables that REDIRECT vanishes and Core cannot resolve
+# github.com while LAN still works via the HTPC Pi-hole. Query Pi-hole on
+# 127.0.0.1:15353; fall back to public DNS so GitHub still works if
+# Pi-hole is down. core-lan-static.sh sets ipv4.ignore-auto-dns.
 if [[ -d /etc/systemd ]]; then
   install -d /etc/systemd/resolved.conf.d
   cat > /etc/systemd/resolved.conf.d/99-infra-core.conf <<'EOF'

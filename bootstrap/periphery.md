@@ -70,7 +70,7 @@ Workload compose is transport-agnostic. Komodo `file_paths` chooses one file (ne
 
 This site’s `stacks-periphery.toml` uses `compose.nfs.yaml` for Jellyfin, Arr, qBittorrent, Immich, and Frigate. Follow `bootstrap/omv-nfs.md`, then set `NAS_LAN_IP`, `NFS_EXPORT=/shared`, and `NFS_USERS=/users`. Do not set those stacks’ `DATA_ROOT` to `Z:`. Run `periphery-docker-engine.ps1` before ResourceSync (§1).
 
-If Core’s LAN IP changed (NIC swap with a new DHCP reservation), set Komodo `NAS_LAN_IP` to the live Core address, allow that HTPC IP on OMV NFS, then on the HTPC recreate Docker NFS volumes (they bake `addr=` at `docker volume create`). A NIC rename that **keeps** the same reservation does not need this. Hung `hard` mounts look like unhealthy stacks; empty clones (`Missing compose file at compose.nfs.yaml`) were Core GitHub/DNS — **Redeploy** after Core DNS is healthy, do not Pull over a wiped checkout.
+If Core’s LAN IP changed, set Komodo `NAS_LAN_IP` to the live Core address, re-run `core-lan-static.sh` on Core (or keep the NetworkManager manual address in sync), allow that HTPC IP on OMV NFS, then on the HTPC recreate Docker NFS volumes (they bake `addr=` at `docker volume create`). A NIC rename that **keeps** the same address does not need this. Hung `hard` mounts look like unhealthy stacks; empty clones (`Missing compose file at compose.nfs.yaml`) were Core GitHub/DNS — **Redeploy** after Core DNS is healthy, do not Pull over a wiped checkout.
 
 ```text
 powershell -ExecutionPolicy Bypass -File bootstrap\periphery-nfs-rebind.ps1 -NasIp <NAS_LAN_IP>
