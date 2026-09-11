@@ -1,0 +1,13 @@
+[Unit]
+Description=Assimilate SMB/NFS writes into OpenCloud PosixFS
+After=docker.socket
+Wants=docker.socket
+
+[Service]
+Type=oneshot
+TimeoutStartSec=7200
+Nice=10
+ExecStart=/usr/local/sbin/opencloud-posix-scan
+
+[Install]
+WantedBy=multi-user.target

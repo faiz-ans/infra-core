@@ -50,7 +50,15 @@ sudo DATA_ROOT=$DATA bash bootstrap/data-root-layout.sh
 
 Creates `shared/media`, `photos`, `users/<name>/files|photos`, ACL/sticky. Then OMV SMB/NFS (`bootstrap/omv-nfs.md`) for `shared` and `users`.
 
-Optional scan: `sudo docker exec opencloud opencloud posixfs scan /posix`
+Host timer assimilates SMB/NFS writes OpenCloud’s inotify miss (`opencloud-posix-scan.timer`, every ~5 min after the last scan). Install (once per Core):
+
+```text
+sudo bash bootstrap/opencloud-posix-scan.sh
+sudo bash bootstrap/core-net.sh   # raises inotify watches for WATCH_FS
+sudo systemctl start opencloud-posix-scan.service   # catch up existing files
+```
+
+A one-shot `docker exec opencloud opencloud posixfs scan /posix` is the same work as that service.
 
 ### 5. Phase B stacks
 
@@ -91,6 +99,7 @@ sudo DATA_ROOT=$DATA bash bootstrap/data-root-layout.sh
 | Login HTTP 500 | Wipe **both** `system/opencloud/config` and `…/data` (not posix/users/shared/radicale) |
 | No Personal / no space id | Path already existed — use **park** utilities |
 | `shared` empty in UI but SMB has files | Bind missing — fix publish (inode check), not findmnt alone |
+| OC→SMB works, SMB→OC does not | PosixFS watch does not see the extra `shared/` bind (and inotify dies on a large tree). Install `opencloud-posix-scan.sh`, run `core-net.sh`, start the oneshot once, then drop a test file via SMB and wait for the timer (or start the service again). |
 | Collabora white iframe / ProofKeys | Redeploy collabora + opencloud; proof disable + CA |
 | `radicale` permission denied | prep should have PUID-owned radicale data |
 | Layout sticky missing | Re-run **data-root-layout.sh** after publish |

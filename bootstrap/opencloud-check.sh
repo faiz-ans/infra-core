@@ -153,6 +153,15 @@ else
   fail "radicale data dir missing: ${RADICALE}"
 fi
 
+# --- SMB/NFS assimilate timer ---
+if command -v systemctl >/dev/null 2>&1; then
+  if systemctl is-enabled opencloud-posix-scan.timer >/dev/null 2>&1; then
+    pass "opencloud-posix-scan.timer enabled"
+  else
+    fail "opencloud-posix-scan.timer not enabled (SMB writes will not show in OpenCloud; bootstrap/opencloud-posix-scan.sh)"
+  fi
+fi
+
 # --- projects parent writable by PUID ---
 if [[ -d "${PROJECTS}" ]]; then
   own="$(stat -c '%u:%g' "${PROJECTS}")"

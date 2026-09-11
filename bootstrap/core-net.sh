@@ -20,6 +20,11 @@ net.ipv4.conf.all.route_localnet=1
 net.ipv4.conf.default.route_localnet=1
 net.ipv6.conf.all.disable_ipv6=1
 net.ipv6.conf.default.disable_ipv6=1
+# PosixFS collaborative watch (SMB/NFS writes). Default 8192 watches dies
+# on a household media tree and then OpenCloud never sees new files.
+fs.inotify.max_user_watches=1048576
+fs.inotify.max_user_instances=1024
+fs.inotify.max_queued_events=32768
 EOF
 
 # Drop the older single-key file if present.
@@ -28,7 +33,8 @@ rm -f /etc/sysctl.d/99-ip-forward.conf
 sysctl --system >/dev/null
 sysctl net.ipv4.ip_forward net.ipv4.conf.all.src_valid_mark \
   net.ipv4.conf.all.rp_filter net.ipv4.conf.all.route_localnet \
-  net.ipv6.conf.all.disable_ipv6
+  net.ipv6.conf.all.disable_ipv6 \
+  fs.inotify.max_user_watches fs.inotify.max_user_instances
 
 # macOS resolves the short hostname via mDNS (Bonjour), not the router's
 # device nickname and not Windows LLMNR. Host IPv6-off leaves Avahi on a

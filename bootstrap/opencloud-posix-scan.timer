@@ -1,0 +1,12 @@
+[Unit]
+Description=Re-scan OpenCloud PosixFS for SMB/NFS writes
+
+[Timer]
+OnBootSec=2min
+OnUnitInactiveSec=5min
+AccuracySec=30s
+Persistent=true
+Unit=opencloud-posix-scan.service
+
+[Install]
+WantedBy=timers.target

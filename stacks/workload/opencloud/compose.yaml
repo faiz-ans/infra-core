@@ -93,6 +93,9 @@ services:
       COLLABORATION_APP_PROOF_DISABLE: "true"
       STORAGE_USERS_DRIVER: posix
       STORAGE_USERS_ID_CACHE_STORE: nats-js-kv
+      # Collaborative mode: OpenCloud API writes are indexed live. Host SMB/NFS
+      # writes to DATA_ROOT/shared (a second bind of projects/shared) often do
+      # not generate inotify in this mount namespace; see opencloud-posix-scan.
       STORAGE_USERS_POSIX_WATCH_FS: "true"
       STORAGE_USERS_POSIX_ROOT: /posix
       STORAGE_USERS_POSIX_PERSONAL_SPACE_PATH_TEMPLATE: "users/{{.User.Username}}"
