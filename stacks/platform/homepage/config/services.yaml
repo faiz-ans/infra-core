@@ -135,48 +135,38 @@
         - Gmail:
             href: https://gmail.com
             icon: gmail.svg
-            description: mail.google.com
         - Drive:
             href: https://drive.google.com
             icon: google-drive.svg
-            description: drive.google.com
         - YouTube:
             href: https://youtube.com
             icon: youtube.svg
-            description: youtube.com
         - Spotify:
             href: https://open.spotify.com
             icon: spotify.svg
-            description: open.spotify.com
         - ChatGPT:
             href: https://chatgpt.com
             icon: chatgpt.svg
-            description: chatgpt.com
         - Amazon:
             href: https://amazon.com/gp/css/order-history
             icon: amazon.svg
-            description: amazon.com
         - Discord:
             href: https://discord.com/channels/@me
             icon: discord.svg
-            description: discord.com
         - WhatsApp:
             id: whatsapp
             href: https://web.whatsapp.com
             icon: whatsapp.svg
-            description: web.whatsapp.com
         - Fidelity:
             href: https://www.fidelity.com
             icon: fidelity.svg
-            description: www.fidelity.com
         - GitHub:
             href: https://github.com
             icon: github-light.svg
-            description: github.com
         - Twitch:
             href: https://twitch.tv
             icon: twitch.svg
-            description: twitch.tv
+            
 - System:
 
     - Media:
