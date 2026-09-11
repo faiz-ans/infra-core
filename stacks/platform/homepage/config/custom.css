@@ -128,14 +128,26 @@
   min-width: 2.8rem;
 }
 
-/* Let individual stats wrap on narrow viewports */
+/* Stats stay on one row; scroll horizontally when space is tight */
 #widgets-wrap > .information-widget-glances .flex.flex-row.flex-wrap {
   flex: 1 1 auto;
-  flex-wrap: wrap !important;
+  flex-wrap: nowrap !important;
   justify-content: flex-start !important;
   gap: 0 !important;
   min-width: 0;
   max-width: 100%;
+  overflow-x: auto;
+  overflow-y: hidden;
+  scrollbar-width: none; /* Firefox */
+  -ms-overflow-style: none; /* legacy Edge */
+}
+
+#widgets-wrap > .information-widget-glances .flex.flex-row.flex-wrap::-webkit-scrollbar {
+  display: none; /* Chrome / Safari */
+}
+
+#widgets-wrap > .information-widget-glances .information-widget-resource {
+  flex: 0 0 auto;
 }
 
 /* Drop Homepage's min-w-[85px] on each resource */
