@@ -115,14 +115,12 @@
 
 #widgets-wrap > .information-widget-glances .information-widget-label {
   order: -1;
-  flex: 0 0 3rem;
-  width: 3rem;
+  flex: 0 0 auto;
   align-self: flex-start;
   font-weight: bold;
   padding-top: 0.375rem;
   padding-right: 12px;
   text-align: left;
-  box-sizing: content-box;
 }
 
 /* Let individual stats wrap on narrow viewports */
