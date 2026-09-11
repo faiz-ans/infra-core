@@ -56,9 +56,19 @@
       });
   }
 
+  function syncGlancesStacked() {
+    const wrap = document.getElementById("widgets-wrap");
+    if (!wrap) return;
+    const widgets = wrap.querySelectorAll(":scope > .information-widget-glances");
+    const stacked =
+      widgets.length >= 2 && widgets[0].offsetTop !== widgets[1].offsetTop;
+    wrap.classList.toggle("glances-stacked", stacked);
+  }
+
   function enhance() {
     enhanceTabs();
     normalizeGlancesUptime();
+    syncGlancesStacked();
   }
 
   function scheduleEnhance() {
@@ -76,6 +86,8 @@
     subtree: true,
     characterData: true,
   });
+
+  window.addEventListener("resize", scheduleEnhance);
 
   if (document.readyState === "loading") {
     document.addEventListener("DOMContentLoaded", scheduleEnhance);
