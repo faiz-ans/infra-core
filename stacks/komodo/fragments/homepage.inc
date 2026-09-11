@@ -13,6 +13,7 @@ config_files = [
   { path = "config/settings.yaml", requires = "Redeploy" },
   { path = "config/docker.yaml", requires = "Redeploy" },
   { path = "config/widgets.yaml", requires = "Redeploy" },
+  { path = "config/bookmarks.yaml", requires = "Redeploy" },
   { path = "config/custom.css", requires = "Redeploy" },
   { path = "config/custom.js", requires = "Redeploy" },
 ]
