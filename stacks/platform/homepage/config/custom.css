@@ -110,15 +110,15 @@
 #widgets-wrap > .information-widget-glances {
   flex-direction: row !important;
   flex-wrap: nowrap !important;
-  align-items: flex-start;
+  align-items: center;
 }
 
 #widgets-wrap > .information-widget-glances .information-widget-label {
   order: -1;
   flex: 0 0 auto;
-  align-self: flex-start;
+  align-self: center;
   font-weight: bold;
-  padding-top: 0.375rem;
+  padding-top: 0;
   padding-right: 12px;
   text-align: left;
 }
