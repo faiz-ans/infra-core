@@ -20,17 +20,16 @@
   width: 100% !important;
   max-width: 100% !important;
   margin: 0 !important;
-  padding-bottom: 10px;
+  padding-bottom: 0.5rem;
   display: flex !important;
   flex-wrap: nowrap !important;
   justify-content: flex-start !important;
   align-items: center;
-  gap: 1.5rem;
+  gap: 1.75rem;
 }
 
 #information-widgets-right .information-widget-datetime {
   flex: 0 1 auto;
-  margin-right: auto;
 }
 
 #information-widgets-right .information-widget-datetime .grow {
