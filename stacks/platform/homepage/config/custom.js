@@ -26,7 +26,8 @@
   let scheduled = false;
 
   function glancesVisible() {
-    return localStorage.getItem(GLANCES_VISIBLE_KEY) !== "false";
+    // Default off for first visit; persist once the user toggles.
+    return localStorage.getItem(GLANCES_VISIBLE_KEY) === "true";
   }
 
   function applyGlancesVisibility() {
