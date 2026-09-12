@@ -2,9 +2,10 @@
 # Household layout + ACL/sticky after OpenCloud publish. Run on Core as root:
 #   sudo DATA_ROOT=/srv/dev-disk-by-uuid-… bash bootstrap/data-root-layout.sh
 #
-# Creates protected dirs under shared/ and users/<name>/{files,photos}, applies
-# ACL/sticky. Requires publish bind for shared/ (or existing shared tree).
-# Does not recreate parked OpenCloud homes (see opencloud-adopt-homes.sh).
+# Creates protected dirs under shared/ (media, files, …) and users/<name>/photos.
+# ACL/sticky. Requires publish bind for shared/files (or existing shared tree).
+# Does not mkdir users/<name>/files (OpenCloud Personal space) or recreate
+# parked OpenCloud homes (see opencloud-adopt-homes.sh).
 set -euo pipefail
 
 if [[ ${EUID:-0} -ne 0 ]]; then
@@ -98,17 +99,21 @@ apply_home() {
     return
   fi
   if [[ ! -d "${home}" ]]; then
-    echo "Skipping ${user}: no home yet (OpenCloud login creates users/${user} on greenfield)."
+    echo "Skipping ${user}: no home yet (OpenCloud login creates users/${user}/files on greenfield)."
     return
   fi
-  mkdir -p "${home}/files" "${home}/photos"
+  local files="${home}/files"
+  if [[ ! -d "${files}" ]]; then
+    echo "Skipping ${user}: no files/ space yet. Log in as ${user}, then re-run layout."
+    return
+  fi
+  mkdir -p "${home}/photos"
   if getent group "${user}" >/dev/null; then
-    chown -R "${user}:${user}" "${home}"
-    chown root:"${user}" "${home}" "${home}/files" "${home}/photos"
+    chown "${user}:${user}" "${home}" 2>/dev/null || true
+    chown root:"${user}" "${home}" "${files}" "${home}/photos"
   else
-    chown -R "${user}" "${home}"
-    chown root:"${user}" "${home}" "${home}/files" "${home}/photos" 2>/dev/null \
-      || chown root:root "${home}" "${home}/files" "${home}/photos"
+    chown root:"${user}" "${home}" "${files}" "${home}/photos" 2>/dev/null \
+      || chown root:root "${home}" "${files}" "${home}/photos"
   fi
   find "${home}" -type d -exec chmod 700 {} +
   find "${home}" -type f -exec chmod 600 {} +

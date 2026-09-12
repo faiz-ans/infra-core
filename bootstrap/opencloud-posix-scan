@@ -1,9 +1,10 @@
 #!/usr/bin/env bash
-# Assimilate files written via SMB/NFS into OpenCloud PosixFS (id cache + xattrs).
-# WATCH_FS misses host writes on the extra shared/ bind and can exhaust inotify
-# on a household media tree. Safe no-op if the container is down.
+# Assimilate SMB/NFS writes into OpenCloud PosixFS (id cache + xattrs).
+# Do not scan /posix (walks uploads/ and used to walk media via the old
+# whole-shared bind). Space roots only: /posix/users and /posix/projects.
 set -euo pipefail
 
+DOCKER="${DOCKER:-/usr/bin/docker}"
 LOCK=/run/opencloud-posix-scan.lock
 exec 9>"${LOCK}"
 if ! flock -n 9; then
@@ -11,11 +12,17 @@ if ! flock -n 9; then
   exit 0
 fi
 
-if ! docker inspect -f '{{.State.Running}}' opencloud 2>/dev/null | grep -qx true; then
+if ! "${DOCKER}" inspect -f '{{.State.Running}}' opencloud 2>/dev/null | grep -qx true; then
   echo "opencloud-posix-scan: container not running"
   exit 0
 fi
 
-echo "opencloud-posix-scan: posixfs scan /posix"
-docker exec opencloud opencloud posixfs scan /posix
+scan() {
+  local path=$1
+  echo "opencloud-posix-scan: posixfs scan ${path}"
+  "${DOCKER}" exec opencloud opencloud posixfs scan "${path}"
+}
+
+scan /posix/users
+scan /posix/projects
 echo "opencloud-posix-scan: done"

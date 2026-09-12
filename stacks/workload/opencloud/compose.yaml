@@ -1,13 +1,13 @@
 # OpenCloud on Core. PosixFS root is system/opencloud/posix (indexes, uploads).
-# Personal space = users/<username> under that root, via one bind of
-# ${DATA_ROOT}/users → /posix/users. Do not mount users/ as POSIX_ROOT:
-# uploads/ then sits next to homes and CreateStorageSpace fails with
-# "node.Xattrs /posix/uploads: no data available".
-# Household Project Spaces use a parent bind (same pattern as personal):
-# ${DATA_ROOT}/system/opencloud/projects → /posix/projects. Space name
-# "shared" creates projects/shared; adopt-shared.sh bind-mounts that onto
-# ${DATA_ROOT}/shared for SMB/NFS. Do not bind shared/ as the space root
-# (CreateStorageSpace refuses an existing path). Do not nest files/photos mounts.
+# Personal space = users/<username>/files, via one bind of ${DATA_ROOT}/users
+# → /posix/users. Do not mount users/ as POSIX_ROOT (uploads/ next to homes
+# fails CreateStorageSpace). Project Spaces: parent bind
+# system/opencloud/projects → /posix/projects.
+#   Space "shared"      → projects/shared      → bind onto shared/files
+#   Space "photos-<user>" → projects/photos-<user> → bind onto users/<user>/photos
+# media/games/downloads/cameras stay on SMB/NFS only (not OpenCloud).
+# Do not bind shared/ or a user home as a space root (CreateStorageSpace
+# refuses an existing path). Do not nest Docker mounts of files/photos.
 services:
   radicale:
     # Official overlay: https://github.com/opencloud-eu/opencloud-compose/blob/main/radicale/radicale.yml
@@ -93,13 +93,12 @@ services:
       COLLABORATION_APP_PROOF_DISABLE: "true"
       STORAGE_USERS_DRIVER: posix
       STORAGE_USERS_ID_CACHE_STORE: nats-js-kv
-      # Collaborative mode: OpenCloud API writes are indexed live. Host SMB/NFS
-      # writes to DATA_ROOT/shared (a second bind of projects/shared) often do
-      # not generate inotify in this mount namespace; see opencloud-posix-scan.
+      # Collaborative mode: API writes are indexed live. Host SMB writes to the
+      # extra bind (shared/files, users/<u>/photos) often miss inotify; see
+      # opencloud-posix-scan (scan /posix/users and /posix/projects only).
       STORAGE_USERS_POSIX_WATCH_FS: "true"
       STORAGE_USERS_POSIX_ROOT: /posix
-      STORAGE_USERS_POSIX_PERSONAL_SPACE_PATH_TEMPLATE: "users/{{.User.Username}}"
-      # SpaceName so Space "shared" → /posix/projects/shared on the projects bind.
+      STORAGE_USERS_POSIX_PERSONAL_SPACE_PATH_TEMPLATE: "users/{{.User.Username}}/files"
       STORAGE_USERS_POSIX_GENERAL_SPACE_PATH_TEMPLATE: "projects/{{.SpaceName}}"
     volumes:
       - ${DATA_ROOT}/system/opencloud/config:/etc/opencloud

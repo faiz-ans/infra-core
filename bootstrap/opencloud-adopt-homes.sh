@@ -1,14 +1,15 @@
 #!/usr/bin/env bash
-# OpenCloud CreateStorageSpace refuses a path that already exists and does
-# not stamp xattrs or the space index. Household users/<name> homes therefore
-# never become Personal spaces.
+# Personal space is users/<name>/files (not the whole home).
 #
-#   sudo DATA_ROOT=/srv/dev-disk-by-uuid-… bash bootstrap/opencloud-adopt-homes.sh park
-#   # log in as admin, then each household user, in the browser
-#   sudo DATA_ROOT=/srv/dev-disk-by-uuid-… bash bootstrap/opencloud-adopt-homes.sh restore
+# CreateStorageSpace refuses a path that already exists. Login creates
+# users/<name>/files with xattrs. photos/ is a sibling Project Space
+# (opencloud-adopt-photos.sh), not a folder inside Personal.
 #
-# park moves only homes that lack user.oc.space.id. restore merges files back
-# into the new space inode (xattrs stay on users/<name>).
+#   sudo DATA_ROOT=… bash bootstrap/opencloud-adopt-homes.sh park
+#   # log in as each household user
+#   sudo DATA_ROOT=… bash bootstrap/opencloud-adopt-homes.sh restore
+#
+# Existing site (space id still on the home root): park, then the same login+restore.
 set -euo pipefail
 
 if [[ ${EUID:-0} -ne 0 ]]; then
@@ -16,11 +17,11 @@ if [[ ${EUID:-0} -ne 0 ]]; then
   exit 1
 fi
 
-DATA_ROOT="${DATA_ROOT:-/srv/dev-disk-by-uuid-d6e267fd-109f-4971-bfb1-26b3d99e0d47}"
-HOUSEHOLD=(faiz diana)
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+# shellcheck source=data-root-defaults.sh
+source "${SCRIPT_DIR}/data-root-defaults.sh"
+
 USERS="${DATA_ROOT}/users"
-# Park outside users/: a sibling like faiz.__oc_incoming makes CreateStorageSpace
-# fail with node.Xattrs /posix/users/faiz.__oc_incoming.
 INCOMING="${DATA_ROOT}/system/opencloud/incoming"
 
 usage() {
@@ -40,19 +41,27 @@ status() {
     echo "missing"
     return
   fi
-  local d name sid
-  for d in "${USERS}"/*; do
-    [[ -d "${d}" ]] || continue
-    name="$(basename "${d}")"
-    sid="$(space_id "${d}")"
-    if [[ -n "${sid}" ]]; then
-      echo "  ${name}: space id ${sid}"
+  local u home files sid_home sid_files
+  for u in "${HOUSEHOLD[@]}"; do
+    home="${USERS}/${u}"
+    files="${home}/files"
+    if [[ ! -d "${home}" ]]; then
+      echo "  ${u}: no home"
+      continue
+    fi
+    sid_home="$(space_id "${home}")"
+    sid_files="$(space_id "${files}")"
+    if [[ -n "${sid_files}" ]]; then
+      echo "  ${u}/files: space id ${sid_files}"
+    elif [[ -n "${sid_home}" ]]; then
+      echo "  ${u}: OLD space id on home (park → login → restore)"
     else
-      echo "  ${name}: no user.oc.space.id"
+      echo "  ${u}: no user.oc.space.id"
     fi
   done
   echo "incoming/: ${INCOMING}"
   if [[ -d "${INCOMING}" ]]; then
+    local d name
     for d in "${INCOMING}"/*; do
       [[ -d "${d}" ]] || continue
       name="$(basename "${d}")"
@@ -64,16 +73,17 @@ status() {
 park() {
   docker stop opencloud
   mkdir -p "${INCOMING}"
-  local u src dst
+  local u src dst files
   for u in "${HOUSEHOLD[@]}"; do
     src="${USERS}/${u}"
     dst="${INCOMING}/${u}"
+    files="${src}/files"
     if [[ ! -d "${src}" ]]; then
       echo "skip ${u} (no home)"
       continue
     fi
-    if [[ -n "$(space_id "${src}")" ]]; then
-      echo "skip ${u} (already a space)"
+    if [[ -n "$(space_id "${files}")" ]]; then
+      echo "skip ${u} (personal already at files/)"
       continue
     fi
     if [[ -e "${dst}" ]]; then
@@ -86,38 +96,43 @@ park() {
   docker start opencloud
   echo
   echo "In the browser: log in as admin, then as each household user."
-  echo "Admin Settings -> Spaces should list Personal. Then run: $0 restore"
+  echo "Personal should be users/<name>/files. Then run: $0 restore"
 }
 
 restore() {
   docker stop opencloud
-  local u src dst item
+  local u src home files item name dest
   for u in "${HOUSEHOLD[@]}"; do
     src="${INCOMING}/${u}"
     if [[ ! -d "${src}" && -d "${USERS}/${u}.__oc_incoming" ]]; then
       src="${USERS}/${u}.__oc_incoming"
     fi
-    dst="${USERS}/${u}"
+    home="${USERS}/${u}"
+    files="${home}/files"
     if [[ ! -d "${src}" ]]; then
       echo "skip ${u} (no parked home)"
       continue
     fi
-    if [[ ! -d "${dst}" ]]; then
-      echo "refusing: ${dst} missing. Log in as ${u} first so OpenCloud can mkdir the space."
+    if [[ ! -d "${files}" ]]; then
+      echo "refusing: ${files} missing. Log in as ${u} first so OpenCloud can mkdir the space."
       exit 1
     fi
-    if [[ -z "$(space_id "${dst}")" ]]; then
-      echo "refusing: ${dst} has no user.oc.space.id. Log in as ${u} before restore."
+    if [[ -z "$(space_id "${files}")" ]]; then
+      echo "refusing: ${files} has no user.oc.space.id. Log in as ${u} before restore."
       exit 1
     fi
     shopt -s dotglob nullglob
     for item in "${src}"/*; do
-      local name dest
       name="$(basename "${item}")"
-      dest="${dst}/${name}"
+      if [[ "${name}" == "photos" ]]; then
+        dest="${home}/photos"
+      elif [[ "${name}" == "files" ]]; then
+        dest="${files}"
+      else
+        dest="${files}/${name}"
+      fi
       if [[ -e "${dest}" ]]; then
         if [[ -d "${item}" && -d "${dest}" ]]; then
-          # same-FS merge without replacing the space inode
           find "${item}" -mindepth 1 -maxdepth 1 -exec mv -t "${dest}" {} +
           rmdir "${item}" 2>/dev/null || {
             echo "could not empty ${item}; leaving parked files"
@@ -128,19 +143,19 @@ restore() {
           exit 1
         fi
       else
+        mkdir -p "$(dirname "${dest}")"
         mv "${item}" "${dest}"
       fi
     done
     shopt -u dotglob nullglob
     rmdir "${src}"
-    echo "restored ${u}"
+    echo "restored ${u} (documents → files/, camera roll → photos/ sibling)"
   done
   docker start opencloud
-  echo "Scanning spaces so files/ and photos/ show up:"
-  docker exec opencloud opencloud posixfs scan /posix || true
+  echo "Scanning personal spaces:"
+  docker exec opencloud opencloud posixfs scan /posix/users || true
   echo
-  echo "Re-run data-root-layout.sh to restore household ACLs (xattrs are kept)."
-  echo "After shared adopt + layout: DATA_ROOT=${DATA_ROOT} bash bootstrap/opencloud-check.sh"
+  echo "Next: create photos-<user> spaces (opencloud-adopt-photos.sh), then data-root-layout.sh."
 }
 
 case "$1" in

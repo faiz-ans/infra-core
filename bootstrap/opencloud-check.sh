@@ -12,6 +12,7 @@ PUID="${PUID:-1000}"
 PGID="${PGID:-1000}"
 HOUSEHOLD=(faiz diana)
 SHARED="${DATA_ROOT}/shared"
+FILES="${SHARED}/files"
 PROJECTS="${DATA_ROOT}/system/opencloud/projects"
 SPACE="${PROJECTS}/shared"
 RADICALE="${DATA_ROOT}/system/opencloud/radicale"
@@ -27,6 +28,11 @@ space_id() {
 }
 
 published() {
+  [[ -d "${SPACE}" && -d "${FILES}" ]] || return 1
+  [[ "$(stat -c '%d:%i' "${FILES}")" == "$(stat -c '%d:%i' "${SPACE}")" ]]
+}
+
+published_whole() {
   [[ -d "${SPACE}" && -d "${SHARED}" ]] || return 1
   [[ "$(stat -c '%d:%i' "${SHARED}")" == "$(stat -c '%d:%i' "${SPACE}")" ]]
 }
@@ -71,27 +77,56 @@ if docker inspect opencloud >/dev/null 2>&1; then
   fi
 fi
 
-# --- personal spaces ---
+# --- personal spaces (users/<u>/files) ---
 for u in "${HOUSEHOLD[@]}"; do
   home="${USERS}/${u}"
+  files="${home}/files"
   parked="${DATA_ROOT}/system/opencloud/incoming/${u}"
   if [[ -d "${parked}" ]]; then
     fail "users/${u}: still parked at ${parked} (login as ${u}, then adopt-homes restore)"
     continue
   fi
   if [[ ! -d "${home}" ]]; then
-    fail "users/${u}: missing (login as ${u} after park, or create home)"
+    fail "users/${u}: missing (login as ${u} after park)"
     continue
   fi
-  sid="$(space_id "${home}")"
+  sid="$(space_id "${files}")"
+  sid_home="$(space_id "${home}")"
   if [[ -n "${sid}" ]]; then
-    pass "users/${u}: space id ${sid}"
+    pass "users/${u}/files: space id ${sid}"
+  elif [[ -n "${sid_home}" ]]; then
+    fail "users/${u}: space id still on home (adopt-homes park → login → restore)"
   else
-    fail "users/${u}: no user.oc.space.id (adopt-homes park → login → restore)"
+    fail "users/${u}/files: no user.oc.space.id (login as ${u} after park)"
   fi
 done
 
-# --- shared project space ---
+# --- per-user photos spaces ---
+for u in "${HOUSEHOLD[@]}"; do
+  pspace="${PROJECTS}/photos-${u}"
+  photos="${USERS}/${u}/photos"
+  parked="${DATA_ROOT}/system/opencloud/incoming/photos-${u}"
+  if [[ -d "${parked}" ]]; then
+    fail "users/${u}/photos: still parked (adopt-photos restore)"
+    continue
+  fi
+  if [[ ! -d "${pspace}" ]]; then
+    fail "projects/photos-${u} missing (create Space named photos-${u})"
+    continue
+  fi
+  if [[ -z "$(space_id "${pspace}")" ]]; then
+    fail "projects/photos-${u} has no user.oc.space.id"
+    continue
+  fi
+  pass "projects/photos-${u}: space id $(space_id "${pspace}")"
+  if [[ -d "${photos}" && "$(stat -c '%d:%i' "${photos}")" == "$(stat -c '%d:%i' "${pspace}")" ]]; then
+    pass "users/${u}/photos bind: same inode as projects/photos-${u}"
+  else
+    fail "users/${u}/photos: NOT bound (adopt-photos publish)"
+  fi
+done
+
+# --- shared documents space (shared/files only) ---
 if [[ ! -d "${SPACE}" ]]; then
   fail "projects/shared missing (create Space named exactly shared)"
 elif [[ -z "$(space_id "${SPACE}")" ]]; then
@@ -100,12 +135,14 @@ else
   pass "projects/shared: space id $(space_id "${SPACE}")"
 fi
 
-if published; then
-  pass "shared bind: same inode as projects/shared ($(stat -c '%d:%i' "${SHARED}"))"
+if published_whole; then
+  fail "shared bind: whole shared/ is still the space (run opencloud-adopt-shared.sh narrow)"
+elif published; then
+  pass "shared/files bind: same inode as projects/shared ($(stat -c '%d:%i' "${FILES}"))"
 else
-  fail "shared bind: NOT same inode (run opencloud-adopt-shared.sh publish)"
-  if [[ -d "${SHARED}" && -d "${SPACE}" ]]; then
-    echo "     shared=$(stat -c '%d:%i' "${SHARED}") space=$(stat -c '%d:%i' "${SPACE}")"
+  fail "shared/files bind: NOT same inode (run opencloud-adopt-shared.sh publish)"
+  if [[ -d "${FILES}" && -d "${SPACE}" ]]; then
+    echo "     files=$(stat -c '%d:%i' "${FILES}") space=$(stat -c '%d:%i' "${SPACE}")"
   fi
 fi
 

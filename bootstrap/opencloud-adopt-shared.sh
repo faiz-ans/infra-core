@@ -1,20 +1,18 @@
 #!/usr/bin/env bash
-# Household ${DATA_ROOT}/shared as OpenCloud Project Space "shared".
+# Household documents: OpenCloud Project Space "shared" = DATA_ROOT/shared/files.
+# media/photos/games/downloads/cameras stay siblings under shared/ (SMB/NFS only).
 #
-# CreateStorageSpace refuses a path that already exists. Binding shared/ as
-# the space root therefore always fails. Same pattern as personal homes:
-# parent bind system/opencloud/projects → /posix/projects; OpenCloud mkdir's
-# projects/shared with xattrs; we bind-mount that onto DATA_ROOT/shared for
-# SMB/NFS.
+# CreateStorageSpace refuses an existing path. Parent bind
+# system/opencloud/projects → /posix/projects; OpenCloud mkdir's projects/shared;
+# we bind that onto shared/files.
 #
-#   sudo DATA_ROOT=/srv/dev-disk-by-uuid-… bash bootstrap/opencloud-adopt-shared.sh park
-#   # Redeploy opencloud if compose still had shared→/posix/projects/shared
-#   # browser: Spaces → New Space → name exactly "shared"; add diana
+#   sudo DATA_ROOT=… bash bootstrap/opencloud-adopt-shared.sh park
+#   # browser: Spaces → New Space → name exactly "shared"; add household members
 #   sudo DATA_ROOT=… bash bootstrap/opencloud-adopt-shared.sh publish
 #   sudo DATA_ROOT=… bash bootstrap/opencloud-adopt-shared.sh restore
 #
-# park moves content to system/opencloud/incoming/shared. Immich sees empty
-# shared/ until publish+restore.
+# Existing site (space was bound to whole shared/):
+#   sudo DATA_ROOT=… bash bootstrap/opencloud-adopt-shared.sh narrow
 set -euo pipefail
 
 if [[ ${EUID:-0} -ne 0 ]]; then
@@ -22,8 +20,12 @@ if [[ ${EUID:-0} -ne 0 ]]; then
   exit 1
 fi
 
-DATA_ROOT="${DATA_ROOT:-/srv/dev-disk-by-uuid-d6e267fd-109f-4971-bfb1-26b3d99e0d47}"
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+# shellcheck source=data-root-defaults.sh
+source "${SCRIPT_DIR}/data-root-defaults.sh"
+
 SHARED="${DATA_ROOT}/shared"
+FILES="${SHARED}/files"
 PROJECTS="${DATA_ROOT}/system/opencloud/projects"
 SPACE="${PROJECTS}/shared"
 INCOMING="${DATA_ROOT}/system/opencloud/incoming"
@@ -31,7 +33,7 @@ PARKED="${INCOMING}/shared"
 FSTAB_TAG="opencloud-shared-bind"
 
 usage() {
-  echo "Usage: $0 park|publish|restore|status"
+  echo "Usage: $0 park|publish|restore|narrow|status"
   exit 1
 }
 
@@ -41,15 +43,32 @@ space_id() {
   getfattr -n user.oc.space.id --only-values "$1" 2>/dev/null || true
 }
 
+inode() {
+  stat -c '%d:%i' "$1"
+}
+
 published() {
-  # Same device+inode means SHARED is a bind of SPACE (not merely "on the data disk").
+  [[ -d "${SPACE}" && -d "${FILES}" ]] || return 1
+  [[ "$(inode "${FILES}")" == "$(inode "${SPACE}")" ]]
+}
+
+published_whole() {
   [[ -d "${SPACE}" && -d "${SHARED}" ]] || return 1
-  [[ "$(stat -c '%d:%i' "${SHARED}")" == "$(stat -c '%d:%i' "${SPACE}")" ]]
+  [[ "$(inode "${SHARED}")" == "$(inode "${SPACE}")" ]]
+}
+
+write_fstab() {
+  local dest=$1
+  if grep -q "${FSTAB_TAG}" /etc/fstab 2>/dev/null; then
+    sed -i "/${FSTAB_TAG}/d" /etc/fstab
+  fi
+  echo "${SPACE} ${dest} none bind 0 0  # ${FSTAB_TAG}" >> /etc/fstab
 }
 
 status() {
-  echo "shared/: ${SHARED}"
-  echo "space/:  ${SPACE}"
+  echo "shared/:       ${SHARED}"
+  echo "shared/files/: ${FILES}"
+  echo "space/:        ${SPACE}"
   if [[ -d "${SPACE}" ]]; then
     local sid
     sid="$(space_id "${SPACE}")"
@@ -62,9 +81,11 @@ status() {
     echo "  projects/shared missing (create Space named shared after Redeploy)"
   fi
   if published; then
-    echo "  publish: OK (shared and projects/shared are the same inode)"
+    echo "  publish: OK (shared/files and projects/shared are the same inode)"
+  elif published_whole; then
+    echo "  publish: WHOLE shared/ is still the space (run narrow)"
   else
-    echo "  publish: NOT bound (run publish after create; do not trust findmnt alone)"
+    echo "  publish: NOT bound to shared/files"
   fi
   if [[ -d "${PARKED}" ]]; then
     echo "  parked content: ${PARKED}"
@@ -72,8 +93,8 @@ status() {
 }
 
 park() {
-  if [[ -n "$(space_id "${SPACE}" 2>/dev/null || true)" ]] && published; then
-    echo "skip: shared space already published"
+  if published || published_whole; then
+    echo "skip: shared space already published (use narrow if the bind is still whole shared/)"
     exit 0
   fi
   if [[ -e "${PARKED}" ]]; then
@@ -84,29 +105,24 @@ park() {
     echo "refusing: ${SHARED} missing"
     exit 1
   fi
-  if published; then
-    echo "refusing: ${SHARED} is already the space bind. umount it first if re-parking."
-    exit 1
-  fi
 
   docker stop opencloud
   mkdir -p "${INCOMING}" "${PROJECTS}"
-  chown "${PUID:-1000}:${PGID:-1000}" "${PROJECTS}" 2>/dev/null || true
+  chown "${PUID}:${PGID}" "${PROJECTS}" 2>/dev/null || true
   mv "${SHARED}" "${PARKED}"
   mkdir -p "${SHARED}"
-  chown root:sharedwrite "${SHARED}" 2>/dev/null || chown root:root "${SHARED}"
+  chown root:"${SHARED_GROUP}" "${SHARED}" 2>/dev/null || chown root:root "${SHARED}"
   chmod 2775 "${SHARED}"
   docker start opencloud
   echo
   echo "Parked shared content -> system/opencloud/incoming/shared"
-  echo "1. Komodo → opencloud → Redeploy (projects parent bind, not shared leaf)."
-  echo "2. Browser: Spaces → New Space → name exactly: shared; add diana."
-  echo "3. $0 publish"
-  echo "4. $0 restore"
+  echo "1. Browser: Spaces → New Space → name exactly: shared; add household members."
+  echo "2. $0 publish"
+  echo "3. $0 restore"
 }
 
 publish() {
-  mkdir -p "${PROJECTS}"
+  mkdir -p "${PROJECTS}" "${SHARED}"
   if [[ ! -d "${SPACE}" ]]; then
     echo "refusing: ${SPACE} missing. Create Project Space named exactly shared first."
     exit 1
@@ -116,33 +132,30 @@ publish() {
     echo "Create Project Space named exactly shared, then retry."
     exit 1
   fi
-  if [[ ! -d "${SHARED}" ]]; then
-    mkdir -p "${SHARED}"
-  fi
   if published; then
-    echo "already published: $(stat -c '%d:%i' "${SHARED}") == $(stat -c '%d:%i' "${SPACE}")"
-  else
-    # Mountpoint must be empty (content belongs in SPACE, then bind)
-    if find "${SHARED}" -mindepth 1 -print -quit 2>/dev/null | grep -q .; then
-      echo "refusing: ${SHARED} is not empty and is not yet a bind of ${SPACE}."
-      echo "If restore already ran into shared/ by mistake, move those dirs into"
-      echo "  ${SPACE}/"
-      echo "then re-run publish (empty shared/, then mount --bind)."
-      exit 1
-    fi
-    mount --bind "${SPACE}" "${SHARED}"
-    if ! published; then
-      echo "refusing: mount --bind ran but inodes still differ"
-      exit 1
-    fi
-    echo "mounted ${SPACE} -> ${SHARED}"
+    echo "already published: $(inode "${FILES}") == $(inode "${SPACE}")"
+    write_fstab "${FILES}"
+    return 0
   fi
-  if ! grep -q "${FSTAB_TAG}" /etc/fstab 2>/dev/null; then
-    echo "${SPACE} ${SHARED} none bind 0 0  # ${FSTAB_TAG}" >> /etc/fstab
-    echo "added fstab line (${FSTAB_TAG})"
+  if published_whole; then
+    echo "refusing: whole shared/ is still the space bind. Run: $0 narrow"
+    exit 1
   fi
-  echo
-  echo "SMB/NFS path ${SHARED} is now the OpenCloud space. Run: $0 restore"
+  mkdir -p "${FILES}"
+  if find "${FILES}" -mindepth 1 -print -quit 2>/dev/null | grep -q .; then
+    echo "refusing: ${FILES} is not empty and is not yet a bind of ${SPACE}."
+    echo "Move document trees into ${SPACE}/, empty ${FILES}, then retry."
+    exit 1
+  fi
+  mount --bind "${SPACE}" "${FILES}"
+  if ! published; then
+    echo "refusing: mount --bind ran but inodes still differ"
+    exit 1
+  fi
+  write_fstab "${FILES}"
+  echo "mounted ${SPACE} -> ${FILES}"
+  echo "SMB/NFS root ${SHARED} is unchanged. OpenCloud sees documents only."
+  echo "Run: $0 restore  (if content was parked)"
 }
 
 restore() {
@@ -155,8 +168,7 @@ restore() {
     exit 1
   fi
   if ! published; then
-    echo "refusing: ${SHARED} is not bind-mounted to ${SPACE}. Run publish first."
-    echo "Check: stat -c '%d:%i' ${SHARED} ${SPACE}"
+    echo "refusing: ${FILES} is not bind-mounted to ${SPACE}. Run publish first."
     exit 1
   fi
 
@@ -165,7 +177,11 @@ restore() {
   shopt -s dotglob nullglob
   for item in "${PARKED}"/*; do
     name="$(basename "${item}")"
-    dest="${SHARED}/${name}"
+    if [[ "${name}" == "files" ]]; then
+      dest="${FILES}"
+    else
+      dest="${SHARED}/${name}"
+    fi
     if [[ -e "${dest}" ]]; then
       if [[ -d "${item}" && -d "${dest}" ]]; then
         find "${item}" -mindepth 1 -maxdepth 1 -exec mv -t "${dest}" {} +
@@ -184,17 +200,68 @@ restore() {
   shopt -u dotglob nullglob
   rmdir "${PARKED}"
   docker start opencloud
-  echo "Scanning project space (large trees like media/games take time):"
+  echo "Scanning documents space:"
   docker exec opencloud opencloud posixfs scan /posix/projects/shared || true
   echo
   echo "Re-run data-root-layout.sh to restore household ACLs (xattrs are kept)."
   echo "Then: DATA_ROOT=${DATA_ROOT} bash bootstrap/opencloud-check.sh"
 }
 
+narrow() {
+  if published; then
+    echo "already narrow: shared/files is the space bind"
+    write_fstab "${FILES}"
+    exit 0
+  fi
+  if [[ -z "$(space_id "${SPACE}")" ]]; then
+    echo "refusing: ${SPACE} has no user.oc.space.id"
+    exit 1
+  fi
+  if ! published_whole; then
+    echo "refusing: whole shared/ is not the current space bind."
+    echo "If this is greenfield, use publish (empty shared/files)."
+    echo "shared=$(inode "${SHARED}" 2>/dev/null || echo missing) space=$(inode "${SPACE}" 2>/dev/null || echo missing)"
+    exit 1
+  fi
+
+  docker stop opencloud
+  umount "${SHARED}" || umount -l "${SHARED}"
+  mkdir -p "${SHARED}"
+  shopt -s dotglob nullglob
+  local item
+  for item in "${SPACE}"/*; do
+    mv "${item}" "${SHARED}/"
+  done
+  shopt -u dotglob nullglob
+  if [[ -d "${SHARED}/files" ]]; then
+    shopt -s dotglob nullglob
+    for item in "${SHARED}/files"/*; do
+      mv "${item}" "${SPACE}/"
+    done
+    shopt -u dotglob nullglob
+    rmdir "${SHARED}/files"
+  fi
+  mkdir -p "${FILES}"
+  if find "${FILES}" -mindepth 1 -print -quit 2>/dev/null | grep -q .; then
+    echo "refusing: ${FILES} not empty after flatten"
+    exit 1
+  fi
+  mount --bind "${SPACE}" "${FILES}"
+  if ! published; then
+    echo "refusing: bind to shared/files failed"
+    exit 1
+  fi
+  write_fstab "${FILES}"
+  docker start opencloud
+  echo "Narrowed OpenCloud shared space to ${FILES} (media/games stay under ${SHARED})."
+  docker exec opencloud opencloud posixfs scan /posix/projects/shared || true
+}
+
 case "$1" in
   park) park ;;
   publish) publish ;;
   restore) restore ;;
+  narrow) narrow ;;
   status) status ;;
   *) usage ;;
 esac

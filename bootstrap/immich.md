@@ -2,7 +2,7 @@
 
 Immich on the HTPC is the **gallery**. Photo originals stay on NFS (`shared/photos`, `users/<user>/photos`). Postgres, Redis, ML, and Immichâ€™s own upload volume are local Docker volumes. This site uses **`compose.nfs.yaml`** (not SMB for `users/`).
 
-Phone camera ingest is **OpenCloud**, not Immich. See [`bootstrap/opencloud.md`](opencloud.md).
+Phone camera ingest is **OpenCloud** into `users/<user>/photos` (space `photos-<user>`), not Immich. See [`bootstrap/opencloud.md`](opencloud.md).
 
 ## 1. Secret (existing Core)
 
@@ -68,7 +68,7 @@ The Windows browser is a different path. Homepage working only proves Pi-hole â†
 | Household photos | `/mnt/photos` |
 | Each user | `/mnt/users/<user>/photos` |
 
-Scan after adding. New OpenCloud phone uploads show up on the next scan (NFS has no reliable inotify from the HTPC).
+Scan after adding. New OpenCloud phone uploads (`photos-<user>` space) show up on the next scan (NFS has no reliable inotify from the HTPC).
 
 Do **not** enable Immich mobile backup. That writes a second copy into the local `immich-upload` volume and leaves the `DATA_ROOT` photo trees unused.
 
