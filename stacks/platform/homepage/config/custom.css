@@ -177,6 +177,6 @@
 }
 
 /* Hide glances widgets when toggled off */
-html.glances-hidden #widgets-wrap > .information-widget-glances {
+html.glances-hidden #widgets-wrap .information-widget-glances {
   display: none !important;
 }

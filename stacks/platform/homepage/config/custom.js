@@ -26,36 +26,66 @@
   let scheduled = false;
 
   function glancesVisible() {
-    const stored = localStorage.getItem(GLANCES_VISIBLE_KEY);
-    return stored !== "false";
+    return localStorage.getItem(GLANCES_VISIBLE_KEY) !== "false";
   }
 
-  function setGlancesVisible(visible) {
-    localStorage.setItem(GLANCES_VISIBLE_KEY, visible ? "true" : "false");
+  function applyGlancesVisibility() {
+    const visible = glancesVisible();
     document.documentElement.classList.toggle("glances-hidden", !visible);
+
     const btn = document.getElementById("glances-toggle");
-    if (btn) {
-      btn.innerHTML = visible ? ICON_SVG.BarChart : ICON_SVG.BarChartOff;
-      btn.setAttribute("aria-label", visible ? "Hide glances" : "Show glances");
-      btn.setAttribute("title", visible ? "Hide glances" : "Show glances");
-      btn.setAttribute("aria-pressed", visible ? "true" : "false");
-    }
+    if (!btn) return;
+
+    // Avoid rewriting DOM every tick — that cancels clicks (esp. Firefox).
+    if (btn.getAttribute("data-visible") === String(visible)) return;
+
+    btn.setAttribute("data-visible", String(visible));
+    btn.setAttribute("aria-pressed", visible ? "true" : "false");
+    btn.setAttribute("aria-label", visible ? "Hide glances" : "Show glances");
+    btn.setAttribute("title", visible ? "Hide glances" : "Show glances");
+    btn.innerHTML = visible ? ICON_SVG.BarChart : ICON_SVG.BarChartOff;
+  }
+
+  function toggleGlancesVisible() {
+    localStorage.setItem(
+      GLANCES_VISIBLE_KEY,
+      glancesVisible() ? "false" : "true",
+    );
+    applyGlancesVisibility();
+  }
+
+  function getScrollRoot() {
+    return (
+      document.getElementById("inner_wrapper") ||
+      document.scrollingElement ||
+      document.documentElement
+    );
+  }
+
+  function scrollToTop() {
+    getScrollRoot().scrollTo({ top: 0, behavior: "smooth" });
   }
 
   function createFooterControl(id, { svg, label, onClick }) {
     const wrap = document.createElement("div");
     wrap.id = id;
-    wrap.className = "rounded-full flex align-middle self-center mr-3 homepage-footer-control";
+    wrap.className =
+      "rounded-full flex align-middle self-center mr-3 homepage-footer-control";
     wrap.setAttribute("role", "button");
     wrap.setAttribute("tabindex", "0");
     wrap.setAttribute("aria-label", label);
     wrap.setAttribute("title", label);
     wrap.innerHTML = svg;
-    wrap.addEventListener("click", onClick);
+    // pointerdown is more reliable than click when observers rewrite nearby DOM
+    wrap.addEventListener("pointerdown", (e) => {
+      e.preventDefault();
+      e.stopPropagation();
+      onClick();
+    });
     wrap.addEventListener("keydown", (e) => {
       if (e.key === "Enter" || e.key === " ") {
         e.preventDefault();
-        onClick(e);
+        onClick();
       }
     });
     return wrap;
@@ -71,8 +101,9 @@
       glancesBtn = createFooterControl("glances-toggle", {
         svg: visible ? ICON_SVG.BarChart : ICON_SVG.BarChartOff,
         label: visible ? "Hide glances" : "Show glances",
-        onClick: () => setGlancesVisible(!glancesVisible()),
+        onClick: toggleGlancesVisible,
       });
+      glancesBtn.setAttribute("data-visible", String(visible));
       glancesBtn.setAttribute("aria-pressed", visible ? "true" : "false");
       revalidate.parentElement.insertBefore(glancesBtn, revalidate);
     }
@@ -82,12 +113,12 @@
       scrollBtn = createFooterControl("scroll-top", {
         svg: ICON_SVG.ArrowUpward,
         label: "Scroll to top",
-        onClick: () => window.scrollTo({ top: 0, behavior: "smooth" }),
+        onClick: scrollToTop,
       });
       revalidate.parentElement.insertBefore(scrollBtn, revalidate);
     }
 
-    setGlancesVisible(glancesVisible());
+    applyGlancesVisibility();
   }
 
   function iconifyButton(btn) {
@@ -178,9 +209,24 @@
   }
 
   // Apply persisted glances visibility before paint when possible
-  setGlancesVisible(glancesVisible());
+  applyGlancesVisibility();
 
-  const observer = new MutationObserver(scheduleEnhance);
+  const observer = new MutationObserver((mutations) => {
+    // Ignore churn from our own footer icon updates
+    for (const m of mutations) {
+      const t = m.target;
+      if (
+        t &&
+        (t.id === "glances-toggle" ||
+          t.id === "scroll-top" ||
+          (t.closest && t.closest("#glances-toggle, #scroll-top")))
+      ) {
+        continue;
+      }
+      scheduleEnhance();
+      return;
+    }
+  });
   observer.observe(document.documentElement, {
     childList: true,
     subtree: true,
