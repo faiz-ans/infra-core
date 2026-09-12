@@ -110,6 +110,7 @@
   flex-direction: row !important;
   flex-wrap: nowrap !important;
   align-items: center;
+  margin-bottom: 0.5rem;
 }
 
 #widgets-wrap > .information-widget-glances .information-widget-label {
