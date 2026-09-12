@@ -44,7 +44,7 @@
     btn.setAttribute("aria-pressed", visible ? "true" : "false");
     btn.setAttribute("aria-label", visible ? "Hide glances" : "Show glances");
     btn.setAttribute("title", visible ? "Hide glances" : "Show glances");
-    btn.innerHTML = visible ? ICON_SVG.BarChart : ICON_SVG.BarChartOff;
+    btn.innerHTML = visible ? ICON_SVG.BarChartOff : ICON_SVG.BarChart;
   }
 
   function toggleGlancesVisible() {
