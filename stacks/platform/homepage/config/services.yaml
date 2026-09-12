@@ -195,17 +195,6 @@
             description: Request TV Shows
 
     - Platform:
-        - OpenMediaVault:
-            href: https://nas.{{HOMEPAGE_VAR_DOMAIN}}
-            siteMonitor: http://{{HOMEPAGE_VAR_NAS_LAN_IP}}:81
-            icon: openmediavault.svg
-            description: Storage
-            widget:
-                type: openmediavault
-                url: http://{{HOMEPAGE_VAR_NAS_LAN_IP}}:81
-                username: "{{HOMEPAGE_VAR_OMV_USERNAME}}"
-                password: "{{HOMEPAGE_VAR_OMV_PASSWORD}}"
-                method: smart.getListBg
         - Komodo:
             href: https://ops.{{HOMEPAGE_VAR_DOMAIN}}
             siteMonitor: http://{{HOMEPAGE_VAR_NAS_LAN_IP}}:9120
@@ -217,6 +206,17 @@
                 key: "{{HOMEPAGE_VAR_KOMODO_KEY}}"
                 secret: "{{HOMEPAGE_VAR_KOMODO_SECRET}}"
                 showSummary: true
+        - OpenMediaVault:
+            href: https://nas.{{HOMEPAGE_VAR_DOMAIN}}
+            siteMonitor: http://{{HOMEPAGE_VAR_NAS_LAN_IP}}:81
+            icon: openmediavault.svg
+            description: Storage
+            widget:
+                type: openmediavault
+                url: http://{{HOMEPAGE_VAR_NAS_LAN_IP}}:81
+                username: "{{HOMEPAGE_VAR_OMV_USERNAME}}"
+                password: "{{HOMEPAGE_VAR_OMV_PASSWORD}}"
+                method: smart.getListBg
         - Authelia:
             href: https://auth.{{HOMEPAGE_VAR_DOMAIN}}
             server: core
@@ -287,6 +287,7 @@
             server: periphery
             container: glances
             icon: glances.svg
+            description: Host Monitor
             widget:
                 type: glances
                 url: http://glances:61208

@@ -237,6 +237,12 @@ html.glances-anim #widgets-wrap > .information-widget-glances {
   }
 }
 
+/* Glances service widget (metric: info): chart mode defaults on and positions
+   info at -top-6, which overlaps the tile title & description. Keep it in-widget. */
+.service-card .service-container.chart .\-top-6 {
+  top: 0.25rem !important;
+}
+
 /* Footer controls (match refresh button styling) */
 #style .homepage-footer-control {
   cursor: pointer;
