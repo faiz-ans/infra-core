@@ -169,7 +169,7 @@
             
 - System:
 
-    - Media:
+    - Media Backend:
         - qBittorrent:
             href: https://down.{{HOMEPAGE_VAR_DOMAIN}}
             server: periphery
@@ -196,22 +196,36 @@
             description: Request TV Shows
 
     - Platform:
+        - OpenMediaVault:
+            href: https://nas.{{HOMEPAGE_VAR_DOMAIN}}
+            siteMonitor: http://{{HOMEPAGE_VAR_NAS_LAN_IP}}:81
+            icon: openmediavault.svg
+            description: Storage
+            widget:
+                type: openmediavault
+                url: http://{{HOMEPAGE_VAR_NAS_LAN_IP}}:81
+                username: {{HOMEPAGE_VAR_OMV_USERNAME}}
+                password: {{HOMEPAGE_VAR_OMV_PASSWORD}}
+                method: services.getStatus
+        - Komodo:
+            href: https://ops.{{HOMEPAGE_VAR_DOMAIN}}
+            siteMonitor: http://{{HOMEPAGE_VAR_NAS_LAN_IP}}:9120
+            icon: docker.svg
+            description: Deployment
+        - Authelia:
+            href: https://auth.{{HOMEPAGE_VAR_DOMAIN}}
+            server: core
+            container: authelia
+            icon: authelia.svg
+            description: Authentication
         - Gitea:
             href: https://git.{{HOMEPAGE_VAR_DOMAIN}}
             server: core
             container: gitea
             icon: gitea.svg
             description: Version Control
-        - Komodo:
-            href: https://ops.{{HOMEPAGE_VAR_DOMAIN}}
-            siteMonitor: http://{{HOMEPAGE_VAR_NAS_LAN_IP}}:9120
-            icon: docker.svg
-            description: Deployment
-        - OpenMediaVault:
-            href: https://nas.{{HOMEPAGE_VAR_DOMAIN}}
-            siteMonitor: http://{{HOMEPAGE_VAR_NAS_LAN_IP}}:81
-            icon: openmediavault.svg
-            description: Storage
+
+    - Monitoring:
         - Grafana:
             href: https://stats.{{HOMEPAGE_VAR_DOMAIN}}
             server: periphery
@@ -228,12 +242,6 @@
             container: prometheus
             icon: prometheus.svg
             description: Metrics
-        - Authelia:
-            href: https://auth.{{HOMEPAGE_VAR_DOMAIN}}
-            server: core
-            container: authelia
-            icon: authelia.svg
-            description: Authentication
 
     - Network:
         - Pi-hole:
@@ -251,11 +259,6 @@
                 - queries
                 - blocked_percent
                 - gravity
-        # - Pi-hole Periphery:
-        #    href: https://dns2.{{HOMEPAGE_VAR_DOMAIN}}/admin
-        #    siteMonitor: http://{{HOMEPAGE_VAR_HTPC_UPSTREAM}}:8083/admin
-        #    icon: pi-hole.svg
-        #    description: DNS (Secondary)
         - WireGuard:
             href: https://vpn.{{HOMEPAGE_VAR_DOMAIN}}
             server: core
@@ -278,107 +281,3 @@
             siteMonitor: https://192.168.1.113/
             icon: hp.svg
             description: Printer
-
-
-#- Monitoring:
-
- #   - Core:
- #       - Core Info:
- #           - Core:
- #               icon: raspberry-pi.svg
- #               server: core
- #               widget:
- #                   type: glances
- #                   url: http://glances:61208
- #                   version: 4
- #                   metric: info
- #       - Core Stats:
- #           - CPU:
- #               icon: mdi-memory-#ffffff
- #               widget:
- #                   type: glances
- #                   url: http://glances:61208
- #                   version: 4
- #                   metric: cpu
- #                   chart: false
- #           - TEMP:
- #               icon: mdi-thermometer-#ffffff
- #               widget:
- #                   type: glances
- #                   url: http://glances:61208
- #                   version: 4
- #                   metric: "sensor:cpu_thermal 0"
- #                   chart: false
- #           - RAM:
- #               icon: mdi-chip-#ffffff
- #               widget:
- #                   type: glances
- #                   url: http://glances:61208
- #                   version: 4
- #                   metric: memory
- #                   chart: false
- #           - Disk:
- #               icon: mdi-harddisk-#ffffff
- #               widget:
- #                   type: glances
- #                   url: http://glances:61208
- #                   version: 4
- #                   metric: fs:/mnt/data
- #                   chart: false
- #           - UP:
- #               icon: mdi-clock-outline-#ffffff
- #               widget:
- #                   type: customapi
- #                   url: http://glances:61208/api/4/uptime
- #                   refreshInterval: 60000
- #   - Periphery:
- #       - Periphery Info:
- #           - Periphery:
- #               icon: windows-10.svg
- #               server: periphery
- #               widget:
- #                   type: glances
- #                   url: http://{{HOMEPAGE_VAR_HTPC_UPSTREAM}}:61208
- #                   version: 4
- #                   metric: info
- #       - Periphery Stats:
- #           - CPU:
- #               icon: mdi-memory-#ffffff
- #               widget:
- #                   type: glances
- #                   url: http://{{HOMEPAGE_VAR_HTPC_UPSTREAM}}:61208
- #                   version: 4
- #                   metric: cpu
- #                   chart: false
- #           - RAM:
- #               icon: mdi-chip-#ffffff
- #               widget:
- #                   type: glances
- #                   url: http://{{HOMEPAGE_VAR_HTPC_UPSTREAM}}:61208
- #                   version: 4
- #                   metric: memory
- #                   chart: false
- #           - Disk:
- #               icon: mdi-harddisk-#ffffff
- #               widget:
- #                   type: glances
- #                   url: http://{{HOMEPAGE_VAR_HTPC_UPSTREAM}}:61208
- #                   version: 4
- #                   metric: fs:/mnt/windows
- #                   chart: false
- #           - GPU:
- #               icon: mdi-expansion-card-#ffffff
- #               widget:
- #                   type: glances
- #                   url: http://{{HOMEPAGE_VAR_HTPC_UPSTREAM}}:61208
- #                   version: 4
- #                   metric: "gpu:0"
- #                   chart: false
- #           - UP:
- #                 icon: mdi-clock-outline-#ffffff
- #               widget:
- #                   type: customapi
- #                   url: http://{{HOMEPAGE_VAR_HTPC_UPSTREAM}}:61208/api/4/uptime
- #                   refreshInterval: 60000
- #                   mappings:
- #                     - format: text
