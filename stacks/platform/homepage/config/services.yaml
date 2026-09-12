@@ -230,6 +230,12 @@
             siteMonitor: http://{{HOMEPAGE_VAR_NAS_LAN_IP}}:9120
             icon: docker.svg
             description: Deployment
+            widget:
+                type: komodo
+                url: http://{{HOMEPAGE_VAR_NAS_LAN_IP}}:9120
+                key: "{{HOMEPAGE_VAR_KOMODO_KEY}}"
+                secret: "{{HOMEPAGE_VAR_KOMODO_SECRET}}"
+                showSummary: true
         - Authelia:
             href: https://auth.{{HOMEPAGE_VAR_DOMAIN}}
             server: core

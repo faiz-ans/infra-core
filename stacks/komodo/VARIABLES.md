@@ -69,6 +69,8 @@ Authelia user hashes live in `${DATA_ROOT}/system/authelia/users.yml` on the NAS
 | `HOMEPAGE_VAR_PIHOLE_TOKEN` | secret |
 | `HOMEPAGE_VAR_OMV_USERNAME` | |
 | `HOMEPAGE_VAR_OMV_PASSWORD` | secret |
+| `HOMEPAGE_VAR_KOMODO_KEY` | secret |
+| `HOMEPAGE_VAR_KOMODO_SECRET` | secret |
 | `HOMEPAGE_VAR_JELLYFIN_KEY` | secret |
 | `HOMEPAGE_VAR_SONARR_KEY` | secret |
 | `HOMEPAGE_VAR_RADARR_KEY` | secret |
@@ -83,8 +85,6 @@ Authelia user hashes live in `${DATA_ROOT}/system/authelia/users.yml` on the NAS
 `HOMEPAGE_VAR_WGEASY_PASSWORD` is the live wg-easy `wg-admin` login (not `WG_UI_PASSWORD` unless you never changed it). wg-easy 2FA must stay off for the widget API.
 
 `WEATHER_LATITUDE` and `WEATHER_LONGITUDE` are decimal degrees for the Homepage Open-Meteo widget (home location, not each browser). West of Greenwich is negative. Names must be exactly those two keys (not `HOMEPAGE_VAR_WEATHER_*`). After creating them, Redeploy **homepage** so Komodo rewrites `.env` and recreates the container. Empty values fall back to browser geolocation. Units are imperial. Timezone is mapped from `TZ`.
-
-`HOMEPAGE_VAR_OMV_USERNAME` / `HOMEPAGE_VAR_OMV_PASSWORD` are the OpenMediaVault **workbench** login (usually user `admin`), not an SSH/Linux account. Names must be exactly those keys (not `OMV_USERNAME`). The password MUST NOT contain `$`: Compose interpolates it out of the container env, and the widget then logs in with a truncated secret. After creating them, Redeploy **homepage**. Repeated failed widget logins can lock the workbench; reset the counter with `omv-firstaid` if the UI also refuses admin.
 
 `HOMEPAGE_VAR_DOMAIN` and `HOMEPAGE_VAR_HTPC_UPSTREAM` are **mapped from** `DOMAIN` and `HTPC_UPSTREAM` in the Homepage stack environment. `HOMEPAGE_VAR_PIHOLE_TOKEN` is **mapped from** `PIHOLE_WEBPASSWORD` (Pi-hole v6 web/API password, or an app password from Pi-hole Settings → API if the widget shows API Error). Do not duplicate live values in git. Homepage only substitutes `{{HOMEPAGE_VAR_*}}` in YAML (not `${{PIHOLE_WEBPASSWORD}}`).
 
