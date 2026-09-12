@@ -194,32 +194,6 @@
             icon: sonarr.svg
             description: Request TV Shows
 
-    - Monitoring:
-        - Grafana:
-            href: https://stats.{{HOMEPAGE_VAR_DOMAIN}}
-            server: periphery
-            container: grafana
-            icon: grafana.svg
-            description: Monitoring
-        - Prometheus:
-            href: https://metrics.{{HOMEPAGE_VAR_DOMAIN}}
-            server: periphery
-            container: prometheus
-            icon: prometheus.svg
-            description: Metrics Aggregation
-        - Glances - Core:
-            href: https://glances.{{HOMEPAGE_VAR_DOMAIN}}
-            server: periphery
-            container: glances
-            icon: glances.svg
-            description: Server Metrics (NAS)
-        - Glances - Periphery:
-            href: https://glances2.{{HOMEPAGE_VAR_DOMAIN}}
-            server: periphery
-            container: glances-periphery
-            icon: glances.svg
-            description: Server Metrics (HTPC)
-
     - Platform:
         - OpenMediaVault:
             href: https://nas.{{HOMEPAGE_VAR_DOMAIN}}
@@ -294,3 +268,23 @@
             siteMonitor: https://192.168.1.113/
             icon: hp.svg
             description: Printer
+
+    - Monitoring:
+        - Grafana:
+            href: https://stats.{{HOMEPAGE_VAR_DOMAIN}}
+            server: periphery
+            container: grafana
+            icon: grafana.svg
+            description: Site Monitor
+        - Prometheus:
+            href: https://metrics.{{HOMEPAGE_VAR_DOMAIN}}
+            server: periphery
+            container: prometheus
+            icon: prometheus.svg
+            description: Metrics
+        - Glances:
+            href: https://glances.{{HOMEPAGE_VAR_DOMAIN}}
+            server: periphery
+            container: glances
+            icon: glances.svg
+            description: Host Monitor
