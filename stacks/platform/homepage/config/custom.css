@@ -181,17 +181,17 @@
     height: 0;
   }
 
-  #information-widgets-right #tabs {
-    order: 4;
-    flex: 0 0 auto;
-  }
-
   #information-widgets-right .information-widget-search {
-    order: 5;
+    order: 4;
     flex: 1 1 0 !important;
     width: auto !important;
     min-width: 0;
     max-width: none;
+  }
+
+  #information-widgets-right #tabs {
+    order: 5;
+    flex: 0 0 auto;
   }
 
   #information-widgets-right .information-widget-search .my-4 {
