@@ -287,7 +287,6 @@
             server: periphery
             container: glances
             icon: glances.svg
-            description: Host Monitor
             widget:
                 type: glances
                 url: http://glances:61208
