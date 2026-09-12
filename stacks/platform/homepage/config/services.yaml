@@ -290,6 +290,6 @@
             description: Host Monitor
             widget:
                 type: glances
-                url: http://{{HOMEPAGE_VAR_NAS_LAN_IP}}:61208
+                url: http://glances:61208
                 version: 4
                 metric: info
