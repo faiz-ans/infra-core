@@ -100,8 +100,8 @@
     if (!glancesBtn) {
       const visible = glancesVisible();
       glancesBtn = createFooterControl("glances-toggle", {
-        svg: visible ? ICON_SVG.BarChart : ICON_SVG.BarChartOff,
-        label: visible ? "Hide glances" : "Show glances",
+        svg: visible ? ICON_SVG.BarChartOff : ICON_SVG.BarChart,
+        label: visible ? "Hide stats" : "Show stats",
         onClick: toggleGlancesVisible,
       });
       glancesBtn.setAttribute("data-visible", String(visible));
