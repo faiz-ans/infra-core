@@ -168,31 +168,31 @@
             icon: twitch.svg
             
 - System:
-    - Media Backend:
-        - qBittorrent:
-            href: https://down.{{HOMEPAGE_VAR_DOMAIN}}
+
+    - Monitoring:
+        - Glances:
+            href: https://host.{{HOMEPAGE_VAR_DOMAIN}}
+            server: core
+            container: glances
+            icon: glances.svg
+            description: Host Monitor
+            widget:
+                type: glances
+                url: http://glances:61208
+                version: 4
+                metric: info
+        - Grafana:
+            href: https://site.{{HOMEPAGE_VAR_DOMAIN}}
             server: periphery
-            container: qbittorrent
-            icon: qbittorrent.svg
-            description: Downloads      
-        - Prowlarr:
-            href: https://prowlarr.{{HOMEPAGE_VAR_DOMAIN}}
+            container: grafana
+            icon: grafana.svg
+            description: Site Monitor
+        - Prometheus:
+            href: https://metrics.{{HOMEPAGE_VAR_DOMAIN}}
             server: periphery
-            container: prowlarr
-            icon: prowlarr.svg
-            description: Indices      
-        - Radarr:
-            href: https://radarr.{{HOMEPAGE_VAR_DOMAIN}}
-            server: periphery
-            container: radarr
-            icon: radarr.svg
-            description: Movie Requests
-        - Sonarr:
-            href: https://sonarr.{{HOMEPAGE_VAR_DOMAIN}}
-            server: periphery
-            container: sonarr
-            icon: sonarr.svg
-            description: TV Show Requests
+            container: prometheus
+            icon: prometheus.svg
+            description: Metrics
 
     - Platform:
         - Komodo:
@@ -269,27 +269,28 @@
             icon: hp.svg
             description: Printer
 
-    - Monitoring:
-        - Glances:
-            href: https://host.{{HOMEPAGE_VAR_DOMAIN}}
-            server: core
-            container: glances
-            icon: glances.svg
-            description: Host Monitor
-            widget:
-                type: glances
-                url: http://glances:61208
-                version: 4
-                metric: info
-        - Grafana:
-            href: https://site.{{HOMEPAGE_VAR_DOMAIN}}
+    - Media Backend:
+        - qBittorrent:
+            href: https://down.{{HOMEPAGE_VAR_DOMAIN}}
             server: periphery
-            container: grafana
-            icon: grafana.svg
-            description: Site Monitor
-        - Prometheus:
-            href: https://metrics.{{HOMEPAGE_VAR_DOMAIN}}
+            container: qbittorrent
+            icon: qbittorrent.svg
+            description: Downloads      
+        - Prowlarr:
+            href: https://prowlarr.{{HOMEPAGE_VAR_DOMAIN}}
             server: periphery
-            container: prometheus
-            icon: prometheus.svg
-            description: Metrics
+            container: prowlarr
+            icon: prowlarr.svg
+            description: Indices      
+        - Radarr:
+            href: https://radarr.{{HOMEPAGE_VAR_DOMAIN}}
+            server: periphery
+            container: radarr
+            icon: radarr.svg
+            description: Movie Requests
+        - Sonarr:
+            href: https://sonarr.{{HOMEPAGE_VAR_DOMAIN}}
+            server: periphery
+            container: sonarr
+            icon: sonarr.svg
+            description: TV Show Requests
