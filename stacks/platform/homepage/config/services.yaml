@@ -186,13 +186,13 @@
             server: periphery
             container: radarr
             icon: radarr.svg
-            description: Request Movies    
+            description: Movie Requests
         - Sonarr:
             href: https://sonarr.{{HOMEPAGE_VAR_DOMAIN}}
             server: periphery
             container: sonarr
             icon: sonarr.svg
-            description: Request TV Shows
+            description: TV Show Requests
 
     - Platform:
         - Komodo:
@@ -228,7 +228,7 @@
             server: core
             container: gitea
             icon: gitea.svg
-            description: Version Control
+            description: Git
 
     - Network:
         - Pi-hole:
@@ -270,6 +270,17 @@
             description: Printer
 
     - Monitoring:
+        - Glances:
+            href: https://glances.{{HOMEPAGE_VAR_DOMAIN}}
+            server: periphery
+            container: glances
+            icon: glances.svg
+            description: Host Monitor
+            widget:
+                type: glances
+                url: http://glances:61208
+                version: 4
+                metric: info
         - Grafana:
             href: https://stats.{{HOMEPAGE_VAR_DOMAIN}}
             server: periphery
@@ -282,14 +293,3 @@
             container: prometheus
             icon: prometheus.svg
             description: Metrics
-        - Glances:
-            href: https://glances.{{HOMEPAGE_VAR_DOMAIN}}
-            server: periphery
-            container: glances
-            icon: glances.svg
-            description: Host Monitor
-            widget:
-                type: glances
-                url: http://glances:61208
-                version: 4
-                metric: info
