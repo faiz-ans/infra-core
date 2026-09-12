@@ -105,16 +105,30 @@
   order: 2;
 }
 
-/* Label left of stats */
+/* Label left of stats — collapsed by default (no flash before JS) */
 #widgets-wrap > .information-widget-glances {
   flex-direction: row !important;
   flex-wrap: nowrap !important;
   align-items: center;
-  margin-bottom: 0.5rem;
   overflow: hidden;
+  max-height: 0;
+  margin-top: 0;
+  margin-bottom: 0;
+  opacity: 0;
+  transform: translateY(-0.35rem);
+  pointer-events: none;
+}
+
+html.glances-visible #widgets-wrap > .information-widget-glances {
   max-height: 6rem;
+  margin-bottom: 0.5rem;
   opacity: 1;
   transform: translateY(0);
+  pointer-events: auto;
+}
+
+/* Animate only after first paint — avoids fade-out on load when default-off */
+html.glances-anim #widgets-wrap > .information-widget-glances {
   transition:
     opacity 0.28s ease,
     max-height 0.35s ease,
@@ -234,17 +248,4 @@
   #style #revalidate {
     margin-right: 1.25rem !important;
   }
-}
-
-/* Fade/collapse glances when toggled off (keeps layout animating instead of jump-cut) */
-html.glances-hidden #widgets-wrap .information-widget-glances {
-  opacity: 0;
-  max-height: 0 !important;
-  margin-top: 0 !important;
-  margin-bottom: 0 !important;
-  padding-top: 0 !important;
-  padding-bottom: 0 !important;
-  transform: translateY(-0.35rem);
-  pointer-events: none;
-  border: none !important;
 }

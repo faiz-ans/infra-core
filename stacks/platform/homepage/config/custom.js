@@ -32,7 +32,7 @@
 
   function applyGlancesVisibility() {
     const visible = glancesVisible();
-    document.documentElement.classList.toggle("glances-hidden", !visible);
+    document.documentElement.classList.toggle("glances-visible", visible);
 
     const btn = document.getElementById("glances-toggle");
     if (!btn) return;
@@ -211,6 +211,12 @@
 
   // Apply persisted glances visibility before paint when possible
   applyGlancesVisibility();
+  // Enable toggle animations only after the initial visibility is applied
+  requestAnimationFrame(() => {
+    requestAnimationFrame(() => {
+      document.documentElement.classList.add("glances-anim");
+    });
+  });
 
   const observer = new MutationObserver((mutations) => {
     // Ignore churn from our own footer icon updates
