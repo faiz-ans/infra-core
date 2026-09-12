@@ -24,6 +24,7 @@ services:
       - dockerproxy
     env_file:
       - .env
+    entrypoint: ["node", "/load-komodo-env.js", "docker-entrypoint.sh"]
     environment:
       TZ: ${TZ}
       NODE_OPTIONS: --dns-result-order=ipv4first
@@ -32,7 +33,6 @@ services:
       HOMEPAGE_VAR_HTPC_UPSTREAM: ${HOMEPAGE_VAR_HTPC_UPSTREAM}
       HOMEPAGE_VAR_NAS_LAN_IP: ${HOMEPAGE_VAR_NAS_LAN_IP}
       HOMEPAGE_VAR_OMV_USERNAME: ${HOMEPAGE_VAR_OMV_USERNAME}
-      # Password stays on env_file only. ${} here would eat `$` in the secret.
       HOMEPAGE_VAR_PIHOLE_TOKEN: ${HOMEPAGE_VAR_PIHOLE_TOKEN}
       HOMEPAGE_VAR_JELLYFIN_KEY: ${HOMEPAGE_VAR_JELLYFIN_KEY}
       HOMEPAGE_VAR_SONARR_KEY: ${HOMEPAGE_VAR_SONARR_KEY}
@@ -51,6 +51,8 @@ services:
       - ./config:/app/config
       # Served as /images/... — file must exist in this clone (git pull).
       - ./images:/app/public/images
+      - ./load-komodo-env.js:/load-komodo-env.js:ro
+      - ./.env:/run/komodo.env:ro
     networks:
       - edge
 

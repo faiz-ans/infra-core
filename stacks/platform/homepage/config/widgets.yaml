@@ -19,8 +19,7 @@
     provider: duckduckgo
     target: _blank
 
-
-# Core Glances
+# Glances - Core
 - glances:
     url: http://glances:61208
     href: https://glances.{{HOMEPAGE_VAR_DOMAIN}}
@@ -33,7 +32,7 @@
       - /mnt/data
     label: NAS
 
-# Periphery Glances
+# Glances - Periphery
 - glances:
     url: http://{{HOMEPAGE_VAR_HTPC_UPSTREAM}}:61208
     href: https://glances2.{{HOMEPAGE_VAR_DOMAIN}}

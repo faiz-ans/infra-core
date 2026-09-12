@@ -9,6 +9,7 @@ branch = "main"
 run_directory = "stacks/platform/homepage"
 file_paths = ["compose.yaml"]
 config_files = [
+  { path = "load-komodo-env.js", requires = "Redeploy" },
   { path = "config/services.yaml", requires = "Redeploy" },
   { path = "config/settings.yaml", requires = "Redeploy" },
   { path = "config/docker.yaml", requires = "Redeploy" },
