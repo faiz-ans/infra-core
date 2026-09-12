@@ -5,6 +5,11 @@
       timeStyle: short
       dateStyle: medium
 
+# Searchbar
+- search:
+    provider: duckduckgo
+    target: _blank
+
 # Weather
 - openmeteo:
     latitude: {{HOMEPAGE_VAR_WEATHER_LATITUDE}}
@@ -13,10 +18,7 @@
     units: imperial
     cache: 5
 
-# Searchbar
-#- search:
-#    provider: duckduckgo
-#    target: _blank
+
 
 # Core Glances
 - glances:
