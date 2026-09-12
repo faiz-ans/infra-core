@@ -27,14 +27,14 @@ access_control:
       policy: bypass
     - domain:
         - 'pdf.{{ env "DOMAIN" }}'
-        - 'tools.{{ env "DOMAIN" }}'
+        - 'it.{{ env "DOMAIN" }}'
         - 'translate.{{ env "DOMAIN" }}'
       subject: 'group:users'
       policy: one_factor
     - domain:
         - 'metrics.{{ env "DOMAIN" }}'
-        - 'glances.{{ env "DOMAIN" }}'
-        - 'glances2.{{ env "DOMAIN" }}'
+        - 'host.{{ env "DOMAIN" }}'
+        - 'host2.{{ env "DOMAIN" }}'
       subject: 'group:admins'
       policy: one_factor
     - domain: 'pass.{{ env "DOMAIN" }}'
@@ -234,7 +234,7 @@ identity_providers:
         require_pkce: true
         pkce_challenge_method: S256
         redirect_uris:
-          - 'https://stats.{{ env "DOMAIN" }}/login/generic_oauth'
+          - 'https://site.{{ env "DOMAIN" }}/login/generic_oauth'
         scopes:
           - openid
           - profile

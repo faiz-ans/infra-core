@@ -1,6 +1,6 @@
 # Frigate on periphery. /config (SQLite + site cameras) is a local volume.
 # Household recordings via DATA_ROOT bind. Docker-engine NFS: deploy
-# compose.nfs.yaml instead. Caddy terminates TLS at cams.${DOMAIN}.
+# compose.nfs.yaml instead. Caddy terminates TLS at nvr.${DOMAIN}.
 # Seed config is copied only when the volume has no config.yml.
 services:
   mosquitto:

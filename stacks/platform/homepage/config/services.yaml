@@ -81,7 +81,7 @@
             description: Home Automation
         - Frigate:
             id: frigate
-            href: https://cam.{{HOMEPAGE_VAR_DOMAIN}}
+            href: https://nvr.{{HOMEPAGE_VAR_DOMAIN}}
             server: periphery
             container: frigate
             icon: https://cdn.jsdelivr.net/gh/homarr-labs/dashboard-icons/png/moonfire-nvr.png
@@ -125,7 +125,7 @@
             description: Workflow Automation
         - IT Tools:
             id: it-tools
-            href: https://tools.{{HOMEPAGE_VAR_DOMAIN}}
+            href: https://it.{{HOMEPAGE_VAR_DOMAIN}}
             server: core
             container: it-tools
             icon: it-tools.svg
@@ -271,8 +271,8 @@
 
     - Monitoring:
         - Glances:
-            href: https://glances.{{HOMEPAGE_VAR_DOMAIN}}
-            server: periphery
+            href: https://host.{{HOMEPAGE_VAR_DOMAIN}}
+            server: core
             container: glances
             icon: glances.svg
             description: Host Monitor
@@ -282,7 +282,7 @@
                 version: 4
                 metric: info
         - Grafana:
-            href: https://stats.{{HOMEPAGE_VAR_DOMAIN}}
+            href: https://site.{{HOMEPAGE_VAR_DOMAIN}}
             server: periphery
             container: grafana
             icon: grafana.svg

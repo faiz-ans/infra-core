@@ -1,6 +1,6 @@
 # Recordings on Docker NFS (shared/cameras). /config is a local volume.
 # Deploy this file instead of compose.yaml (do not merge both).
-# Caddy terminates TLS at cams.${DOMAIN}. Seed config is copied only when
+# Caddy terminates TLS at nvr.${DOMAIN}. Seed config is copied only when
 # the volume has no config.yml. Do not privileged; no Coral/GPU devices.
 services:
   mosquitto:

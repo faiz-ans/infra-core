@@ -18,5 +18,5 @@ TZ = [[TZ]]
 NAS_LAN_IP = [[NAS_LAN_IP]]
 """
 
-# Host stats for Homepage. LAN bind :61208; Caddy proxies glances2.<DOMAIN>.
+# Host stats for Homepage. LAN bind :61208; Caddy proxies host2.<DOMAIN>.
 # ResourceSync names are global — must not reuse "glances" from stacks-core.toml.

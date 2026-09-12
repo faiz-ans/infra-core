@@ -5,7 +5,6 @@
       timeStyle: short
       dateStyle: medium
 
-
 # Weather
 - openmeteo:
     latitude: {{HOMEPAGE_VAR_WEATHER_LATITUDE}}
@@ -22,7 +21,7 @@
 # Glances - Core
 - glances:
     url: http://glances:61208
-    href: https://glances.{{HOMEPAGE_VAR_DOMAIN}}
+    href: https://host.{{HOMEPAGE_VAR_DOMAIN}}
     version: 4
     cpu: true
     mem: true
@@ -35,7 +34,7 @@
 # Glances - Periphery
 - glances:
     url: http://{{HOMEPAGE_VAR_HTPC_UPSTREAM}}:61208
-    href: https://glances2.{{HOMEPAGE_VAR_DOMAIN}}
+    href: https://host2.{{HOMEPAGE_VAR_DOMAIN}}
     version: 4
     cpu: true
     mem: true

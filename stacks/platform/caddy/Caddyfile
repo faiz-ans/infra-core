@@ -103,7 +103,7 @@ https://dns2.{$DOMAIN} {
 # WIREGUARD
 #--------------------------------
 
-https://wg.{$DOMAIN}, https://wireguard.{$DOMAIN} {
+https://wireguard.{$DOMAIN}, https://wg.{$DOMAIN} {
 	tls internal
 	redir https://vpn.{$DOMAIN}{uri} permanent
 }
@@ -128,10 +128,10 @@ https://ops.{$DOMAIN} {
 }
 
 #--------------------------------
-# OpenMediaVault
+# OPENMEDIAVAULT
 #--------------------------------
 
-https://omv.{$DOMAIN}, https://openmediavault.{$DOMAIN} {
+https://openmediavault.{$DOMAIN}, https://omv.{$DOMAIN} {
 	tls internal
 	redir https://nas.{$DOMAIN}{uri} permanent
 }
@@ -145,7 +145,7 @@ https://nas.{$DOMAIN} {
 # VAULTWARDEN
 #--------------------------------
 
-https://pw.{$DOMAIN}, https://vaultwarden.{$DOMAIN} {
+https://vaultwarden.{$DOMAIN}, https://pw.{$DOMAIN} {
 	tls internal
 	redir https://pass.{$DOMAIN}{uri} permanent
 }
@@ -169,7 +169,7 @@ https://pass.{$DOMAIN} {
 }
 
 #--------------------------------
-# Jellyfin
+# JELLYFIN
 #--------------------------------
 
 https://jellyfin.{$DOMAIN} {
@@ -200,7 +200,7 @@ https://request.{$DOMAIN} {
 # HOME ASSISTANT
 #--------------------------------
 
-https://ha.{$DOMAIN}, https://homeassistant.{$DOMAIN} {
+https://homeassistant.{$DOMAIN}, https://ha.{$DOMAIN} {
 	tls internal
 	redir https://auto.{$DOMAIN}{uri} permanent
 }
@@ -222,7 +222,7 @@ https://auto.{$DOMAIN} {
 # OPENCLOUD
 #--------------------------------
 
-https://oc.{$DOMAIN}, https://opencloud.{$DOMAIN} {
+https://opencloud.{$DOMAIN}, https://oc.{$DOMAIN} {
 	tls internal
 	redir https://cloud.{$DOMAIN}{uri} permanent
 }
@@ -243,7 +243,7 @@ https://cloud.{$DOMAIN} {
 # IMMICH
 #--------------------------------
 
-https://gallery.{$DOMAIN}, https://immich.{$DOMAIN} {
+https://immich.{$DOMAIN}, https://gallery.{$DOMAIN} {
 	tls internal
 	redir https://photos.{$DOMAIN}{uri} permanent
 }
@@ -257,7 +257,7 @@ https://photos.{$DOMAIN} {
 # COLLABORA
 #--------------------------------
 
-https://docs.{$DOMAIN}, https://collabora.{$DOMAIN} {
+https://collabora.{$DOMAIN}, https://docs.{$DOMAIN} {
 	tls internal
 	redir https://office.{$DOMAIN}{uri} permanent
 }
@@ -293,7 +293,7 @@ https://notes.{$DOMAIN} {
 # LINKDING
 #--------------------------------
 
-https://bookmarks.{$DOMAIN}, https://linkding.{$DOMAIN} {
+https://linkding.{$DOMAIN}, https://bookmarks.{$DOMAIN} {
 	tls internal
 	redir https://links.{$DOMAIN}{uri} permanent
 }
@@ -307,7 +307,7 @@ https://links.{$DOMAIN} {
 # RUSTDESK
 #--------------------------------
 
-https://remote.{$DOMAIN}, https://rustdesk.{$DOMAIN} {
+https://rustdesk.{$DOMAIN}, https://remote.{$DOMAIN} {
 	tls internal
 	redir https://desk.{$DOMAIN}{uri} permanent
 }
@@ -321,7 +321,7 @@ https://desk.{$DOMAIN} {
 # ADVENTURELOG
 #--------------------------------
 
-https://trips.{$DOMAIN}, https://adventurelog.{$DOMAIN} {
+https://adventurelog.{$DOMAIN}, https://trips.{$DOMAIN} {
 	tls internal
 	redir https://travel.{$DOMAIN}{uri} permanent
 }
@@ -336,10 +336,10 @@ https://travel.{$DOMAIN} {
 }
 
 #--------------------------------
-# SCriberr
+# SCRIBERR
 #--------------------------------
 
-https://transcribe.{$DOMAIN}, https://scriberr.{$DOMAIN} {
+https://scriberr.{$DOMAIN}, https://transcribe.{$DOMAIN} {
 	tls internal
 	redir https://voice.{$DOMAIN}{uri} permanent
 }
@@ -429,12 +429,12 @@ https://read.{$DOMAIN} {
 # IT TOOLS
 #--------------------------------
 
-https://it.{$DOMAIN}, https://it-tools.{$DOMAIN} {
+https://it-tools.{$DOMAIN}, https://tools.{$DOMAIN} {
 	tls internal
-	redir https://tools.{$DOMAIN}{uri} permanent
+	redir https://it.{$DOMAIN}{uri} permanent
 }
 
-https://tools.{$DOMAIN} {
+https://it.{$DOMAIN} {
 	tls internal
 	import authelia_gate
 	reverse_proxy it-tools:80
@@ -480,15 +480,15 @@ https://snip.{$DOMAIN} {
 }
 
 #--------------------------------
-# NVR
+# FRIGATE
 #--------------------------------
 
-https://nvr.{$DOMAIN}, https://frigate.{$DOMAIN} {
+https://frigate.{$DOMAIN}, https://cam.{$DOMAIN}, https://cams.{$DOMAIN} {
 	tls internal
-	redir https://cam.{$DOMAIN}{uri} permanent
+	redir https://nvr.{$DOMAIN}{uri} permanent
 }
 
-https://cam.{$DOMAIN} {
+https://nvr.{$DOMAIN} {
 	tls internal
 	reverse_proxy {$HTPC_UPSTREAM}:8971 {
 		flush_interval -1
@@ -545,15 +545,15 @@ https://down.{$DOMAIN} {
 }
 
 #--------------------------------
-# MONITORING
+# GRAFANA
 #--------------------------------
 
-https://monitoring.{$DOMAIN}, https://grafana.{$DOMAIN} {
+https://monitor.{$DOMAIN}, https://grafana.{$DOMAIN}, https://stats.{$DOMAIN} {
 	tls internal
-	redir https://stats.{$DOMAIN}{uri} permanent
+	redir https://site.{$DOMAIN}{uri} permanent
 }
 
-https://stats.{$DOMAIN} {
+https://site.{$DOMAIN} {
 	tls internal
 	reverse_proxy {$HTPC_UPSTREAM}:3000
 }
@@ -577,12 +577,12 @@ https://metrics.{$DOMAIN} {
 # GLANCES CORE
 #--------------------------------
 
-https://glances-core.{$DOMAIN} {
+https://glances.{$DOMAIN}, https://glances-core.{$DOMAIN} {
 	tls internal
-	redir https://glances.{$DOMAIN}{uri} permanent
+	redir https://host.{$DOMAIN}{uri} permanent
 }
 
-https://glances.{$DOMAIN} {
+https://host.{$DOMAIN} {
 	tls internal
 	import authelia_gate
 	reverse_proxy glances:61208
@@ -592,12 +592,12 @@ https://glances.{$DOMAIN} {
 # GLANCES PERIPHERY
 #--------------------------------
 
-https://glances-periphery.{$DOMAIN} {
+https://glances2.{$DOMAIN}, https://glances-periphery.{$DOMAIN} {
 	tls internal
-	redir https://glances2.{$DOMAIN}{uri} permanent
+	redir https://host2.{$DOMAIN}{uri} permanent
 }
 
-https://glances2.{$DOMAIN} {
+https://host2.{$DOMAIN} {
 	tls internal
 	import authelia_gate
 	reverse_proxy {$HTPC_UPSTREAM}:61208

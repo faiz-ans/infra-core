@@ -1,6 +1,6 @@
 # Frigate first-run
 
-Frigate runs on **periphery**. Config and SQLite are a local HTPC volume (`frigate-config`). Recordings, clips, and exports are NFS `shared/cameras`. `/tmp/cache` is tmpfs. Caddy is `https://cams.<DOMAIN>` (`nvr.` and `frigate.` are aliases).
+Frigate runs on **periphery**. Config and SQLite are a local HTPC volume (`frigate-config`). Recordings, clips, and exports are NFS `shared/cameras`. `/tmp/cache` is tmpfs. Caddy is `https://nvr.<DOMAIN>` (`cam.`, `cams.`, and `frigate.` are aliases).
 
 No Komodo secret. The first start prints an admin user and password in the container logs. Camera RTSP URLs stay in the volume (Frigate’s config editor), not in git. Coral / GPU / `privileged` are not in the catalog.
 
@@ -38,7 +38,7 @@ If Caddy returns **400** (plain HTTP to HTTPS port), the volume was created with
 
 ## 3. Admin and cameras
 
-Open **`https://cams.<DOMAIN>`**. Log in with the password from the logs. Change it in the UI.
+Open **`https://nvr.<DOMAIN>`**. Log in with the password from the logs. Change it in the UI.
 
 Add cameras in **Settings → Configuration** (or the Add Camera wizard). Use a low detect resolution on the first camera; this site’s detector is CPU (Docker Desktop has no Coral/GPU passthrough). Enable **record** when you want clips in the UI.
 
@@ -46,13 +46,13 @@ Do not put RTSP passwords in the catalog repo.
 
 ## 4. Home Assistant
 
-In HA: **Settings → Devices & services → MQTT**. Broker host is the HTPC LAN IP (`HTPC_UPSTREAM`), port **1883**, no username. Then add the **Frigate** integration (MQTT must already work). The Frigate UI URL for the integration is `https://cams.<DOMAIN>` (or `http://<HTPC_UPSTREAM>:8971` on the LAN).
+In HA: **Settings → Devices & services → MQTT**. Broker host is the HTPC LAN IP (`HTPC_UPSTREAM`), port **1883**, no username. Then add the **Frigate** integration (MQTT must already work). The Frigate UI URL for the integration is `https://nvr.<DOMAIN>` (or `http://<HTPC_UPSTREAM>:8971` on the LAN).
 
 ## If it fails
 
 | Symptom | What to do |
 |---|---|
-| `cams.<DOMAIN>` does not load while `frigate` is Up | Redeploy **caddy**. From Core: `docker exec caddy wget -S -O- --timeout=10 http://<HTPC_UPSTREAM>:8971/ \| head` |
+| `nvr.<DOMAIN>` does not load while `frigate` is Up | Redeploy **caddy**. From Core: `docker exec caddy wget -S -O- --timeout=10 http://<HTPC_UPSTREAM>:8971/ \| head` |
 | Caddy 400 | `tls.enabled: false` in `/config/config.yml`, then restart |
 | NFS / `cameras` mount error | Directory missing on Core, or `NFS_EXPORT` not `/shared`. Run `data-root-perms.sh`. See `bootstrap/omv-nfs.md` |
 | Bus error / Frigate exits | Raise `shm_size` in compose (site edit). 256mb is sized for a couple of 720p detect streams |
