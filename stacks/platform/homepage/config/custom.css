@@ -111,6 +111,16 @@
   flex-wrap: nowrap !important;
   align-items: center;
   margin-bottom: 0.5rem;
+  overflow: hidden;
+  max-height: 6rem;
+  opacity: 1;
+  transform: translateY(0);
+  transition:
+    opacity 0.28s ease,
+    max-height 0.35s ease,
+    margin 0.35s ease,
+    padding 0.35s ease,
+    transform 0.35s ease;
 }
 
 #widgets-wrap > .information-widget-glances .information-widget-label {
@@ -226,7 +236,15 @@
   }
 }
 
-/* Hide glances widgets when toggled off */
+/* Fade/collapse glances when toggled off (keeps layout animating instead of jump-cut) */
 html.glances-hidden #widgets-wrap .information-widget-glances {
-  display: none !important;
+  opacity: 0;
+  max-height: 0 !important;
+  margin-top: 0 !important;
+  margin-bottom: 0 !important;
+  padding-top: 0 !important;
+  padding-bottom: 0 !important;
+  transform: translateY(-0.35rem);
+  pointer-events: none;
+  border: none !important;
 }
