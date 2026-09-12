@@ -170,3 +170,13 @@
     margin-left: 0.375rem !important;
   }
 }
+
+/* Footer controls (match refresh button styling) */
+#style .homepage-footer-control {
+  cursor: pointer;
+}
+
+/* Hide glances widgets when toggled off */
+html.glances-hidden #widgets-wrap > .information-widget-glances {
+  display: none !important;
+}

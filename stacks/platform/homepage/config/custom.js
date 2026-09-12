@@ -1,5 +1,6 @@
 /* Move Apps/System tabs into the header (after weather) as Material icon buttons.
  * Also normalize glances uptime "1 day" → "1d" (Homepage only rewrites plural "days").
+ * Footer: glances visibility toggle + scroll-to-top (before refresh).
  */
 (function () {
   const ICON_SVG = {
@@ -7,6 +8,12 @@
       '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" width="22" height="22" fill="currentColor" aria-hidden="true"><path d="M4 8h4V4H4v4zm6 12h4v-4h-4v4zm-6 0h4v-4H4v4zm0-6h4v-4H4v4zm6 0h4v-4h-4v4zm6-10v4h4V4h-4zm-6 4h4V4h-4v4zm6 6h4v-4h-4v4zm0 6h4v-4h-4v4z"/></svg>',
     System:
       '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" width="22" height="22" fill="currentColor" aria-hidden="true"><path d="M19.14 12.94c.04-.31.06-.63.06-.94s-.02-.63-.06-.94l2.03-1.58c.18-.14.23-.41.12-.61l-1.92-3.32a.5.5 0 0 0-.59-.22l-2.39.96c-.5-.38-1.03-.7-1.62-.94l-.36-2.54a.5.5 0 0 0-.48-.41h-3.84a.5.5 0 0 0-.48.41l-.36 2.54c-.59.24-1.13.57-1.62.94l-2.39-.96a.5.5 0 0 0-.59.22L2.74 8.87c-.12.21-.08.47.12.61l2.03 1.58c-.04.31-.07.63-.07.94s.02.63.06.94l-2.03 1.58a.5.5 0 0 0-.12.61l1.92 3.32c.12.22.37.29.59.22l2.39-.96c.5.38 1.03.7 1.62.94l.36 2.54c.05.24.24.41.48.41h3.84c.24 0 .44-.17.47-.41l.36-2.54c.59-.24 1.13-.56 1.62-.94l2.39.96c.22.08.47 0 .59-.22l1.92-3.32c.12-.22.07-.47-.12-.61l-2.01-1.58zM12 15.6A3.6 3.6 0 1 1 12 8.4a3.6 3.6 0 0 1 0 7.2z"/></svg>',
+    BarChart:
+      '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" class="text-theme-800 dark:text-theme-200 w-6 h-6 cursor-pointer" aria-hidden="true"><path d="M4 9h4v12H4zm6-4h4v16h-4zm6 8h4v8h-4z"/></svg>',
+    BarChartOff:
+      '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" class="text-theme-800 dark:text-theme-200 w-6 h-6 cursor-pointer" aria-hidden="true"><path d="M22.1 21.5 2.4 1.85 1.1 3.15 4 6.05V19h12.95l3.9 3.9 1.25-1.4zM6 17V8.05l2 2V17H6zm4 0v-4.95l2 2V17h-2zm2.85-12H14v1.7l5.15 5.15V5h-6.15z"/></svg>',
+    ArrowUpward:
+      '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" class="text-theme-800 dark:text-theme-200 w-6 h-6 cursor-pointer" aria-hidden="true"><path d="M4 12l1.41 1.41L11 7.83V20h2V7.83l5.58 5.59L20 12l-8-8z"/></svg>',
   };
 
   const TAB_BY_ID = {
@@ -14,7 +21,74 @@
     "System-tab": "System",
   };
 
+  const GLANCES_VISIBLE_KEY = "homepage-glances-visible";
+
   let scheduled = false;
+
+  function glancesVisible() {
+    const stored = localStorage.getItem(GLANCES_VISIBLE_KEY);
+    return stored !== "false";
+  }
+
+  function setGlancesVisible(visible) {
+    localStorage.setItem(GLANCES_VISIBLE_KEY, visible ? "true" : "false");
+    document.documentElement.classList.toggle("glances-hidden", !visible);
+    const btn = document.getElementById("glances-toggle");
+    if (btn) {
+      btn.innerHTML = visible ? ICON_SVG.BarChart : ICON_SVG.BarChartOff;
+      btn.setAttribute("aria-label", visible ? "Hide glances" : "Show glances");
+      btn.setAttribute("title", visible ? "Hide glances" : "Show glances");
+      btn.setAttribute("aria-pressed", visible ? "true" : "false");
+    }
+  }
+
+  function createFooterControl(id, { svg, label, onClick }) {
+    const wrap = document.createElement("div");
+    wrap.id = id;
+    wrap.className = "rounded-full flex align-middle self-center mr-3 homepage-footer-control";
+    wrap.setAttribute("role", "button");
+    wrap.setAttribute("tabindex", "0");
+    wrap.setAttribute("aria-label", label);
+    wrap.setAttribute("title", label);
+    wrap.innerHTML = svg;
+    wrap.addEventListener("click", onClick);
+    wrap.addEventListener("keydown", (e) => {
+      if (e.key === "Enter" || e.key === " ") {
+        e.preventDefault();
+        onClick(e);
+      }
+    });
+    return wrap;
+  }
+
+  function ensureFooterControls() {
+    const revalidate = document.getElementById("revalidate");
+    if (!revalidate || !revalidate.parentElement) return;
+
+    let glancesBtn = document.getElementById("glances-toggle");
+    if (!glancesBtn) {
+      const visible = glancesVisible();
+      glancesBtn = createFooterControl("glances-toggle", {
+        svg: visible ? ICON_SVG.BarChart : ICON_SVG.BarChartOff,
+        label: visible ? "Hide glances" : "Show glances",
+        onClick: () => setGlancesVisible(!glancesVisible()),
+      });
+      glancesBtn.setAttribute("aria-pressed", visible ? "true" : "false");
+      revalidate.parentElement.insertBefore(glancesBtn, revalidate);
+    }
+
+    let scrollBtn = document.getElementById("scroll-top");
+    if (!scrollBtn) {
+      scrollBtn = createFooterControl("scroll-top", {
+        svg: ICON_SVG.ArrowUpward,
+        label: "Scroll to top",
+        onClick: () => window.scrollTo({ top: 0, behavior: "smooth" }),
+      });
+      revalidate.parentElement.insertBefore(scrollBtn, revalidate);
+    }
+
+    setGlancesVisible(glancesVisible());
+  }
 
   function iconifyButton(btn) {
     if (!btn || btn.querySelector("svg")) return;
@@ -91,6 +165,7 @@
     normalizeGlancesUptime();
     syncGlancesStacked();
     syncDatetimeWrapComma();
+    ensureFooterControls();
   }
 
   function scheduleEnhance() {
@@ -101,6 +176,9 @@
       enhance();
     });
   }
+
+  // Apply persisted glances visibility before paint when possible
+  setGlancesVisible(glancesVisible());
 
   const observer = new MutationObserver(scheduleEnhance);
   observer.observe(document.documentElement, {
