@@ -176,6 +176,14 @@
   cursor: pointer;
 }
 
+/* Extra touch spacing on mobile */
+@media (max-width: 767px) {
+  #style .homepage-footer-control,
+  #style #revalidate {
+    margin-right: 1.25rem !important;
+  }
+}
+
 /* Hide glances widgets when toggled off */
 html.glances-hidden #widgets-wrap .information-widget-glances {
   display: none !important;
