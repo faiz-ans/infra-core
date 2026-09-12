@@ -168,50 +168,57 @@
             icon: twitch.svg
             
 - System:
-    - Column 1:
-        - Media Backend:
-            - qBittorrent:
-                href: https://down.{{HOMEPAGE_VAR_DOMAIN}}
-                server: periphery
-                container: qbittorrent
-                icon: qbittorrent.svg
-                description: Downloads      
-            - Prowlarr:
-                href: https://prowlarr.{{HOMEPAGE_VAR_DOMAIN}}
-                server: periphery
-                container: prowlarr
-                icon: prowlarr.svg
-                description: Indices      
-            - Radarr:
-                href: https://radarr.{{HOMEPAGE_VAR_DOMAIN}}
-                server: periphery
-                container: radarr
-                icon: radarr.svg
-                description: Request Movies    
-            - Sonarr:
-                href: https://sonarr.{{HOMEPAGE_VAR_DOMAIN}}
-                server: periphery
-                container: sonarr
-                icon: sonarr.svg
-                description: Request TV Shows
+    - Media Backend:
+        - qBittorrent:
+            href: https://down.{{HOMEPAGE_VAR_DOMAIN}}
+            server: periphery
+            container: qbittorrent
+            icon: qbittorrent.svg
+            description: Downloads      
+        - Prowlarr:
+            href: https://prowlarr.{{HOMEPAGE_VAR_DOMAIN}}
+            server: periphery
+            container: prowlarr
+            icon: prowlarr.svg
+            description: Indices      
+        - Radarr:
+            href: https://radarr.{{HOMEPAGE_VAR_DOMAIN}}
+            server: periphery
+            container: radarr
+            icon: radarr.svg
+            description: Request Movies    
+        - Sonarr:
+            href: https://sonarr.{{HOMEPAGE_VAR_DOMAIN}}
+            server: periphery
+            container: sonarr
+            icon: sonarr.svg
+            description: Request TV Shows
 
-        - Monitoring:
-            - Grafana:
-                href: https://stats.{{HOMEPAGE_VAR_DOMAIN}}
-                server: periphery
-                container: grafana
-                icon: grafana.svg
-                description: Monitoring
-            #    widget:
-            #      type: grafana
-            #      url: http://{{HOMEPAGE_VAR_HTPC_UPSTREAM}}:3000
-            #      key: "{{HOMEPAGE_VAR_GRAFANA_KEY}}"
-            - Prometheus:
-                href: https://metrics.{{HOMEPAGE_VAR_DOMAIN}}
-                server: periphery
-                container: prometheus
-                icon: prometheus.svg
-                description: Metrics
+    - Monitoring:
+        - Grafana:
+            href: https://stats.{{HOMEPAGE_VAR_DOMAIN}}
+            server: periphery
+            container: grafana
+            icon: grafana.svg
+            description: Monitoring
+        - Prometheus:
+            href: https://metrics.{{HOMEPAGE_VAR_DOMAIN}}
+            server: periphery
+            container: prometheus
+            icon: prometheus.svg
+            description: Metrics Aggregation
+        - Glances - Core:
+            href: https://glances.{{HOMEPAGE_VAR_DOMAIN}}
+            server: periphery
+            container: glances
+            icon: glances.svg
+            description: Server Metrics (NAS)
+        - Glances - Periphery:
+            href: https://glances2.{{HOMEPAGE_VAR_DOMAIN}}
+            server: periphery
+            container: glances-periphery
+            icon: glances.svg
+            description: Server Metrics (HTPC)
 
     - Platform:
         - OpenMediaVault:
