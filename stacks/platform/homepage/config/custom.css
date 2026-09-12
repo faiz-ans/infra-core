@@ -157,21 +157,38 @@
 
 /* Mobile (Apps single-column below Tailwind md) */
 @media (max-width: 767px) {
-  /* Search on its own row under datetime / weather / tabs */
+  /* Row 1: datetime | weather | tabs — Row 2: search full width */
   #information-widgets-right {
-    flex-wrap: wrap !important;
+    display: grid !important;
+    grid-template-columns: 1fr auto auto;
+    grid-template-areas:
+      "datetime weather tabs"
+      "search search search";
+    align-items: center;
+    column-gap: 1rem;
     row-gap: 0.5rem;
   }
 
   #information-widgets-right .information-widget-datetime {
-    margin-right: auto;
+    grid-area: datetime;
+    margin-right: 0;
+    justify-self: start;
+  }
+
+  #information-widgets-right .information-widget-openmeteo {
+    grid-area: weather;
+    justify-self: end;
+  }
+
+  #information-widgets-right #tabs {
+    grid-area: tabs;
+    justify-self: end;
   }
 
   #information-widgets-right .information-widget-search {
-    flex: 0 0 100% !important;
+    grid-area: search;
     width: 100% !important;
     max-width: 100%;
-    order: 5;
   }
 
   #information-widgets-right .information-widget-search .my-4 {
