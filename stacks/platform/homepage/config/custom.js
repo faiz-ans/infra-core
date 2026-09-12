@@ -42,8 +42,8 @@
 
     btn.setAttribute("data-visible", String(visible));
     btn.setAttribute("aria-pressed", visible ? "true" : "false");
-    btn.setAttribute("aria-label", visible ? "Hide glances" : "Show glances");
-    btn.setAttribute("title", visible ? "Hide glances" : "Show glances");
+    btn.setAttribute("aria-label", visible ? "Hide stats" : "Show stats");
+    btn.setAttribute("title", visible ? "Hide stats" : "Show stats");
     btn.innerHTML = visible ? ICON_SVG.BarChartOff : ICON_SVG.BarChart;
   }
 
