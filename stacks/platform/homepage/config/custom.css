@@ -238,7 +238,16 @@ html.glances-anim #widgets-wrap > .information-widget-glances {
 }
 
 /* Glances service widget (metric: info): chart mode defaults on and positions
-   info at -top-6, which overlaps the tile title & description. Keep it in-widget. */
+   the top label at -top-6 over the tile title. Pull that label into the widget
+   and grow the chart area so bottom stats stay below it (was 68px). */
+.service-card .service-container.chart {
+  height: 5.75rem !important; /* 92px = 68px + former -top-6 offset */
+}
+
+.service-card .service-container.chart > .h-\[68px\] {
+  height: 5.75rem !important;
+}
+
 .service-card .service-container.chart .\-top-6 {
   top: 0.25rem !important;
 }
