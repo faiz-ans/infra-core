@@ -113,7 +113,7 @@
     if (!scrollBtn) {
       scrollBtn = createFooterControl("scroll-top", {
         svg: ICON_SVG.ArrowUpward,
-        label: "Scroll to top",
+        label: "Back to top",
         onClick: scrollToTop,
       });
       revalidate.parentElement.insertBefore(scrollBtn, revalidate);
