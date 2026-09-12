@@ -58,6 +58,8 @@ KEY_MODE: dict[str, tuple[str, str]] = {
     "PIHOLE_WEBPASSWORD": ("empty", ""),
     "PIHOLE_PERIPHERY_WEBPASSWORD": ("empty", ""),
     "HOMEPAGE_VAR_PIHOLE_TOKEN": ("empty", ""),
+    "HOMEPAGE_VAR_OMV_USERNAME": ("empty", ""),
+    "HOMEPAGE_VAR_OMV_PASSWORD": ("empty", ""),
     "HOMEPAGE_VAR_JELLYFIN_KEY": ("empty", ""),
     "HOMEPAGE_VAR_SONARR_KEY": ("empty", ""),
     "HOMEPAGE_VAR_RADARR_KEY": ("empty", ""),
