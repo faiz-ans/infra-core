@@ -155,8 +155,30 @@
   min-width: 0 !important;
 }
 
-/* Mobile (Apps single-column below Tailwind md): icon + value only */
+/* Mobile (Apps single-column below Tailwind md) */
 @media (max-width: 767px) {
+  /* Search on its own row under datetime / weather / tabs */
+  #information-widgets-right {
+    flex-wrap: wrap !important;
+    row-gap: 0.5rem;
+  }
+
+  #information-widgets-right .information-widget-datetime {
+    margin-right: auto;
+  }
+
+  #information-widgets-right .information-widget-search {
+    flex: 0 0 100% !important;
+    width: 100% !important;
+    max-width: 100%;
+    order: 5;
+  }
+
+  #information-widgets-right .information-widget-search .my-4 {
+    margin-block: 0.25rem !important;
+  }
+
+  /* Glances: icon + value only */
   #widgets-wrap > .information-widget-glances .information-widget-resource .pr-1 {
     display: none !important;
   }
