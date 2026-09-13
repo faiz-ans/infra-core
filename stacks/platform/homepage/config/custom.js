@@ -21,6 +21,8 @@
   };
 
   const FLIP_FADE_MS = 400;
+  // Match Homepage service-stats: transition-all duration-300 ease-in-out
+  const FLIP_SIZE_MS = 300;
 
   const TAB_BY_ID = {
     "Apps-tab": "Apps",
@@ -316,6 +318,18 @@
     }
   }
 
+  function styleGlancesInfoBoxes() {
+    document.querySelectorAll(".service-container.chart").forEach((el) => {
+      // Same dark box as service-block widgets
+      el.classList.add(
+        "bg-theme-200/50",
+        "dark:bg-theme-900/20",
+        "rounded-sm",
+        "m-1",
+      );
+    });
+  }
+
   function applyFlipGroup(group, { fadeIn = false } = {}) {
     const items = resolveFlipItems(group);
     if (items.length < 2) return;
@@ -382,7 +396,10 @@
     try {
       const currentId = getFlipNodeId(group);
       const current = items.find((x) => x.node.id === currentId) || items[0];
-      const next = nextFlipNode(group, current.node.id);
+      const nextNode = nextFlipNode(group, current.node.id);
+      const next = items.find((x) => x.node.id === nextNode.id) || items[0];
+      const curCard = current.li.querySelector(".service-card");
+      const fromH = curCard ? curCard.getBoundingClientRect().height : 0;
       const outWidget = getWidgetRoot(current.li);
 
       if (outWidget) {
@@ -393,9 +410,29 @@
         await wait(FLIP_FADE_MS);
       }
 
-      setFlipNodeId(group, next.id);
+      setFlipNodeId(group, nextNode.id);
       applyFlipGroup(group, { fadeIn: true });
-      await wait(FLIP_FADE_MS);
+      styleGlancesInfoBoxes();
+
+      const nextCard = next.li.querySelector(".service-card");
+      if (nextCard && fromH > 0) {
+        // Measure natural height, then animate from previous tile size
+        // (same timing curve as status → service-stats expand).
+        nextCard.style.transition = "none";
+        nextCard.style.height = "auto";
+        nextCard.style.overflow = "hidden";
+        const toH = nextCard.getBoundingClientRect().height;
+        nextCard.style.height = `${fromH}px`;
+        void nextCard.offsetHeight;
+        nextCard.style.transition = `height ${FLIP_SIZE_MS}ms ease-in-out`;
+        nextCard.style.height = `${toH}px`;
+        await wait(Math.max(FLIP_FADE_MS, FLIP_SIZE_MS));
+        nextCard.style.height = "";
+        nextCard.style.overflow = "";
+        nextCard.style.transition = "";
+      } else {
+        await wait(FLIP_FADE_MS);
+      }
     } finally {
       flipAnimating = false;
     }
@@ -407,6 +444,7 @@
     syncGlancesStacked();
     syncDatetimeWrapComma();
     ensureFooterControls();
+    styleGlancesInfoBoxes();
     // Don't clobber mid-flip widget opacity / active card.
     if (!flipAnimating) enhanceFlipGroups();
   }

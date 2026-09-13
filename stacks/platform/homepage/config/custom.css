@@ -243,8 +243,10 @@ html.glances-anim #widgets-wrap > .information-widget-glances {
   position: relative !important;
   height: auto !important;
   min-height: 0 !important;
-  margin: 0.35rem 0 0 !important; /* ≈ service-block m-1 + p-1 below title */
-  padding: 0 0.5rem 0.2rem !important;
+  /* Box chrome matches service-block (bg/rounded/m-1 added in custom.js) */
+  margin: 0.25rem !important;
+  padding: 0.25rem 0.5rem !important;
+  border-radius: 0.125rem !important;
   display: flex !important;
   flex-direction: column !important;
   align-items: flex-start !important;
@@ -344,19 +346,15 @@ html.glances-anim #widgets-wrap > .information-widget-glances {
   grid-column: 1 / -1;
 }
 
-/* Flip pairs (Glances / Pi-hole): inactive tile must leave the layout
-   (visibility:hidden still reserved space and caused large gaps). */
-li.service.homepage-flip-member .service-card {
-  transition: none !important;
-}
-
+/* Flip pairs (Glances / Pi-hole): inactive tile leaves the layout.
+   Height is animated inline on flip (same 300ms ease-in-out as service-stats). */
 li.service.homepage-flip-hidden {
   display: none !important;
 }
 
 /* Widget-info only fade on flip */
 li.service.homepage-flip-member .service-container.homepage-flip-widget {
-  transition: opacity 0.3s ease;
+  transition: opacity 0.4s ease;
 }
 
 /* Flip + status in one top-aligned row; hit box matches Status dot
