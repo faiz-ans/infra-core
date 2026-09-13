@@ -51,7 +51,7 @@ services:
       IDP_DOMAIN: auth.${DOMAIN}
       OC_OIDC_ISSUER: https://auth.${DOMAIN}
       WEB_OIDC_CLIENT_ID: opencloud
-      WEB_OIDC_SCOPE: openid profile email groups offline_access
+      WEB_OIDC_SCOPE: openid profile email groups
       PROXY_OIDC_ACCESS_TOKEN_VERIFY_METHOD: jwt
       PROXY_OIDC_REWRITE_WELLKNOWN: "true"
       PROXY_AUTOPROVISION_ACCOUNTS: "true"
@@ -66,7 +66,7 @@ services:
       GRAPH_ASSIGN_DEFAULT_USER_ROLE: "false"
       GRAPH_USERNAME_MATCH: none
       WEBFINGER_WEB_OIDC_CLIENT_ID: opencloud
-      WEBFINGER_WEB_OIDC_CLIENT_SCOPES: openid profile email groups offline_access
+      WEBFINGER_WEB_OIDC_CLIENT_SCOPES: openid profile email groups
       WEBFINGER_ANDROID_OIDC_CLIENT_ID: opencloud-android
       WEBFINGER_ANDROID_OIDC_CLIENT_SCOPES: openid profile email groups offline_access
       WEBFINGER_IOS_OIDC_CLIENT_ID: opencloud-ios
