@@ -257,20 +257,6 @@ html.glances-anim #widgets-wrap > .information-widget-glances {
   pointer-events: auto !important;
 }
 
-@keyframes homepage-glances-copy-blink {
-  0%,
-  100% {
-    opacity: 1;
-  }
-  40% {
-    opacity: 0.2;
-  }
-}
-
-.service-container.chart.homepage-glances-copied {
-  animation: homepage-glances-copy-blink 0.35s ease-in-out 2;
-}
-
 /* Gradient background + layout spacers */
 .service-container.chart > .h-\[68px\],
 .service-container.chart > div.absolute.\-top-10,
@@ -359,6 +345,21 @@ html.glances-anim #widgets-wrap > .information-widget-glances {
   overflow: hidden;
   text-overflow: ellipsis;
   font-weight: 400 !important;
+}
+
+/* Brief blink on copy — same flash the flip used to cause on the tile */
+@keyframes homepage-glances-click-blink {
+  0%,
+  100% {
+    opacity: 1;
+  }
+  45% {
+    opacity: 0.15;
+  }
+}
+
+li.service .service-card.homepage-glances-click-blink {
+  animation: homepage-glances-click-blink 0.35s ease;
 }
 
 /* Flip pairs (Glances / Pi-hole): inactive tile leaves the layout.

@@ -338,10 +338,11 @@
         );
       });
       // Hash (last OS-row field) keeps normal weight
-      el.querySelectorAll(".bottom-3.left-2 > div:last-child").forEach((hash) => {
+      const hash = el.querySelector(".bottom-3.left-2 > div:last-child");
+      if (hash) {
         hash.classList.remove("font-thin");
         hash.classList.add("font-normal");
-      });
+      }
       ensureGlancesCopy(el);
     });
   }
@@ -378,16 +379,19 @@
       e.stopPropagation();
       const text = glancesInfoCopyText(el);
       if (!text) return;
+
+      // Same brief tile blink the flip used to trigger (opacity flash)
+      const card = el.closest(".service-card");
+      if (card) {
+        card.classList.remove("homepage-glances-click-blink");
+        void card.offsetWidth;
+        card.classList.add("homepage-glances-click-blink");
+      }
+
       try {
         await navigator.clipboard.writeText(text);
-        el.classList.remove("homepage-glances-copied");
-        void el.offsetWidth; // restart animation if clicked again quickly
-        el.classList.add("homepage-glances-copied");
         el.setAttribute("title", "Copied");
-        setTimeout(() => {
-          el.classList.remove("homepage-glances-copied");
-          el.setAttribute("title", "Copy system info");
-        }, 700);
+        setTimeout(() => el.setAttribute("title", "Copy system info"), 1200);
       } catch (_) {
         el.setAttribute("title", "Copy failed");
         setTimeout(() => el.setAttribute("title", "Copy system info"), 1200);
