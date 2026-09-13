@@ -181,6 +181,25 @@
                 url: http://glances:61208
                 version: 4
                 metric: info
+        - Scrutiny:
+            href: https://disks.{{HOMEPAGE_VAR_DOMAIN}}
+            server: core
+            container: scrutiny
+            icon: scrutiny.svg
+            description: Disk SMART
+            widget:
+                type: scrutiny
+                url: http://scrutiny:8080
+        - Uptime Kuma:
+            href: https://up.{{HOMEPAGE_VAR_DOMAIN}}
+            server: core
+            container: uptime-kuma
+            icon: uptime-kuma.svg
+            description: Service Monitor
+            widget:
+                type: uptimekuma
+                url: http://uptime-kuma:3001
+                slug: home
         - Grafana:
             href: https://site.{{HOMEPAGE_VAR_DOMAIN}}
             server: periphery
@@ -240,6 +259,12 @@
                 - queries
                 - blocked_percent
                 - gravity
+        - Caddy:
+            href: https://traffic.{{HOMEPAGE_VAR_DOMAIN}}
+            server: core
+            container: caddymanager-frontend
+            icon: caddy.svg
+            description: Traffic Manager
         - WireGuard:
             href: https://vpn.{{HOMEPAGE_VAR_DOMAIN}}
             server: core

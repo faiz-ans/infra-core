@@ -7,7 +7,15 @@ services:
       TZ: ${TZ}
       RESTIC_REPOSITORY: rest:http://${RESTIC_REST_USER}:${RESTIC_REST_PASSWORD}@${HTPC_UPSTREAM}:8000/core
       RESTIC_PASSWORD: ${RESTIC_PASSWORD}
+      UPTIME_KUMA_PUSH_URL: ${UPTIME_KUMA_PUSH_URL:-}
     volumes:
       - ${DATA_ROOT}:/data:ro
       - ./backup.sh:/backup.sh:ro
     entrypoint: ["/bin/sh", "/backup.sh"]
+    networks:
+      - edge
+
+networks:
+  edge:
+    external: true
+    name: edge

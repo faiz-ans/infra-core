@@ -84,6 +84,18 @@ phase = "full"
 server = "core"
 phase = "full"
 
+[stacks.scrutiny]
+server = "core"
+phase = "full"
+
+[stacks.uptime-kuma]
+server = "core"
+phase = "full"
+
+[stacks.caddymanager]
+server = "core"
+phase = "full"
+
 [stacks.restic]
 server = "core"
 phase = "full"

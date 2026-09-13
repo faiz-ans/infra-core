@@ -64,6 +64,10 @@ mkdir -p \
   "${DATA_ROOT}/system/linkding" \
   "${DATA_ROOT}/system/rustdesk" \
   "${DATA_ROOT}/system/bytestash" \
+  "${DATA_ROOT}/system/scrutiny/config" \
+  "${DATA_ROOT}/system/scrutiny/influxdb" \
+  "${DATA_ROOT}/system/uptime-kuma" \
+  "${DATA_ROOT}/system/caddymanager" \
   "${DATA_ROOT}/users"
 
 if [[ "${HAVE_HTPC}" -eq 1 ]]; then

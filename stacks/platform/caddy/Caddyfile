@@ -1,5 +1,10 @@
 {
 	email off
+	# Edge-only. Do not publish 2019 on the host. CaddyManager (experiment)
+	# talks to this API as http://caddy:2019. GitOps still owns this file.
+	admin 0.0.0.0:2019 {
+		origins caddy:2019 127.0.0.1:2019 localhost:2019
+	}
 }
 
 # Aliases 301 to the Homepage host. OIDC APP_URL / cookies / Authelia
@@ -548,7 +553,7 @@ https://down.{$DOMAIN} {
 # GRAFANA
 #--------------------------------
 
-https://monitor.{$DOMAIN}, https://grafana.{$DOMAIN}, https://stats.{$DOMAIN} {
+https://grafana.{$DOMAIN}, https://monitor.{$DOMAIN}, https://stats.{$DOMAIN} {
 	tls internal
 	redir https://site.{$DOMAIN}{uri} permanent
 }
@@ -571,6 +576,50 @@ https://metrics.{$DOMAIN} {
 	tls internal
 	import authelia_gate
 	reverse_proxy {$HTPC_UPSTREAM}:9090
+}
+
+#--------------------------------
+# SCRUTINY
+#--------------------------------
+
+https://scrutiny.{$DOMAIN} {
+	tls internal
+	redir https://disks.{$DOMAIN}{uri} permanent
+}
+
+https://disks.{$DOMAIN} {
+	tls internal
+	import authelia_gate
+	reverse_proxy scrutiny:8080
+}
+
+#--------------------------------
+# UPTIME KUMA
+#--------------------------------
+
+https://kuma.{$DOMAIN}, https://uptime.{$DOMAIN}, https://status.{$DOMAIN} {
+	tls internal
+	redir https://up.{$DOMAIN}{uri} permanent
+}
+
+https://up.{$DOMAIN} {
+	tls internal
+	reverse_proxy uptime-kuma:3001
+}
+
+#--------------------------------
+# CADDYMANAGER
+#--------------------------------
+
+https://caddymanager.{$DOMAIN} {
+	tls internal
+	redir https://traffic.{$DOMAIN}{uri} permanent
+}
+
+https://traffic.{$DOMAIN} {
+	tls internal
+	import authelia_gate
+	reverse_proxy caddymanager-frontend:80
 }
 
 #--------------------------------

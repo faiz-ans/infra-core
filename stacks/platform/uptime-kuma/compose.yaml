@@ -1,0 +1,19 @@
+# Uptime Kuma on Core. Always-on so HTPC downtime is visible.
+# Browser UI is https://up.<DOMAIN> through Caddy. Kuma owns its login;
+# /api/push/* stays ungated for restic and other push monitors.
+services:
+  uptime-kuma:
+    image: louislam/uptime-kuma:1
+    container_name: uptime-kuma
+    restart: unless-stopped
+    environment:
+      TZ: ${TZ}
+    volumes:
+      - ${DATA_ROOT}/system/uptime-kuma:/app/data
+    networks:
+      - edge
+
+networks:
+  edge:
+    external: true
+    name: edge

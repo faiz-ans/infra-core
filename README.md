@@ -19,7 +19,7 @@ A finished site matches this layout. Do not reintroduce `system/core` or `system
 
 ```
 ${DATA_ROOT}/
-  system/{authelia,vaultwarden,gitea,pihole,wireguard,restic,opencloud,jotty,linkding,rustdesk,bytestash}   # Core bind-mounts only
+  system/{authelia,vaultwarden,gitea,pihole,wireguard,restic,opencloud,jotty,linkding,rustdesk,bytestash,scrutiny,uptime-kuma,caddymanager}   # Core bind-mounts only
   shared/{media,downloads,files,photos,cameras}           # NFS /shared (files/ is OpenCloud; rest is HTPC/SMB)
   users/<user>/{files,photos}                             # NFS /users (OpenCloud Personal + photos-<user>)
 ```

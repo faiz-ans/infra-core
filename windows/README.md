@@ -3,3 +3,4 @@
 # ePSXe
 
 # Steam → AKL (installed games only): see steam-akl/README.md
+# HTPC USB SMART → Scrutiny on Core: see scrutiny-collector/README.md

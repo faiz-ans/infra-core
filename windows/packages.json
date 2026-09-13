@@ -10,7 +10,8 @@
         { "PackageIdentifier": "Mozilla.Firefox" },
         { "PackageIdentifier": "Valve.Steam" },
         { "PackageIdentifier": "DolphinEmulator.Dolphin" },
-        { "PackageIdentifier": "PCSX2.PCSX2" }
+        { "PackageIdentifier": "PCSX2.PCSX2" },
+        { "PackageIdentifier": "smartmontools.smartmontools" }
       ],
       "SourceDetails": {
         "Argument": "https://cdn.winget.microsoft.com/cache",

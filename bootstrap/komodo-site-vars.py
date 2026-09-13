@@ -82,6 +82,8 @@ KEY_MODE: dict[str, tuple[str, str]] = {
     "N8N_ENCRYPTION_KEY": ("generate", ""),
     "RESTIC_PASSWORD": ("generate", ""),
     "RESTIC_REST_PASSWORD": ("generate", ""),
+    "UPTIME_KUMA_PUSH_URL": ("empty", ""),
+    "CADDYMANAGER_JWT_SECRET": ("generate", ""),
     "GRAFANA_ADMIN_PASSWORD": ("generate", ""),
     "WG_UI_PASSWORD": ("generate", ""),
     "AUTHELIA_JWT_SECRET": ("generate", ""),

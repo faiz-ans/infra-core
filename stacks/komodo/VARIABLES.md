@@ -135,6 +135,26 @@ Frigate has no Komodo secret. The first start prints an admin password in `docke
 
 BentoPDF, IT Tools, and LibreTranslate have no Komodo secret. LibreTranslate models stay on a local HTPC volume, not NFS.
 
+## Disk SMART
+
+Scrutiny hub on Core has no Komodo secret. The HTPC USB collector is a Windows scheduled task (`windows/scrutiny-collector/`), not a Komodo stack.
+
+## Service monitoring
+
+| Key | Secret | Used by |
+|---|---|---|
+| `UPTIME_KUMA_PUSH_URL` | | Optional. Full Uptime Kuma push URL (restic pings it after a successful backup). Empty until you create the Push monitor. |
+
+Uptime Kuma has no other Komodo secret; the first browser visit creates the admin.
+
+## Caddy UI (experiment)
+
+| Key | Secret | Used by |
+|---|---|---|
+| `CADDYMANAGER_JWT_SECRET` | secret | CaddyManager session signing. Generated when you set `deploy = true` and re-run `sync-komodo-secrets.sh`. |
+
+GitOps still owns `stacks/platform/caddy/Caddyfile`. A Caddy Redeploy reloads that file and drops UI-only config changes.
+
 ## HTPC apps
 
 | Key | Secret | Used by |

@@ -86,7 +86,7 @@ A future single-host or Linux engine can point a stack at `compose.yaml` and a l
 
 SMB stays for Explorer/Finder. Map those shares as you like; they are not required for `compose.nfs.yaml`.
 
-Set `BACKUP_DRIVE` to the USB backup volume path as Docker Desktop sees it (Restic REST data). Not under `shared/media`.
+Set `BACKUP_DRIVE` to the USB backup volume path as Docker Desktop sees it (Restic REST data). Not under `shared/media`. SMART for that USB is the Windows collector in `windows/scrutiny-collector/` (not a Docker stack); see `bootstrap/scrutiny.md`.
 
 ## 3. Windows Firewall
 

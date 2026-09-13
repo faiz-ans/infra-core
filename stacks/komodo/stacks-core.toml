@@ -198,15 +198,74 @@ NAS_LAN_IP = [[NAS_LAN_IP]]
 # Off until restic-rest is on the IronWolf. Applying this now would crash-loop against :8000.
 
 [[stack]]
+name = "scrutiny"
+deploy = true
+after = ["caddy"]
+[stack.config]
+server = "core"
+repo = "faiz-ans/infra-core"
+branch = "main"
+run_directory = "stacks/platform/scrutiny"
+file_paths = ["compose.yaml"]
+webhook_enabled = false
+poll_for_updates = true
+environment = """
+TZ = [[TZ]]
+DATA_ROOT = [[DATA_ROOT]]
+NAS_LAN_IP = [[NAS_LAN_IP]]
+"""
+
+[[stack]]
+name = "uptime-kuma"
+deploy = true
+after = ["caddy"]
+[stack.config]
+server = "core"
+repo = "faiz-ans/infra-core"
+branch = "main"
+run_directory = "stacks/platform/uptime-kuma"
+file_paths = ["compose.yaml"]
+webhook_enabled = false
+poll_for_updates = true
+environment = """
+TZ = [[TZ]]
+DATA_ROOT = [[DATA_ROOT]]
+"""
+
+[[stack]]
+name = "caddymanager"
+deploy = false
+after = ["caddy"]
+[stack.config]
+server = "core"
+repo = "faiz-ans/infra-core"
+branch = "main"
+run_directory = "stacks/platform/caddymanager"
+file_paths = ["compose.yaml"]
+webhook_enabled = false
+poll_for_updates = true
+environment = """
+DOMAIN = [[DOMAIN]]
+TZ = [[TZ]]
+DATA_ROOT = [[DATA_ROOT]]
+CADDYMANAGER_JWT_SECRET = [[CADDYMANAGER_JWT_SECRET]]
+"""
+
+# Experiment. Leave deploy=false until you want a Caddy UI. GitOps still owns the Caddyfile.
+
+[[stack]]
 name = "restic"
 deploy = false
-after = ["vaultwarden"]
+after = ["vaultwarden", "uptime-kuma"]
 [stack.config]
 server = "core"
 repo = "faiz-ans/infra-core"
 branch = "main"
 run_directory = "stacks/platform/restic"
 file_paths = ["compose.yaml"]
+config_files = [
+  { path = "backup.sh", requires = "Redeploy" },
+]
 webhook_enabled = false
 poll_for_updates = true
 environment = """
@@ -216,4 +275,5 @@ HTPC_UPSTREAM = [[HTPC_UPSTREAM]]
 RESTIC_PASSWORD = [[RESTIC_PASSWORD]]
 RESTIC_REST_USER = [[RESTIC_REST_USER]]
 RESTIC_REST_PASSWORD = [[RESTIC_REST_PASSWORD]]
+UPTIME_KUMA_PUSH_URL = [[UPTIME_KUMA_PUSH_URL]]
 """
