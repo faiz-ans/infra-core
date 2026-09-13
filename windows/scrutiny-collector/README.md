@@ -2,7 +2,7 @@
 
 Docker Desktop can mount the USB backup volume as a filesystem (`BACKUP_DRIVE`) for Restic REST. It does **not** expose that disk to `smartctl` inside a Linux container. This spoke runs on Windows, talks to the Scrutiny hub on Core (`http://<NAS_LAN_IP>:8080`), and labels disks **periphery**.
 
-Hub first-run: [`bootstrap/scrutiny.md`](../../bootstrap/scrutiny.md).
+Hub first-run: [`bootstrap/first-run/scrutiny.md`](../../bootstrap/first-run/scrutiny.md).
 
 ## Files
 

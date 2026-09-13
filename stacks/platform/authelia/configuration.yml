@@ -35,6 +35,8 @@ access_control:
         - 'metrics.{{ env "DOMAIN" }}'
         - 'host.{{ env "DOMAIN" }}'
         - 'host2.{{ env "DOMAIN" }}'
+        - 'disks.{{ env "DOMAIN" }}'
+        - 'traffic.{{ env "DOMAIN" }}'
       subject: 'group:admins'
       policy: one_factor
     - domain: 'pass.{{ env "DOMAIN" }}'

@@ -1,6 +1,6 @@
 # Gitea on Core. SQLite is enough for this catalog. HTTP is Caddy-only (no Authelia
 # forward-auth: git clone/push and Komodo must not hit a login wall). Browser SSO is
-# Authelia OIDC (see bootstrap/gitea.md). Git over HTTPS via Caddy;
+# Authelia OIDC (see bootstrap/first-run/gitea.md). Git over HTTPS via Caddy;
 # in-container SSH is off (it crash-loops on this host and whites out Homepage).
 services:
   gitea:
@@ -34,7 +34,7 @@ services:
     volumes:
       - ${DATA_ROOT}/system/gitea:/data
       # File must exist before first start (Docker will otherwise create a directory).
-      # See bootstrap/gitea.md.
+      # See bootstrap/first-run/gitea.md.
       - ${DATA_ROOT}/system/authelia/caddy-root.crt:/etc/ssl/caddy/caddy-root.crt:ro
       - ./entrypoint-oidc.sh:/oidc-wrap.sh:ro
       - ./seed-oidc.sh:/seed-oidc.sh:ro

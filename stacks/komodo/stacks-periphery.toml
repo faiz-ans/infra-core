@@ -7,7 +7,7 @@
 # webhook_enabled is false; poll on-site.
 # Storage: /config is always a local volume. Household data: compose.yaml +
 # DATA_ROOT, or compose.nfs.yaml (this site). Do not list two transport files.
-# Docker Desktop: bootstrap/periphery-docker-engine.ps1 before applying.
+# Docker Desktop: bootstrap/periphery/periphery-docker-engine.ps1 before applying.
 
 [[stack]]
 name = "jellyfin"

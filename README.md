@@ -1,6 +1,6 @@
 # infra-core
 
-Public catalog, environment-agnostic. Site values (domain, IPs, disk paths, secrets, server names) live only in Komodo on-site. Stack-to-server placement is declared in [`stacks/komodo/topology.inc`](stacks/komodo/topology.inc) and generated into ResourceSync TOML. **Gitea on Core is origin**; GitHub is a push mirror (see [`bootstrap/gitea.md`](bootstrap/gitea.md)).
+Public catalog, environment-agnostic. Site values (domain, IPs, disk paths, secrets, server names) live only in Komodo on-site. Stack-to-server placement is declared in [`stacks/komodo/topology.inc`](stacks/komodo/topology.inc) and generated into ResourceSync TOML. **Gitea on Core is origin**; GitHub is a push mirror (see [`bootstrap/first-run/gitea.md`](bootstrap/first-run/gitea.md)).
 
 ## Layers
 
@@ -34,10 +34,10 @@ ${DATA_ROOT}/
 ## Bootstrap order (greenfield)
 
 1. **Topology:** edit `stacks/komodo/topology.inc`, regenerate TOML (`stacks/komodo/README.md`).
-2. Copy `bootstrap/` to Core; run `core.sh` as root. It runs **`data-root-prep.sh`** (system/ + empty users/ + OpenCloud dirs), not full household layout.
+2. Copy `bootstrap/` to Core; run `core.sh` as root. It runs **`data-root/data-root-prep.sh`** (system/ + empty users/ + OpenCloud dirs), not full household layout.
 3. Komodo: confirm `core`. ResourceSync path **`stacks/komodo/stacks-bootstrap.toml`** first (phase A: Caddy, Authelia, Pi-hole, Homepage, OpenCloud, Collabora, …). Homepage for a new site: copy `stacks/platform/homepage/config.seed/` → `config/` once (never overwrite a customized `config/`).
-4. OpenCloud greenfield: login (Personal = `users/<user>/files`) → Spaces **`shared`** and **`photos-<user>`** → publish binds → **`data-root-layout.sh`** → OMV SMB/NFS (`bootstrap/omv-nfs.md`). Details: [`bootstrap/opencloud.md`](bootstrap/opencloud.md). Check: `bootstrap/opencloud-check.sh`.
-5. Periphery host: [`bootstrap/periphery.md`](bootstrap/periphery.md). Then ResourceSync **`stacks-core.toml`** + **`stacks-periphery.toml`** (phase B). First HTPC bring-up: Deploy one stack at a time (`deploy = false` in periphery fragments). Authelia SSO: [`bootstrap/authelia.md`](bootstrap/authelia.md). Other apps: matching files under `bootstrap/`.
+4. OpenCloud greenfield: login (Personal = `users/<user>/files`) → Spaces **`shared`** and **`photos-<user>`** → publish binds → **`data-root/data-root-layout.sh`** → OMV SMB/NFS (`bootstrap/omv/README.md`). Details: [`bootstrap/first-run/opencloud.md`](bootstrap/first-run/opencloud.md). Check: `bootstrap/opencloud/opencloud-check.sh`.
+5. Periphery host: [`bootstrap/periphery/README.md`](bootstrap/periphery/README.md). Then ResourceSync **`stacks-core.toml`** + **`stacks-periphery.toml`** (phase B). First HTPC bring-up: Deploy one stack at a time (`deploy = false` in periphery fragments). Authelia SSO: [`bootstrap/first-run/authelia.md`](bootstrap/first-run/authelia.md). Other apps: [`bootstrap/first-run/`](bootstrap/first-run/).
 
 Existing site: add the bootstrap TOML path without reshuffling stack names ([`stacks/komodo/README.md`](stacks/komodo/README.md) migration). Park scripts remain for non-empty disks.
 

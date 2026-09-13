@@ -45,5 +45,5 @@ Add a ResourceSync resource path for `stacks/komodo/stacks-bootstrap.toml` (same
 
 1. Enable it in `topology.inc` (and set `deploy = true` in `fragments/<name>.inc` if it was cold).
 2. `python3 stacks/komodo/generate-stacks.py`
-3. On Core: `sudo bash bootstrap/sync-komodo-secrets.sh` (prompts/generates only **new** keys; no Komodo UI)
+3. On Core: `sudo bash bootstrap/komodo/sync-komodo-secrets.sh` (prompts/generates only **new** keys; no Komodo UI)
 4. Recreate Komodo Core compose so `[secrets]` reload; Redeploy the new stack.

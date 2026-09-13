@@ -1,5 +1,5 @@
 # OIDC needs ${DATA_ROOT}/system/authelia/oidc.pem and client_secret_digest
-# (bootstrap/authelia-oidc.sh or core.sh). users.yml is faiz + diana.
+# (bootstrap/komodo/authelia-oidc.sh or core.sh). users.yml is faiz + diana.
 services:
   authelia:
     image: authelia/authelia:4

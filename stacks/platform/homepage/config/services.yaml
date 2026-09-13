@@ -186,7 +186,7 @@
             server: core
             container: scrutiny
             icon: scrutiny.svg
-            description: Disk SMART
+            description: Disk Monitor
             widget:
                 type: scrutiny
                 url: http://scrutiny:8080
@@ -200,18 +200,18 @@
                 type: uptimekuma
                 url: http://uptime-kuma:3001
                 slug: home
-        - Grafana:
-            href: https://site.{{HOMEPAGE_VAR_DOMAIN}}
-            server: periphery
-            container: grafana
-            icon: grafana.svg
-            description: Site Monitor
         - Prometheus:
             href: https://metrics.{{HOMEPAGE_VAR_DOMAIN}}
             server: periphery
             container: prometheus
             icon: prometheus.svg
             description: Metrics
+        - Grafana:
+            href: https://site.{{HOMEPAGE_VAR_DOMAIN}}
+            server: periphery
+            container: grafana
+            icon: grafana.svg
+            description: Site Monitor
 
     - Platform:
         - Komodo:

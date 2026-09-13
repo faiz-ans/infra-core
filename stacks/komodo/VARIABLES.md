@@ -1,11 +1,11 @@
 ## Site secrets (topology-driven)
 
-`bootstrap/core.sh` and `bootstrap/sync-komodo-secrets.sh` write Komodo `[secrets]` from **enabled topology stacks** (and always-on Caddy / Authelia / Pi-hole / OpenCloud). Keys for stacks with `deploy = false` in their fragment are skipped until you enable Deploy and re-run sync.
+`bootstrap/core.sh` and `bootstrap/komodo/sync-komodo-secrets.sh` write Komodo `[secrets]` from **enabled topology stacks** (and always-on Caddy / Authelia / Pi-hole / OpenCloud). Keys for stacks with `deploy = false` in their fragment are skipped until you enable Deploy and re-run sync.
 
 After adding a stack to `topology.inc` and regenerating TOML:
 
 ```bash
-sudo bash bootstrap/sync-komodo-secrets.sh
+sudo bash bootstrap/komodo/sync-komodo-secrets.sh
 # recreate Komodo Core so it reloads [secrets]
 ```
 
@@ -17,7 +17,7 @@ Mark items tagged **secret** as secrets in Komodo when inspecting the file.
 
 | Key | Secret | Used by |
 |---|---|---|
-| `CATALOG_REPO` | | Informational. Catalog git path is `faiz-ans/infra-core`. Stacks clone GitHub; ResourceSync Selects the Komodo Repo named `infra-core`. After Gitea is origin, set that Repo’s git provider to `gitea:3000` (see `bootstrap/gitea.md`). |
+| `CATALOG_REPO` | | Informational. Catalog git path is `faiz-ans/infra-core`. Stacks clone GitHub; ResourceSync Selects the Komodo Repo named `infra-core`. After Gitea is origin, set that Repo’s git provider to `gitea:3000` (see `bootstrap/first-run/gitea.md`). |
 | `CORE_SERVER` | | Bootstrap `connect_as` / first server. Must match TOML `server = "core"` and the Core OS hostname (Pi-hole `host-record` for SSH/SMB short name). |
 | `PERIPHERY_SERVER` | | Remote Periphery `connect_as`. Must match TOML `server = "periphery"` |
 | `DOMAIN` | | Caddy, Authelia, Pi-hole, Homepage, Vaultwarden public URL |
@@ -45,7 +45,7 @@ Mark items tagged **secret** as secrets in Komodo when inspecting the file.
 | `PIHOLE_WEBPASSWORD` | secret | Core Pi-hole web/API password (`FTLCONF_webserver_api_password`). Empty disables the login page. |
 | `PIHOLE_PERIPHERY_WEBPASSWORD` | secret | HTPC Pi-hole web/API password. Empty disables the login page. |
 
-Authelia user hashes live in `${DATA_ROOT}/system/authelia/users.yml` on the NAS (written by bootstrap / `bootstrap/authelia-oidc.sh`), not in Komodo. Users are `faiz` (groups `admins` + `users`) and `diana` (group `users`). OIDC JWKS and the client-secret digest are `${DATA_ROOT}/system/authelia/oidc.pem` and `client_secret_digest`. See `bootstrap/authelia.md`.
+Authelia user hashes live in `${DATA_ROOT}/system/authelia/users.yml` on the NAS (written by bootstrap / `bootstrap/komodo/authelia-oidc.sh`), not in Komodo. Users are `faiz` (groups `admins` + `users`) and `diana` (group `users`). OIDC JWKS and the client-secret digest are `${DATA_ROOT}/system/authelia/oidc.pem` and `client_secret_digest`. See `bootstrap/first-run/authelia.md`.
 
 ## Vaultwarden
 

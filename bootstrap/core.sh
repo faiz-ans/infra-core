@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 # Core host Layer 0 bootstrap. Copy the bootstrap/ directory to the Core machine
-# (core.sh, omv-nfs.sh, data-root-prep.sh, data-root-layout.sh, komodo/) and run as root:
+# (core.sh plus core/, data-root/, omv/, opencloud/, komodo/) and run as root:
 #   sudo bash core.sh
 # Every live command is also shown in a nearby comment for copy-paste.
 #
@@ -59,8 +59,8 @@ save_answers() {
 }
 
 # Topology-driven secrets (after prompt/rand/quote_s exist).
-# shellcheck source=komodo-secrets.sh
-source "${SCRIPT_DIR}/komodo-secrets.sh"
+# shellcheck source=komodo/komodo-secrets.sh
+source "${SCRIPT_DIR}/komodo/komodo-secrets.sh"
 
 save_state() {
   local old
@@ -445,8 +445,8 @@ save_answers
 
 # Pin NAS_LAN_IP on the uplink. Router DHCP reservation is not enough
 # (USB 2.5G NIC can link without a lease). Same IP as the live session.
-# sudo NAS_LAN_IP=192.168.1.110 bash bootstrap/core-lan-static.sh
-bash "${SCRIPT_DIR}/core-lan-static.sh"
+# sudo NAS_LAN_IP=192.168.1.110 bash bootstrap/core/core-lan-static.sh
+bash "${SCRIPT_DIR}/core/core-lan-static.sh"
 
 # --- Docker ---
 if ! command -v docker >/dev/null 2>&1; then
@@ -458,24 +458,24 @@ if ! command -v docker >/dev/null 2>&1; then
 fi
 
 # Cap container json-file logs on the OS disk (/var/lib/docker). DATA_ROOT is separate.
-# sudo bash bootstrap/core-docker-engine.sh
-bash "${SCRIPT_DIR}/core-docker-engine.sh"
+# sudo bash bootstrap/core/core-docker-engine.sh
+bash "${SCRIPT_DIR}/core/core-docker-engine.sh"
 
 # Host-network WireGuard NAT + IPv6 off (AAAA timeouts on dual-NIC boards).
-# sudo bash bootstrap/core-net.sh
-bash "${SCRIPT_DIR}/core-net.sh"
+# sudo bash bootstrap/core/core-net.sh
+bash "${SCRIPT_DIR}/core/core-net.sh"
 
 # LAN :53 REDIRECT to Pi-hole on 127.0.0.1:15353; Docker starts without wait-online.
-# sudo bash bootstrap/core-lan-bind.sh
-bash "${SCRIPT_DIR}/core-lan-bind.sh"
+# sudo bash bootstrap/core/core-lan-bind.sh
+bash "${SCRIPT_DIR}/core/core-lan-bind.sh"
 
 # PosixFS assimilate timer (SMB/NFS → OpenCloud). No-op until opencloud is up.
-# sudo bash bootstrap/opencloud-posix-scan.sh
-bash "${SCRIPT_DIR}/opencloud-posix-scan.sh"
+# sudo bash bootstrap/opencloud/opencloud-posix-scan.sh
+bash "${SCRIPT_DIR}/opencloud/opencloud-posix-scan.sh"
 
 # X1509 12V PWM cage fan (max of CPU and HDD). May ask for a reboot.
-# sudo bash bootstrap/core-fan.sh
-bash "${SCRIPT_DIR}/core-fan.sh"
+# sudo bash bootstrap/core/core-fan.sh
+bash "${SCRIPT_DIR}/core/core-fan.sh"
 
 # --- DATA_ROOT tree ---
 # Core app state under system/<app>. Periphery /config is local on the HTPC.
@@ -701,19 +701,19 @@ for _ in $(seq 1 60); do
 done
 
 # --- NFS: shared/ and users/ only (HTPC Docker). Do not export system/. ---
-if command -v omv-rpc >/dev/null 2>&1 && [[ -f "${REPO_BOOTSTRAP}/omv-nfs.sh" ]]; then
+if command -v omv-rpc >/dev/null 2>&1 && [[ -f "${REPO_BOOTSTRAP}/omv/omv-nfs.sh" ]]; then
   echo "Exporting shared/ and users/ over NFS to ${HTPC_UPSTREAM}."
-  # sudo HTPC_IP=<HTPC> DATA_ROOT=<DATA_ROOT> bash bootstrap/omv-nfs.sh
-  HTPC_IP="${HTPC_UPSTREAM}" DATA_ROOT="${DATA_ROOT}" bash "${REPO_BOOTSTRAP}/omv-nfs.sh"
+  # sudo HTPC_IP=<HTPC> DATA_ROOT=<DATA_ROOT> bash bootstrap/omv/omv-nfs.sh
+  HTPC_IP="${HTPC_UPSTREAM}" DATA_ROOT="${DATA_ROOT}" bash "${REPO_BOOTSTRAP}/omv/omv-nfs.sh"
 else
-  echo "OMV NFS skipped (no omv-rpc). For HTPC compose.nfs.yaml, follow bootstrap/omv-nfs.md."
+  echo "OMV NFS skipped (no omv-rpc). For HTPC compose.nfs.yaml, follow bootstrap/omv/README.md."
 fi
 
 # --- Thin prep (system/ + empty users/ + OpenCloud dirs). Full shared layout is
-# data-root-layout.sh after OpenCloud publish (greenfield). See bootstrap/opencloud.md. ---
-if [[ -f "${REPO_BOOTSTRAP}/data-root-prep.sh" ]]; then
-  # sudo DATA_ROOT=<DATA_ROOT> bash bootstrap/data-root-prep.sh
-  DATA_ROOT="${DATA_ROOT}" bash "${REPO_BOOTSTRAP}/data-root-prep.sh"
+# data-root-layout.sh after OpenCloud publish (greenfield). See bootstrap/first-run/opencloud.md. ---
+if [[ -f "${REPO_BOOTSTRAP}/data-root/data-root-prep.sh" ]]; then
+  # sudo DATA_ROOT=<DATA_ROOT> bash bootstrap/data-root/data-root-prep.sh
+  DATA_ROOT="${DATA_ROOT}" bash "${REPO_BOOTSTRAP}/data-root/data-root-prep.sh"
 fi
 
 # --- Authelia users file (hash via official image) ---
@@ -775,7 +775,7 @@ echo
 echo "Create a Komodo Repo (leave Server empty), then a ResourceSync (webhooks disabled):"
 echo "  Repo name:       infra-core   (must match topology.inc linked_repo)"
 echo "  repo:            faiz-ans/infra-core"
-echo "  git provider:    GitHub until Gitea exists, then gitea:3000 (see bootstrap/gitea.md)"
+echo "  git provider:    GitHub until Gitea exists, then gitea:3000 (see bootstrap/first-run/gitea.md)"
 echo "  branch:          main"
 echo "  ResourceSync:    Select Repo → infra-core"
 echo "  resource path:   stacks/komodo/stacks-bootstrap.toml  (phase A)"
@@ -793,20 +793,20 @@ echo "  NFS exports /shared and /users to the HTPC IP only (not a LAN /24, not d
 echo "  Komodo NFS_EXPORT=/shared NFS_USERS=/users"
 echo "  HTPC /config is a local Docker volume; media/photos/cameras stay on NFS; OpenCloud on Core uses local binds."
 echo "  After ResourceSync deploys caddy, it writes system/authelia/caddy-root.crt (Gitea/Komodo TLS)."
-echo "  Core Docker log caps: /etc/docker/daemon.json (core-docker-engine.sh). Recreate containers after first apply."
-echo "  HTPC: bootstrap/periphery-docker-engine.ps1 (pools + logs + DiskSizeMiB); Deploy periphery stacks one at a time first."
-echo "  Cage fan: sudo bash bootstrap/core-fan.sh (PWM from max CPU/HDD; see bootstrap/core-fan.md)."
+echo "  Core Docker log caps: /etc/docker/daemon.json (bootstrap/core/core-docker-engine.sh). Recreate containers after first apply."
+echo "  HTPC: bootstrap/periphery/periphery-docker-engine.ps1 (pools + logs + DiskSizeMiB); Deploy periphery stacks one at a time first."
+echo "  Cage fan: sudo bash bootstrap/core/core-fan.sh (PWM from max CPU/HDD; see bootstrap/core/core-fan.md)."
 echo "  After reboot: core-lan-bind.service REDIRECTs NAS_LAN_IP:53 to 127.0.0.1:15353. Host DNS is 127.0.0.1:15353 (not the LAN REDIRECT)."
 echo "  OpenCloud SMB/NFS assimilate: opencloud-posix-scan.timer (posixfs scan users/*/files and /posix/projects)."
 echo "  Core LAN IPv4 is static ${NAS_LAN_IP} (core-lan-static.sh). Do not depend on a router DHCP reservation for the NAS address."
-echo "  First-run: bootstrap/authelia.md, bootstrap/vaultwarden.md, bootstrap/opencloud.md, bootstrap/immich.md, bootstrap/jotty.md, bootstrap/linkding.md, bootstrap/rustdesk.md, bootstrap/adventurelog.md, bootstrap/scriberr.md, bootstrap/frigate.md, bootstrap/transmute.md, bootstrap/bentopdf.md, bootstrap/libretranslate.md, bootstrap/openreader.md, bootstrap/it-tools.md, bootstrap/n8n.md, bootstrap/bytestash.md, bootstrap/glances.md."
+echo "  First-run: bootstrap/first-run/ (one markdown file per app)."
 echo "  Pi-hole stack names: pihole (Core) and pihole-periphery (HTPC)."
 echo "  Router DHCP DNS: ${NAS_LAN_IP} first, then ${HTPC_UPSTREAM}. No public resolver as a third server."
 echo "  Each Pi-hole fetches its own Gravity."
 echo
 echo "Komodo [secrets] were written to ${KOMODO_DIR}/core.config.toml (topology-filtered)."
-echo "After adding stacks to topology.inc: sudo bash bootstrap/sync-komodo-secrets.sh"
+echo "After adding stacks to topology.inc: sudo bash bootstrap/komodo/sync-komodo-secrets.sh"
 echo "Homepage widget API keys stay empty until you set them via sync or answers (not the Komodo UI)."
-echo "Follow bootstrap/periphery.md on the HTPC (Docker Desktop engine script, firewall, Periphery env)."
+echo "Follow bootstrap/periphery/README.md on the HTPC (Docker Desktop engine script, firewall, Periphery env)."
 echo
 echo "Done."
