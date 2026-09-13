@@ -208,10 +208,10 @@
             container: uptime-kuma
             icon: uptime-kuma.svg
             description: Service Monitor
-            widget:
-                type: uptimekuma
-                url: http://uptime-kuma:3001
-                slug: home
+            #widget:
+            #    type: uptimekuma
+            #    url: http://uptime-kuma:3001
+            #    slug: home
         - Prometheus:
             href: https://metrics.{{HOMEPAGE_VAR_DOMAIN}}
             server: periphery

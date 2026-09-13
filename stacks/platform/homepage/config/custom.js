@@ -15,9 +15,9 @@
       '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 -960 960 960" fill="currentColor" class="text-theme-800 dark:text-theme-200 w-6 h-6 cursor-pointer" aria-hidden="true"><path d="M160-160v-440h160v440H160Zm240 0v-400l160 160v240H400Zm160-354L400-674v-126h160v286Zm240 240L640-434v-6h160v166Zm-9 219L55-791l57-57 736 736-57 57Z"/></svg>',
     ArrowUpward:
       '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" class="text-theme-800 dark:text-theme-200 w-6 h-6 cursor-pointer" aria-hidden="true"><path d="M4 12l1.41 1.41L11 7.83V20h2V7.83l5.58 5.59L20 12l-8-8z"/></svg>',
-    // Material Symbols Outlined "flip" — sized like statusStyle:dot (h-3 w-3)
+    // Material Symbols Outlined "flip"
     Flip:
-      '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 -960 960 960" width="12" height="12" fill="currentColor" aria-hidden="true"><path d="M360-120H200q-33 0-56.5-23.5T120-200v-560q0-33 23.5-56.5T200-840h160v80H200v560h160v80Zm80 80v-880h80v880h-80Zm160-80v-80h80v80h-80Zm0-640v-80h80v80h-80Zm160 640v-80h80q0 33-23.5 56.5T760-120Zm0-160v-80h80v80h-80Zm0-160v-80h80v80h-80Zm0-160v-80h80v80h-80Zm0-160v-80q33 0 56.5 23.5T840-760h-80Z"/></svg>',
+      '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 -960 960 960" width="18" height="18" fill="currentColor" aria-hidden="true"><path d="M360-120H200q-33 0-56.5-23.5T120-200v-560q0-33 23.5-56.5T200-840h160v80H200v560h160v80Zm80 80v-880h80v880h-80Zm160-80v-80h80v80h-80Zm0-640v-80h80v80h-80Zm160 640v-80h80q0 33-23.5 56.5T760-120Zm0-160v-80h80v80h-80Zm0-160v-80h80v80h-80Zm0-160v-80h80v80h-80Zm0-160v-80q33 0 56.5 23.5T840-760h-80Z"/></svg>',
   };
 
   const FLIP_FADE_MS = 200;
@@ -316,12 +316,11 @@
 
     const currentId = getFlipNodeId(group);
     const current = items.find((x) => x.node.id === currentId) || items[0];
-    const area = `homepage-flip-${group.id}`;
 
     for (const { node, li } of items) {
       const active = node.id === current.node.id;
       li.classList.add("homepage-flip-member");
-      li.style.gridArea = area;
+      li.style.removeProperty("grid-area");
       li.classList.toggle("homepage-flip-hidden", !active);
       li.classList.toggle("homepage-flip-active", active);
 

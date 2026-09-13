@@ -252,26 +252,14 @@ html.glances-anim #widgets-wrap > .information-widget-glances {
   top: 0.25rem !important;
 }
 
-/* Flip pairs (Glances / Pi-hole): stack in one grid cell; hide inactive without display:none
-   so the tile doesn't blink/reflow. Kill Homepage's transition-all on these cards. */
-li.service.homepage-flip-member {
-  position: relative;
-}
-
+/* Flip pairs (Glances / Pi-hole): inactive tile must leave the layout
+   (visibility:hidden still reserved space and caused large gaps). */
 li.service.homepage-flip-member .service-card {
   transition: none !important;
 }
 
 li.service.homepage-flip-hidden {
-  visibility: hidden !important;
-  pointer-events: none !important;
-  z-index: 0 !important;
-}
-
-li.service.homepage-flip-active {
-  visibility: visible !important;
-  pointer-events: auto !important;
-  z-index: 1 !important;
+  display: none !important;
 }
 
 /* Widget-info only fade on flip */
