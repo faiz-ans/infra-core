@@ -181,6 +181,18 @@
                 url: http://glances:61208
                 version: 4
                 metric: info
+        # Paired with Glances — custom.js flip button shows one at a time.
+        - Glances HTPC:
+            href: https://host2.{{HOMEPAGE_VAR_DOMAIN}}
+            server: periphery
+            container: glances-periphery
+            icon: glances.svg
+            description: Host Monitor
+            widget:
+                type: glances
+                url: http://{{HOMEPAGE_VAR_HTPC_UPSTREAM}}:61208
+                version: 4
+                metric: info
         - Scrutiny:
             href: https://disks.{{HOMEPAGE_VAR_DOMAIN}}
             server: core
@@ -255,6 +267,22 @@
                 url: http://pihole
                 version: 6
                 key: "{{HOMEPAGE_VAR_PIHOLE_TOKEN}}"
+                fields:
+                - queries
+                - blocked_percent
+                - gravity
+        # Paired with Pi-hole — custom.js flip button shows one at a time.
+        - Pi-hole HTPC:
+            href: https://dns2.{{HOMEPAGE_VAR_DOMAIN}}/admin
+            server: periphery
+            container: pihole-periphery
+            icon: pi-hole.svg
+            description: DNS
+            widget:
+                type: pihole
+                url: http://{{HOMEPAGE_VAR_HTPC_UPSTREAM}}:8083
+                version: 6
+                key: "{{HOMEPAGE_VAR_PIHOLE_PERIPHERY_TOKEN}}"
                 fields:
                 - queries
                 - blocked_percent

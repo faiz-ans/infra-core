@@ -252,6 +252,30 @@ html.glances-anim #widgets-wrap > .information-widget-glances {
   top: 0.25rem !important;
 }
 
+/* Flip pairs (Glances / Pi-hole): hide inactive node tile */
+li.service.homepage-flip-hidden {
+  display: none !important;
+}
+
+/* Flip control: top-right of the container status icon */
+.service-tags .homepage-flip-btn {
+  position: relative;
+  z-index: 11;
+  margin: 0.15rem 0.2rem 0 0;
+  padding: 0.15rem;
+  border: 0;
+  background: transparent;
+  color: inherit;
+  opacity: 0.7;
+  cursor: pointer;
+  line-height: 0;
+}
+
+.service-tags .homepage-flip-btn:hover,
+.service-tags .homepage-flip-btn:focus-visible {
+  opacity: 1;
+}
+
 /* Footer controls (match refresh button styling) */
 #style .homepage-footer-control {
   cursor: pointer;

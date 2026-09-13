@@ -1,6 +1,7 @@
 /* Move Apps/System tabs into the header (after weather) as Material icon buttons.
  * Also normalize glances uptime "1 day" → "1d" (Homepage only rewrites plural "days").
  * Footer: glances visibility toggle + scroll-to-top (before refresh).
+ * Service tiles: flip Glances / Pi-hole between NAS and HTPC instances.
  */
 (function () {
   const ICON_SVG = {
@@ -14,6 +15,9 @@
       '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 -960 960 960" fill="currentColor" class="text-theme-800 dark:text-theme-200 w-6 h-6 cursor-pointer" aria-hidden="true"><path d="M160-160v-440h160v440H160Zm240 0v-400l160 160v240H400Zm160-354L400-674v-126h160v286Zm240 240L640-434v-6h160v166Zm-9 219L55-791l57-57 736 736-57 57Z"/></svg>',
     ArrowUpward:
       '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" class="text-theme-800 dark:text-theme-200 w-6 h-6 cursor-pointer" aria-hidden="true"><path d="M4 12l1.41 1.41L11 7.83V20h2V7.83l5.58 5.59L20 12l-8-8z"/></svg>',
+    // Material Symbols Outlined "flip"
+    Flip:
+      '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 -960 960 960" width="18" height="18" fill="currentColor" aria-hidden="true"><path d="M360-120H200q-33 0-56.5-23.5T120-200v-560q0-33 23.5-56.5T200-840h160v80H200v560h160v80Zm80 80v-880h80v880h-80Zm160-80v-80h80v80h-80Zm0-640v-80h80v80h-80Zm160 640v-80h80q0 33-23.5 56.5T760-120Zm0-160v-80h80v80h-80Zm0-160v-80h80v80h-80Zm0-160v-80h80v80h-80Zm0-160v-80q33 0 56.5 23.5T840-760h-80Z"/></svg>',
   };
 
   const TAB_BY_ID = {
@@ -22,6 +26,30 @@
   };
 
   const GLANCES_VISIBLE_KEY = "homepage-glances-visible";
+
+  // Paired service tiles: one visible at a time; flip cycles NAS ↔ HTPC.
+  const FLIP_GROUPS = [
+    {
+      id: "glances",
+      label: "Glances",
+      storageKey: "homepage-flip-glances",
+      defaultNode: "nas",
+      nodes: [
+        { id: "nas", name: "Glances", nodeLabel: "NAS" },
+        { id: "htpc", name: "Glances HTPC", nodeLabel: "HTPC" },
+      ],
+    },
+    {
+      id: "pihole",
+      label: "Pi-hole",
+      storageKey: "homepage-flip-pihole",
+      defaultNode: "nas",
+      nodes: [
+        { id: "nas", name: "Pi-hole", nodeLabel: "NAS" },
+        { id: "htpc", name: "Pi-hole HTPC", nodeLabel: "HTPC" },
+      ],
+    },
+  ];
 
   let scheduled = false;
 
@@ -192,12 +220,123 @@
     if (next !== text) span.textContent = next;
   }
 
+  function findServiceByName(name) {
+    return document.querySelector(`li.service[data-name="${CSS.escape(name)}"]`);
+  }
+
+  function getFlipNodeId(group) {
+    const stored = localStorage.getItem(group.storageKey);
+    if (group.nodes.some((n) => n.id === stored)) return stored;
+    return group.defaultNode;
+  }
+
+  function setFlipNodeId(group, nodeId) {
+    localStorage.setItem(group.storageKey, nodeId);
+  }
+
+  function nextFlipNode(group, currentId) {
+    const idx = group.nodes.findIndex((n) => n.id === currentId);
+    return group.nodes[(idx + 1) % group.nodes.length];
+  }
+
+  function setServiceTitle(li, title) {
+    const nameEl = li.querySelector(".service-name");
+    if (!nameEl) return;
+    for (const node of nameEl.childNodes) {
+      if (node.nodeType === Node.TEXT_NODE) {
+        const leading = (node.textContent.match(/^\s*/) || [""])[0];
+        node.textContent = leading + title;
+        return;
+      }
+    }
+  }
+
+  function setServiceDescription(li, text) {
+    const desc = li.querySelector(".service-description");
+    if (desc) desc.textContent = text;
+  }
+
+  function ensureFlipButton(li, group, currentNode) {
+    const tags = li.querySelector(".service-tags");
+    if (!tags) return;
+
+    let btn = tags.querySelector(".homepage-flip-btn");
+    const next = nextFlipNode(group, currentNode.id);
+    const label = `Switch to ${next.nodeLabel}`;
+
+    if (!btn) {
+      btn = document.createElement("button");
+      btn.type = "button";
+      btn.className =
+        "homepage-flip-btn shrink-0 flex items-center justify-center service-tag";
+      btn.innerHTML = ICON_SVG.Flip;
+      btn.addEventListener("pointerdown", (e) => {
+        e.preventDefault();
+        e.stopPropagation();
+        const cur = getFlipNodeId(group);
+        setFlipNodeId(group, nextFlipNode(group, cur).id);
+        enhanceFlipGroups();
+      });
+      // Place to the right of the container status (top-right of that icon).
+      const status = tags.querySelector(".service-container-stats");
+      if (status && status.nextSibling) {
+        tags.insertBefore(btn, status.nextSibling);
+      } else if (status) {
+        tags.appendChild(btn);
+      } else {
+        tags.appendChild(btn);
+      }
+    }
+
+    if (btn.getAttribute("data-next") !== next.id) {
+      btn.setAttribute("data-next", next.id);
+      btn.setAttribute("aria-label", label);
+      btn.setAttribute("title", label);
+    }
+  }
+
+  function enhanceFlipGroups() {
+    for (const group of FLIP_GROUPS) {
+      const items = group.nodes
+        .map((node) => ({ node, li: findServiceByName(node.name) }))
+        .filter((x) => x.li);
+      if (items.length < 2) continue;
+
+      const currentId = getFlipNodeId(group);
+      const current =
+        items.find((x) => x.node.id === currentId) || items[0];
+
+      for (const { node, li } of items) {
+        const active = node.id === current.node.id;
+        li.classList.toggle("homepage-flip-hidden", !active);
+        if (!active) continue;
+
+        setServiceTitle(li, group.label);
+        const descEl = li.querySelector(".service-description");
+        const raw = (descEl?.textContent || "").trim();
+        const baseDesc = (
+          descEl?.getAttribute("data-base") ||
+          raw.replace(/\s*·\s*(NAS|HTPC)\s*$/i, "")
+        ).trim();
+        if (descEl && !descEl.getAttribute("data-base") && baseDesc) {
+          descEl.setAttribute("data-base", baseDesc);
+        }
+        setServiceDescription(
+          li,
+          baseDesc ? `${baseDesc} · ${node.nodeLabel}` : node.nodeLabel,
+        );
+        ensureFlipButton(li, group, node);
+      }
+    }
+  }
+
   function enhance() {
     enhanceTabs();
     normalizeGlancesUptime();
     syncGlancesStacked();
     syncDatetimeWrapComma();
     ensureFooterControls();
+    enhanceFlipGroups();
   }
 
   function scheduleEnhance() {
@@ -219,14 +358,15 @@
   });
 
   const observer = new MutationObserver((mutations) => {
-    // Ignore churn from our own footer icon updates
+    // Ignore churn from our own footer / flip icon updates
     for (const m of mutations) {
       const t = m.target;
       if (
         t &&
         (t.id === "glances-toggle" ||
           t.id === "scroll-top" ||
-          (t.closest && t.closest("#glances-toggle, #scroll-top")))
+          (t.closest &&
+            t.closest("#glances-toggle, #scroll-top, .homepage-flip-btn")))
       ) {
         continue;
       }

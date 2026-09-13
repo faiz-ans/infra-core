@@ -86,7 +86,7 @@ Authelia user hashes live in `${DATA_ROOT}/system/authelia/users.yml` on the NAS
 
 `WEATHER_LATITUDE` and `WEATHER_LONGITUDE` are decimal degrees for the Homepage Open-Meteo widget (home location, not each browser). West of Greenwich is negative. Names must be exactly those two keys (not `HOMEPAGE_VAR_WEATHER_*`). After creating them, Redeploy **homepage** so Komodo rewrites `.env` and recreates the container. Empty values fall back to browser geolocation. Units are imperial. Timezone is mapped from `TZ`.
 
-`HOMEPAGE_VAR_DOMAIN` and `HOMEPAGE_VAR_HTPC_UPSTREAM` are **mapped from** `DOMAIN` and `HTPC_UPSTREAM` in the Homepage stack environment. `HOMEPAGE_VAR_PIHOLE_TOKEN` is **mapped from** `PIHOLE_WEBPASSWORD` (Pi-hole v6 web/API password, or an app password from Pi-hole Settings → API if the widget shows API Error). Do not duplicate live values in git. Homepage only substitutes `{{HOMEPAGE_VAR_*}}` in YAML (not `${{PIHOLE_WEBPASSWORD}}`).
+`HOMEPAGE_VAR_DOMAIN` and `HOMEPAGE_VAR_HTPC_UPSTREAM` are **mapped from** `DOMAIN` and `HTPC_UPSTREAM` in the Homepage stack environment. `HOMEPAGE_VAR_PIHOLE_TOKEN` is **mapped from** `PIHOLE_WEBPASSWORD` (Pi-hole v6 web/API password, or an app password from Pi-hole Settings → API if the widget shows API Error). `HOMEPAGE_VAR_PIHOLE_PERIPHERY_TOKEN` is **mapped from** `PIHOLE_PERIPHERY_WEBPASSWORD` for the HTPC Pi-hole tile. Do not duplicate live values in git. Homepage only substitutes `{{HOMEPAGE_VAR_*}}` in YAML (not `${{PIHOLE_WEBPASSWORD}}`).
 
 ## Notes and bookmarks
 
