@@ -95,7 +95,7 @@ for u in "${HOUSEHOLD[@]}"; do
   if [[ -n "${sid}" ]]; then
     pass "users/${u}/files: space id ${sid}"
   elif [[ -n "${sid_home}" ]]; then
-    fail "users/${u}: space id still on home (adopt-homes park → login → restore)"
+    fail "users/${u}: space id still on home (adopt-homes relocate, then restore)"
   else
     fail "users/${u}/files: no user.oc.space.id (login as ${u} after park)"
   fi

@@ -21,8 +21,20 @@ if [[ ${EUID:-0} -ne 0 ]]; then
 fi
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-# shellcheck source=data-root-defaults.sh
-source "${SCRIPT_DIR}/data-root-defaults.sh"
+if [[ -f "${SCRIPT_DIR}/data-root-defaults.sh" ]]; then
+  # shellcheck source=data-root-defaults.sh
+  source "${SCRIPT_DIR}/data-root-defaults.sh"
+else
+  # /tmp scp often omits the sibling file. Same values as data-root-defaults.sh.
+  DATA_ROOT="${DATA_ROOT:-/srv/dev-disk-by-uuid-d6e267fd-109f-4971-bfb1-26b3d99e0d47}"
+  PUID="${PUID:-1000}"
+  PGID="${PGID:-1000}"
+  HOUSEHOLD=(faiz diana)
+  HTPC=periphery
+  ADMIN=pilot
+  SHARED_GROUP=sharedwrite
+  HTPC_GROUP=htpc
+fi
 
 SHARED="${DATA_ROOT}/shared"
 FILES="${SHARED}/files"

@@ -14,8 +14,19 @@ if [[ ${EUID:-0} -ne 0 ]]; then
 fi
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-# shellcheck source=data-root-defaults.sh
-source "${SCRIPT_DIR}/data-root-defaults.sh"
+if [[ -f "${SCRIPT_DIR}/data-root-defaults.sh" ]]; then
+  # shellcheck source=data-root-defaults.sh
+  source "${SCRIPT_DIR}/data-root-defaults.sh"
+else
+  DATA_ROOT="${DATA_ROOT:-/srv/dev-disk-by-uuid-d6e267fd-109f-4971-bfb1-26b3d99e0d47}"
+  PUID="${PUID:-1000}"
+  PGID="${PGID:-1000}"
+  HOUSEHOLD=(faiz diana)
+  HTPC=periphery
+  ADMIN=pilot
+  SHARED_GROUP=sharedwrite
+  HTPC_GROUP=htpc
+fi
 
 USERS="${DATA_ROOT}/users"
 PROJECTS="${DATA_ROOT}/system/opencloud/projects"
@@ -125,7 +136,8 @@ park() {
   docker start opencloud
   echo
   echo "Browser: Spaces → New Space → name exactly photos-<user> (photos-faiz, …)."
-  echo "Add that user as member. Then: $0 publish && $0 restore"
+  echo "Add only that user as Can manage. Remove yourself from anyone else's photos space."
+  echo "Then: $0 publish && $0 restore"
 }
 
 publish() {
@@ -163,9 +175,20 @@ publish() {
   done
 }
 
+is_skip_name() {
+  [[ "$1" == ".oc-nodes" || "$1" == .oc-* || "$1" == ._* || "$1" == ".DS_Store" || "$1" == "Thumbs.db" ]]
+}
+
+discard_skip_names() {
+  local dir=$1
+  [[ -d "${dir}" ]] || return 0
+  find "${dir}" -mindepth 1 -maxdepth 1 \( -name '.oc-*' -o -name '._*' -o -name '.DS_Store' -o -name 'Thumbs.db' \) -exec rm -rf {} +
+}
+
 restore() {
   docker stop opencloud
-  local u src dest item
+  trap 'docker start opencloud >/dev/null 2>&1 || true' EXIT
+  local u src dest item name target
   for u in "${HOUSEHOLD[@]}"; do
     src="$(parked_dir "${u}")"
     dest="$(photos_dir "${u}")"
@@ -177,19 +200,34 @@ restore() {
       echo "refusing: ${u} photos not published. Run publish first."
       exit 1
     fi
-    shopt -s dotglob nullglob
+    shopt -s nullglob
     for item in "${src}"/*; do
-      if [[ -e "${dest}/$(basename "${item}")" && -d "${item}" ]]; then
-        find "${item}" -mindepth 1 -maxdepth 1 -exec mv -t "${dest}" {} +
-        rmdir "${item}" 2>/dev/null || true
+      name="$(basename "${item}")"
+      if is_skip_name "${name}"; then
+        continue
+      fi
+      target="${dest}/${name}"
+      if [[ -e "${target}" ]]; then
+        if [[ -d "${item}" && -d "${target}" ]]; then
+          find "${item}" -mindepth 1 -maxdepth 1 ! -name '.oc-*' ! -name '._*' -exec mv -t "${target}" {} +
+          discard_skip_names "${item}"
+          rmdir "${item}" 2>/dev/null || true
+        elif [[ -f "${item}" && -f "${target}" ]]; then
+          mv -f "${item}" "${target}"
+        else
+          echo "refusing: ${target} exists and is not a mergeable directory"
+          exit 1
+        fi
       else
         mv "${item}" "${dest}/"
       fi
     done
-    shopt -u dotglob nullglob
+    shopt -u nullglob
+    discard_skip_names "${src}"
     rmdir "${src}"
     echo "restored ${u} photos"
   done
+  trap - EXIT
   docker start opencloud
   echo "Scanning photos spaces:"
   docker exec opencloud opencloud posixfs scan /posix/projects || true

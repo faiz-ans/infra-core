@@ -5,6 +5,7 @@
 # system/opencloud/projects → /posix/projects.
 #   Space "shared"      → projects/shared      → bind onto shared/files
 #   Space "photos-<user>" → projects/photos-<user> → bind onto users/<user>/photos
+#   (only that user is a member; creating admin must leave other users' photos spaces)
 # media/games/downloads/cameras stay on SMB/NFS only (not OpenCloud).
 # Do not bind shared/ or a user home as a space root (CreateStorageSpace
 # refuses an existing path). Do not nest Docker mounts of files/photos.

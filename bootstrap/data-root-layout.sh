@@ -14,8 +14,14 @@ if [[ ${EUID:-0} -ne 0 ]]; then
 fi
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-# shellcheck source=data-root-defaults.sh
-source "${SCRIPT_DIR}/data-root-defaults.sh"
+if [[ -f "${SCRIPT_DIR}/data-root-defaults.sh" ]]; then
+  # shellcheck source=data-root-defaults.sh
+  source "${SCRIPT_DIR}/data-root-defaults.sh"
+else
+  echo "Copy data-root-defaults.sh next to this script (layout needs PROTECTED_SHARED)."
+  echo "  scp bootstrap/data-root-defaults.sh pilot@192.168.1.110:/tmp/"
+  exit 1
+fi
 
 if [[ ! -d "${DATA_ROOT}" ]]; then
   echo "DATA_ROOT not a directory: ${DATA_ROOT}"

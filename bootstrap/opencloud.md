@@ -5,7 +5,7 @@ OpenCloud on **Core** (edge): PosixFS **documents** and **camera rolls** only.
 | OpenCloud space | On disk | Who uses it |
 |---|---|---|
 | Personal | `users/<user>/files` | People + SMB |
-| `photos-<user>` | `users/<user>/photos` | Phone ingest → Immich |
+| `photos-<user>` | `users/<user>/photos` | That user + phone ingest → Immich |
 | `shared` | `shared/files` | Household docs + SMB |
 
 `shared/{media,games,photos,downloads,cameras}` stay on SMB/NFS for Jellyfin/Arr/qBit/Kodi/Immich/Frigate. They are **not** OpenCloud spaces.
@@ -48,16 +48,17 @@ sudo stat -c '%d:%i' $DATA/shared/files $DATA/system/opencloud/projects/shared
 
 ### 4. Photos spaces + layout + shares
 
-For each household user: Spaces → New Space → name exactly **`photos-<user>`** (example `photos-faiz`) → add that user.
+Regular users cannot create Project Spaces. As admin, for each household user: Spaces → New Space → name exactly **`photos-<user>`**. Members → add **only that user** with **Can manage**. If you created someone else’s space (example `photos-diana`), **remove yourself** so it leaves your sidebar. Admins still see every space under Settings → Spaces (name/quota/members only — not the files).
 
 ```text
 sudo DATA_ROOT=$DATA bash bootstrap/opencloud-adopt-photos.sh publish
+sudo DATA_ROOT=$DATA bash bootstrap/opencloud-adopt-photos.sh restore
 sudo DATA_ROOT=$DATA bash bootstrap/data-root-layout.sh
 ```
 
 Layout creates `shared/media`, household `shared/photos`, `users/<name>/photos` ACLs/sticky. Then OMV SMB/NFS (`bootstrap/omv-nfs.md`) for `shared` and `users`.
 
-Host timer assimilates SMB writes OpenCloud’s inotify miss (`opencloud-posix-scan.timer`). It scans **`/posix/users` and `/posix/projects` only** (not `/posix`, which walks `uploads/` and used to walk media).
+Host timer assimilates SMB writes OpenCloud’s inotify miss (`opencloud-posix-scan.timer`). It scans **`users/<u>/files` and `/posix/projects` only** (not `/posix/users`, which walks home parents and the photos binds).
 
 ```text
 sudo bash bootstrap/opencloud-posix-scan.sh
@@ -96,7 +97,7 @@ sudo DATA_ROOT=$DATA bash bootstrap/opencloud-adopt-homes.sh park
 # log in as each user
 sudo DATA_ROOT=$DATA bash bootstrap/opencloud-adopt-homes.sh restore
 sudo DATA_ROOT=$DATA bash bootstrap/opencloud-adopt-photos.sh park
-# create Spaces photos-faiz, photos-diana; add that user
+# create Spaces photos-faiz, photos-diana; only that user as Can manage (remove yourself from the other)
 sudo DATA_ROOT=$DATA bash bootstrap/opencloud-adopt-photos.sh publish
 sudo DATA_ROOT=$DATA bash bootstrap/opencloud-adopt-photos.sh restore
 sudo DATA_ROOT=$DATA bash bootstrap/data-root-layout.sh
@@ -114,7 +115,7 @@ sudo DATA_ROOT=$DATA bash bootstrap/opencloud-adopt-homes.sh park
 sudo DATA_ROOT=$DATA bash bootstrap/opencloud-adopt-shared.sh park
 # create Space shared → publish → restore
 sudo DATA_ROOT=$DATA bash bootstrap/opencloud-adopt-photos.sh park
-# create photos-<user> → publish → restore
+# create photos-<user>; only that user as Can manage (remove yourself from the other)
 sudo DATA_ROOT=$DATA bash bootstrap/data-root-layout.sh
 ```
 
@@ -127,7 +128,7 @@ sudo DATA_ROOT=$DATA bash bootstrap/data-root-layout.sh
 | `cloud.<DOMAIN>` dead while `opencloud` Up | Redeploy **caddy** |
 | Permission / xattr on first start | Re-run **prep**; `chown` OpenCloud dirs to PUID |
 | Login HTTP 500 | Wipe **both** `system/opencloud/config` and `…/data` (not posix/users/shared/radicale) |
-| No Personal / no space id | Path already existed — use **park** utilities |
+| `files` has no space id after login | Personal already exists on `users/<user>` (template is only used at CreateStorageSpace). `opencloud-adopt-homes.sh relocate`, then restore. Do not drop-wrong-login again. |
 | `shared/files` empty in UI but SMB has docs | Bind missing — `adopt-shared.sh publish` (inode check), not findmnt alone |
 | Whole `shared/` still in OpenCloud | `adopt-shared.sh narrow` |
 | OC→SMB works, SMB→OC does not | Install/reinstall `opencloud-posix-scan.sh` (scan users+projects only), `core-net.sh`, start the oneshot |

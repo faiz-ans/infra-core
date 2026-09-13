@@ -1,7 +1,8 @@
 #!/usr/bin/env bash
 # Assimilate SMB/NFS writes into OpenCloud PosixFS (id cache + xattrs).
-# Do not scan /posix (walks uploads/ and used to walk media via the old
-# whole-shared bind). Space roots only: /posix/users and /posix/projects.
+# Do not scan /posix (walks uploads/). Do not scan /posix/users (home parent
+# has no space xattrs; users/<u>/photos is a Project Space bind).
+# Space roots only: users/<u>/files and /posix/projects.
 set -euo pipefail
 
 DOCKER="${DOCKER:-/usr/bin/docker}"
@@ -23,6 +24,9 @@ scan() {
   "${DOCKER}" exec opencloud opencloud posixfs scan "${path}"
 }
 
-scan /posix/users
+while IFS= read -r path; do
+  [[ -n "${path}" ]] || continue
+  scan "${path}"
+done < <("${DOCKER}" exec opencloud sh -c 'ls -d /posix/users/*/files 2>/dev/null' || true)
 scan /posix/projects
 echo "opencloud-posix-scan: done"

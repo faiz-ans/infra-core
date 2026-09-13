@@ -94,11 +94,15 @@ identity_providers:
           - preferred_username
           - name
     clients:
+      # offline_access (refresh tokens) forces Authelia to collect explicit
+      # consent even when consent_mode is implicit — every login. Remember
+      # it instead so the household consents once.
       - client_id: opencloud
         client_name: OpenCloud
         public: true
         authorization_policy: users
-        consent_mode: implicit
+        consent_mode: pre-configured
+        pre_configured_consent_duration: 1y
         require_pkce: true
         pkce_challenge_method: S256
         scopes:
@@ -126,7 +130,8 @@ identity_providers:
         client_name: OpenCloud Android
         public: true
         authorization_policy: users
-        consent_mode: implicit
+        consent_mode: pre-configured
+        pre_configured_consent_duration: 1y
         require_pkce: true
         pkce_challenge_method: S256
         redirect_uris:
@@ -152,7 +157,8 @@ identity_providers:
         client_name: OpenCloud iOS
         public: true
         authorization_policy: users
-        consent_mode: implicit
+        consent_mode: pre-configured
+        pre_configured_consent_duration: 1y
         require_pkce: true
         pkce_challenge_method: S256
         redirect_uris:
@@ -179,7 +185,8 @@ identity_providers:
         client_name: OpenCloud Desktop
         public: true
         authorization_policy: users
-        consent_mode: implicit
+        consent_mode: pre-configured
+        pre_configured_consent_duration: 1y
         require_pkce: true
         pkce_challenge_method: S256
         scopes:
