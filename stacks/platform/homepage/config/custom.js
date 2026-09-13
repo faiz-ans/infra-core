@@ -337,7 +337,7 @@
           "opacity-75",
         );
       });
-      // Hash (last OS-row field): not font-thin
+      // Hash (last OS-row field): keep text-xs, not font-thin
       const hash = el.querySelector(".bottom-3.left-2 > div:last-child");
       if (hash) hash.classList.remove("font-thin");
       ensureGlancesCopy(el);
@@ -371,27 +371,28 @@
     el.setAttribute("title", "Copy system info");
     el.setAttribute("aria-label", "Copy system info");
 
-    const flashCopied = () => {
-      el.classList.remove("homepage-glances-copied");
-      void el.offsetWidth;
-      el.classList.add("homepage-glances-copied");
-      clearTimeout(el._copyFlashTimer);
-      el._copyFlashTimer = setTimeout(() => {
-        el.classList.remove("homepage-glances-copied");
-      }, 1000);
-    };
-
     const copy = async (e) => {
       e.preventDefault();
       e.stopPropagation();
       const text = glancesInfoCopyText(el);
       if (!text) return;
+
+      el.classList.add("homepage-glances-press");
       try {
         await navigator.clipboard.writeText(text);
-        flashCopied();
         el.setAttribute("title", "Copied");
-        setTimeout(() => el.setAttribute("title", "Copy system info"), 1200);
+        el.classList.remove("homepage-glances-press");
+        el.classList.remove("homepage-glances-copied");
+        void el.offsetWidth; // restart animation if clicked again quickly
+        el.classList.add("homepage-glances-copied");
+        const clear = () => {
+          el.classList.remove("homepage-glances-copied");
+          el.setAttribute("title", "Copy system info");
+        };
+        el.addEventListener("animationend", clear, { once: true });
+        setTimeout(clear, 700);
       } catch (_) {
+        el.classList.remove("homepage-glances-press");
         el.setAttribute("title", "Copy failed");
         setTimeout(() => el.setAttribute("title", "Copy system info"), 1200);
       }
