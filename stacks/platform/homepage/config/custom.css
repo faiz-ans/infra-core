@@ -255,6 +255,17 @@ html.glances-anim #widgets-wrap > .information-widget-glances {
   gap: 0 !important;
   cursor: pointer;
   pointer-events: auto !important;
+  transition: background-color 0.2s ease;
+}
+
+/* Brighter flash when system info is copied */
+.service-container.chart.homepage-glances-copied {
+  background-color: rgb(148 163 184 / 0.45) !important;
+}
+
+html.dark .service-container.chart.homepage-glances-copied,
+.dark .service-container.chart.homepage-glances-copied {
+  background-color: rgb(255 255 255 / 0.18) !important;
 }
 
 /* Gradient background + layout spacers */
@@ -338,28 +349,13 @@ html.glances-anim #widgets-wrap > .information-widget-glances {
 }
 
 /* Let the last field (hash) shrink and ellipsize when space runs out;
-   keep normal weight (not font-thin). */
+   keep normal weight (not font-thin) on the hash only */
 .service-container.chart > .bottom-3.left-2 > div:last-child {
   flex-shrink: 1;
   min-width: 0;
   overflow: hidden;
   text-overflow: ellipsis;
   font-weight: 400 !important;
-}
-
-/* Brief blink on copy — same flash the flip used to cause on the tile */
-@keyframes homepage-glances-click-blink {
-  0%,
-  100% {
-    opacity: 1;
-  }
-  45% {
-    opacity: 0.15;
-  }
-}
-
-li.service .service-card.homepage-glances-click-blink {
-  animation: homepage-glances-click-blink 0.35s ease;
 }
 
 /* Flip pairs (Glances / Pi-hole): inactive tile leaves the layout.

@@ -337,12 +337,9 @@
           "opacity-75",
         );
       });
-      // Hash (last OS-row field) keeps normal weight
+      // Hash (last OS-row field): not font-thin
       const hash = el.querySelector(".bottom-3.left-2 > div:last-child");
-      if (hash) {
-        hash.classList.remove("font-thin");
-        hash.classList.add("font-normal");
-      }
+      if (hash) hash.classList.remove("font-thin");
       ensureGlancesCopy(el);
     });
   }
@@ -374,22 +371,24 @@
     el.setAttribute("title", "Copy system info");
     el.setAttribute("aria-label", "Copy system info");
 
+    const flashCopied = () => {
+      el.classList.remove("homepage-glances-copied");
+      void el.offsetWidth;
+      el.classList.add("homepage-glances-copied");
+      clearTimeout(el._copyFlashTimer);
+      el._copyFlashTimer = setTimeout(() => {
+        el.classList.remove("homepage-glances-copied");
+      }, 1000);
+    };
+
     const copy = async (e) => {
       e.preventDefault();
       e.stopPropagation();
       const text = glancesInfoCopyText(el);
       if (!text) return;
-
-      // Same brief tile blink the flip used to trigger (opacity flash)
-      const card = el.closest(".service-card");
-      if (card) {
-        card.classList.remove("homepage-glances-click-blink");
-        void card.offsetWidth;
-        card.classList.add("homepage-glances-click-blink");
-      }
-
       try {
         await navigator.clipboard.writeText(text);
+        flashCopied();
         el.setAttribute("title", "Copied");
         setTimeout(() => el.setAttribute("title", "Copy system info"), 1200);
       } catch (_) {
