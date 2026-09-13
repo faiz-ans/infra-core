@@ -264,7 +264,7 @@ li.service.homepage-flip-hidden {
 
 /* Widget-info only fade on flip */
 li.service.homepage-flip-member .service-container.homepage-flip-widget {
-  transition: opacity 0.4s ease;
+  transition: opacity 0.3s ease;
 }
 
 /* Flip + status in one top-aligned row; hit box matches Status dot
