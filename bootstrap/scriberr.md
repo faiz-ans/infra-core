@@ -40,7 +40,7 @@ Then Redeploy **scriberr**. Keep `scriberr-data` (transcripts / admin).
 |---|---|
 | `scribe.<DOMAIN>` does not load while the container is Up | Redeploy **caddy**. From Core: `docker exec caddy wget -S -O- --timeout=10 http://<HTPC_UPSTREAM>:8085/ \| head` |
 | Still starting / no UI | Watch logs until `Scriberr is ready`. Do not treat a slow first pull as a crash |
-| SQLite / permission denied | Confirm Komodo `PUID`/`PGID` match the HTPC. Named volumes `scriberr-data` and `scriberr-whisperx` |
+| SQLite `readonly database (8)` | `scriberr-cuda` runs as UID **10001** (UID 1000 is `ubuntu` in the image). Household `PUID=1000` cannot write the DB. Stop the container, `docker run --rm -v scriberr-data:/data alpine chown -R 10001:10001 /data`, Redeploy **scriberr**. Do not set this stack’s PUID from Komodo. |
 | CUDA / no GPU | Docker Desktop → Resources → GPU. `docker exec scriberr nvidia-smi` |
 | Whisper env broken after CPU→CUDA | Remove `scriberr-whisperx` (above), Redeploy |
 | Unable to load audio stream | Caddy must be HTTPS (`tls internal`). Do not set `SECURE_COOKIES=false` |

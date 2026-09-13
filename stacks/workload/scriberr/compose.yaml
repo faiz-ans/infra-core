@@ -2,6 +2,9 @@
 # volumes (models are large; not NFS). Caddy terminates TLS at scribe.${DOMAIN}.
 # CUDA image for RTX 20-series (scriberr-cuda). Docker Desktop GPU required.
 # First start downloads models and can take several minutes.
+# scriberr-cuda ships appuser as 10001 (UID 1000 is ubuntu). Household [[PUID]]
+# 1000 makes SQLite "readonly database (8)" on migrate. Do not use [[PUID]] here.
+# https://github.com/rishikanthc/Scriberr/issues/370
 services:
   scriberr:
     image: ghcr.io/rishikanthc/scriberr-cuda:latest
@@ -9,8 +12,8 @@ services:
     restart: unless-stopped
     environment:
       TZ: ${TZ}
-      PUID: ${PUID}
-      PGID: ${PGID}
+      PUID: "10001"
+      PGID: "10001"
       APP_ENV: production
       ALLOWED_ORIGINS: https://scribe.${DOMAIN},https://transcribe.${DOMAIN},https://scriberr.${DOMAIN}
       NVIDIA_VISIBLE_DEVICES: all

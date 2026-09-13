@@ -153,8 +153,6 @@ poll_for_updates = true
 environment = """
 TZ = [[TZ]]
 DOMAIN = [[DOMAIN]]
-PUID = [[PUID]]
-PGID = [[PGID]]
 """
 
 # Local volume for uploads/SQLite. Caddy proxies :3313.

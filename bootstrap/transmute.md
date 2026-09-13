@@ -23,7 +23,7 @@ On the HTPC, allow Windows Firewall TCP **3313** from the LAN (Caddy). See `boot
 docker ps --filter name=transmute --format "table {{.Names}}\t{{.Status}}"
 ```
 
-You want `transmute` **Up** (healthy after the first minute). The stack reserves the HTPC NVIDIA GPU for FFmpeg when the image can use NVENC; Docker Desktop GPU must be on (`bootstrap/periphery.md`).
+You want `transmute` **Up** (healthy after the first minute). The stack reserves the HTPC NVIDIA GPU for FFmpeg NVENC (`bootstrap/periphery.md`). A newer Transmute image runs Draw.io Electron `--version` at boot; that crash fills `C:` with WSL dumps. The OIDC entrypoint stubs that probe so the GPU can stay.
 
 ## 3. Admin
 
@@ -34,5 +34,6 @@ Open **`https://convert.<DOMAIN>`** (Caddy sends `transmute.` there). Local admi
 | Symptom | What to do |
 |---|---|
 | `convert.<DOMAIN>` does not load while the container is Up | Redeploy **caddy**. From Core: `docker exec caddy wget -S -O- --timeout=10 http://<HTPC_UPSTREAM>:3313/ \| head` |
+| `C:` fills and `wsl-crash-*-_opt_drawio_drawio-*.dmp` appears | Stop/rm **transmute**. Delete `%LOCALAPPDATA%\\Temp\\wsl-crashes\\*`. The GPU is not the cause; Draw.io `--version` at boot is. Redeploy **transmute** after the entrypoint wrapper is on the HTPC. |
 | Logged out after Redeploy | `TRANSMUTE_AUTH_SECRET_KEY` must be set and unchanged |
 | Authelia succeeds, then Internal Server Error | Token POST is `401 invalid_client`. Authelia must use `token_endpoint_auth_method: client_secret_basic` (Transmute/Authlib sends Basic, not post). Redeploy **authelia** only. |

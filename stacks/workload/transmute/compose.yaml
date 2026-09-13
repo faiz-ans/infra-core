@@ -1,11 +1,13 @@
 # Transmute on periphery. FFmpeg conversions are local HTPC volumes (not NFS).
 # Caddy terminates TLS at convert.${DOMAIN}. First visit creates the admin.
-# NVIDIA for FFmpeg when the image supports NVENC. Docker Desktop GPU required.
+# NVIDIA for FFmpeg NVENC. Draw.io Electron is stubbed at boot (entrypoint-oidc.sh);
+# that probe crashed WSL2 even when the GPU assignment was unchanged.
 services:
   transmute:
     image: ghcr.io/transmute-app/transmute:latest
     container_name: transmute
     restart: unless-stopped
+    shm_size: "1gb"
     environment:
       TZ: ${TZ}
       AUTH_SECRET_KEY: ${TRANSMUTE_AUTH_SECRET_KEY}
