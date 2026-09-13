@@ -377,11 +377,9 @@
       const text = glancesInfoCopyText(el);
       if (!text) return;
 
-      el.classList.add("homepage-glances-press");
       try {
         await navigator.clipboard.writeText(text);
         el.setAttribute("title", "Copied");
-        el.classList.remove("homepage-glances-press");
         el.classList.remove("homepage-glances-copied");
         void el.offsetWidth; // restart animation if clicked again quickly
         el.classList.add("homepage-glances-copied");
@@ -392,7 +390,6 @@
         el.addEventListener("animationend", clear, { once: true });
         setTimeout(clear, 700);
       } catch (_) {
-        el.classList.remove("homepage-glances-press");
         el.setAttribute("title", "Copy failed");
         setTimeout(() => el.setAttribute("title", "Copy system info"), 1200);
       }

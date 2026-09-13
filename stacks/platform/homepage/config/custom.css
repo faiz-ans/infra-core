@@ -347,32 +347,30 @@ html.glances-anim #widgets-wrap > .information-widget-glances {
   font-weight: 400 !important;
 }
 
-/* Tactile copy feedback on the info box */
-.service-container.chart {
-  transform-origin: center center;
-  transition: transform 0.1s ease;
+/* Tactile copy feedback: flash an overlay on the box (text stays still) */
+.service-container.chart::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+  pointer-events: none;
+  background: rgb(255 255 255 / 0.2);
+  opacity: 0;
 }
 
-.service-container.chart.homepage-glances-press {
-  transform: scale(0.97);
+.service-container.chart.homepage-glances-copied::after {
+  animation: homepage-glances-copy-flash 0.55s ease;
 }
 
-.service-container.chart.homepage-glances-copied {
-  animation: homepage-glances-copy-pop 0.55s cubic-bezier(0.22, 1, 0.36, 1);
-}
-
-@keyframes homepage-glances-copy-pop {
+@keyframes homepage-glances-copy-flash {
   0% {
-    transform: scale(0.97);
-    filter: brightness(1);
+    opacity: 0;
   }
-  40% {
-    transform: scale(1.03);
-    filter: brightness(1.35);
+  35% {
+    opacity: 1;
   }
   100% {
-    transform: scale(1);
-    filter: brightness(1);
+    opacity: 0;
   }
 }
 
