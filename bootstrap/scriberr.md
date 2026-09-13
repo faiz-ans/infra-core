@@ -23,7 +23,7 @@ If Komodo shows Periphery **Not OK** and the Scriberr container is Up, that is t
 
 Open **`https://scribe.<DOMAIN>`**. Create the household admin in the setup wizard.
 
-Speaker diarization and optional Ollama/OpenAI chat are configured in the app UI, not in this catalog. The catalog uses **`scriberr-cuda`** (RTX 20-series). Docker Desktop GPU must be on (`bootstrap/periphery.md`).
+Speaker diarization and optional Ollama/OpenAI chat are configured in the app UI, not in this catalog. The catalog uses **`scriberr-cuda:latest`** (RTX 20-series). That image is ~9 GiB. `poll_for_updates` is off and compose `pull_policy` is `missing` so a Redeploy does not pull another copy if the image is already on the HTPC. Do not Komodo **Pull** this stack unless you intend to download ~9 GiB again. Docker Desktop GPU must be on (`bootstrap/periphery.md`).
 
 If this site previously ran the CPU image, wipe the Whisper env volume once so CUDA deps reinstall:
 
