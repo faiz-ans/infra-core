@@ -244,10 +244,10 @@ html.glances-anim #widgets-wrap > .information-widget-glances {
   position: relative !important;
   height: auto !important;
   min-height: 0 !important;
-  /* Box chrome matches service-block (bg/rounded/m-1 added in custom.js) */
+  /* Box chrome matches service-block (bg/rounded-sm/m-1 added in custom.js) */
   margin: 0.25rem !important;
   padding: 0.25rem 0.5rem !important;
-  border-radius: 0.125rem !important;
+  overflow: hidden !important; /* clip copy-flash overlay to rounded corners */
   display: flex !important;
   flex-direction: column !important;
   align-items: flex-start !important;
