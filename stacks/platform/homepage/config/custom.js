@@ -15,10 +15,12 @@
       '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 -960 960 960" fill="currentColor" class="text-theme-800 dark:text-theme-200 w-6 h-6 cursor-pointer" aria-hidden="true"><path d="M160-160v-440h160v440H160Zm240 0v-400l160 160v240H400Zm160-354L400-674v-126h160v286Zm240 240L640-434v-6h160v166Zm-9 219L55-791l57-57 736 736-57 57Z"/></svg>',
     ArrowUpward:
       '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" class="text-theme-800 dark:text-theme-200 w-6 h-6 cursor-pointer" aria-hidden="true"><path d="M4 12l1.41 1.41L11 7.83V20h2V7.83l5.58 5.59L20 12l-8-8z"/></svg>',
-    // Material Symbols Outlined "flip"
+    // Material Symbols Outlined "flip" — sized like statusStyle:dot (h-3 w-3)
     Flip:
-      '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 -960 960 960" width="18" height="18" fill="currentColor" aria-hidden="true"><path d="M360-120H200q-33 0-56.5-23.5T120-200v-560q0-33 23.5-56.5T200-840h160v80H200v560h160v80Zm80 80v-880h80v880h-80Zm160-80v-80h80v80h-80Zm0-640v-80h80v80h-80Zm160 640v-80h80q0 33-23.5 56.5T760-120Zm0-160v-80h80v80h-80Zm0-160v-80h80v80h-80Zm0-160v-80h80v80h-80Zm0-160v-80q33 0 56.5 23.5T840-760h-80Z"/></svg>',
+      '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 -960 960 960" width="12" height="12" fill="currentColor" aria-hidden="true"><path d="M360-120H200q-33 0-56.5-23.5T120-200v-560q0-33 23.5-56.5T200-840h160v80H200v560h160v80Zm80 80v-880h80v880h-80Zm160-80v-80h80v80h-80Zm0-640v-80h80v80h-80Zm160 640v-80h80q0 33-23.5 56.5T760-120Zm0-160v-80h80v80h-80Zm0-160v-80h80v80h-80Zm0-160v-80h80v80h-80Zm0-160v-80q33 0 56.5 23.5T840-760h-80Z"/></svg>',
   };
+
+  const FLIP_FADE_MS = 200;
 
   const TAB_BY_ID = {
     "Apps-tab": "Apps",
@@ -52,6 +54,7 @@
   ];
 
   let scheduled = false;
+  let flipAnimating = false;
 
   function glancesVisible() {
     // Default off for first visit; persist once the user toggles.
@@ -256,6 +259,20 @@
     if (desc) desc.textContent = text;
   }
 
+  function getWidgetRoot(li) {
+    return li.querySelector(".service-container");
+  }
+
+  function resolveFlipItems(group) {
+    return group.nodes
+      .map((node) => ({ node, li: findServiceByName(node.name) }))
+      .filter((x) => x.li);
+  }
+
+  function wait(ms) {
+    return new Promise((resolve) => setTimeout(resolve, ms));
+  }
+
   function ensureFlipButton(li, group, currentNode) {
     const tags = li.querySelector(".service-tags");
     if (!tags) return;
@@ -267,22 +284,20 @@
     if (!btn) {
       btn = document.createElement("button");
       btn.type = "button";
+      // Match container-status button; hit target mirrors Status dot (p-4 + hover).
       btn.className =
-        "homepage-flip-btn shrink-0 flex items-center justify-center service-tag";
-      btn.innerHTML = ICON_SVG.Flip;
+        "homepage-flip-btn shrink-0 flex items-center justify-center cursor-pointer service-tag";
+      btn.innerHTML =
+        `<div class="homepage-flip-hit p-4 hover:bg-theme-500/10 dark:hover:bg-theme-900/20 rounded-b-[3px] flex items-center justify-center">${ICON_SVG.Flip}</div>`;
       btn.addEventListener("pointerdown", (e) => {
         e.preventDefault();
         e.stopPropagation();
-        const cur = getFlipNodeId(group);
-        setFlipNodeId(group, nextFlipNode(group, cur).id);
-        enhanceFlipGroups();
+        animateFlip(group);
       });
-      // Place to the right of the container status (top-right of that icon).
+      // Left of the container status indicator.
       const status = tags.querySelector(".service-container-stats");
-      if (status && status.nextSibling) {
-        tags.insertBefore(btn, status.nextSibling);
-      } else if (status) {
-        tags.appendChild(btn);
+      if (status) {
+        tags.insertBefore(btn, status);
       } else {
         tags.appendChild(btn);
       }
@@ -295,38 +310,89 @@
     }
   }
 
+  function applyFlipGroup(group, { fadeIn = false } = {}) {
+    const items = resolveFlipItems(group);
+    if (items.length < 2) return;
+
+    const currentId = getFlipNodeId(group);
+    const current = items.find((x) => x.node.id === currentId) || items[0];
+    const area = `homepage-flip-${group.id}`;
+
+    for (const { node, li } of items) {
+      const active = node.id === current.node.id;
+      li.classList.add("homepage-flip-member");
+      li.style.gridArea = area;
+      li.classList.toggle("homepage-flip-hidden", !active);
+      li.classList.toggle("homepage-flip-active", active);
+
+      const widget = getWidgetRoot(li);
+      if (widget) {
+        widget.classList.add("homepage-flip-widget");
+        if (!active) {
+          widget.style.opacity = "";
+        }
+      }
+
+      if (!active) continue;
+
+      setServiceTitle(li, group.label);
+      const descEl = li.querySelector(".service-description");
+      const raw = (descEl?.textContent || "").trim();
+      const baseDesc = (
+        descEl?.getAttribute("data-base") ||
+        raw.replace(/\s*·\s*(NAS|HTPC)\s*$/i, "")
+      ).trim();
+      if (descEl && !descEl.getAttribute("data-base") && baseDesc) {
+        descEl.setAttribute("data-base", baseDesc);
+      }
+      setServiceDescription(
+        li,
+        baseDesc ? `${baseDesc} · ${node.nodeLabel}` : node.nodeLabel,
+      );
+      ensureFlipButton(li, group, node);
+
+      if (widget && fadeIn) {
+        widget.style.opacity = "0";
+        requestAnimationFrame(() => {
+          requestAnimationFrame(() => {
+            widget.style.opacity = "1";
+          });
+        });
+      }
+    }
+  }
+
   function enhanceFlipGroups() {
     for (const group of FLIP_GROUPS) {
-      const items = group.nodes
-        .map((node) => ({ node, li: findServiceByName(node.name) }))
-        .filter((x) => x.li);
-      if (items.length < 2) continue;
+      applyFlipGroup(group);
+    }
+  }
 
+  async function animateFlip(group) {
+    if (flipAnimating) return;
+    const items = resolveFlipItems(group);
+    if (items.length < 2) return;
+
+    flipAnimating = true;
+    try {
       const currentId = getFlipNodeId(group);
-      const current =
-        items.find((x) => x.node.id === currentId) || items[0];
+      const current = items.find((x) => x.node.id === currentId) || items[0];
+      const next = nextFlipNode(group, current.node.id);
+      const outWidget = getWidgetRoot(current.li);
 
-      for (const { node, li } of items) {
-        const active = node.id === current.node.id;
-        li.classList.toggle("homepage-flip-hidden", !active);
-        if (!active) continue;
-
-        setServiceTitle(li, group.label);
-        const descEl = li.querySelector(".service-description");
-        const raw = (descEl?.textContent || "").trim();
-        const baseDesc = (
-          descEl?.getAttribute("data-base") ||
-          raw.replace(/\s*·\s*(NAS|HTPC)\s*$/i, "")
-        ).trim();
-        if (descEl && !descEl.getAttribute("data-base") && baseDesc) {
-          descEl.setAttribute("data-base", baseDesc);
-        }
-        setServiceDescription(
-          li,
-          baseDesc ? `${baseDesc} · ${node.nodeLabel}` : node.nodeLabel,
-        );
-        ensureFlipButton(li, group, node);
+      if (outWidget) {
+        outWidget.classList.add("homepage-flip-widget");
+        outWidget.style.opacity = "1";
+        void outWidget.offsetHeight;
+        outWidget.style.opacity = "0";
+        await wait(FLIP_FADE_MS);
       }
+
+      setFlipNodeId(group, next.id);
+      applyFlipGroup(group, { fadeIn: true });
+      await wait(FLIP_FADE_MS);
+    } finally {
+      flipAnimating = false;
     }
   }
 
@@ -336,7 +402,8 @@
     syncGlancesStacked();
     syncDatetimeWrapComma();
     ensureFooterControls();
-    enhanceFlipGroups();
+    // Don't clobber mid-flip widget opacity / active card.
+    if (!flipAnimating) enhanceFlipGroups();
   }
 
   function scheduleEnhance() {

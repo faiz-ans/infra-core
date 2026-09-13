@@ -252,28 +252,50 @@ html.glances-anim #widgets-wrap > .information-widget-glances {
   top: 0.25rem !important;
 }
 
-/* Flip pairs (Glances / Pi-hole): hide inactive node tile */
-li.service.homepage-flip-hidden {
-  display: none !important;
+/* Flip pairs (Glances / Pi-hole): stack in one grid cell; hide inactive without display:none
+   so the tile doesn't blink/reflow. Kill Homepage's transition-all on these cards. */
+li.service.homepage-flip-member {
+  position: relative;
 }
 
-/* Flip control: top-right of the container status icon */
+li.service.homepage-flip-member .service-card {
+  transition: none !important;
+}
+
+li.service.homepage-flip-hidden {
+  visibility: hidden !important;
+  pointer-events: none !important;
+  z-index: 0 !important;
+}
+
+li.service.homepage-flip-active {
+  visibility: visible !important;
+  pointer-events: auto !important;
+  z-index: 1 !important;
+}
+
+/* Widget-info only fade on flip */
+li.service.homepage-flip-member .service-container.homepage-flip-widget {
+  transition: opacity 0.2s ease;
+}
+
+/* Flip control: left of status, same hit/hover box as Status dot (p-4) */
 .service-tags .homepage-flip-btn {
-  position: relative;
-  z-index: 11;
-  margin: 0.15rem 0.2rem 0 0;
-  padding: 0.15rem;
+  margin: 0;
+  padding: 0;
   border: 0;
   background: transparent;
   color: inherit;
-  opacity: 0.7;
-  cursor: pointer;
   line-height: 0;
+  align-self: flex-start;
 }
 
-.service-tags .homepage-flip-btn:hover,
-.service-tags .homepage-flip-btn:focus-visible {
-  opacity: 1;
+.service-tags .homepage-flip-btn .homepage-flip-hit {
+  box-sizing: border-box;
+}
+
+.service-tags .service-container-stats {
+  align-self: flex-start;
 }
 
 /* Footer controls (match refresh button styling) */
