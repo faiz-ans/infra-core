@@ -337,6 +337,11 @@
           "opacity-75",
         );
       });
+      // Hash (last OS-row field) keeps normal weight
+      el.querySelectorAll(".bottom-3.left-2 > div:last-child").forEach((hash) => {
+        hash.classList.remove("font-thin");
+        hash.classList.add("font-normal");
+      });
       ensureGlancesCopy(el);
     });
   }
@@ -375,8 +380,14 @@
       if (!text) return;
       try {
         await navigator.clipboard.writeText(text);
+        el.classList.remove("homepage-glances-copied");
+        void el.offsetWidth; // restart animation if clicked again quickly
+        el.classList.add("homepage-glances-copied");
         el.setAttribute("title", "Copied");
-        setTimeout(() => el.setAttribute("title", "Copy system info"), 1200);
+        setTimeout(() => {
+          el.classList.remove("homepage-glances-copied");
+          el.setAttribute("title", "Copy system info");
+        }, 700);
       } catch (_) {
         el.setAttribute("title", "Copy failed");
         setTimeout(() => el.setAttribute("title", "Copy system info"), 1200);

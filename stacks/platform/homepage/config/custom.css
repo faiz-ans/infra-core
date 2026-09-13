@@ -257,6 +257,20 @@ html.glances-anim #widgets-wrap > .information-widget-glances {
   pointer-events: auto !important;
 }
 
+@keyframes homepage-glances-copy-blink {
+  0%,
+  100% {
+    opacity: 1;
+  }
+  40% {
+    opacity: 0.2;
+  }
+}
+
+.service-container.chart.homepage-glances-copied {
+  animation: homepage-glances-copy-blink 0.35s ease-in-out 2;
+}
+
 /* Gradient background + layout spacers */
 .service-container.chart > .h-\[68px\],
 .service-container.chart > div.absolute.\-top-10,
@@ -337,12 +351,14 @@ html.glances-anim #widgets-wrap > .information-widget-glances {
   white-space: nowrap;
 }
 
-/* Let the last field (hash) shrink and ellipsize when space runs out */
+/* Let the last field (hash) shrink and ellipsize when space runs out;
+   keep normal weight (not font-thin). */
 .service-container.chart > .bottom-3.left-2 > div:last-child {
   flex-shrink: 1;
   min-width: 0;
   overflow: hidden;
   text-overflow: ellipsis;
+  font-weight: 400 !important;
 }
 
 /* Flip pairs (Glances / Pi-hole): inactive tile leaves the layout.
