@@ -329,7 +329,7 @@
       );
       // Match service-block value typography (overrides Homepage text-xs / 0.6rem)
       el.querySelectorAll(".absolute.z-20, .absolute.z-20 div").forEach((node) => {
-        node.classList.add("font-thin", "text-sm");
+        node.classList.add("font-thin", "text-xs");
         node.classList.remove(
           "text-xs",
           "text-[0.6rem]",
