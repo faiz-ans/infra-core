@@ -327,6 +327,16 @@
         "rounded-sm",
         "m-1",
       );
+      // Match service-block value typography (overrides Homepage text-xs / 0.6rem)
+      el.querySelectorAll(".absolute.z-20, .absolute.z-20 div").forEach((node) => {
+        node.classList.add("font-thin", "text-sm");
+        node.classList.remove(
+          "text-xs",
+          "text-[0.6rem]",
+          "opacity-50",
+          "opacity-75",
+        );
+      });
       ensureGlancesCopy(el);
     });
   }

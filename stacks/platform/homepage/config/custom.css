@@ -283,16 +283,12 @@ html.glances-anim #widgets-wrap > .information-widget-glances {
   width: 100%;
   max-width: 100%;
   text-align: left !important;
-  font-size: 0.65rem !important;
-  font-weight: 100 !important; /* match service-block value: font-thin */
   line-height: 1.45 !important;
   color: inherit !important;
   opacity: 1 !important;
 }
 
 .service-container.chart > .absolute.z-20 div {
-  font-size: 0.65rem !important;
-  font-weight: 100 !important;
   line-height: 1.45 !important;
   color: inherit !important;
   opacity: 1 !important;
