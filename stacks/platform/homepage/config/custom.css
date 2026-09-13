@@ -237,19 +237,84 @@ html.glances-anim #widgets-wrap > .information-widget-glances {
   }
 }
 
-/* Glances service widget (metric: info): chart mode defaults on and positions
-   the top label at -top-6 over the tile title. Pull that label into the widget
-   and grow the chart area so bottom stats stay below it (was 68px). */
-.service-card .service-container.chart {
-  height: 5.75rem !important; /* 92px = 68px + former -top-6 offset */
+/* Glances service widget (metric: info): drop chart chrome; two left-aligned
+   rows (device name, then OS). Hide CPU/Mem/Swap and the gradient wash. */
+.service-container.chart {
+  position: relative !important;
+  height: auto !important;
+  min-height: 0 !important;
+  margin: 0.1rem 0 0 !important;
+  padding: 0 0.5rem 0.2rem !important;
+  display: flex !important;
+  flex-direction: column !important;
+  align-items: flex-start !important;
+  justify-content: flex-start !important;
+  gap: 0 !important;
 }
 
-.service-card .service-container.chart > .h-\[68px\] {
-  height: 5.75rem !important;
+/* Gradient background + layout spacers */
+.service-container.chart > .h-\[68px\],
+.service-container.chart > div.absolute.\-top-10,
+.service-container.chart > div.absolute.\-top-20,
+.service-container.chart > div[class*="from-theme-500"],
+.service-container.chart > div[class*="bg-linear"],
+.service-container.chart > div[class*="bg-gradient"] {
+  display: none !important;
 }
 
-.service-card .service-container.chart .\-top-6 {
-  top: 0.25rem !important;
+/* CPU / Mem / Swap */
+.service-container.chart > .absolute.bottom-3.right-2 {
+  display: none !important;
+}
+
+/* Flow the remaining info blocks as stacked rows (no absolute corners) */
+.service-container.chart > .absolute.z-20 {
+  position: static !important;
+  top: auto !important;
+  right: auto !important;
+  bottom: auto !important;
+  left: auto !important;
+  width: 100%;
+  max-width: 100%;
+  text-align: left !important;
+  line-height: 1.25 !important;
+}
+
+/* Row 1 — device name (was top-right) */
+.service-container.chart > .\-top-6,
+.service-container.chart > [class*="-top-6"] {
+  order: 1;
+  text-align: left !important;
+}
+
+.service-container.chart > .\-top-6 > div,
+.service-container.chart > [class*="-top-6"] > div {
+  text-align: left !important;
+  margin: 0 !important;
+}
+
+.service-container.chart > .\-top-6 > div:empty,
+.service-container.chart > [class*="-top-6"] > div:empty {
+  display: none !important;
+}
+
+/* Row 2 — OS info as a single line (distro / version / hostname) */
+.service-container.chart > .bottom-3.left-2 {
+  order: 2;
+  display: flex !important;
+  flex-direction: row !important;
+  flex-wrap: wrap !important;
+  align-items: baseline !important;
+  column-gap: 0.35rem;
+  row-gap: 0;
+  margin: 0 !important;
+  padding: 0 !important;
+}
+
+.service-container.chart > .bottom-3.left-2 > div {
+  margin: 0 !important;
+  padding: 0 !important;
+  line-height: 1.25 !important;
 }
 
 /* Flip pairs (Glances / Pi-hole): inactive tile must leave the layout
