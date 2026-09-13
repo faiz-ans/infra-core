@@ -327,6 +327,57 @@
         "rounded-sm",
         "m-1",
       );
+      ensureGlancesCopy(el);
+    });
+  }
+
+  function glancesInfoCopyText(el) {
+    const parts = [];
+    const device = el.querySelector('[class*="-top-6"]');
+    if (device) {
+      device.querySelectorAll(":scope > div").forEach((d) => {
+        const t = (d.textContent || "").trim();
+        if (t) parts.push(t);
+      });
+    }
+    const os = el.querySelector(".bottom-3.left-2");
+    if (os) {
+      os.querySelectorAll(":scope > div").forEach((d) => {
+        const t = (d.textContent || "").trim();
+        if (t) parts.push(t);
+      });
+    }
+    return parts.join(" ");
+  }
+
+  function ensureGlancesCopy(el) {
+    if (el.dataset.copyBound === "1") return;
+    el.dataset.copyBound = "1";
+    el.setAttribute("role", "button");
+    el.setAttribute("tabindex", "0");
+    el.setAttribute("title", "Copy system info");
+    el.setAttribute("aria-label", "Copy system info");
+
+    const copy = async (e) => {
+      e.preventDefault();
+      e.stopPropagation();
+      const text = glancesInfoCopyText(el);
+      if (!text) return;
+      try {
+        await navigator.clipboard.writeText(text);
+        el.setAttribute("title", "Copied");
+        setTimeout(() => el.setAttribute("title", "Copy system info"), 1200);
+      } catch (_) {
+        el.setAttribute("title", "Copy failed");
+        setTimeout(() => el.setAttribute("title", "Copy system info"), 1200);
+      }
+    };
+
+    el.addEventListener("pointerdown", copy);
+    el.addEventListener("keydown", (e) => {
+      if (e.key === "Enter" || e.key === " ") {
+        copy(e);
+      }
     });
   }
 

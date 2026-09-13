@@ -237,8 +237,9 @@ html.glances-anim #widgets-wrap > .information-widget-glances {
   }
 }
 
-/* Glances service widget (metric: info): drop chart chrome; three left-aligned
-   rows (device name, OS name/version, git hash). Hide CPU/Mem/Swap and gradient. */
+/* Glances service widget (metric: info): drop chart chrome; two left-aligned
+   rows (device name, then OS/version/hash). Hash truncates with ellipsis.
+   Hide CPU/Mem/Swap and gradient. */
 .service-container.chart {
   position: relative !important;
   height: auto !important;
@@ -252,6 +253,8 @@ html.glances-anim #widgets-wrap > .information-widget-glances {
   align-items: flex-start !important;
   justify-content: flex-start !important;
   gap: 0 !important;
+  cursor: pointer;
+  pointer-events: auto !important;
 }
 
 /* Gradient background + layout spacers */
@@ -306,6 +309,9 @@ html.glances-anim #widgets-wrap > .information-widget-glances {
 .service-container.chart > [class*="-top-6"] > div {
   text-align: left !important;
   margin: 0 !important;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 .service-container.chart > .\-top-6 > div:empty,
@@ -313,17 +319,17 @@ html.glances-anim #widgets-wrap > .information-widget-glances {
   display: none !important;
 }
 
-/* Rows 2–3 — OS name/version on one line; git hash / hostname on its own line */
+/* Row 2 — OS name / version / hash on one line; truncate overflow with … */
 .service-container.chart > .bottom-3.left-2 {
   order: 2;
-  display: grid !important;
-  grid-template-columns: auto auto;
-  grid-template-rows: auto auto;
-  justify-content: start;
-  justify-items: start;
-  align-items: baseline;
+  display: flex !important;
+  flex-direction: row !important;
+  flex-wrap: nowrap !important;
+  align-items: baseline !important;
   column-gap: 0.35rem;
-  row-gap: 0;
+  width: 100%;
+  max-width: 100%;
+  overflow: hidden;
   margin: 0 !important;
   padding: 0 !important;
 }
@@ -331,21 +337,16 @@ html.glances-anim #widgets-wrap > .information-widget-glances {
 .service-container.chart > .bottom-3.left-2 > div {
   margin: 0 !important;
   padding: 0 !important;
+  flex-shrink: 0;
+  white-space: nowrap;
 }
 
-.service-container.chart > .bottom-3.left-2 > div:nth-child(1) {
-  grid-row: 1;
-  grid-column: 1;
-}
-
-.service-container.chart > .bottom-3.left-2 > div:nth-child(2) {
-  grid-row: 1;
-  grid-column: 2;
-}
-
-.service-container.chart > .bottom-3.left-2 > div:nth-child(3) {
-  grid-row: 2;
-  grid-column: 1 / -1;
+/* Let the last field (hash) shrink and ellipsize when space runs out */
+.service-container.chart > .bottom-3.left-2 > div:last-child {
+  flex-shrink: 1;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 
 /* Flip pairs (Glances / Pi-hole): inactive tile leaves the layout.
