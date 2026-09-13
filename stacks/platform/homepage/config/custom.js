@@ -429,18 +429,16 @@
 
       setServiceTitle(li, group.label);
       const descEl = li.querySelector(".service-description");
-      const raw = (descEl?.textContent || "").trim();
-      const baseDesc = (
-        descEl?.getAttribute("data-base") ||
-        raw.replace(/\s*·\s*(NAS|HTPC)\s*$/i, "")
-      ).trim();
-      if (descEl && !descEl.getAttribute("data-base") && baseDesc) {
-        descEl.setAttribute("data-base", baseDesc);
+      if (descEl) {
+        const baseDesc = (
+          descEl.getAttribute("data-base") ||
+          (descEl.textContent || "").replace(/\s*·\s*(NAS|HTPC)\s*$/i, "")
+        ).trim();
+        if (baseDesc && !descEl.getAttribute("data-base")) {
+          descEl.setAttribute("data-base", baseDesc);
+        }
+        if (baseDesc) setServiceDescription(li, baseDesc);
       }
-      setServiceDescription(
-        li,
-        baseDesc ? `${baseDesc} · ${node.nodeLabel}` : node.nodeLabel,
-      );
       ensureFlipButton(li, group, node);
 
       if (widget && fadeIn) {
