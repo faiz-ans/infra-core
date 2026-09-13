@@ -20,7 +20,7 @@
       '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 -960 960 960" width="18" height="18" fill="currentColor" aria-hidden="true"><path d="M360-120H200q-33 0-56.5-23.5T120-200v-560q0-33 23.5-56.5T200-840h160v80H200v560h160v80Zm80 80v-880h80v880h-80Zm160-80v-80h80v80h-80Zm0-640v-80h80v80h-80Zm160 640v-80h80q0 33-23.5 56.5T760-120Zm0-160v-80h80v80h-80Zm0-160v-80h80v80h-80Zm0-160v-80h80v80h-80Zm0-160v-80q33 0 56.5 23.5T840-760h-80Z"/></svg>',
   };
 
-  const FLIP_FADE_MS = 200;
+  const FLIP_FADE_MS = 400;
 
   const TAB_BY_ID = {
     "Apps-tab": "Apps",
@@ -284,11 +284,11 @@
     if (!btn) {
       btn = document.createElement("button");
       btn.type = "button";
-      // Match container-status button; hit target mirrors Status dot (p-4 + hover).
+      // Match container-status button; hit target mirrors Status dot box size.
       btn.className =
         "homepage-flip-btn shrink-0 flex items-center justify-center cursor-pointer service-tag";
       btn.innerHTML =
-        `<div class="homepage-flip-hit p-4 hover:bg-theme-500/10 dark:hover:bg-theme-900/20 rounded-b-[3px] flex items-center justify-center">${ICON_SVG.Flip}</div>`;
+        `<div class="homepage-flip-hit hover:bg-theme-500/10 dark:hover:bg-theme-900/20 rounded-b-[3px]">${ICON_SVG.Flip}</div>`;
       btn.addEventListener("pointerdown", (e) => {
         e.preventDefault();
         e.stopPropagation();
@@ -300,6 +300,12 @@
         tags.insertBefore(btn, status);
       } else {
         tags.appendChild(btn);
+      }
+    } else {
+      // Migrate older markup that used p-4 (taller than the status square).
+      const hit = btn.querySelector(".homepage-flip-hit");
+      if (hit) {
+        hit.classList.remove("p-4", "flex", "items-center", "justify-center");
       }
     }
 

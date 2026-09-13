@@ -264,26 +264,48 @@ li.service.homepage-flip-hidden {
 
 /* Widget-info only fade on flip */
 li.service.homepage-flip-member .service-container.homepage-flip-widget {
-  transition: opacity 0.2s ease;
+  transition: opacity 0.4s ease;
 }
 
-/* Flip control: left of status, same hit/hover box as Status dot (p-4) */
-.service-tags .homepage-flip-btn {
+/* Flip + status in one top-aligned row; hit box matches Status dot
+   (p-4 + h-3/w-3 = 2.75rem) so the 18px icon doesn't grow the square. */
+.service-tags:has(.homepage-flip-btn) {
+  align-items: flex-start;
+}
+
+.service-tags .homepage-flip-btn,
+.service-tags .service-container-stats {
   margin: 0;
   padding: 0;
   border: 0;
   background: transparent;
-  color: inherit;
   line-height: 0;
   align-self: flex-start;
 }
 
 .service-tags .homepage-flip-btn .homepage-flip-hit {
   box-sizing: border-box;
+  width: 2.75rem;
+  height: 2.75rem;
+  padding: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
 }
 
-.service-tags .service-container-stats {
-  align-self: flex-start;
+.service-tags .homepage-flip-btn .homepage-flip-hit svg {
+  display: block;
+}
+
+/* Same fixed box for the status hover square so the row lines up */
+.service-tags:has(.homepage-flip-btn) .service-container-stats .docker-status {
+  box-sizing: border-box;
+  width: 2.75rem;
+  height: 2.75rem;
+  padding: 0 !important;
+  display: flex;
+  align-items: center;
+  justify-content: center;
 }
 
 /* Footer controls (match refresh button styling) */
