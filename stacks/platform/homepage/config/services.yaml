@@ -216,7 +216,7 @@
                 url: http://{{HOMEPAGE_VAR_NAS_LAN_IP}}:81
                 username: "{{HOMEPAGE_VAR_OMV_USERNAME}}"
                 password: "{{HOMEPAGE_VAR_OMV_PASSWORD}}"
-                method: smart.getListBg
+                method: services.getStatus
         - Authelia:
             href: https://auth.{{HOMEPAGE_VAR_DOMAIN}}
             server: core
