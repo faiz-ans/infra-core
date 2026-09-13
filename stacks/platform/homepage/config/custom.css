@@ -291,6 +291,7 @@ html.glances-anim #widgets-wrap > .information-widget-glances {
 .service-container.chart > [class*="-top-6"] > div {
   text-align: left !important;
   margin: 0 !important;
+  font-size: 0.75rem !important; /* match OS info text-xs */
 }
 
 .service-container.chart > .\-top-6 > div:empty,
