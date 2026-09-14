@@ -43,7 +43,7 @@ Open **`https://ups.<DOMAIN>`**. Homepage UPS tile should show charge, load, and
 | Symptom | What to do |
 |---|---|
 | Widget API error / empty | Redeploy **homepage**. `docker exec homepage wget -S -O- --timeout=5 http://peanut:8080` |
-| `ups.<DOMAIN>` 403 | Authelia `default_policy` is deny. Redeploy **authelia** so `ups.` and `peanut.` have a `one_factor` rule. Restart is not enough if the container never re-read `configuration.yml` — use **Redeploy**. Then open `https://ups.<DOMAIN>` again (existing session is fine) |
+| `ups.<DOMAIN>` 403 | Often **PeaNUT**, not Authelia: Auth.js rejects the proxied Host. Redeploy **peanut** so `AUTH_TRUST_HOST=true`. Confirm with `docker exec peanut printenv AUTH_TRUST_HOST`. If that is already `true`, check Authelia: `docker logs authelia --since 5m 2>&1 \| grep -i ups` — a deny line means Redeploy **authelia** so `ups.` / `peanut.` are `one_factor` for `group:users` |
 | `ups.<DOMAIN>` does not load | Redeploy **caddy**. PeaNUT Up on `edge`. `docker exec caddy wget -S -O- --timeout=5 http://peanut:8080` |
 | PeaNUT “no devices” / NUT timeout | Remote monitoring off, or password mismatch. Re-run `omv-nut.sh` after sync so OMV `remoteuser=peanut` matches `NUT_REMOTE_PASSWORD`. `grep LISTEN /etc/nut/upsd.conf` should not be localhost-only |
 | Click opens `http://peanut:8080` | Redeploy **homepage** (href is `https://ups.<DOMAIN>`) |

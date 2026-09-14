@@ -19,6 +19,8 @@ services:
       WEB_HOST: 0.0.0.0
       WEB_PORT: 8080
       AUTH_DISABLED: "true"
+      # Behind Caddy the Host is ups.<DOMAIN>; Auth.js 403s without this.
+      AUTH_TRUST_HOST: "true"
     volumes:
       - ${DATA_ROOT}/system/peanut:/config
     networks:
