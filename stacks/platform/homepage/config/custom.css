@@ -308,6 +308,7 @@ html.glances-anim #widgets-wrap > .information-widget-glances {
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
+  font-weight: 700 !important; /* match service-block label: font-bold */
 }
 
 .service-container.chart > .\-top-6 > div:empty,

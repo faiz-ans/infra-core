@@ -337,6 +337,11 @@
           "opacity-75",
         );
       });
+      // Device name: same weight as service-block labels (font-bold), keep text-xs
+      el.querySelectorAll('[class*="-top-6"] div').forEach((node) => {
+        node.classList.remove("font-thin");
+        node.classList.add("font-bold");
+      });
       // Hash (last OS-row field): keep text-xs, not font-thin
       const hash = el.querySelector(".bottom-3.left-2 > div:last-child");
       if (hash) hash.classList.remove("font-thin");
