@@ -212,7 +212,7 @@
         #        url: http://{{HOMEPAGE_VAR_HTPC_UPSTREAM}}:61208
         #        version: 4
         #        metric: info
-        - PeaNUT:
+        - Peanut:
             href: https://ups.{{HOMEPAGE_VAR_DOMAIN}}
             server: core
             container: peanut
