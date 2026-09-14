@@ -303,6 +303,9 @@
             container: caddymanager-frontend
             icon: caddy.svg
             description: Traffic Manager
+            widget:
+                type: caddy
+                url: http://caddy:2019
         - WireGuard:
             href: https://vpn.{{HOMEPAGE_VAR_DOMAIN}}
             server: core

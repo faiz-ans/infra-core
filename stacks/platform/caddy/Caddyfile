@@ -1,9 +1,9 @@
 {
 	email off
-	# Edge-only. Do not publish 2019 on the host. CaddyManager (experiment)
-	# talks to this API as http://caddy:2019. GitOps still owns this file.
+	# Edge-only. Do not publish 2019 on the host. CaddyManager and Homepage
+	# talk to this API as http://caddy:2019. GitOps still owns this file.
 	admin 0.0.0.0:2019 {
-		origins caddy:2019 127.0.0.1:2019 localhost:2019
+		origins caddy:2019 caddy 127.0.0.1:2019 localhost:2019
 	}
 }
 
