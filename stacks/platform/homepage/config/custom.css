@@ -4,6 +4,20 @@
  * Narrow: HTPC wraps under NAS, left-aligned; stats wrap within each widget
  */
 
+/* Hide page scrollbar; scrolling still works */
+html,
+body,
+#inner_wrapper {
+  scrollbar-width: none; /* Firefox */
+  -ms-overflow-style: none; /* legacy Edge */
+}
+
+html::-webkit-scrollbar,
+body::-webkit-scrollbar,
+#inner_wrapper::-webkit-scrollbar {
+  display: none; /* Chromium / Safari */
+}
+
 #widgets-wrap {
   display: flex !important;
   flex-wrap: wrap !important;
