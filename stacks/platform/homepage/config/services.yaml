@@ -176,10 +176,17 @@
             container: uptime-kuma
             icon: uptime-kuma.svg
             description: Service Monitor
-            #widget:
-            #    type: uptimekuma
-            #    url: http://uptime-kuma:3001
-            #    slug: home
+            # Requires a public status page at /status/<slug> in Uptime Kuma
+            # (Status Pages → create → slug). Default below is "home".
+            widget:
+                type: uptimekuma
+                url: http://uptime-kuma:3001
+                slug: home
+                fields:
+                    - up
+                    - down
+                    - uptime
+                    - incident
         - Scrutiny:
             href: https://disks.{{HOMEPAGE_VAR_DOMAIN}}
             server: core

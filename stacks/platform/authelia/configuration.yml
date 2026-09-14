@@ -29,9 +29,6 @@ access_control:
         - 'pdf.{{ env "DOMAIN" }}'
         - 'it.{{ env "DOMAIN" }}'
         - 'translate.{{ env "DOMAIN" }}'
-      subject: 'group:users'
-      policy: one_factor
-    - domain:
         - 'ups.{{ env "DOMAIN" }}'
         - 'peanut.{{ env "DOMAIN" }}'
       subject: 'group:users'

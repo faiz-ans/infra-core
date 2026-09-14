@@ -75,7 +75,6 @@
     },
   ];
 
-  let scheduled = false;
   let flipAnimating = false;
 
   function glancesVisible() {
@@ -567,13 +566,35 @@
     if (!flipAnimating) enhanceFlipGroups();
   }
 
+  const OBSERVE_OPTS = { childList: true, subtree: true };
+  // Do NOT observe characterData — widget polls rewrite numbers constantly;
+  // pairing that with enhance() DOM writes caused a Firefox CPU melt loop.
+
+  let enhanceTimer = null;
+  let enhancing = false;
+
+  function startObserver() {
+    observer.observe(document.documentElement, OBSERVE_OPTS);
+  }
+
   function scheduleEnhance() {
-    if (scheduled) return;
-    scheduled = true;
-    requestAnimationFrame(() => {
-      scheduled = false;
-      enhance();
-    });
+    if (enhancing || flipAnimating) return;
+    if (enhanceTimer != null) return;
+    enhanceTimer = setTimeout(() => {
+      enhanceTimer = null;
+      if (enhancing) return;
+      enhancing = true;
+      observer.disconnect();
+      try {
+        enhance();
+      } finally {
+        // Re-attach after our writes so we don't re-enter on ourselves.
+        queueMicrotask(() => {
+          startObserver();
+          enhancing = false;
+        });
+      }
+    }, 150);
   }
 
   // Apply persisted glances visibility before paint when possible
@@ -586,7 +607,7 @@
   });
 
   const observer = new MutationObserver((mutations) => {
-    // Ignore churn from our own footer / flip icon updates
+    if (enhancing) return;
     for (const m of mutations) {
       const t = m.target;
       if (
@@ -594,7 +615,9 @@
         (t.id === "glances-toggle" ||
           t.id === "scroll-top" ||
           (t.closest &&
-            t.closest("#glances-toggle, #scroll-top, .homepage-flip-btn")))
+            t.closest(
+              "#glances-toggle, #scroll-top, .homepage-flip-btn, .homepage-flip-title",
+            )))
       ) {
         continue;
       }
@@ -602,11 +625,7 @@
       return;
     }
   });
-  observer.observe(document.documentElement, {
-    childList: true,
-    subtree: true,
-    characterData: true,
-  });
+  startObserver();
 
   window.addEventListener("resize", scheduleEnhance);
 

@@ -43,8 +43,37 @@ Open **`https://ups.<DOMAIN>`**. Homepage UPS tile should show charge, load, and
 | Symptom | What to do |
 |---|---|
 | Widget API error / empty | Redeploy **homepage**. `docker exec homepage wget -S -O- --timeout=5 http://peanut:8080` |
-| `ups.<DOMAIN>` 403 | Often **PeaNUT**, not Authelia: Auth.js rejects the proxied Host. Redeploy **peanut** so `AUTH_TRUST_HOST=true`. Confirm with `docker exec peanut printenv AUTH_TRUST_HOST`. If that is already `true`, check Authelia: `docker logs authelia --since 5m 2>&1 \| grep -i ups` — a deny line means Redeploy **authelia** so `ups.` / `peanut.` are `one_factor` for `group:users` |
-| `ups.<DOMAIN>` does not load | Redeploy **caddy**. PeaNUT Up on `edge`. `docker exec caddy wget -S -O- --timeout=5 http://peanut:8080` |
+| `ups.<DOMAIN>` 403 | See **403 diagnosis** below. Redeploy **authelia** and **caddy** (not just Restart). `ups.` must appear in the household `group:users` rule in the live Authelia config |
+| `ups.<DOMAIN>` does not load | Redeploy **caddy**. PeaNUT Up on `edge`. `docker exec caddy wget -S -O- --timeout=5 http://peanut:8080/api/ping` |
 | PeaNUT “no devices” / NUT timeout | Remote monitoring off, or password mismatch. Re-run `omv-nut.sh` after sync so OMV `remoteuser=peanut` matches `NUT_REMOTE_PASSWORD`. `grep LISTEN /etc/nut/upsd.conf` should not be localhost-only |
 | Click opens `http://peanut:8080` | Redeploy **homepage** (href is `https://ups.<DOMAIN>`) |
 | EACCES `/config` | `chown 1000:1000 ${DATA_ROOT}/system/peanut` then Redeploy **peanut** |
+
+## 403 diagnosis
+
+PeaNUT v6 has `trustHost: true` baked in and skips auth when `AUTH_DISABLED=true`, so a browser **403** is usually **Authelia forward-auth** (logged in, but ACL deny) or a **stale Caddyfile/Authelia config** (Restart does not reload Komodo `config_files` — use **Redeploy**).
+
+On Core (replace `home.lan` if your `DOMAIN` differs):
+
+```text
+DOMAIN=home.lan
+
+# Live Authelia ACL — ups./peanut. must be on the pdf/it/translate household rule
+sudo docker exec authelia cat /config/configuration.yml | sed -n '/access_control:/,/session:/p' | grep -E 'ups\.|peanut\.|pdf\.'
+
+# PeaNUT direct on edge (bypasses Authelia) — expect HTTP 200 and body "pong"
+sudo docker exec caddy wget -S -O- --timeout=5 http://peanut:8080/api/ping 2>&1 | head -15
+
+# PeaNUT env (image has no printenv)
+sudo docker inspect peanut --format '{{range .Config.Env}}{{println .}}{{end}}' | grep -E '^(AUTH_|WEB_|NUT_)'
+
+# Reload https://ups.<DOMAIN> in the browser, then:
+sudo docker logs authelia --since 2m 2>&1 | tail -30
+```
+
+| Result | Meaning |
+|---|---|
+| `/api/ping` → 200 `pong`, browser still 403 | Authelia or Caddy gate. Confirm live config (first command). Redeploy **authelia** + **caddy**. Log in at `https://auth.<DOMAIN>` first, then retry `ups.` |
+| `/api/ping` → 403 | PeaNUT itself. Redeploy **peanut**; confirm `AUTH_DISABLED=true` in inspect output |
+| Authelia log `Access denied` for `ups.` | Live `configuration.yml` is stale or missing `ups.` — Redeploy **authelia** |
+| `grep ups` shows nothing | Authelia never picked up the catalog — Redeploy **authelia** after ResourceSync |
