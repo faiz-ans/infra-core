@@ -194,24 +194,23 @@
             widget:
                 type: scrutiny
                 url: http://scrutiny:8080
-        - Glances:
-            href: https://host.{{HOMEPAGE_VAR_DOMAIN}}
-            server: core
-            container: glances
-            icon: glances.svg
-            description: Host Monitor
+        #- Glances:
+        #    href: https://host.{{HOMEPAGE_VAR_DOMAIN}}
+        #    server: core
+        #    container: glances
+        #    icon: glances.svg
+        #    description: Host Monitor
         #    widget:
         #        type: glances
         #        url: http://glances:61208
-        #        version: 4
-        #        metric: info
+        #        version: 4 
         # Paired with Glances — custom.js flip button shows one at a time.
-        - Glances HTPC:
-            href: https://host2.{{HOMEPAGE_VAR_DOMAIN}}
-            server: periphery
-            container: glances-periphery
-            icon: glances.svg
-            description: Host Monitor
+        #- Glances HTPC:
+        #    href: https://host2.{{HOMEPAGE_VAR_DOMAIN}}
+        #    server: periphery
+        #    container: glances-periphery
+        #    icon: glances.svg
+        #    description: Host Monitor
         #    widget:
         #        type: glances
         #        url: http://{{HOMEPAGE_VAR_HTPC_UPSTREAM}}:61208
@@ -227,18 +226,18 @@
                 type: peanut
                 url: http://peanut:8080
                 key: ups   
-        #- Prometheus:
-        #    href: https://metrics.{{HOMEPAGE_VAR_DOMAIN}}
-        #    server: periphery
-        #    container: prometheus
-        #    icon: prometheus.svg
-        #    description: Metrics
-        #- Grafana:
-        #    href: https://site.{{HOMEPAGE_VAR_DOMAIN}}
-        #    server: periphery
-        #    container: grafana
-        #    icon: grafana.svg
-        #    description: Site Monitor
+        - Prometheus:
+            href: https://metrics.{{HOMEPAGE_VAR_DOMAIN}}
+            server: periphery
+            container: prometheus
+            icon: prometheus.svg
+            description: Metrics
+        - Grafana:
+            href: https://site.{{HOMEPAGE_VAR_DOMAIN}}
+            server: periphery
+            container: grafana
+            icon: grafana.svg
+            description: Site Monitor
 
     - Platform:
         - Komodo:
