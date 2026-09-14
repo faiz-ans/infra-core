@@ -2,7 +2,7 @@
  * Also normalize glances uptime "1 day" → "1d" (Homepage only rewrites plural "days").
  * Footer: glances visibility toggle + scroll-to-top (before refresh).
  * Service tiles: flip Glances / Pi-hole between NAS and HTPC instances.
- * PeaNUT: shorten block labels (Battery / Load / Status).
+ * PeaNUT / Caddy / Pi-hole: shorten service-block labels.
  */
 (function () {
   const ICON_SVG = {
@@ -25,11 +25,17 @@
   // Match Homepage service-stats: transition-all duration-300 ease-in-out
   const FLIP_SIZE_MS = 300;
 
-  // Homepage i18n: "Battery Charge" / "UPS Load" / "UPS Status" (CSS uppercase)
-  const PEANUT_LABEL_SHORT = {
+  // Homepage i18n labels → shorter tile text (CSS uppercase still applies)
+  const SERVICE_BLOCK_LABEL_SHORT = {
+    // PeaNUT
     "battery charge": "Battery",
     "ups load": "Load",
     "ups status": "Status",
+    // Caddy
+    "current requests": "Requests",
+    "failed requests": "Failed",
+    // Pi-hole
+    "blocked %": "Blocked",
   };
 
   const TAB_BY_ID = {
@@ -326,15 +332,10 @@
     }
   }
 
-  function shortenPeanutLabels() {
-    const li = document.querySelector(
-      'li.service[data-name="PeaNUT"]',
-    );
-    if (!li) return;
-
-    li.querySelectorAll(".service-block .font-bold").forEach((el) => {
+  function shortenServiceBlockLabels() {
+    document.querySelectorAll(".service-block .font-bold").forEach((el) => {
       const key = (el.textContent || "").trim().toLowerCase();
-      const next = PEANUT_LABEL_SHORT[key];
+      const next = SERVICE_BLOCK_LABEL_SHORT[key];
       if (next && el.textContent !== next) el.textContent = next;
     });
   }
@@ -542,7 +543,7 @@
     syncDatetimeWrapComma();
     ensureFooterControls();
     styleGlancesInfoBoxes();
-    shortenPeanutLabels();
+    shortenServiceBlockLabels();
     // Don't clobber mid-flip widget opacity / active card.
     if (!flipAnimating) enhanceFlipGroups();
   }
