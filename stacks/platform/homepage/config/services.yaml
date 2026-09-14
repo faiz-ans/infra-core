@@ -212,18 +212,28 @@
         #        url: http://{{HOMEPAGE_VAR_HTPC_UPSTREAM}}:61208
         #        version: 4
         #        metric: info
-        - Prometheus:
-            href: https://metrics.{{HOMEPAGE_VAR_DOMAIN}}
-            server: periphery
-            container: prometheus
-            icon: prometheus.svg
-            description: Metrics
-        - Grafana:
-            href: https://site.{{HOMEPAGE_VAR_DOMAIN}}
-            server: periphery
-            container: grafana
-            icon: grafana.svg
-            description: Site Monitor
+        - PeaNUT:
+            href: https://ups.{{HOMEPAGE_VAR_DOMAIN}}
+            server: core
+            container: peanut
+            icon: peanut.svg
+            description: UPS Monitor
+            widget:
+                type: peanut
+                url: http://peanut:8080
+                key: ups   
+        #- Prometheus:
+        #    href: https://metrics.{{HOMEPAGE_VAR_DOMAIN}}
+        #    server: periphery
+        #    container: prometheus
+        #    icon: prometheus.svg
+        #    description: Metrics
+        #- Grafana:
+        #    href: https://site.{{HOMEPAGE_VAR_DOMAIN}}
+        #    server: periphery
+        #    container: grafana
+        #    icon: grafana.svg
+        #    description: Site Monitor
 
     - Platform:
         - Komodo:
@@ -236,17 +246,7 @@
                 url: http://{{HOMEPAGE_VAR_NAS_LAN_IP}}:9120
                 key: "{{HOMEPAGE_VAR_KOMODO_KEY}}"
                 secret: "{{HOMEPAGE_VAR_KOMODO_SECRET}}"
-                showSummary: true
-        - PeaNUT:
-            href: https://ups.{{HOMEPAGE_VAR_DOMAIN}}
-            server: core
-            container: peanut
-            icon: peanut.svg
-            description: UPS
-            widget:
-                type: peanut
-                url: http://peanut:8080
-                key: ups            
+                showSummary: true         
         - OpenMediaVault:
             href: https://nas.{{HOMEPAGE_VAR_DOMAIN}}
             siteMonitor: http://{{HOMEPAGE_VAR_NAS_LAN_IP}}:81
