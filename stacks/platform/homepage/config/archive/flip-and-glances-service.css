@@ -1,0 +1,177 @@
+/* ARCHIVED — not loaded. Merge into config/custom.css to re-enable.
+ * Flip button + Glances service widget (metric: info) customizations.
+ */
+
+/* Glances service widget (metric: info): drop chart chrome; two left-aligned
+   rows (device name, then OS/version/hash). Hash truncates with ellipsis.
+   Hide CPU/Mem/Swap and gradient. */
+.service-container.chart {
+  position: relative !important;
+  height: auto !important;
+  min-height: 0 !important;
+  margin: 0.25rem !important;
+  padding: 0.25rem 0.5rem !important;
+  overflow: hidden !important;
+  display: flex !important;
+  flex-direction: column !important;
+  align-items: flex-start !important;
+  justify-content: flex-start !important;
+  gap: 0 !important;
+  cursor: pointer;
+  pointer-events: auto !important;
+}
+
+.service-container.chart > .h-\[68px\],
+.service-container.chart > div.absolute.\-top-10,
+.service-container.chart > div.absolute.\-top-20,
+.service-container.chart > div[class*="from-theme-500"],
+.service-container.chart > div[class*="bg-linear"],
+.service-container.chart > div[class*="bg-gradient"] {
+  display: none !important;
+}
+
+.service-container.chart > .absolute.bottom-3.right-2 {
+  display: none !important;
+}
+
+.service-container.chart > .absolute.z-20 {
+  position: static !important;
+  top: auto !important;
+  right: auto !important;
+  bottom: auto !important;
+  left: auto !important;
+  width: 100%;
+  max-width: 100%;
+  text-align: left !important;
+  line-height: 1.45 !important;
+  color: inherit !important;
+  opacity: 1 !important;
+}
+
+.service-container.chart > .absolute.z-20 div {
+  line-height: 1.45 !important;
+  color: inherit !important;
+  opacity: 1 !important;
+}
+
+.service-container.chart > .\-top-6,
+.service-container.chart > [class*="-top-6"] {
+  order: 1;
+  text-align: left !important;
+}
+
+.service-container.chart > .\-top-6 > div,
+.service-container.chart > [class*="-top-6"] > div {
+  text-align: left !important;
+  margin: 0 !important;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-weight: 700 !important;
+}
+
+.service-container.chart > .\-top-6 > div:empty,
+.service-container.chart > [class*="-top-6"] > div:empty {
+  display: none !important;
+}
+
+.service-container.chart > .bottom-3.left-2 {
+  order: 2;
+  display: flex !important;
+  flex-direction: row !important;
+  flex-wrap: nowrap !important;
+  align-items: baseline !important;
+  column-gap: 0.35rem;
+  width: 100%;
+  max-width: 100%;
+  overflow: hidden;
+  margin: 0 !important;
+  padding: 0 !important;
+}
+
+.service-container.chart > .bottom-3.left-2 > div {
+  margin: 0 !important;
+  padding: 0 !important;
+  flex-shrink: 0;
+  white-space: nowrap;
+}
+
+.service-container.chart > .bottom-3.left-2 > div:last-child {
+  flex-shrink: 1;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  font-weight: 400 !important;
+}
+
+.service-container.chart::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+  pointer-events: none;
+  background: rgb(255 255 255 / 0.2);
+  opacity: 0;
+}
+
+.service-container.chart.homepage-glances-copied::after {
+  animation: homepage-glances-copy-flash 0.55s ease;
+}
+
+@keyframes homepage-glances-copy-flash {
+  0% {
+    opacity: 0;
+  }
+  35% {
+    opacity: 1;
+  }
+  100% {
+    opacity: 0;
+  }
+}
+
+li.service.homepage-flip-hidden {
+  display: none !important;
+}
+
+li.service.homepage-flip-member .service-container.homepage-flip-widget {
+  transition: opacity 0.4s ease;
+}
+
+.service-tags:has(.homepage-flip-btn) {
+  align-items: flex-start;
+}
+
+.service-tags .homepage-flip-btn,
+.service-tags .service-container-stats {
+  margin: 0;
+  padding: 0;
+  border: 0;
+  background: transparent;
+  line-height: 0;
+  align-self: flex-start;
+}
+
+.service-tags .homepage-flip-btn .homepage-flip-hit {
+  box-sizing: border-box;
+  width: 2.75rem;
+  height: 2.75rem;
+  padding: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.service-tags .homepage-flip-btn .homepage-flip-hit svg {
+  display: block;
+}
+
+.service-tags:has(.homepage-flip-btn) .service-container-stats .docker-status {
+  box-sizing: border-box;
+  width: 2.75rem;
+  height: 2.75rem;
+  padding: 0 !important;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
