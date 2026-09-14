@@ -194,18 +194,6 @@
             widget:
                 type: scrutiny
                 url: http://scrutiny:8080
-        - Glances:
-            href: https://host.{{HOMEPAGE_VAR_DOMAIN}}
-            server: core
-            container: glances
-            icon: glances.svg
-            description: Host Monitor
-            widget:
-                type: glances
-                url: http://glances:61208
-                version: 4
-                metric: info
-        # HTPC Glances / flip pair: see config/archive/services-flip-snippets.yaml
         - Peanut:
             href: https://ups.{{HOMEPAGE_VAR_DOMAIN}}
             server: core
@@ -275,7 +263,6 @@
                 - queries
                 - blocked_percent
                 - gravity
-        # HTPC Pi-hole / flip pair: see config/archive/services-flip-snippets.yaml
         - Caddy:
             href: https://traffic.{{HOMEPAGE_VAR_DOMAIN}}
             server: core
