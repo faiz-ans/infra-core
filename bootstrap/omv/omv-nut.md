@@ -12,9 +12,9 @@ Copy `bootstrap/` onto Core, then:
 sudo bash bootstrap/omv/omv-nut.sh
 ```
 
-That installs the plugin, writes standalone `usbhid-ups` / `port = auto`, pins CyberPower `vendorid`/`productid` when `lsusb` sees `0764:`, sets `override.battery.charge.low = 30` (cheap CPS HID often reports `0`, which never trips low-battery), and Apply’s NUT. Shutdown mode is **UPS reaches low battery** (`fsd`), with a 30 s cancel window if mains return.
+That installs the plugin, writes standalone `usbhid-ups` / `port = auto`, pins CyberPower `vendorid`/`productid` when `lsusb` sees `0764:`, sets `override.battery.charge.low = 30` (cheap CPS HID often reports `0`, which never trips low-battery), enables **Remote monitoring** for PeaNUT (`remoteuser=peanut`, password `NUT_REMOTE_PASSWORD`), and Apply’s NUT. Shutdown mode is **UPS reaches low battery** (`fsd`), with a 30 s cancel window if mains return.
 
-Workbench **Services → UPS** should show Enabled / Standalone / identifier `ups`. **Diagnostics → Services → UPS** (and the dashboard battery widget, if this OMV build has it) is the live monitor.
+`upsd` then listens on `:3493` (not localhost-only). Do not WAN-forward 3493. Homepage uses PeaNUT (`bootstrap/first-run/peanut.md`); Workbench **Diagnostics → Services → UPS** still works locally.
 
 ## Verify
 
@@ -52,4 +52,4 @@ Brief blips never reach step 3.
 | Salt `Failed: 2` / `There is no service named "nut-server"` | Harmless if `nut-server` and `nut-monitor` are active. OMV asks monit to watch NUT before those checks exist. `omv-salt deploy run monit` creates them; the script does that after nut |
 | Workbench Apply fails / wrong driver | `/etc/nut/*` is Salt-managed. Change via **Services → UPS** or re-run the script — do not hand-edit |
 
-Leave **Remote monitoring** off unless something on the LAN needs `upsd` on `:3493`. Homepage does not scrape NUT (no PeaNUT stack); use OMV Diagnostics / dashboard.
+Leave **Remote monitoring** on so PeaNUT on `edge` can reach `upsd` at `host.docker.internal:3493`. The NUT user is **`peanut`**. Do not WAN-forward 3493.

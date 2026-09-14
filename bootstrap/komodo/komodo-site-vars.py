@@ -83,6 +83,7 @@ KEY_MODE: dict[str, tuple[str, str]] = {
     "RESTIC_PASSWORD": ("generate", ""),
     "RESTIC_REST_PASSWORD": ("generate", ""),
     "UPTIME_KUMA_PUSH_URL": ("empty", ""),
+    "NUT_REMOTE_PASSWORD": ("generate", ""),
     "CADDYMANAGER_JWT_SECRET": ("generate", ""),
     "GRAFANA_ADMIN_PASSWORD": ("generate", ""),
     "WG_UI_PASSWORD": ("generate", ""),

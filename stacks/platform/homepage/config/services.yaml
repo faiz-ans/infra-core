@@ -193,11 +193,16 @@
                 url: http://{{HOMEPAGE_VAR_HTPC_UPSTREAM}}:61208
                 version: 4
                 metric: info
-        - UPS:
-            href: https://nas.{{HOMEPAGE_VAR_DOMAIN}}
-            siteMonitor: http://{{HOMEPAGE_VAR_NAS_LAN_IP}}:81
-            icon: mdi-battery-charging
-            description: CyberPower ST625U
+        - CyberPower ST625U:
+            href: https://ups.{{HOMEPAGE_VAR_DOMAIN}}
+            server: core
+            container: peanut
+            icon: peanut.svg
+            description: UPS
+            widget:
+                type: peanut
+                url: http://peanut:8080
+                key: ups
         - Scrutiny:
             href: https://disks.{{HOMEPAGE_VAR_DOMAIN}}
             server: core

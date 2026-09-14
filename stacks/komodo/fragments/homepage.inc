@@ -1,7 +1,7 @@
 [[stack]]
 name = "homepage"
 deploy = true
-after = ["caddy", "authelia", "glances"]
+after = ["caddy", "authelia", "glances", "peanut"]
 [stack.config]
 server = "core"
 repo = "faiz-ans/infra-core"

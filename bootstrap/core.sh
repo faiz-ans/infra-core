@@ -507,6 +507,7 @@ mkdir -p \
   "${DATA_ROOT}/system/scrutiny/influxdb" \
   "${DATA_ROOT}/system/uptime-kuma" \
   "${DATA_ROOT}/system/caddymanager" \
+  "${DATA_ROOT}/system/peanut" \
   "${DATA_ROOT}/shared/media" \
   "${DATA_ROOT}/shared/downloads" \
   "${DATA_ROOT}/shared/files" \
@@ -802,7 +803,7 @@ echo "  After ResourceSync deploys caddy, it writes system/authelia/caddy-root.c
 echo "  Core Docker log caps: /etc/docker/daemon.json (bootstrap/core/core-docker-engine.sh). Recreate containers after first apply."
 echo "  HTPC: bootstrap/periphery/periphery-docker-engine.ps1 (pools + logs + DiskSizeMiB); Deploy periphery stacks one at a time first."
 echo "  Cage fan: sudo bash bootstrap/core/core-fan.sh (PWM from max CPU/HDD; see bootstrap/core/core-fan.md)."
-echo "  UPS: sudo bash bootstrap/omv/omv-nut.sh (CyberPower ST625U USB HID; low-battery shutdown; see bootstrap/omv/omv-nut.md)."
+echo "  UPS: sudo bash bootstrap/omv/omv-nut.sh (CyberPower ST625U USB HID; low-battery shutdown; PeaNUT; see bootstrap/omv/omv-nut.md)."
 echo "  After reboot: core-lan-bind.service REDIRECTs NAS_LAN_IP:53 to 127.0.0.1:15353. Host DNS is 127.0.0.1:15353 (not the LAN REDIRECT)."
 echo "  OpenCloud SMB/NFS assimilate: opencloud-posix-scan.timer (posixfs scan users/*/files and /posix/projects)."
 echo "  Core LAN IPv4 is static ${NAS_LAN_IP} (core-lan-static.sh). Do not depend on a router DHCP reservation for the NAS address."

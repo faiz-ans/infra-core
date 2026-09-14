@@ -147,6 +147,21 @@ https://nas.{$DOMAIN} {
 }
 
 #--------------------------------
+# UPS (PeaNUT)
+#--------------------------------
+
+https://peanut.{$DOMAIN} {
+	tls internal
+	redir https://ups.{$DOMAIN}{uri} permanent
+}
+
+https://ups.{$DOMAIN} {
+	tls internal
+	import authelia_gate
+	reverse_proxy peanut:8080
+}
+
+#--------------------------------
 # VAULTWARDEN
 #--------------------------------
 

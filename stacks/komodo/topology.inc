@@ -36,6 +36,10 @@ phase = "bootstrap"
 server = "core"
 phase = "bootstrap"
 
+[stacks.peanut]
+server = "core"
+phase = "bootstrap"
+
 [stacks.homepage]
 server = "core"
 phase = "bootstrap"

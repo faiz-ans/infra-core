@@ -110,7 +110,7 @@ Remove the old `data` (relative path `/`) NFS share. Docker NFS volumes remember
 
 ## 6. UPS (CyberPower ST625U)
 
-USB HID NUT on Core, low-battery shutdown: `bootstrap/omv/omv-nut.md`.
+USB HID NUT on Core, low-battery shutdown: `bootstrap/omv/omv-nut.md`. Homepage live widget: `bootstrap/first-run/peanut.md`.
 
 ```text
 sudo bash bootstrap/omv/omv-nut.sh

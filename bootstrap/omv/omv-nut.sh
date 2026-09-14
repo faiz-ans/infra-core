@@ -25,6 +25,31 @@ SHUTDOWNMODE="${SHUTDOWNMODE:-fsd}"
 SHUTDOWNTIMER="${SHUTDOWNTIMER:-30}"
 # CyberPower HID often reports battery.charge.low=0, which never trips LB.
 CHARGE_LOW="${CHARGE_LOW:-30}"
+NUT_REMOTE_USER="${NUT_REMOTE_USER:-peanut}"
+ANSWERS="${ANSWERS:-/etc/komodo/bootstrap-answers.env}"
+KOMODO_CORE_CONFIG="${KOMODO_CORE_CONFIG:-/etc/komodo/core.config.toml}"
+
+# PeaNUT (edge) talks to upsd via host.docker.internal; that is not localhost.
+# Remote monitoring makes upsd LISTEN 0.0.0.0:3493. Password is Komodo
+# NUT_REMOTE_PASSWORD (do not WAN-forward 3493).
+if [[ -z "${NUT_REMOTE_PASSWORD:-}" && -f "${KOMODO_CORE_CONFIG}" ]]; then
+  NUT_REMOTE_PASSWORD=$(awk -F '"' '/^NUT_REMOTE_PASSWORD/ {print $2; exit}' "${KOMODO_CORE_CONFIG}" || true)
+fi
+if [[ -z "${NUT_REMOTE_PASSWORD:-}" && -f "${ANSWERS}" ]]; then
+  # shellcheck disable=SC1090
+  source "${ANSWERS}"
+fi
+if [[ -z "${NUT_REMOTE_PASSWORD:-}" ]]; then
+  NUT_REMOTE_PASSWORD=$(openssl rand -hex 16)
+  echo "Generated NUT_REMOTE_PASSWORD (not printed). Keep it via ${ANSWERS} / sync-komodo-secrets.sh."
+fi
+mkdir -p "$(dirname "${ANSWERS}")"
+if [[ -f "${ANSWERS}" ]] && grep -qE '^NUT_REMOTE_PASSWORD=' "${ANSWERS}"; then
+  sed -i "s|^NUT_REMOTE_PASSWORD=.*|NUT_REMOTE_PASSWORD='${NUT_REMOTE_PASSWORD}'|" "${ANSWERS}"
+else
+  printf "NUT_REMOTE_PASSWORD='%s'\n" "${NUT_REMOTE_PASSWORD}" >> "${ANSWERS}"
+fi
+export NUT_REMOTE_PASSWORD NUT_REMOTE_USER
 
 # apt-get update
 # apt-get install -y openmediavault-nut usbutils
@@ -61,10 +86,13 @@ if command -v lsusb >/dev/null 2>&1; then
   fi
 fi
 
-python3 - "${UPSNAME}" "${COMMENT}" "${SHUTDOWNMODE}" "${SHUTDOWNTIMER}" "${CHARGE_LOW}" "${vendorid}" "${productid}" <<'PY'
-import json, subprocess, sys, time
+python3 - "${UPSNAME}" "${COMMENT}" "${SHUTDOWNMODE}" "${SHUTDOWNTIMER}" "${CHARGE_LOW}" "${vendorid}" "${productid}" "${NUT_REMOTE_USER}" <<'PY'
+import json, os, subprocess, sys, time
 
-upsname, comment, shutdownmode, shutdowntimer, charge_low, vendorid, productid = sys.argv[1:]
+upsname, comment, shutdownmode, shutdowntimer, charge_low, vendorid, productid, remoteuser = sys.argv[1:]
+remotepassword = os.environ.get("NUT_REMOTE_PASSWORD") or ""
+if not remotepassword:
+    raise SystemExit("NUT_REMOTE_PASSWORD empty")
 
 lines = [
     "driver = usbhid-ups",
@@ -114,12 +142,12 @@ payload = {
     "driverconf": driverconf,
     "shutdownmode": shutdownmode,
     "shutdowntimer": int(shutdowntimer),
-    "remotemonitor": bool(current.get("remotemonitor") or False),
-    "remoteuser": current.get("remoteuser") or "",
-    "remotepassword": current.get("remotepassword") or "",
+    "remotemonitor": True,
+    "remoteuser": remoteuser,
+    "remotepassword": remotepassword,
 }
 rpc("Nut", "set", payload)
-print(f"NUT {upsname}: standalone usbhid-ups, shutdownmode={shutdownmode}, charge.low={charge_low}")
+print(f"NUT {upsname}: standalone usbhid-ups, shutdownmode={shutdownmode}, charge.low={charge_low}, remotemonitor user={remoteuser}")
 PY
 
 # omv-salt deploy run nut

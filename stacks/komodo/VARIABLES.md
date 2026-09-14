@@ -28,6 +28,7 @@ Mark items tagged **secret** as secrets in Komodo when inspecting the file.
 | `NFS_EXPORT` | | Docker-NFS path of the OMV `shared` share (`/shared`). Used as `:${NFS_EXPORT}/media` etc. No quotes, not a drive letter |
 | `NFS_USERS` | | Docker-NFS path of the OMV `users` share (`/users`). Immich External Libraries. No quotes |
 | `BACKUP_DRIVE` | | HTPC Restic REST data directory |
+| `NUT_REMOTE_PASSWORD` | secret | OMV NUT remote-monitor user `peanut` (PeaNUT → host `:3493`) |
 | `PUID` | | linuxserver images on both hosts |
 | `PGID` | | linuxserver images on both hosts |
 
