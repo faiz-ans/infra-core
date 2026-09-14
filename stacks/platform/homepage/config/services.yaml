@@ -176,10 +176,10 @@
             container: uptime-kuma
             icon: uptime-kuma.svg
             description: Service Monitor
-            widget:
-                type: uptimekuma
-                url: http://uptime-kuma:3001
-                slug: home
+            #widget:
+            #    type: uptimekuma
+            #    url: http://uptime-kuma:3001
+            #    slug: home
         - Scrutiny:
             href: https://disks.{{HOMEPAGE_VAR_DOMAIN}}
             server: core
