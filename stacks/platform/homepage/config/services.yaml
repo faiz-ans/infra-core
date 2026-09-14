@@ -212,18 +212,19 @@
             #    type: uptimekuma
             #    url: http://uptime-kuma:3001
             #    slug: home
-        - Prometheus:
-            href: https://metrics.{{HOMEPAGE_VAR_DOMAIN}}
-            server: periphery
-            container: prometheus
-            icon: prometheus.svg
-            description: Metrics
-        - Grafana:
-            href: https://site.{{HOMEPAGE_VAR_DOMAIN}}
-            server: periphery
-            container: grafana
-            icon: grafana.svg
-            description: Site Monitor
+        - Centralized:
+            - Prometheus:
+                href: https://metrics.{{HOMEPAGE_VAR_DOMAIN}}
+                server: periphery
+                container: prometheus
+                icon: prometheus.svg
+                description: Metrics
+            - Grafana:
+                href: https://site.{{HOMEPAGE_VAR_DOMAIN}}
+                server: periphery
+                container: grafana
+                icon: grafana.svg
+                description: Site Monitor
 
     - Platform:
         - Komodo:

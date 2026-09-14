@@ -26,12 +26,14 @@ layout:
     Monitoring:
       style: row
       columns: 4
+      Centralized:
+        header: false
     Platform:
       style: row
       columns: 4
     Network:
       style: row
-      columns: 4
+      columns: 2
     Media Backend:
       style: row
-      columns: 4
+      columns: 2
