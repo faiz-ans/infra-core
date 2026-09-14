@@ -23,3 +23,15 @@ layout:
   System:
     tab: System
     header: false
+    Monitoring:
+      style: row
+      columns: 4
+    Platform:
+      style: row
+      columns: 4
+    Network:
+      style: row
+      columns: 4
+    Media Backend:
+      style: row
+      columns: 4
