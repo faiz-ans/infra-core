@@ -1,6 +1,6 @@
 # PeaNUT first-run
 
-PeaNUT is the HTTP front for host NUT (CyberPower ST625U). Homepage’s UPS tile scrapes `http://peanut:8080` on `edge`. Browser: `https://ups.<DOMAIN>` (alias `peanut.`). Authelia forward-auth is `admins` / **faiz** only. Homepage still scrapes internally (not through Caddy).
+PeaNUT is the HTTP front for host NUT (CyberPower ST625U). Homepage’s UPS tile scrapes `http://peanut:8080` on `edge`. Browser: `https://ups.<DOMAIN>` (alias `peanut.`). Authelia forward-auth is on `ups.` and `peanut.` (any logged-in Authelia user). Homepage still scrapes internally (not through Caddy).
 
 PeaNUT’s own login is off (`AUTH_DISABLED`). NUT remote user is **`peanut`**; password is Komodo `NUT_REMOTE_PASSWORD`. Host NUT must have **Remote monitoring** on so `upsd` listens beyond localhost (`bootstrap/omv/omv-nut.sh`).
 
@@ -43,6 +43,7 @@ Open **`https://ups.<DOMAIN>`**. Homepage UPS tile should show charge, load, and
 | Symptom | What to do |
 |---|---|
 | Widget API error / empty | Redeploy **homepage**. `docker exec homepage wget -S -O- --timeout=5 http://peanut:8080` |
+| `ups.<DOMAIN>` 403 | Authelia `default_policy` is deny. Redeploy **authelia** so `ups.` and `peanut.` have a `one_factor` rule. Restart is not enough if the container never re-read `configuration.yml` — use **Redeploy**. Then open `https://ups.<DOMAIN>` again (existing session is fine) |
 | `ups.<DOMAIN>` does not load | Redeploy **caddy**. PeaNUT Up on `edge`. `docker exec caddy wget -S -O- --timeout=5 http://peanut:8080` |
 | PeaNUT “no devices” / NUT timeout | Remote monitoring off, or password mismatch. Re-run `omv-nut.sh` after sync so OMV `remoteuser=peanut` matches `NUT_REMOTE_PASSWORD`. `grep LISTEN /etc/nut/upsd.conf` should not be localhost-only |
 | Click opens `http://peanut:8080` | Redeploy **homepage** (href is `https://ups.<DOMAIN>`) |

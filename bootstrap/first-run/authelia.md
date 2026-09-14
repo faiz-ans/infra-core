@@ -104,8 +104,8 @@ DAV/mobile that cannot do OIDC: OpenCloud **App Token**; Immich mobile uses the 
 
 **Forward-auth (Authelia is the only login)**
 
-- Household (`users`): BentoPDF, IT Tools, LibreTranslate
-- Sysadmin (`admins`): Prometheus, Glances, Glances (periphery), Vaultwarden `/admin`
+- Household (`users`): BentoPDF, IT Tools, LibreTranslate, PeaNUT (`ups.` / `peanut.`)
+- Sysadmin (`admins`): Prometheus, Glances, Glances (periphery), Scrutiny, Caddy Manager, Vaultwarden `/admin`
 
 **OIDC (app session after Authelia)**
 

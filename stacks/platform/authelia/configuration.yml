@@ -32,11 +32,14 @@ access_control:
       subject: 'group:users'
       policy: one_factor
     - domain:
+        - 'ups.{{ env "DOMAIN" }}'
+        - 'peanut.{{ env "DOMAIN" }}'
+      policy: one_factor
+    - domain:
         - 'metrics.{{ env "DOMAIN" }}'
         - 'host.{{ env "DOMAIN" }}'
         - 'host2.{{ env "DOMAIN" }}'
         - 'disks.{{ env "DOMAIN" }}'
-        - 'ups.{{ env "DOMAIN" }}'
         - 'traffic.{{ env "DOMAIN" }}'
       subject: 'group:admins'
       policy: one_factor
