@@ -170,29 +170,16 @@
 - System:
 
     - Monitoring:
-        - Glances:
-            href: https://host.{{HOMEPAGE_VAR_DOMAIN}}
+        - Uptime Kuma:
+            href: https://up.{{HOMEPAGE_VAR_DOMAIN}}
             server: core
-            container: glances
-            icon: glances.svg
-            description: Host Monitor
+            container: uptime-kuma
+            icon: uptime-kuma.svg
+            description: Service Monitor
             widget:
-                type: glances
-                url: http://glances:61208
-                version: 4
-                metric: info
-        # Paired with Glances — custom.js flip button shows one at a time.
-        - Glances HTPC:
-            href: https://host2.{{HOMEPAGE_VAR_DOMAIN}}
-            server: periphery
-            container: glances-periphery
-            icon: glances.svg
-            description: Host Monitor
-            widget:
-                type: glances
-                url: http://{{HOMEPAGE_VAR_HTPC_UPSTREAM}}:61208
-                version: 4
-                metric: info
+                type: uptimekuma
+                url: http://uptime-kuma:3001
+                slug: home
         - Scrutiny:
             href: https://disks.{{HOMEPAGE_VAR_DOMAIN}}
             server: core
@@ -202,16 +189,29 @@
             widget:
                 type: scrutiny
                 url: http://scrutiny:8080
-        - Uptime Kuma:
-            href: https://up.{{HOMEPAGE_VAR_DOMAIN}}
+        - Glances:
+            href: https://host.{{HOMEPAGE_VAR_DOMAIN}}
             server: core
-            container: uptime-kuma
-            icon: uptime-kuma.svg
-            description: Service Monitor
-            #widget:
-            #    type: uptimekuma
-            #    url: http://uptime-kuma:3001
-            #    slug: home
+            container: glances
+            icon: glances.svg
+            description: Host Monitor
+        #    widget:
+        #        type: glances
+        #        url: http://glances:61208
+        #        version: 4
+        #        metric: info
+        # Paired with Glances — custom.js flip button shows one at a time.
+        - Glances HTPC:
+            href: https://host2.{{HOMEPAGE_VAR_DOMAIN}}
+            server: periphery
+            container: glances-periphery
+            icon: glances.svg
+            description: Host Monitor
+        #    widget:
+        #        type: glances
+        #        url: http://{{HOMEPAGE_VAR_HTPC_UPSTREAM}}:61208
+        #        version: 4
+        #        metric: info
         - Prometheus:
             href: https://metrics.{{HOMEPAGE_VAR_DOMAIN}}
             server: periphery
