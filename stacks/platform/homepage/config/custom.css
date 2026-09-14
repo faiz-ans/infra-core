@@ -251,6 +251,17 @@ html.glances-anim #widgets-wrap > .information-widget-glances {
   }
 }
 
+/* Hide service widgets until custom.js shortens labels — avoids flash/layout jump
+   when a tab mounts (e.g. System) with full i18n strings. */
+li.service:has(.service-block):not(.homepage-widget-ready) .service-container {
+  opacity: 0;
+  pointer-events: none;
+}
+
+li.service.homepage-widget-ready .service-container {
+  opacity: 1;
+}
+
 /* Footer controls (match refresh button styling) */
 #style .homepage-footer-control {
   cursor: pointer;

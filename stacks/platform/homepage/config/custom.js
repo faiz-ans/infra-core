@@ -213,11 +213,32 @@
   }
 
   function shortenServiceBlockLabels() {
-    document.querySelectorAll(".service-block .font-bold").forEach((el) => {
-      const key = (el.textContent || "").trim().toLowerCase();
-      const next = SERVICE_BLOCK_LABEL_SHORT[key];
-      if (next && el.textContent !== next) el.textContent = next;
+    document.querySelectorAll("li.service").forEach((li) => {
+      const labels = li.querySelectorAll(".service-block .font-bold");
+      if (!labels.length) return;
+
+      labels.forEach((el) => {
+        const key = (el.textContent || "").trim().toLowerCase();
+        const next = SERVICE_BLOCK_LABEL_SHORT[key];
+        if (next && el.textContent !== next) el.textContent = next;
+      });
+      // Reveal only after shortening so the long i18n labels never flash.
+      li.classList.add("homepage-widget-ready");
     });
+  }
+
+  function markServiceWidgetPending(node) {
+    if (!node || node.nodeType !== 1) return;
+    const tiles = [];
+    if (node.matches?.("li.service")) tiles.push(node);
+    node.querySelectorAll?.("li.service").forEach((li) => tiles.push(li));
+    const parent = node.closest?.("li.service");
+    if (parent) tiles.push(parent);
+    for (const li of tiles) {
+      if (li.querySelector(".service-block")) {
+        li.classList.remove("homepage-widget-ready");
+      }
+    }
   }
 
   function enhance() {
@@ -229,9 +250,12 @@
     shortenServiceBlockLabels();
   }
 
-  const OBSERVE_OPTS = { childList: true, subtree: true };
-  // Do NOT observe characterData — widget polls rewrite numbers constantly;
-  // pairing that with enhance() DOM writes caused a Firefox CPU melt loop.
+  const OBSERVE_OPTS = {
+    childList: true,
+    subtree: true,
+    // Label text only — values live in a sibling, so this does not re-enter on polls.
+    characterData: true,
+  };
 
   let enhanceTimer = null;
   let enhancing = false;
@@ -243,6 +267,11 @@
   function scheduleEnhance() {
     if (enhancing) return;
     if (enhanceTimer != null) return;
+    // Reveal pending widgets ASAP; otherwise debounce routine header churn.
+    const pending = document.querySelector(
+      "li.service:has(.service-block):not(.homepage-widget-ready)",
+    );
+    const delay = pending ? 0 : 150;
     enhanceTimer = setTimeout(() => {
       enhanceTimer = null;
       if (enhancing) return;
@@ -251,13 +280,12 @@
       try {
         enhance();
       } finally {
-        // Re-attach after our writes so we don't re-enter on ourselves.
         queueMicrotask(() => {
           startObserver();
           enhancing = false;
         });
       }
-    }, 150);
+    }, delay);
   }
 
   // Apply persisted glances visibility before paint when possible
@@ -271,7 +299,20 @@
 
   const observer = new MutationObserver((mutations) => {
     if (enhancing) return;
+    let shouldEnhance = false;
     for (const m of mutations) {
+      if (m.type === "characterData") {
+        const label = m.target?.parentElement;
+        if (
+          label?.classList?.contains("font-bold") &&
+          label.closest(".service-block")
+        ) {
+          markServiceWidgetPending(label);
+          shouldEnhance = true;
+        }
+        continue;
+      }
+
       const t = m.target;
       if (
         t &&
@@ -281,9 +322,12 @@
       ) {
         continue;
       }
-      scheduleEnhance();
-      return;
+
+      markServiceWidgetPending(t);
+      for (const n of m.addedNodes) markServiceWidgetPending(n);
+      shouldEnhance = true;
     }
+    if (shouldEnhance) scheduleEnhance();
   });
   startObserver();
 
