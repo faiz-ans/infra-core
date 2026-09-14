@@ -328,7 +328,7 @@
 
   function shortenPeanutLabels() {
     const li = document.querySelector(
-      'li.service[data-name="CyberPower ST625U"]',
+      'li.service[data-name="PeaNUT"]',
     );
     if (!li) return;
 

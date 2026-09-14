@@ -242,7 +242,7 @@
             server: core
             container: peanut
             icon: peanut.svg
-            description: Uninterrupted Power Supply
+            description: UPS
             widget:
                 type: peanut
                 url: http://peanut:8080
