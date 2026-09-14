@@ -237,6 +237,16 @@
                 key: "{{HOMEPAGE_VAR_KOMODO_KEY}}"
                 secret: "{{HOMEPAGE_VAR_KOMODO_SECRET}}"
                 showSummary: true
+        - PeaNUT:
+            href: https://ups.{{HOMEPAGE_VAR_DOMAIN}}
+            server: core
+            container: peanut
+            icon: peanut.svg
+            description: Uninterrupted Power Supply
+            widget:
+                type: peanut
+                url: http://peanut:8080
+                key: ups            
         - OpenMediaVault:
             href: https://nas.{{HOMEPAGE_VAR_DOMAIN}}
             siteMonitor: http://{{HOMEPAGE_VAR_NAS_LAN_IP}}:81
@@ -254,16 +264,6 @@
             container: gitea
             icon: gitea.svg
             description: Git
-        - CyberPower ST625U:
-            href: https://ups.{{HOMEPAGE_VAR_DOMAIN}}
-            server: core
-            container: peanut
-            icon: peanut.svg
-            description: UPS
-            widget:
-                type: peanut
-                url: http://peanut:8080
-                key: ups            
 
     - Network:
         - Pi-hole:
