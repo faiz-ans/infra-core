@@ -2,6 +2,7 @@
  * Also normalize glances uptime "1 day" → "1d" (Homepage only rewrites plural "days").
  * Footer: glances visibility toggle + scroll-to-top (before refresh).
  * Service tiles: flip Glances / Pi-hole between NAS and HTPC instances.
+ * PeaNUT: shorten block labels (Battery / Load / Status).
  */
 (function () {
   const ICON_SVG = {
@@ -23,6 +24,13 @@
   const FLIP_FADE_MS = 400;
   // Match Homepage service-stats: transition-all duration-300 ease-in-out
   const FLIP_SIZE_MS = 300;
+
+  // Homepage i18n: "Battery Charge" / "UPS Load" / "UPS Status" (CSS uppercase)
+  const PEANUT_LABEL_SHORT = {
+    "battery charge": "Battery",
+    "ups load": "Load",
+    "ups status": "Status",
+  };
 
   const TAB_BY_ID = {
     "Apps-tab": "Apps",
@@ -318,6 +326,19 @@
     }
   }
 
+  function shortenPeanutLabels() {
+    const li = document.querySelector(
+      'li.service[data-name="CyberPower ST625U"]',
+    );
+    if (!li) return;
+
+    li.querySelectorAll(".service-block .font-bold").forEach((el) => {
+      const key = (el.textContent || "").trim().toLowerCase();
+      const next = PEANUT_LABEL_SHORT[key];
+      if (next && el.textContent !== next) el.textContent = next;
+    });
+  }
+
   function styleGlancesInfoBoxes() {
     document.querySelectorAll(".service-container.chart").forEach((el) => {
       // Same dark box as service-block widgets
@@ -521,6 +542,7 @@
     syncDatetimeWrapComma();
     ensureFooterControls();
     styleGlancesInfoBoxes();
+    shortenPeanutLabels();
     // Don't clobber mid-flip widget opacity / active card.
     if (!flipAnimating) enhanceFlipGroups();
   }

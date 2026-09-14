@@ -193,16 +193,6 @@
                 url: http://{{HOMEPAGE_VAR_HTPC_UPSTREAM}}:61208
                 version: 4
                 metric: info
-        - CyberPower ST625U:
-            href: https://ups.{{HOMEPAGE_VAR_DOMAIN}}
-            server: core
-            container: peanut
-            icon: peanut.svg
-            description: UPS
-            widget:
-                type: peanut
-                url: http://peanut:8080
-                key: ups
         - Scrutiny:
             href: https://disks.{{HOMEPAGE_VAR_DOMAIN}}
             server: core
@@ -264,6 +254,16 @@
             container: gitea
             icon: gitea.svg
             description: Git
+        - CyberPower ST625U:
+            href: https://ups.{{HOMEPAGE_VAR_DOMAIN}}
+            server: core
+            container: peanut
+            icon: peanut.svg
+            description: UPS
+            widget:
+                type: peanut
+                url: http://peanut:8080
+                key: ups            
 
     - Network:
         - Pi-hole:
