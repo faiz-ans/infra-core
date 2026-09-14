@@ -460,7 +460,10 @@
 
       if (!active) continue;
 
-      setServiceTitle(li, group.label);
+      setServiceTitle(
+        li,
+        node.id === group.defaultNode ? group.label : `${group.label} (2)`,
+      );
       const descEl = li.querySelector(".service-description");
       if (descEl) {
         const baseDesc = (
