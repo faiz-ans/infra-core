@@ -36,6 +36,12 @@
     "failed requests": "Failed",
     // Pi-hole
     "blocked %": "Blocked",
+    // Uptime Kuma
+    "sites up": "Up",
+    "sites down": "Down",
+    "uptimekuma.incidents": "Incidents",
+    incidents: "Incidents",
+    incident: "Incidents",
   };
 
   const TAB_BY_ID = {
