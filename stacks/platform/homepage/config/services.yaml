@@ -176,8 +176,6 @@
             container: uptime-kuma
             icon: uptime-kuma.svg
             description: Service Monitor
-            # Requires a public status page at /status/<slug> in Uptime Kuma
-            # (Status Pages → create → slug). Default below is "home".
             widget:
                 type: uptimekuma
                 url: http://uptime-kuma:3001
