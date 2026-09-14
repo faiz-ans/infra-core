@@ -264,16 +264,28 @@
     return group.nodes[(idx + 1) % group.nodes.length];
   }
 
+  function flipDisplayTitle(group, nodeId) {
+    const base = group.label.replace(/ \(2\)$/, "");
+    return nodeId === group.defaultNode ? base : `${base} (2)`;
+  }
+
   function setServiceTitle(li, title) {
     const nameEl = li.querySelector(".service-name");
     if (!nameEl) return;
-    for (const node of nameEl.childNodes) {
-      if (node.nodeType === Node.TEXT_NODE) {
-        const leading = (node.textContent.match(/^\s*/) || [""])[0];
-        node.textContent = leading + title;
-        return;
+
+    const desc = nameEl.querySelector(".service-description");
+    let titleEl = nameEl.querySelector(".homepage-flip-title");
+
+    if (!titleEl) {
+      for (const node of [...nameEl.childNodes]) {
+        if (node.nodeType === Node.TEXT_NODE) node.remove();
       }
+      titleEl = document.createElement("span");
+      titleEl.className = "homepage-flip-title block";
+      nameEl.insertBefore(titleEl, desc || null);
     }
+
+    if (titleEl.textContent !== title) titleEl.textContent = title;
   }
 
   function setServiceDescription(li, text) {
@@ -460,10 +472,8 @@
 
       if (!active) continue;
 
-      setServiceTitle(
-        li,
-        node.id === group.defaultNode ? group.label : `${group.label} (2)`,
-      );
+      const displayTitle = flipDisplayTitle(group, current.node.id);
+      setServiceTitle(li, displayTitle);
       const descEl = li.querySelector(".service-description");
       if (descEl) {
         const baseDesc = (
