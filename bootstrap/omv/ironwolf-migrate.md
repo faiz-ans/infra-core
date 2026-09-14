@@ -140,13 +140,34 @@ sudo exportfs -v
 
 ## 7. Switch Komodo `DATA_ROOT`
 
-Komodo → **Settings → Variables** (or the Core secrets file): set
+Stack env uses `[[DATA_ROOT]]` from Core **`/etc/komodo/core.config.toml`** `[secrets]`. Changing only the Komodo UI Variables page does **not** rewrite that file — Redeploy keeps the old uuid mounts.
+
+On Core (as root), set **all three** places that still carry the old uuid — secrets toml, answers cache, and **bootstrap `compose.env`** (Core’s `env_file`; a stale `DATA_ROOT` there can win over `[secrets]` at Redeploy):
 
 ```text
-DATA_ROOT=/srv/dev-disk-by-uuid-<NEW_UUID>
+NEW=/srv/dev-disk-by-uuid-<NEW_UUID>
+sudo grep -E '^DATA_ROOT' /etc/komodo/core.config.toml /etc/komodo/bootstrap-answers.env /etc/komodo/bootstrap/compose.env
+sudo sed -i "s|^DATA_ROOT = \".*\"|DATA_ROOT = \"${NEW}\"|" /etc/komodo/core.config.toml
+sudo sed -i "s|^DATA_ROOT=.*|DATA_ROOT='${NEW}'|" /etc/komodo/bootstrap-answers.env
+sudo sed -i "s|^DATA_ROOT=.*|DATA_ROOT=${NEW}|" /etc/komodo/bootstrap/compose.env
+sudo grep -E '^DATA_ROOT' /etc/komodo/core.config.toml /etc/komodo/bootstrap-answers.env /etc/komodo/bootstrap/compose.env
+# Must recreate Core and local Periphery — plain `up -d` leaves them Running;
+# Periphery’s process env is used by `docker compose` and can override the stack `.env`:
+cd /etc/komodo/bootstrap && sudo docker compose --env-file compose.env -f compose.yaml up -d --force-recreate core periphery
+sudo docker exec bootstrap-core-1 printenv DATA_ROOT
+sudo docker exec bootstrap-periphery-1 printenv DATA_ROOT
+sudo docker exec bootstrap-core-1 grep '^DATA_ROOT' /config/config.toml
 ```
 
-No trailing slash. Then **Redeploy** every Core stack that mounts it:
+Both containers’ `printenv` and the toml line must show `${NEW}`. Then **Redeploy** opencloud (Restart is not enough). Confirm the stack env file before/after:
+
+```text
+sudo grep -R '^DATA_ROOT=' /etc/komodo/stacks/opencloud --include='.env' --include='*.env' 2>/dev/null
+```
+
+Also set the same path in Komodo → **Settings → Variables** (and Secrets if listed) so the UI matches. No trailing slash. If Variables still has the USB uuid, that can win at Redeploy even after the files are correct.
+
+Then **Redeploy** every Core stack that mounts it (Restart is not enough):
 
 `gitea`, `authelia`, `pihole`, `wireguard`, `homepage`, `opencloud`, `vaultwarden`, `jotty`, `linkding`, `rustdesk`, `bytestash`, `glances`.
 
@@ -160,13 +181,35 @@ sudo docker inspect opencloud --format '{{range .Mounts}}{{.Source}} -> {{.Desti
 
 You want `${NEW}/system/opencloud/...` and `${NEW}/users` → `/posix/users`, not the old USB uuid.
 
-Then:
+If mounts are still the USB path: both Core and Periphery `printenv DATA_ROOT`, Settings → Variables, and the stack `.env` under `/etc/komodo/stacks/opencloud/` must all be `${NEW}`, then Redeploy again. Hits under `/etc/komodo/stacks/opencloud/bootstrap/` are only script defaults in the clone — they do not set stack mounts.
+
+Then re-bind OpenCloud spaces. **`rsync` does not preserve bind mounts** — on `${NEW}` you get two separate trees (`shared/files` vs `projects/shared`, and `users/<u>/photos` vs `projects/photos-<u>`). Spaces already have `user.oc.space.id`; do **not** park whole `shared/` (that moves media). Merge into the space dirs, empty the household paths, then publish:
 
 ```text
-sudo DATA_ROOT="${NEW}" bash /path/to/bootstrap/data-root/data-root-perms.sh
+CATALOG=/etc/komodo/stacks/opencloud
+# Optional sanity: sizes should be similar (duplicates from the old binds)
+sudo du -sh "${NEW}/shared/files" "${NEW}/system/opencloud/projects/shared"
+sudo du -sh "${NEW}/users/faiz/photos" "${NEW}/system/opencloud/projects/photos-faiz"
+sudo du -sh "${NEW}/users/diana/photos" "${NEW}/system/opencloud/projects/photos-diana"
+
+sudo docker stop opencloud
+sudo rsync -aAXH --numeric-ids "${NEW}/shared/files/" "${NEW}/system/opencloud/projects/shared/"
+sudo find "${NEW}/shared/files" -mindepth 1 -delete
+sudo DATA_ROOT="${NEW}" bash "${CATALOG}/bootstrap/opencloud/opencloud-adopt-shared.sh" publish
+
+sudo rsync -aAXH --numeric-ids "${NEW}/users/faiz/photos/" "${NEW}/system/opencloud/projects/photos-faiz/"
+sudo rsync -aAXH --numeric-ids "${NEW}/users/diana/photos/" "${NEW}/system/opencloud/projects/photos-diana/"
+sudo find "${NEW}/users/faiz/photos" -mindepth 1 -delete
+sudo find "${NEW}/users/diana/photos" -mindepth 1 -delete
+sudo DATA_ROOT="${NEW}" bash "${CATALOG}/bootstrap/opencloud/opencloud-adopt-photos.sh" publish
+sudo docker start opencloud
+
+sudo DATA_ROOT="${NEW}" bash "${CATALOG}/bootstrap/data-root/data-root-layout.sh"
+sudo DATA_ROOT="${NEW}" bash "${CATALOG}/bootstrap/data-root/data-root-perms.sh"
+sudo DATA_ROOT="${NEW}" bash "${CATALOG}/bootstrap/opencloud/opencloud-check.sh"
 ```
 
-Use the catalog copy of that script (not a stale one in `~`).
+If you keep a checkout under `/home/pilot/...`, point `CATALOG` at that repo root instead.
 
 ## 8. Prove it before unplugging the USB
 
@@ -200,5 +243,6 @@ Keep the USB intact (unmounted) for a day if you want a rollback copy. After tha
 | `setMountPoint` / disk missing in OMV | Disk was mounted via a plain fstab line first. Unmount, remove that line, then setMountPoint / Workbench Mount. |
 | `getfattr` empty on `${NEW}/users/faiz` | Recopy with `-aAXH`. Do not change `DATA_ROOT` yet. |
 | OpenCloud blank after switch | Inspect mounts: still on `OLD` uuid means Komodo `DATA_ROOT` or Redeploy did not apply. |
+| `shared/files` / `photos` NOT bound after copy | Expected: rsync duplicated trees. Merge into `projects/…`, empty household path, `publish` (see §7). |
 | NFS `permission denied` / HTPC `:/shared` hangs | Hollow `/export/shared` or duplicate NFS clients. Re-run `omv-nfs.sh` with new `DATA_ROOT`; `ls /export/shared/media` must work on Core. |
 | Pi-hole / Authelia unhappy | Those bind `${DATA_ROOT}/system/...`. Redeploy those stacks after the variable change. |

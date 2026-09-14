@@ -7,7 +7,7 @@ Copy this directory onto Core and run `core.sh` as root. HTPC steps live under `
 | `core.sh` | Greenfield NAS bootstrap (OMV, Docker, Komodo Core, first Periphery) |
 | `core/` | NAS host: static LAN, Docker engine, :53 bind, cage fan |
 | `data-root/` | `DATA_ROOT` tree (prep before OpenCloud, layout after publish) |
-| `omv/` | OMV NFS/SMB exports and IronWolf disk migrate |
+| `omv/` | OMV NFS/SMB exports, IronWolf disk migrate, USB UPS (NUT) |
 | `opencloud/` | Space adopt, PosixFS assimilate timer, readiness check |
 | `komodo/` | Core compose template, secret ingest, Authelia OIDC seed |
 | `periphery/` | HTPC Docker Desktop, NFS rebind, Periphery compose |

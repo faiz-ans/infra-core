@@ -107,3 +107,12 @@ Then apply `stacks-periphery.toml` in Komodo (`deploy = false` by default — De
 ## 5. If you previously exported the disk root
 
 Remove the old `data` (relative path `/`) NFS share. Docker NFS volumes remember `device=:/data/...` until you delete them: stop the HTPC stacks, `docker volume rm` the media/downloads/files/users volumes (not the local `*-config` volumes), then redeploy.
+
+## 6. UPS (CyberPower ST625U)
+
+USB HID NUT on Core, low-battery shutdown: `bootstrap/omv/omv-nut.md`.
+
+```text
+sudo bash bootstrap/omv/omv-nut.sh
+```
+
