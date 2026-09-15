@@ -3,13 +3,17 @@ services:
     image: restic/restic:latest
     container_name: restic
     restart: unless-stopped
+    stop_grace_period: 6h
+    init: true
     environment:
       TZ: ${TZ}
       RESTIC_REPOSITORY: rest:http://${RESTIC_REST_USER}:${RESTIC_REST_PASSWORD}@${HTPC_UPSTREAM}:8000/core
       RESTIC_PASSWORD: ${RESTIC_PASSWORD}
+      RESTIC_CACHE_DIR: /cache
       UPTIME_KUMA_PUSH_URL: ${UPTIME_KUMA_PUSH_URL:-}
     volumes:
       - ${DATA_ROOT}:/data:ro
+      - ${DATA_ROOT}/system/restic:/cache
       - ./backup.sh:/backup.sh:ro
     entrypoint: ["/bin/sh", "/backup.sh"]
     networks:

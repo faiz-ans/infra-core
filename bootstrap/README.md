@@ -10,6 +10,6 @@ Copy this directory onto Core and run `core.sh` as root. HTPC steps live under `
 | `omv/` | OMV NFS/SMB exports, IronWolf disk migrate, USB UPS (NUT) |
 | `opencloud/` | Space adopt, PosixFS assimilate timer, readiness check |
 | `komodo/` | Core compose template, secret ingest, Authelia OIDC seed |
-| `periphery/` | HTPC Docker Desktop, NFS rebind, Periphery compose |
+| `periphery/` | HTPC Ethernet static LAN, Docker Desktop, NFS rebind, backup USB, Periphery compose |
 | `first-run/` | Per-app first-run notes |
 | `tools/` | One-off helpers (Vaultwarden JSON import) |

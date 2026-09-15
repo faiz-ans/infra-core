@@ -31,7 +31,7 @@ Trigger a **Short** self-test from the UI when you want an on-demand SMART test.
 
 ## 3. HTPC USB backup drive
 
-On the HTPC, after `BACKUP_DRIVE` is the USB volume Docker Desktop shares:
+On the HTPC, after `BACKUP_DRIVE` is the USB volume Docker Desktop shares ([`restic.md`](restic.md)):
 
 1. `winget install smartmontools.smartmontools` (also in `windows/packages.json`).
 2. Follow [`windows/scrutiny-collector/README.md`](../../windows/scrutiny-collector/README.md) with `-ApiEndpoint http://<NAS_LAN_IP>:8080`.

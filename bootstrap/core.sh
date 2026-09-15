@@ -790,7 +790,7 @@ echo "  then:            stacks/komodo/stacks-core.toml (+ stacks-periphery.toml
 echo "  poll:            enabled"
 echo "  webhook_enabled: false"
 echo "After the remote Periphery server is OK, add stacks/komodo/stacks-periphery.toml."
-echo "Leave restic and restic-rest deploy=false until BACKUP_DRIVE is the IronWolf."
+echo "restic / restic-rest: bootstrap/first-run/restic.md (BACKUP_DRIVE is the HTPC USB, not the IronWolf)."
 echo
 echo "Target layout:"
 echo "  ${DATA_ROOT}/system/{authelia,vaultwarden,gitea,pihole,wireguard,restic,opencloud,jotty,linkding,rustdesk,bytestash}"
@@ -807,6 +807,7 @@ echo "  UPS: sudo bash bootstrap/omv/omv-nut.sh (CyberPower ST625U USB HID; low-
 echo "  After reboot: core-lan-bind.service REDIRECTs NAS_LAN_IP:53 to 127.0.0.1:15353. Host DNS is 127.0.0.1:15353 (not the LAN REDIRECT)."
 echo "  OpenCloud SMB/NFS assimilate: opencloud-posix-scan.timer (posixfs scan users/*/files and /posix/projects)."
 echo "  Core LAN IPv4 is static ${NAS_LAN_IP} (core-lan-static.sh). Do not depend on a router DHCP reservation for the NAS address."
+echo "  HTPC LAN IPv4 is static ${HTPC_UPSTREAM} on Ethernet (htpc-lan-static.ps1). Do not depend on a Wi-Fi DHCP reservation for that address."
 echo "  First-run: bootstrap/first-run/ (one markdown file per app)."
 echo "  Pi-hole stack names: pihole (Core) and pihole-periphery (HTPC)."
 echo "  Router DHCP DNS: ${NAS_LAN_IP} first, then ${HTPC_UPSTREAM}. No public resolver as a third server."

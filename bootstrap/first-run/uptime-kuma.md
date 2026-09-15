@@ -45,7 +45,7 @@ Do not point HTTP monitors at Docker-internal names (`http://glances:61208`); Ku
 
 1. In Kuma, add a **Push** monitor (heartbeat). Copy the URL.
 2. For the NAS restic container, rewrite the host to the edge name, e.g. `http://uptime-kuma:3001/api/push/<token>?status=up&msg=OK&ping=`.
-3. Komodo **Settings** → **`UPTIME_KUMA_PUSH_URL`**. Enable **restic** (`deploy = true`) if it is still off, then `sudo bash bootstrap/komodo/sync-komodo-secrets.sh` (or set the key in the UI) and Redeploy **restic**.
+3. Komodo **Settings** → **`UPTIME_KUMA_PUSH_URL`**. Bring-up for the backup stacks is [`restic.md`](restic.md). Then `sudo bash bootstrap/komodo/sync-komodo-secrets.sh` (or set the key in the UI) and Redeploy **restic**.
 
 `backup.sh` pings that URL after a successful `restic backup`. An empty value skips the ping. A failed ping does not fail the backup.
 

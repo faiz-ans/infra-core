@@ -1,6 +1,8 @@
+# HTPC REST on the 4TB USB (BACKUP_DRIVE). Not the IronWolf. bootstrap/first-run/restic.md.
+
 [[stack]]
 name = "restic-rest"
-deploy = false
+deploy = true
 [stack.config]
 server = "periphery"
 repo = "faiz-ans/infra-core"

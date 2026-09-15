@@ -10,6 +10,8 @@ Komodo Core (`/etc/komodo`) stays on the Pi OS disk. This move is only the OMV d
 
 HAT and IronWolf connected, Pi booted. USB data disk still attached.
 
+HTPC copies (Explorer SMB, Docker NFS) are faster on Ethernet than Wi-Fi. Pin `HTPC_UPSTREAM` on the wire with `bootstrap/periphery/htpc-lan-static.ps1` (same idea as Core `core-lan-static.sh`). Keep Komodo `HTPC_UPSTREAM` at that address.
+
 ## 1. Name the two disks
 
 On Core:
@@ -171,7 +173,7 @@ Then **Redeploy** every Core stack that mounts it (Restart is not enough):
 
 `gitea`, `authelia`, `pihole`, `wireguard`, `homepage`, `opencloud`, `vaultwarden`, `jotty`, `linkding`, `rustdesk`, `bytestash`, `glances`.
 
-Leave `restic` off. Redeploy **caddy** only if something else is wrong; it does not use `DATA_ROOT`.
+Leave `restic` off until this copy is done and the HTPC USB is `BACKUP_DRIVE` ([`bootstrap/first-run/restic.md`](../first-run/restic.md)). Redeploy **caddy** only if something else is wrong; it does not use `DATA_ROOT`.
 
 On Core:
 

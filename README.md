@@ -24,7 +24,7 @@ ${DATA_ROOT}/
   users/<user>/{files,photos}                             # NFS /users (OpenCloud Personal + photos-<user>)
 ```
 
-- Komodo: `NFS_EXPORT=/shared`, `NFS_USERS=/users`. `restic` and `restic-rest` stay `deploy = false` until `BACKUP_DRIVE` is ready.
+- Komodo: `NFS_EXPORT=/shared`, `NFS_USERS=/users`. Restic: [`bootstrap/first-run/restic.md`](bootstrap/first-run/restic.md) (`BACKUP_DRIVE` is the HTPC USB).
 - HTPC `/config` is a local Docker volume. Media stacks use NFS. OpenCloud on Core bind-mounts `users/` and `system/opencloud/projects/`; host binds those space leaves onto `shared/files` and `users/<user>/photos`.
 - ResourceSync names are global: Core Pi-hole is `pihole`, HTPC is `pihole-periphery`.
 - Core host IPv4 is static (`NAS_LAN_IP` on the LAN NIC via NetworkManager). A router DHCP reservation is not required and is not sufficient after a cold plug of a USB NIC.

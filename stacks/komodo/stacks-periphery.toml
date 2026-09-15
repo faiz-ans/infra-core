@@ -362,11 +362,11 @@ GRAFANA_ADMIN_PASSWORD = [[GRAFANA_ADMIN_PASSWORD]]
 OIDC_CLIENT_SECRET = [[OIDC_CLIENT_SECRET]]
 """
 
-# Off until the 4TB IronWolf is the backup target. Do not apply this stack yet.
+# HTPC REST on the 4TB USB (BACKUP_DRIVE). Not the IronWolf. bootstrap/first-run/restic.md.
 
 [[stack]]
 name = "restic-rest"
-deploy = false
+deploy = true
 [stack.config]
 server = "periphery"
 repo = "faiz-ans/infra-core"

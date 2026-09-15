@@ -195,8 +195,6 @@ DATA_ROOT = [[DATA_ROOT]]
 NAS_LAN_IP = [[NAS_LAN_IP]]
 """
 
-# Off until restic-rest is on the IronWolf. Applying this now would crash-loop against :8000.
-
 [[stack]]
 name = "scrutiny"
 deploy = true
@@ -253,9 +251,11 @@ CADDYMANAGER_JWT_SECRET = [[CADDYMANAGER_JWT_SECRET]]
 
 # Experiment. Leave deploy=false until you want a Caddy UI. GitOps still owns the Caddyfile.
 
+# NAS client → HTPC REST on BACKUP_DRIVE. First-run: bootstrap/first-run/restic.md.
+
 [[stack]]
 name = "restic"
-deploy = false
+deploy = true
 after = ["vaultwarden", "uptime-kuma"]
 [stack.config]
 server = "core"

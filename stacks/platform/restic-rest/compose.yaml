@@ -1,3 +1,5 @@
+# BACKUP_DRIVE is the USB root Docker Desktop can bind (this site: D:).
+# Host paths: ${BACKUP_DRIVE}/restic (repo) and ${BACKUP_DRIVE}/htpasswd (file).
 services:
   restic-rest:
     image: restic/rest-server:latest

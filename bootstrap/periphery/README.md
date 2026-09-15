@@ -6,6 +6,22 @@ Override `CORE_SERVER` / `PERIPHERY_SERVER` (and `PERIPHERY_CONNECT_AS`) if this
 
 This catalog’s remote engine is Docker Desktop (WSL2 backend). Do not install docker-ce inside a user WSL distro.
 
+## 0. Pin HTPC_UPSTREAM on Ethernet
+
+Caddy, OMV NFS, and Pi-hole `:53` all key off `HTPC_UPSTREAM` (this site: `192.168.1.111`). A router DHCP reservation is usually the **Wi-Fi MAC**. Ethernet is a different NIC, so DHCP will not give it that address while the Wi-Fi reservation holds it.
+
+Same as Core (`core-lan-static.sh`): pin a manual IPv4 on the wire. Plug Ethernet, then elevated PowerShell **on the HTPC console** (not a session that is still on Wi-Fi):
+
+```text
+powershell -ExecutionPolicy Bypass -File bootstrap\periphery\htpc-lan-static.ps1
+```
+
+That sets Ethernet to `HTPC_UPSTREAM` `/24` via the LAN gateway, DNS `NAS_LAN_IP` then `HTPC_UPSTREAM`, metric 10, Private profile. It disables Wi-Fi so copies use the cable and so Wi-Fi cannot keep `HTPC_UPSTREAM`. Pass `-KeepWifi` only if you need wireless as a fallback (it will not share `HTPC_UPSTREAM`; Wi-Fi metric is raised). Re-running is idempotent.
+
+After it succeeds, **delete** the Wi-Fi DHCP reservation in the router. Do not add an Ethernet reservation; the static address is the source of truth. Komodo `HTPC_UPSTREAM` does not change. NFS exports stay the HTPC IP. If `pihole-periphery` cannot bind `:53` after the cutover, Redeploy that stack.
+
+A NIC swap that **keeps** the same address does not need `periphery-nfs-rebind.ps1`.
+
 ## 1. Docker Desktop
 
 ```text
@@ -70,7 +86,7 @@ Workload compose is transport-agnostic. Komodo `file_paths` chooses one file (ne
 
 This site’s `stacks-periphery.toml` uses `compose.nfs.yaml` for Jellyfin, Arr, qBittorrent, Immich, and Frigate. Follow `bootstrap/omv/README.md`, then set `NAS_LAN_IP`, `NFS_EXPORT=/shared`, and `NFS_USERS=/users`. Do not set those stacks’ `DATA_ROOT` to `Z:`. Run `periphery-docker-engine.ps1` before ResourceSync (§1).
 
-If Core’s LAN IP changed, set Komodo `NAS_LAN_IP` to the live Core address, re-run `core-lan-static.sh` on Core (or keep the NetworkManager manual address in sync), allow that HTPC IP on OMV NFS, then on the HTPC recreate Docker NFS volumes (they bake `addr=` at `docker volume create`). A NIC rename that **keeps** the same address does not need this. Hung `hard` mounts look like unhealthy stacks; empty clones (`Missing compose file at compose.nfs.yaml`) were Core GitHub/DNS — **Redeploy** after Core DNS is healthy, do not Pull over a wiped checkout.
+If Core’s LAN IP changed, set Komodo `NAS_LAN_IP` to the live Core address, re-run `core-lan-static.sh` on Core (or keep the NetworkManager manual address in sync), allow that HTPC IP on OMV NFS, then on the HTPC recreate Docker NFS volumes (they bake `addr=` at `docker volume create`). Pinning Ethernet to the existing `HTPC_UPSTREAM` (`htpc-lan-static.ps1`) does not need this. Hung `hard` mounts look like unhealthy stacks; empty clones (`Missing compose file at compose.nfs.yaml`) were Core GitHub/DNS — **Redeploy** after Core DNS is healthy, do not Pull over a wiped checkout.
 
 ```text
 powershell -ExecutionPolicy Bypass -File bootstrap\periphery\periphery-nfs-rebind.ps1 -NasIp <NAS_LAN_IP>
@@ -86,7 +102,7 @@ A future single-host or Linux engine can point a stack at `compose.yaml` and a l
 
 SMB stays for Explorer/Finder. Map those shares as you like; they are not required for `compose.nfs.yaml`.
 
-Set `BACKUP_DRIVE` to the USB backup volume path as Docker Desktop sees it (Restic REST data). Not under `shared/media`. SMART for that USB is the Windows collector in `windows/scrutiny-collector/` (not a Docker stack); see `bootstrap/first-run/scrutiny.md`.
+Set `BACKUP_DRIVE` to the USB backup volume path as Docker Desktop sees it (this site: `D:`, no trailing slash). Not under `shared/media`. Wipe, `D:\restic`, htpasswd, and a bind smoke test: [`htpc-backup-drive.ps1`](htpc-backup-drive.ps1) and [`bootstrap/first-run/restic.md`](../first-run/restic.md). SMART for that USB is the Windows collector in `windows/scrutiny-collector/` (not a Docker stack); see `bootstrap/first-run/scrutiny.md`.
 
 ## 3. Windows Firewall
 
@@ -161,9 +177,9 @@ docker compose --env-file periphery.env -f periphery.compose.yaml up -d
 
 Confirm the periphery server is connected in Komodo, then add `stacks/komodo/stacks-periphery.toml` to ResourceSync (or a second sync) and apply. Do not apply that file before the `periphery` server exists, and do not apply it before §1 Engine JSON. ResourceSync stack names are global; the HTPC Pi-hole is `pihole-periphery` so it does not collide with Core `pihole`.
 
-## 6. Restic REST htpasswd (optional file on USB)
+## 6. Restic REST (USB)
 
-If you use basic auth, write an htpasswd file on `BACKUP_DRIVE` (not in git). The restic-rest stack mounts `${BACKUP_DRIVE}/htpasswd`. Create it with `htpasswd` or `docker run --rm httpd:2 apache2-utils` equivalent, using `RESTIC_REST_USER` / `RESTIC_REST_PASSWORD` from Komodo.
+Follow [`bootstrap/first-run/restic.md`](../first-run/restic.md). `htpc-backup-drive.ps1` formats `BACKUP_DRIVE`, creates `restic/`, writes `htpasswd`, and checks that Docker Desktop can bind the letter. The restic-rest stack mounts `${BACKUP_DRIVE}/restic` and `${BACKUP_DRIVE}/htpasswd` (file, not a directory). Credentials are Komodo `RESTIC_REST_USER` / `RESTIC_REST_PASSWORD`.
 
 ## 7. Recover Periphery if Engine JSON was skipped
 

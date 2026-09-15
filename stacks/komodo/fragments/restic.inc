@@ -1,6 +1,8 @@
+# NAS client → HTPC REST on BACKUP_DRIVE. First-run: bootstrap/first-run/restic.md.
+
 [[stack]]
 name = "restic"
-deploy = false
+deploy = true
 after = ["vaultwarden", "uptime-kuma"]
 [stack.config]
 server = "core"

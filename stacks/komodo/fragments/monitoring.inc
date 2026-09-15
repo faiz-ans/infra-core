@@ -16,5 +16,3 @@ NAS_LAN_IP = [[NAS_LAN_IP]]
 GRAFANA_ADMIN_PASSWORD = [[GRAFANA_ADMIN_PASSWORD]]
 OIDC_CLIENT_SECRET = [[OIDC_CLIENT_SECRET]]
 """
-
-# Off until the 4TB IronWolf is the backup target. Do not apply this stack yet.

@@ -23,11 +23,11 @@ Mark items tagged **secret** as secrets in Komodo when inspecting the file.
 | `DOMAIN` | | Caddy, Authelia, Pi-hole, Homepage, Vaultwarden public URL |
 | `TZ` | | Most containers |
 | `NAS_LAN_IP` | | Pi-hole wildcard (`*.DOMAIN` → Caddy), Homepage/Prometheus scrape, periphery NFS `addr=`. Bootstrap pins this as a static address on the Core uplink (`core-lan-static.sh`); do not rely on a DHCP reservation for the host. |
-| `HTPC_UPSTREAM` | | Caddy upstreams, Homepage HTPC widgets, NAS restic client |
+| `HTPC_UPSTREAM` | | Caddy upstreams, Homepage HTPC widgets, NAS restic client, OMV NFS client. Pin this as a static address on the HTPC Ethernet NIC (`htpc-lan-static.ps1`); do not rely on a Wi-Fi DHCP reservation for the host. |
 | `DATA_ROOT` | | Bind-mount compose (`compose.yaml`). Core app state is `${DATA_ROOT}/system/<app>`. Periphery `/config` is a local volume; household data uses `${DATA_ROOT}/shared` and `${DATA_ROOT}/users`. A stack that uses `compose.nfs.yaml` does not set this. |
 | `NFS_EXPORT` | | Docker-NFS path of the OMV `shared` share (`/shared`). Used as `:${NFS_EXPORT}/media` etc. No quotes, not a drive letter |
 | `NFS_USERS` | | Docker-NFS path of the OMV `users` share (`/users`). Immich External Libraries. No quotes |
-| `BACKUP_DRIVE` | | HTPC Restic REST data directory |
+| `BACKUP_DRIVE` | | HTPC Restic REST root as Docker Desktop sees it (this site: `D:`, no trailing slash). Compose mounts `${BACKUP_DRIVE}/restic` and `${BACKUP_DRIVE}/htpasswd`. |
 | `NUT_REMOTE_PASSWORD` | secret | OMV NUT remote-monitor user `peanut` (PeaNUT → host `:3493`) |
 | `PUID` | | linuxserver images on both hosts |
 | `PGID` | | linuxserver images on both hosts |
@@ -60,8 +60,10 @@ Authelia user hashes live in `${DATA_ROOT}/system/authelia/users.yml` on the NAS
 | Key | Secret | Used by |
 |---|---|---|
 | `RESTIC_PASSWORD` | secret | Repo encryption (NAS client) |
-| `RESTIC_REST_USER` | | REST server basic auth |
+| `RESTIC_REST_USER` | | REST server basic auth (htpasswd on `BACKUP_DRIVE`) |
 | `RESTIC_REST_PASSWORD` | secret | REST server basic auth |
+
+Bring-up: [`bootstrap/first-run/restic.md`](../../bootstrap/first-run/restic.md). `BACKUP_DRIVE` is the HTPC 4TB USB, not the IronWolf (`DATA_ROOT`).
 
 ## Homepage widget keys (optional until apps are configured)
 

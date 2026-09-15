@@ -1,7 +1,8 @@
 # Recreate Docker NFS volumes whose baked addr= does not match Core's LAN IP.
 # Compose interpolates NAS_LAN_IP at volume *create*; changing the Komodo var
-# does not update existing volumes. Same DHCP reservation (NIC swap only) is a
-# no-op. Local *-config volumes are left alone.
+# does not update existing volumes. Same HTPC_UPSTREAM (Ethernet static via
+# htpc-lan-static.ps1, or a NIC swap that keeps the address) is a no-op.
+# Local *-config volumes are left alone.
 #
 #   powershell -ExecutionPolicy Bypass -File bootstrap\periphery\periphery-nfs-rebind.ps1 -NasIp 192.168.1.110
 #

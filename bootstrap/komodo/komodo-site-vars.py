@@ -52,7 +52,7 @@ KEY_MODE: dict[str, tuple[str, str]] = {
     "LINKDING_SUPERUSER_NAME": ("default", "admin"),
     "BYTESTASH_ALLOW_NEW_ACCOUNTS": ("default", "true"),
     "RESTIC_REST_USER": ("default", "restic"),
-    "BACKUP_DRIVE": ("prompt", "HTPC BACKUP_DRIVE path (Restic REST data)"),
+    "BACKUP_DRIVE": ("prompt", "HTPC BACKUP_DRIVE path as Docker sees it (this site: D:)"),
     "WEATHER_LATITUDE": ("empty", ""),
     "WEATHER_LONGITUDE": ("empty", ""),
     "PIHOLE_WEBPASSWORD": ("empty", ""),

@@ -15,5 +15,3 @@ TZ = [[TZ]]
 DATA_ROOT = [[DATA_ROOT]]
 NAS_LAN_IP = [[NAS_LAN_IP]]
 """
-
-# Off until restic-rest is on the IronWolf. Applying this now would crash-loop against :8000.
