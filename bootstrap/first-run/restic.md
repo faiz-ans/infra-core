@@ -8,7 +8,7 @@ Secrets: `RESTIC_PASSWORD` (repo), `RESTIC_REST_USER` / `RESTIC_REST_PASSWORD` (
 
 The disk is plugged in as **D:**. Existing files on it are discarded.
 
-Elevated PowerShell on the HTPC console:
+Elevated PowerShell on the HTPC console. A run **without** `-Wipe` only creates `D:\restic` and smoke-tests Docker; old files stay. To erase the disk:
 
 ```text
 powershell -ExecutionPolicy Bypass -File bootstrap\periphery\htpc-backup-drive.ps1 -Wipe -ConfirmText ERASE
