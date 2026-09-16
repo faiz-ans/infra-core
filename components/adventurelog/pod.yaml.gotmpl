@@ -1,0 +1,96 @@
+apiVersion: v1
+kind: Pod
+metadata:
+  name: adventurelog
+  labels:
+    app: adventurelog
+spec:
+  restartPolicy: Always
+  hostAliases:
+  - ip: "{{.NAS_LAN_IP}}"
+    hostnames:
+      - "auth.{{.DOMAIN}}"
+  containers:
+  - name: db
+    image: docker.io/postgis/postgis:16-3.5
+    env:
+    - name: POSTGRES_DB
+      value: database
+    - name: POSTGRES_USER
+      value: adventure
+    - name: POSTGRES_PASSWORD
+      value: "{{.ADVENTURELOG_POSTGRES_PASSWORD}}"
+    volumeMounts:
+    - name: pg
+      mountPath: /var/lib/postgresql/data
+  - name: adventurelog
+    image: ghcr.io/seanmorley15/adventurelog:latest
+    command: ["/bin/bash", "/oidc-ca.sh"]
+    args: ["supervisord", "-c", "/aio/supervisord.conf"]
+    env:
+    - name: TZ
+      value: "{{.TZ}}"
+    - name: SITE_URL
+      value: "https://travel.{{.DOMAIN}}"
+    - name: PUBLIC_URL
+      value: "https://travel.{{.DOMAIN}}"
+    - name: FRONTEND_URL
+      value: "https://travel.{{.DOMAIN}}"
+    - name: ORIGIN
+      value: "https://travel.{{.DOMAIN}}"
+    - name: CSRF_TRUSTED_ORIGINS
+      value: "https://travel.{{.DOMAIN}}"
+    - name: POSTGRES_PASSWORD
+      value: "{{.ADVENTURELOG_POSTGRES_PASSWORD}}"
+    - name: PGHOST
+      value: "127.0.0.1"
+    - name: POSTGRES_DB
+      value: database
+    - name: POSTGRES_USER
+      value: adventure
+    - name: DJANGO_ADMIN_USERNAME
+      value: admin
+    - name: DJANGO_ADMIN_PASSWORD
+      value: "{{.ADVENTURELOG_ADMIN_PASSWORD}}"
+    - name: DJANGO_ADMIN_EMAIL
+      value: "admin@{{.DOMAIN}}"
+    - name: SECRET_KEY
+      value: "{{.ADVENTURELOG_ADMIN_PASSWORD}}"
+    - name: DISABLE_REGISTRATION
+      value: "True"
+    - name: DOMAIN
+      value: "{{.DOMAIN}}"
+    - name: OIDC_CLIENT_SECRET
+      value: "{{.OIDC_CLIENT_SECRET}}"
+    - name: PYTHONPATH
+      value: /tmp/oidc-hooks
+    ports:
+    - containerPort: 80
+    volumeMounts:
+    - name: media
+      mountPath: /code/media
+    - name: wrap
+      mountPath: /oidc-ca.sh
+      readOnly: true
+    - name: site
+      mountPath: /oidc-sitecustomize.py
+      readOnly: true
+    - name: seed
+      mountPath: /oidc-seed.py
+      readOnly: true
+  volumes:
+  - name: pg
+    persistentVolumeClaim:
+      claimName: adventurelog-postgres
+  - name: media
+    persistentVolumeClaim:
+      claimName: adventurelog-media
+  - name: wrap
+    hostPath:
+      path: "{{ m_outputDir }}/components/adventurelog/entrypoint-oidc.sh"
+  - name: site
+    hostPath:
+      path: "{{ m_outputDir }}/components/adventurelog/sitecustomize-oidc.py"
+  - name: seed
+    hostPath:
+      path: "{{ m_outputDir }}/components/adventurelog/seed-oidc.py"

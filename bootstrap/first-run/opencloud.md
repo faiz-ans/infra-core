@@ -17,16 +17,16 @@ OpenCloud on **Core** (edge): PosixFS **documents** and **camera rolls** only.
 
 ### 0. Topology and host prep
 
-1. Edit `stacks/komodo/topology.inc`. Regenerate: `python3 stacks/komodo/generate-stacks.py`.
-2. Bootstrap Core (`core.sh`): Docker, OMV, Komodo, Authelia `users.yml`, **`data-root-prep.sh`**.
-3. Komodo secrets include **`OPENCLOUD_ADMIN_PASSWORD`**.
+1. Confirm `[Hosts.core]` includes `opencloud` (`Roles.core-bootstrap`).
+2. Bootstrap Core (`core.sh`): Podman, OMV, Materia, Authelia `users.yml`, **`data-root-prep.sh`**.
+3. attributes include **`OPENCLOUD_ADMIN_PASSWORD`**.
 
-### 1. Phase A ResourceSync
+### 1. Phase A Materia
 
-Apply **`stacks/komodo/stacks-bootstrap.toml`**. Redeploy **caddy** if the Caddyfile just gained `cloud.` / `office.`.
+Apply core-bootstrap (Caddy, Authelia, Pi-hole, Homepage, OpenCloud). Re-apply **caddy** if the Caddyfile just gained `cloud.` / `office.`.
 
 ```text
-docker ps --filter name='opencloud|radicale|collabora|caddy|authelia' --format 'table {{.Names}}\t{{.Status}}'
+podman ps --filter name='opencloud|radicale|collabora|caddy|authelia' --format 'table {{.Names}}\t{{.Status}}'
 ```
 
 ### 2. Login (Personal = files/)
@@ -68,7 +68,7 @@ sudo systemctl start opencloud-posix-scan.service
 
 ### 5. Phase B stacks
 
-Apply **`stacks-core.toml`** and **`stacks-periphery.toml`**. Deploy Immich, Jellyfin, etc.
+Add the `core-full` / `mantle-full` roles in `MANIFEST.toml` (or wait for both host roles already listed). Apply Immich, Jellyfin, etc. via Materia.
 
 ### 6. Verify
 
@@ -90,7 +90,7 @@ sudo DATA_ROOT=$DATA bash bootstrap/opencloud/opencloud-check.sh
 sudo DATA_ROOT=$DATA bash bootstrap/opencloud/opencloud-adopt-shared.sh narrow
 ```
 
-That umounts the old bind, leaves media/games on `shared/`, and rebinds the space onto `shared/files`. Then Redeploy **opencloud** (new Personal template), then:
+That umounts the old bind, leaves media/games on `shared/`, and rebinds the space onto `shared/files`. Then re-apply (Materia / systemd) **opencloud** (new Personal template), then:
 
 ```text
 sudo DATA_ROOT=$DATA bash bootstrap/opencloud/opencloud-adopt-homes.sh park
@@ -125,7 +125,7 @@ sudo DATA_ROOT=$DATA bash bootstrap/data-root/data-root-layout.sh
 
 | Symptom | What to do |
 |---|---|
-| `cloud.<DOMAIN>` dead while `opencloud` Up | Redeploy **caddy** |
+| `cloud.<DOMAIN>` dead while `opencloud` Up | re-apply (Materia / systemd) **caddy** |
 | Permission / xattr on first start | Re-run **prep**; `chown` OpenCloud dirs to PUID |
 | Login HTTP 500 | Wipe **both** `system/opencloud/config` and `…/data` (not posix/users/shared/radicale) |
 | `files` has no space id after login | Personal already exists on `users/<user>` (template is only used at CreateStorageSpace). `opencloud-adopt-homes.sh relocate`, then restore. Do not drop-wrong-login again. |
@@ -133,6 +133,6 @@ sudo DATA_ROOT=$DATA bash bootstrap/data-root/data-root-layout.sh
 | Whole `shared/` still in OpenCloud | `adopt-shared.sh narrow` |
 | OC→SMB works, SMB→OC does not | Install/reinstall `opencloud-posix-scan.sh` (scan users+projects only), `core-net.sh`, start the oneshot |
 | `posixfs scan /posix` failed | Expected on the old script (`uploads/` + media). Use the new scanner |
-| Collabora white iframe / ProofKeys | Redeploy collabora + opencloud; proof disable + CA |
+| Collabora white iframe / ProofKeys | re-apply (Materia / systemd) collabora + opencloud; proof disable + CA |
 | `radicale` permission denied | prep should have PUID-owned radicale data |
 | Layout sticky missing | Re-run **data-root-layout.sh** after publish |

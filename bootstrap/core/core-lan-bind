@@ -1,60 +1,50 @@
 #!/usr/bin/env bash
-# After reboot, Docker can start before DHCP. Pi-hole publishes
-# 127.0.0.1:15353 (always bindable). This unit REDIRECTs ${NAS_LAN_IP}:53
-# there once the LAN address exists. Do not bind 0.0.0.0:53 (systemd-resolved).
+# Host nft/iptables: preserve source IPs. Pi-hole and Caddy bind high ports on
+# all interfaces (rootless host netns). Do not DNAT to 127.0.0.1.
+#
+#   :53  -> 15353 (UDP/TCP)
+#   :80  -> 8080  (TCP)
+#   :443 -> 8443  (TCP+UDP)
+#
+#   sudo bash bootstrap/core/core-lan-bind.sh
 set -u
 
 DNS_PROXY_PORT=15353
-
-ENV_FILE=/etc/komodo/bootstrap/compose.env
+HTTP_PORT=8080
+HTTPS_PORT=8443
+ENV_FILE=/etc/materia/site.env
+# Legacy path while Core is still on Docker/Komodo:
+LEGACY_ENV=/etc/komodo/bootstrap/compose.env
 
 lan_ip() {
   local ip=""
-  if [[ -f "${ENV_FILE}" ]]; then
-    ip=$(awk -F= '/^NAS_LAN_IP=/{gsub(/["'\'' ]/, "", $2); print $2}' "${ENV_FILE}" | tail -1)
-  fi
+  for f in "${ENV_FILE}" "${LEGACY_ENV}"; do
+    if [[ -f "${f}" ]]; then
+      ip=$(awk -F= '/^NAS_LAN_IP=/{gsub(/["'\'' ]/, "", $2); print $2}' "${f}" | tail -1)
+      [[ -n "${ip}" ]] && break
+    fi
+  done
   if [[ -z "${ip}" ]]; then
     ip=$(ip -4 route get 1.1.1.1 2>/dev/null | awk '{for (i=1;i<=NF;i++) if ($i=="src") {print $(i+1); exit}}')
   fi
   printf '%s' "${ip}"
 }
 
-start_exited_containers() {
-  local ids
-  ids=$(docker ps -aq --filter status=exited --filter status=created --filter status=dead 2>/dev/null || true)
-  if [[ -z "${ids}" ]]; then
-    echo "core-lan-bind: no stopped containers"
-    return 0
+port_up() {
+  local port=$1 proto=${2:-tcp}
+  if [[ "${proto}" == udp ]]; then
+    ss -uln 2>/dev/null | grep -qE ":${port}[[:space:]]"
+  else
+    ss -tln 2>/dev/null | grep -qE ":${port}[[:space:]]"
   fi
-  echo "core-lan-bind: starting stopped containers"
-  # shellcheck disable=SC2086
-  docker start ${ids} >/dev/null || true
 }
 
-proxy_up() {
-  ss -uln 2>/dev/null | grep -q "127.0.0.1:${DNS_PROXY_PORT}" && return 0
-  ss -tln 2>/dev/null | grep -q "127.0.0.1:${DNS_PROXY_PORT}" && return 0
-  return 1
-}
-
-wait_proxy() {
-  local i=0
-  while [[ "${i}" -lt 30 ]]; do
-    if proxy_up; then
-      return 0
-    fi
-    i=$((i + 1))
-    sleep 1
-  done
-  return 1
-}
-
-del_dns_redirects() {
+del_nat() {
   local chain line spec n
   for chain in PREROUTING OUTPUT; do
     n=0
-    while [[ "${n}" -lt 16 ]]; do
-      line=$(iptables -t nat -S "${chain}" 2>/dev/null | grep -E -- "--to-ports ${DNS_PROXY_PORT}|--to-destination 127.0.0.1:${DNS_PROXY_PORT}" | head -n 1 || true)
+    while [[ "${n}" -lt 32 ]]; do
+      line=$(iptables -t nat -S "${chain}" 2>/dev/null | grep -E -- "--to-ports (53|80|443|${DNS_PROXY_PORT}|${HTTP_PORT}|${HTTPS_PORT})|--to-destination 127.0.0.1:(53|${DNS_PROXY_PORT})" | head -n 1 || true)
       [[ -z "${line}" ]] && break
       spec=${line#-A ${chain} }
       # shellcheck disable=SC2086
@@ -64,91 +54,21 @@ del_dns_redirects() {
   done
 }
 
-enable_route_localnet() {
-  local f
-  echo 1 >/proc/sys/net/ipv4/conf/all/route_localnet 2>/dev/null || true
-  echo 1 >/proc/sys/net/ipv4/conf/default/route_localnet 2>/dev/null || true
-  for f in /proc/sys/net/ipv4/conf/*/route_localnet; do
-    echo 1 >"${f}" 2>/dev/null || true
-  done
-}
-
-add_dns_redirects() {
-  local ip=$1 proto
-  # PREROUTING must DNAT to 127.0.0.1:15353. REDIRECT rewrites dest to the
-  # *incoming* iface address: LAN hits 192.168.x.x:15353 (nothing bound);
-  # WireGuard hits 10.8.0.1:15353. Phone DNS dies and AllowedIPs 0.0.0.0/0
-  # looks like "tunnel killed the internet".
-  enable_route_localnet
+add_redirects() {
+  local proto
   for proto in udp tcp; do
-    iptables -t nat -A PREROUTING -d "${ip}" -p "${proto}" --dport 53 -j DNAT --to-destination "127.0.0.1:${DNS_PROXY_PORT}"
-    iptables -t nat -A OUTPUT -d "${ip}" -p "${proto}" --dport 53 -j REDIRECT --to-ports "${DNS_PROXY_PORT}"
+    iptables -t nat -A PREROUTING -p "${proto}" --dport 53 -j REDIRECT --to-ports "${DNS_PROXY_PORT}"
+    iptables -t nat -A OUTPUT -p "${proto}" --dport 53 -j REDIRECT --to-ports "${DNS_PROXY_PORT}"
   done
-  echo "core-lan-bind: DNAT ${ip}:53 -> 127.0.0.1:${DNS_PROXY_PORT} (LAN+WG)"
+  iptables -t nat -A PREROUTING -p tcp --dport 80 -j REDIRECT --to-ports "${HTTP_PORT}"
+  iptables -t nat -A OUTPUT -p tcp --dport 80 -j REDIRECT --to-ports "${HTTP_PORT}"
+  for proto in tcp udp; do
+    iptables -t nat -A PREROUTING -p "${proto}" --dport 443 -j REDIRECT --to-ports "${HTTPS_PORT}"
+    iptables -t nat -A OUTPUT -p "${proto}" --dport 443 -j REDIRECT --to-ports "${HTTPS_PORT}"
+  done
+  echo "core-lan-bind: REDIRECT :53->${DNS_PROXY_PORT} :80->${HTTP_PORT} :443->${HTTPS_PORT} (all ifaces, host netns)"
 }
 
-label() {
-  docker inspect -f "{{index .Config.Labels \"$2\"}}" "$1" 2>/dev/null || true
-}
-
-# Recreate so Docker re-publishes 127.0.0.1:15353. Restart keeps dead bindings.
-recreate_one() {
-  local name=$1
-  local wd proj svc files f
-  local -a args
-
-  if ! docker inspect "${name}" >/dev/null 2>&1; then
-    echo "core-lan-bind: ${name} not present; skip"
-    return 0
-  fi
-
-  wd=$(label "${name}" com.docker.compose.project.working_dir)
-  proj=$(label "${name}" com.docker.compose.project)
-  svc=$(label "${name}" com.docker.compose.service)
-  files=$(label "${name}" com.docker.compose.project.config_files)
-
-  if [[ -z "${wd}" || -z "${proj}" || -z "${svc}" ]]; then
-    echo "core-lan-bind: ${name} has no compose labels; cannot recreate ports."
-    docker inspect "${name}" --format 'core-lan-bind: bindings={{json .HostConfig.PortBindings}} status={{.State.Status}} error={{.State.Error}}'
-    return 1
-  fi
-
-  args=(-p "${proj}" --project-directory "${wd}")
-  if [[ -n "${files}" ]]; then
-    IFS=',' read -ra flist <<< "${files}"
-    for f in "${flist[@]}"; do
-      f=${f#"${f%%[![:space:]]*}"}
-      f=${f%"${f##*[![:space:]]}"}
-      if [[ -n "${f}" && "${f}" != /* ]]; then
-        f="${wd}/${f}"
-      fi
-      if [[ -n "${f}" ]]; then
-        args+=(-f "${f}")
-      fi
-    done
-  fi
-
-  echo "core-lan-bind: recreate ${name} (${svc} in ${wd})"
-  NAS_LAN_IP="${IP}" docker compose "${args[@]}" up -d --force-recreate --no-deps "${svc}"
-}
-
-# DNS REDIRECT does not require bouncing Caddy. Restarting it is what took
-# HTTPS down after a successful bind.
-ensure_caddy() {
-  if ! docker inspect caddy >/dev/null 2>&1; then
-    echo "core-lan-bind: caddy not present; skip"
-    return 0
-  fi
-  if docker inspect caddy --format '{{.State.Running}}' 2>/dev/null | grep -q true \
-    && ss -tln 2>/dev/null | grep -qE ':443[[:space:]]'; then
-    echo "core-lan-bind: caddy already on :443; skip restart"
-    return 0
-  fi
-  echo "core-lan-bind: start/restart caddy"
-  docker start caddy >/dev/null 2>&1 || docker restart caddy >/dev/null
-}
-
-# Host netns: wg-easy PostUp can leave MASQUERADE on a stale uplink iface.
 fix_wg_nat() {
   local cidr=10.8.0.0/24 dev odev extra
   dev=$(ip -4 route get 1.1.1.1 2>/dev/null | awk '{for (i=1;i<=NF;i++) if ($i=="dev") {print $(i+1); exit}}')
@@ -176,54 +96,10 @@ fix_wg_nat() {
   done < <(iptables -t nat -S POSTROUTING 2>/dev/null)
   if [[ -d /proc/sys/net/ipv4/conf/wg0 ]]; then
     echo 2 >/proc/sys/net/ipv4/conf/wg0/rp_filter 2>/dev/null || true
-    echo 1 >/proc/sys/net/ipv4/conf/wg0/route_localnet 2>/dev/null || true
     iptables -C FORWARD -i wg0 -j ACCEPT 2>/dev/null || iptables -I FORWARD 1 -i wg0 -j ACCEPT
     iptables -C FORWARD -o wg0 -j ACCEPT 2>/dev/null || iptables -I FORWARD 1 -o wg0 -j ACCEPT
   fi
   echo "core-lan-bind: WG MASQUERADE -s ${cidr} -o ${dev}"
-}
-
-# Dual-homed Core: edge can steal the default route so GitHub DNS/TCP dies
-# while LAN still works (HTPC Pi-hole failover). Pin default via the non-edge
-# compose network gateway (ferretdb / internet).
-pin_core_default_route() {
-  local cid pid gw
-  cid=$(docker ps -q --filter ancestor=ghcr.io/moghtech/komodo-core 2>/dev/null | head -1)
-  if [[ -z "${cid}" ]]; then
-    return 0
-  fi
-  pid=$(docker inspect -f '{{.State.Pid}}' "${cid}" 2>/dev/null || true)
-  if [[ -z "${pid}" || "${pid}" == 0 ]]; then
-    return 0
-  fi
-  gw=$(docker inspect -f '{{range $n,$c := .NetworkSettings.Networks}}{{if ne $n "edge"}}{{$c.Gateway}} {{end}}{{end}}' "${cid}" | awk '{print $1}')
-  if [[ -z "${gw}" ]]; then
-    return 0
-  fi
-  if nsenter -t "${pid}" -n ip -4 route show default 2>/dev/null | grep -q "via ${gw}"; then
-    if [[ "$(nsenter -t "${pid}" -n ip -4 route show default 2>/dev/null | wc -l)" -le 1 ]]; then
-      echo "core-lan-bind: Core default already via ${gw}"
-      return 0
-    fi
-  fi
-  nsenter -t "${pid}" -n sh -c "while ip route del default 2>/dev/null; do :; done; ip route add default via '${gw}'" 2>/dev/null || true
-  echo "core-lan-bind: Core default via ${gw} (not edge)"
-}
-
-finish_bind() {
-  ensure_caddy
-  fix_wg_nat
-  pin_core_default_route
-  echo "core-lan-bind: done (${IP}:53 -> 127.0.0.1:${DNS_PROXY_PORT})."
-}
-
-dump_pihole() {
-  echo "core-lan-bind: host IPv4:"
-  ip -4 -o addr show | awk '{print "  " $2, $4}'
-  if docker inspect pihole >/dev/null 2>&1; then
-    docker inspect pihole --format 'core-lan-bind: pihole {{.State.Status}} bindings={{json .HostConfig.PortBindings}} error={{.State.Error}}'
-    docker logs pihole --tail 20 2>&1 | sed 's/^/core-lan-bind: pihole log: /'
-  fi
 }
 
 IP=$(lan_ip)
@@ -232,56 +108,15 @@ if [[ -z "${IP}" ]]; then
   exit 1
 fi
 
-# Kick dockerd immediately. Do not install DNS NAT until 15353 is listening.
-systemctl start --no-block docker.socket docker.service 2>/dev/null || true
-echo "core-lan-bind: ${IP}:53 via 127.0.0.1:${DNS_PROXY_PORT} (not 0.0.0.0:53)"
-
-docker_ready=0
-started_ct=0
-i=0
-while [[ "${i}" -lt 150 ]]; do
-  if [[ "${docker_ready}" -eq 0 ]] && docker info >/dev/null 2>&1; then
-    echo "core-lan-bind: docker is up"
-    docker_ready=1
-  fi
-  if [[ "${docker_ready}" -eq 1 && "${started_ct}" -eq 0 ]]; then
-    start_exited_containers
-    docker start pihole caddy authelia homepage >/dev/null 2>&1 || true
-    started_ct=1
-  fi
-  if ip -4 addr show | grep -q "inet ${IP}/" && proxy_up; then
-    del_dns_redirects
-    add_dns_redirects "${IP}"
-    finish_bind
-    exit 0
-  fi
-  if [[ $((i % 5)) -eq 0 ]]; then
-    echo "core-lan-bind: waiting (docker=${docker_ready} proxy=$(proxy_up && echo 1 || echo 0) addr=$(ip -4 addr show | grep -q "inet ${IP}/" && echo 1 || echo 0))"
-  fi
-  i=$((i + 1))
-  sleep 2
-done
-
-if [[ "${docker_ready}" -eq 0 ]]; then
-  echo "core-lan-bind: docker is not ready."
-  exit 1
-fi
 if ! ip -4 addr show | grep -q "inet ${IP}/"; then
-  echo "core-lan-bind: ${IP} never appeared on a host iface."
+  echo "core-lan-bind: ${IP} not on a host iface yet."
   exit 1
 fi
 
-echo "core-lan-bind: 127.0.0.1:${DNS_PROXY_PORT} not up; recreate Pi-hole."
-if ! recreate_one pihole; then
-  dump_pihole
-  exit 1
-fi
-if ! wait_proxy; then
-  echo "core-lan-bind: Pi-hole DNS proxy still not published."
-  dump_pihole
-  exit 1
-fi
-del_dns_redirects
-add_dns_redirects "${IP}"
-finish_bind
+del_nat
+add_redirects
+fix_wg_nat
+echo "core-lan-bind: done. Expect Pi-hole on *:${DNS_PROXY_PORT} and Caddy on *: ${HTTP_PORT}/${HTTPS_PORT}."
+port_up "${DNS_PROXY_PORT}" udp || echo "core-lan-bind: warn: UDP ${DNS_PROXY_PORT} not listening yet (apply Pi-hole first)."
+port_up "${HTTPS_PORT}" tcp || echo "core-lan-bind: warn: TCP ${HTTPS_PORT} not listening yet (apply Caddy first)."
 exit 0

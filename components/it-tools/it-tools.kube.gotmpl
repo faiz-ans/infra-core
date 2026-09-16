@@ -1,0 +1,13 @@
+[Unit]
+Description=it-tools
+
+[Kube]
+Yaml={{ m_outputDir }}/components/it-tools/pod.yaml
+Network=site.network
+PublishPort=127.0.0.1:8087:80
+
+[Service]
+Restart=on-failure
+
+[Install]
+WantedBy=default.target

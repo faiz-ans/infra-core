@@ -4,7 +4,7 @@ Vaultwarden runs on **Core**. Caddy is `https://pw.<DOMAIN>` (`pass.` / `vaultwa
 
 ## 1. First user
 
-After ResourceSync deploys **vaultwarden** and **caddy**, open `https://pw.<DOMAIN>` and create the household owner. Then set Komodo `SIGNUPS_ALLOWED=false` and Redeploy **vaultwarden**.
+After Materia deploys **vaultwarden** and **caddy**, open `https://pw.<DOMAIN>` and create the household owner. Then set attribute `SIGNUPS_ALLOWED=false` and re-apply (Materia / systemd) **vaultwarden**.
 
 `VAULTWARDEN_ADMIN_TOKEN` is the `/admin` token (Authelia `admins` still sits in front of that path).
 

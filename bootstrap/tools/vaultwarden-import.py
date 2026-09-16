@@ -6,7 +6,7 @@ with match type Host (not Domain), so *.home.lan aliases do not steal
 autofill from each other. Username and password are left empty — create
 native accounts after import and fill them in the vault.
 
-Redirect-only vhosts (gitea. → git.) are merged into the target login.
+Redirect-only vhosts (alias → canonical host) are merged into the target login.
 
   DOMAIN=home.lan python3 bootstrap/tools/vaultwarden-import.py -o vw-import.json
 
@@ -37,7 +37,7 @@ DISPLAY_NAMES = {
     "bytestash": "ByteStash",
     "collabora": "Collabora",
     "frigate": "Frigate",
-    "gitea": "Gitea",
+    "gitea": "Gitea (retired)",
     "glances-core": "Glances (Core)",
     "glances-periphery": "Glances (Periphery)",
     "grafana": "Grafana",
@@ -48,7 +48,7 @@ DISPLAY_NAMES = {
     "jellyseerr": "Jellyseerr",
     "jellyfin": "Jellyfin",
     "jotty": "Jotty",
-    "komodo": "Komodo",
+    "komodo": "Komodo (retired)",
     "libretranslate": "LibreTranslate",
     "linkding": "Linkding",
     "n8n": "n8n",
@@ -56,7 +56,7 @@ DISPLAY_NAMES = {
     "openmediavault": "OpenMediaVault",
     "openreader": "OpenReader",
     "pihole-core": "Pi-hole (Core)",
-    "pihole-periphery": "Pi-hole (Periphery)",
+    "pihole-periphery": "Pi-hole (mantle, retired name)",
     "printer": "Printer",
     "prometheus": "Prometheus",
     "prowlarr": "Prowlarr",

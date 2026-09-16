@@ -1,0 +1,113 @@
+apiVersion: v1
+kind: Pod
+metadata:
+  name: opencloud
+  labels:
+    app: opencloud
+spec:
+  restartPolicy: Always
+  hostAliases:
+  - ip: "{{.NAS_LAN_IP}}"
+    hostnames:
+      - "cloud.{{.DOMAIN}}"
+      - "office.{{.DOMAIN}}"
+      - "auth.{{.DOMAIN}}"
+  containers:
+  - name: radicale
+    image: docker.io/opencloudeu/radicale:latest
+    volumeMounts:
+    - name: radconf
+      mountPath: /etc/radicale/config
+      readOnly: true
+    - name: raddata
+      mountPath: /var/lib/radicale
+  - name: opencloud
+    image: docker.io/opencloudeu/opencloud-rolling:latest
+    command: ["/bin/sh", "-c", "opencloud init || true; opencloud server"]
+    env:
+    - name: TZ
+      value: "{{.TZ}}"
+    - name: PUID
+      value: "{{.PUID}}"
+    - name: PGID
+      value: "{{.PGID}}"
+    - name: PROXY_HTTP_ADDR
+      value: "0.0.0.0:9200"
+    - name: PROXY_TLS
+      value: "false"
+    - name: OC_INSECURE
+      value: "true"
+    - name: IDM_CREATE_DEMO_USERS
+      value: "false"
+    - name: IDM_ADMIN_PASSWORD
+      value: "{{.OPENCLOUD_ADMIN_PASSWORD}}"
+    - name: OC_URL
+      value: "https://cloud.{{.DOMAIN}}"
+    - name: OC_DOMAIN
+      value: "cloud.{{.DOMAIN}}"
+    - name: IDP_DOMAIN
+      value: "auth.{{.DOMAIN}}"
+    - name: OC_OIDC_ISSUER
+      value: "https://auth.{{.DOMAIN}}"
+    - name: WEB_OIDC_CLIENT_ID
+      value: opencloud
+    - name: COLLABORA_DOMAIN
+      value: "office.{{.DOMAIN}}"
+    - name: PROXY_CSP_CONFIG_FILE_LOCATION
+      value: /etc/opencloud/csp.yaml
+    - name: OC_ADD_RUN_SERVICES
+      value: collaboration
+    - name: STORAGE_USERS_DRIVER
+      value: posix
+    - name: STORAGE_USERS_POSIX_ROOT
+      value: /posix
+    - name: STORAGE_USERS_POSIX_PERSONAL_SPACE_PATH_TEMPLATE
+      value: {{ printf "users/{{.User.Username}}/files" | quote }}
+    - name: STORAGE_USERS_POSIX_GENERAL_SPACE_PATH_TEMPLATE
+      value: {{ printf "projects/{{.SpaceName}}" | quote }}
+    ports:
+    - containerPort: 9200
+    volumeMounts:
+    - name: occonfig
+      mountPath: /etc/opencloud
+    - name: csp
+      mountPath: /etc/opencloud/csp.yaml
+      readOnly: true
+    - name: proxy
+      mountPath: /etc/opencloud/proxy.yaml
+    - name: ocdata
+      mountPath: /var/lib/opencloud
+    - name: posix
+      mountPath: /posix
+    - name: users
+      mountPath: /posix/users
+    - name: projects
+      mountPath: /posix/projects
+  volumes:
+  - name: radconf
+    hostPath:
+      path: "{{ m_outputDir }}/components/opencloud/radicale-config"
+  - name: raddata
+    hostPath:
+      path: "{{.DATA_ROOT}}/system/opencloud/radicale"
+  - name: occonfig
+    hostPath:
+      path: "{{.DATA_ROOT}}/system/opencloud/config"
+  - name: csp
+    hostPath:
+      path: "{{ m_outputDir }}/components/opencloud/csp.yaml"
+  - name: proxy
+    hostPath:
+      path: "{{ m_outputDir }}/components/opencloud/proxy.yaml"
+  - name: ocdata
+    hostPath:
+      path: "{{.DATA_ROOT}}/system/opencloud/data"
+  - name: posix
+    hostPath:
+      path: "{{.DATA_ROOT}}/system/opencloud/posix"
+  - name: users
+    hostPath:
+      path: "{{.DATA_ROOT}}/users"
+  - name: projects
+    hostPath:
+      path: "{{.DATA_ROOT}}/system/opencloud/projects"

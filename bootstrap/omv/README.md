@@ -1,12 +1,12 @@
 # OMV shares: NFS for apps, SMB for people
 
-Docker Desktop bind-mounts of a Windows SMB (or NFS) drive letter go through virtiofs and break pathing. This site’s media/HTPC stacks use **`compose.nfs.yaml`** (Docker NFS volume driver). Those stacks keep `/config` on a local Docker volume so the apps can start if Core/NFS is down (Home Assistant also needs that so `ensure-http` can write `trusted_proxies`). Media, downloads, Immich photo trees, and Frigate recordings stay on NFS. OpenCloud on Core uses local binds of `users/` and `shared/`. Catalog default remains **`compose.yaml`** (`${DATA_ROOT}` binds) for local disk or a host NFS/SMB mount. Pick one transport file per stack in ResourceSync; do not merge them.
+Mantle app stacks consume OMV `shared/` and `users/` via **WSL host NFS mounts** plus kube-play `hostPath`. Do not use the Docker NFS volume driver. `/config` stays a local Podman volume so apps start if Core/NFS is down. Windows Explorer keeps **SMB**. OpenCloud on Core uses local binds.
 
-A full `C:` / Docker VHD can corrupt the Desktop engine and leave NFS mounts hanging. On the HTPC run `bootstrap/periphery/periphery-docker-engine.ps1` (log rotation + ~80 GiB `DiskSizeMiB` + clear `wsl-crashes`). On Core, `bootstrap/core/core-docker-engine.sh` (from `core.sh`) caps container logs under `/var/lib/docker`.
+Do not share `C:` into a container engine VM. NFS is mounted inside Ubuntu WSL (`mantle`).
 
-Windows Explorer keeps using **SMB**. Do not point a `compose.yaml` stack’s `DATA_ROOT` at `Z:`. Core still uses the local uuid path as `DATA_ROOT`.
+Windows Explorer keeps using **SMB**. Do not point a stack’s `DATA_ROOT` at `Z:`. Core still uses the local uuid path as `DATA_ROOT`.
 
-Export **`shared/`** and **`users/`** only. Do not export the disk root or `system/` (Authelia, Vaultwarden, Pi-hole, WireGuard). **Client must be the HTPC host IP only** — never a whole LAN `/24` alongside the host (duplicate fsids make Docker Desktop hang on `:/shared`).
+Export **`shared/`** and **`users/`** only. Do not export the disk root or `system/` (Authelia, Vaultwarden, Pi-hole, WireGuard). **Client must be the surface host IP only** (`SURFACE_UPSTREAM`) — never a whole LAN `/24` alongside the host (duplicate fsids hang `:/shared`).
 
 ## 1. Shared folders (once)
 
@@ -19,11 +19,11 @@ Workbench: **Storage → Shared Folders**. Add two folders on the uuid data disk
 | `shared` | `shared` | `/shared` |
 | `users` | `users` | `/users` |
 
-The shared folder name is the NFS path. If yours differ, set Komodo `NFS_EXPORT` and `NFS_USERS` to `/<name>`.
+The shared folder name is the NFS path. If yours differ, set attributes `NFS_SHARED` and `NFS_USERS` (WSL paths) to `/mnt/nas/shared` and `/mnt/nas/users`.
 
 Do not reuse a folder whose relative path is `/` (the old `data` root share). That export can see `system/`.
 
-## 2. NFS for the HTPC (apps)
+## 2. NFS for mantle (apps)
 
 Workbench: **Services → NFS → Settings**
 
@@ -36,39 +36,40 @@ Workbench: **Services → NFS → Shares → Create** — once per folder above.
 | Field | Value |
 |---|---|
 | Shared folder | `shared`, then `users` |
-| Client | the HTPC LAN IP only (e.g. `192.168.1.111` — not `192.168.1.0/24`) |
+| Client | the surface LAN IP (`SURFACE_UPSTREAM`) only — not a `/24` |
 | Privilege | Read/Write |
-| Extra options | `insecure,no_root_squash,subtree_check` |
+| Extra options | `no_root_squash,subtree_check` (`insecure` is optional; WSL root mounts use a reserved source port) |
 
-`insecure` is required: the Docker engine mounts from a high source port. `no_root_squash` is required: linuxserver images chown as root on first start.
+`no_root_squash` is required: linuxserver images chown as root on first start.
 
 Remove any NFS export of the old `data` (disk root) share.
 
-Save, **Apply**. Confirm **System → Network** / host firewall allows TCP **2049** from the HTPC (OMV normally opens this when NFS is enabled).
+Save, **Apply**. Confirm **System → Network** / host firewall allows TCP **2049** from surface (OMV normally opens this when NFS is enabled).
 
 On Core you can instead run:
 
 ```text
-sudo HTPC_IP=<HTPC_LAN_IP> bash bootstrap/omv/omv-nfs.sh
+sudo HTPC_IP=<SURFACE_UPSTREAM> bash bootstrap/omv/omv-nfs.sh
 ```
 
-That script creates the `shared` and `users` folders if missing, points ShareMgmt at the current `DATA_ROOT` mntent, enables NFS, exports **only** the HTPC IP (removes overlapping subnet clients), repairs a hollow `/export/shared` bind if needed, and restarts NFS. It does not change SMB.
+That script creates the `shared` and `users` folders if missing, points ShareMgmt at the current `DATA_ROOT` mntent, enables NFS, exports **only** the surface IP (removes overlapping subnet clients), repairs a hollow `/export/shared` bind if needed, and restarts NFS. It does not change SMB.
 
 After apply, Core should show something like:
 
 ```text
-/export/shared  <HTPC_IP>(fsid=…,rw,insecure,no_root_squash,subtree_check)
-/export/users   <HTPC_IP>(fsid=…,rw,insecure,no_root_squash,subtree_check)
+/export/shared  <SURFACE_UPSTREAM>(fsid=…,rw,no_root_squash,subtree_check)
+/export/users   <SURFACE_UPSTREAM>(fsid=…,rw,no_root_squash,subtree_check)
 ```
 
 One client line per path. Verify locally: `ls /export/shared/media /export/shared/photos` must list content (not an empty export dir).
-Komodo (periphery / shared variables):
+
+Attributes:
 
 | Key | Value |
 |---|---|
 | `NAS_LAN_IP` | Core LAN IPv4 |
-| `NFS_EXPORT` | `/shared` |
-| `NFS_USERS` | `/users` |
+| `NFS_SHARED` | `/mnt/nas/shared` |
+| `NFS_USERS` | `/mnt/nas/users` |
 
 No quotes. Unix path, not `Z:`.
 
@@ -78,35 +79,35 @@ NFSv4 path is `/<share-name>`. NFSv3 path would be `/export/<share-name>` — th
 
 Workbench: **Services → SMB/CIFS** — leave enabled.
 
-Keep whatever SMB shares you already use for Finder/Explorer (`shared`, user homes, or the disk root). Privileges there are for **faiz**, **diana**, and anyone mapping a drive. They do not control NFS.
+Keep whatever SMB shares you already use for Explorer (`shared`, user homes, or the disk root). Privileges there are for **faiz**, **diana**, and anyone mapping a drive. They do not control NFS.
 
-You can unmap `Z:` from Docker Desktop **File sharing** once the NFS volumes work. You do not need to unmap it from Windows Explorer.
+You do not need a `Z:` mapping for apps. Explorer SMB can stay.
 
 SMB privileges still do nothing unless that folder is actually an SMB share. Nested access through a root SMB share is POSIX/ACL (`bootstrap/data-root/data-root-perms.sh`).
 
-## 4. Smoke test from the HTPC
+## 4. Smoke test from mantle
 
-PowerShell (Docker Desktop running). Prefer **soft** first so a bad export fails instead of hanging forever; then use catalog `hard` mounts via Komodo Deploy:
+On mantle (Ubuntu WSL), as root:
 
 ```text
-docker volume create --driver local --opt type=nfs --opt o=addr=<NAS_LAN_IP>,nfsvers=4,rw,nolock,soft,timeo=50,retrans=2 --opt device=:/shared nas-nfs-shared
-docker volume create --driver local --opt type=nfs --opt o=addr=<NAS_LAN_IP>,nfsvers=4,rw,nolock,soft,timeo=50,retrans=2 --opt device=:/users nas-nfs-users
-docker run --rm -v nas-nfs-shared:/shared alpine ls /shared/media /shared/downloads /shared/files /shared/photos /shared/cameras
-docker run --rm -v nas-nfs-users:/users alpine ls /users
-docker volume rm nas-nfs-shared nas-nfs-users
+sudo mkdir -p /mnt/nas/shared /mnt/nas/users
+sudo mount -t nfs -o nfsvers=4 ${NAS_LAN_IP}:/shared /mnt/nas/shared
+sudo mount -t nfs -o nfsvers=4 ${NAS_LAN_IP}:/users /mnt/nas/users
+ls /mnt/nas/shared/media /mnt/nas/shared/downloads /mnt/nas/shared/files /mnt/nas/shared/photos /mnt/nas/shared/cameras
+ls /mnt/nas/users
 ```
 
 You should see media/downloads/files/photos/cameras and the user homes. You should not see `system/`. If `cameras` is missing, run `bootstrap/data-root/data-root-perms.sh` on Core.
 
-If `ls` hangs: Quit Docker → `wsl --shutdown` → on Core re-run `omv-nfs.sh` and confirm `/export/shared/media` is not empty → retry. Do not leave hung `hard` mounts; they wedge `docker volume rm`.
+Persist in `/etc/fstab`. If `ls` hangs: `wsl --shutdown` → on Core re-run `omv-nfs.sh` and confirm `/export/shared/media` is not empty → retry.
 
-If `ls` fails with `mount.nfs` / `permission denied`, the usual causes are: NFS not applied, client IP not the HTPC, missing `insecure`, or TCP 2049 blocked.
+If `ls` fails with `mount.nfs` / `permission denied`, the usual causes are: NFS not applied, client IP not `SURFACE_UPSTREAM`, or TCP 2049 blocked.
 
-Then apply `stacks-periphery.toml` in Komodo (`deploy = false` by default — Deploy stacks one at a time on first bring-up).
+Then apply `[Hosts.mantle]` in Materia (bootstrap role first).
 
 ## 5. If you previously exported the disk root
 
-Remove the old `data` (relative path `/`) NFS share. Docker NFS volumes remember `device=:/data/...` until you delete them: stop the HTPC stacks, `docker volume rm` the media/downloads/files/users volumes (not the local `*-config` volumes), then redeploy.
+Remove the old `data` (relative path `/`) NFS share. Unmount WSL paths that still use `:/data/...`, then remount `: /shared` and `:/users`.
 
 ## 6. UPS (CyberPower ST625U)
 
@@ -115,4 +116,3 @@ USB HID NUT on Core, low-battery shutdown: `bootstrap/omv/omv-nut.md`. Homepage 
 ```text
 sudo bash bootstrap/omv/omv-nut.sh
 ```
-

@@ -1,0 +1,3 @@
+[[Services]]
+Service = "wg-quick@wg0.service"
+Static = true

@@ -118,14 +118,14 @@ park() {
     exit 1
   fi
 
-  docker stop opencloud
+  podman stop opencloud
   mkdir -p "${INCOMING}" "${PROJECTS}"
   chown "${PUID}:${PGID}" "${PROJECTS}" 2>/dev/null || true
   mv "${SHARED}" "${PARKED}"
   mkdir -p "${SHARED}"
   chown root:"${SHARED_GROUP}" "${SHARED}" 2>/dev/null || chown root:root "${SHARED}"
   chmod 2775 "${SHARED}"
-  docker start opencloud
+  podman start opencloud
   echo
   echo "Parked shared content -> system/opencloud/incoming/shared"
   echo "1. Browser: Spaces → New Space → name exactly: shared; add household members."
@@ -184,7 +184,7 @@ restore() {
     exit 1
   fi
 
-  docker stop opencloud
+  podman stop opencloud
   local item name dest
   shopt -s dotglob nullglob
   for item in "${PARKED}"/*; do
@@ -211,9 +211,9 @@ restore() {
   done
   shopt -u dotglob nullglob
   rmdir "${PARKED}"
-  docker start opencloud
+  podman start opencloud
   echo "Scanning documents space:"
-  docker exec opencloud opencloud posixfs scan /posix/projects/shared || true
+  podman exec opencloud opencloud posixfs scan /posix/projects/shared || true
   echo
   echo "Re-run data-root-layout.sh to restore household ACLs (xattrs are kept)."
   echo "Then: DATA_ROOT=${DATA_ROOT} bash bootstrap/opencloud/opencloud-check.sh"
@@ -236,7 +236,7 @@ narrow() {
     exit 1
   fi
 
-  docker stop opencloud
+  podman stop opencloud
   umount "${SHARED}" || umount -l "${SHARED}"
   mkdir -p "${SHARED}"
   shopt -s dotglob nullglob
@@ -264,9 +264,9 @@ narrow() {
     exit 1
   fi
   write_fstab "${FILES}"
-  docker start opencloud
+  podman start opencloud
   echo "Narrowed OpenCloud shared space to ${FILES} (media/games stay under ${SHARED})."
-  docker exec opencloud opencloud posixfs scan /posix/projects/shared || true
+  podman exec opencloud opencloud posixfs scan /posix/projects/shared || true
 }
 
 case "$1" in

@@ -1,0 +1,18 @@
+apiVersion: v1
+kind: Pod
+metadata:
+  name: bentopdf
+  labels:
+    app: bentopdf
+spec:
+  restartPolicy: Always
+  containers:
+  - name: bentopdf
+    image: ghcr.io/alam00000/bentopdf-simple:latest
+    imagePullPolicy: Always
+    env:
+    - name: TZ
+      value: "{{.TZ}}"
+    ports:
+    - containerPort: 80
+

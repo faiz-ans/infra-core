@@ -14,7 +14,7 @@ param(
     [Parameter(Mandatory = $true)]
     [string]$ApiEndpoint,
 
-    [string]$HostId = 'periphery',
+    [string]$HostId = 'surface',
 
     [string]$InstallDir = $PSScriptRoot,
 

@@ -1,0 +1,13 @@
+[Unit]
+Description=linkding
+
+[Kube]
+Yaml={{ m_outputDir }}/components/linkding/pod.yaml
+Network=site.network
+PublishPort=127.0.0.1:9093:9090
+
+[Service]
+Restart=on-failure
+
+[Install]
+WantedBy=default.target

@@ -1,0 +1,49 @@
+apiVersion: v1
+kind: Pod
+metadata:
+  name: collabora
+  labels:
+    app: collabora
+spec:
+  restartPolicy: Always
+  hostAliases:
+  - ip: "{{.NAS_LAN_IP}}"
+    hostnames:
+      - "cloud.{{.DOMAIN}}"
+      - "auth.{{.DOMAIN}}"
+  containers:
+  - name: collabora-ca
+    image: docker.io/library/alpine:3.21
+    env:
+    - name: CADDY_CA_URL
+      value: "https://auth.{{.DOMAIN}}/pki/local-root.crt"
+    command: ["/bin/sh", "-ec", "apk add --no-cache ca-certificates curl openssl; if [ ! -s /ca/proof_key ]; then openssl genrsa -traditional -out /ca/proof_key.tmp 4096; chown 1001:1001 /ca/proof_key.tmp; chmod 400 /ca/proof_key.tmp; mv /ca/proof_key.tmp /ca/proof_key; fi; i=0; while [ \"$i\" -lt 30 ]; do if curl -kfsSL --max-time 5 \"$CADDY_CA_URL\" -o /ca/caddy-local.crt; then cat /etc/ssl/certs/ca-certificates.crt /ca/caddy-local.crt > /ca/ca-bundle.crt; exec sleep infinity; fi; i=$((i+1)); sleep 2; done; exit 1"]
+    volumeMounts:
+    - name: ca
+      mountPath: /ca
+  - name: collabora
+    image: docker.io/collabora/code:latest
+    env:
+    - name: TZ
+      value: "{{.TZ}}"
+    - name: DONT_GEN_SSL_CERT
+      value: "YES"
+    - name: SSL_CERT_FILE
+      value: /ca/ca-bundle.crt
+    - name: aliasgroup1
+      value: "https://cloud.{{.DOMAIN}}"
+    - name: extra_params
+      value: "--o:ssl.enable=false --o:ssl.ssl_termination=true --o:welcome.enable=false --o:net.frame_ancestors=cloud.{{.DOMAIN}}"
+    ports:
+    - containerPort: 9980
+    securityContext:
+      capabilities:
+        add: ["MKNOD", "SYS_ADMIN"]
+    volumeMounts:
+    - name: ca
+      mountPath: /ca
+      readOnly: true
+  volumes:
+  - name: ca
+    persistentVolumeClaim:
+      claimName: collabora-ca

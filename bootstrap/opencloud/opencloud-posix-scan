@@ -5,7 +5,7 @@
 # Space roots only: users/<u>/files and /posix/projects.
 set -euo pipefail
 
-DOCKER="${DOCKER:-/usr/bin/docker}"
+PODMAN="${PODMAN:-/usr/bin/podman}"
 LOCK=/run/opencloud-posix-scan.lock
 exec 9>"${LOCK}"
 if ! flock -n 9; then
@@ -13,7 +13,7 @@ if ! flock -n 9; then
   exit 0
 fi
 
-if ! "${DOCKER}" inspect -f '{{.State.Running}}' opencloud 2>/dev/null | grep -qx true; then
+if ! "${PODMAN}" inspect -f '{{.State.Running}}' opencloud 2>/dev/null | grep -qx true; then
   echo "opencloud-posix-scan: container not running"
   exit 0
 fi
@@ -21,12 +21,12 @@ fi
 scan() {
   local path=$1
   echo "opencloud-posix-scan: posixfs scan ${path}"
-  "${DOCKER}" exec opencloud opencloud posixfs scan "${path}"
+  "${PODMAN}" exec opencloud opencloud posixfs scan "${path}"
 }
 
 while IFS= read -r path; do
   [[ -n "${path}" ]] || continue
   scan "${path}"
-done < <("${DOCKER}" exec opencloud sh -c 'ls -d /posix/users/*/files 2>/dev/null' || true)
+done < <("${PODMAN}" exec opencloud sh -c 'ls -d /posix/users/*/files 2>/dev/null' || true)
 scan /posix/projects
 echo "opencloud-posix-scan: done"

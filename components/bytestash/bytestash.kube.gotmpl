@@ -1,0 +1,13 @@
+[Unit]
+Description=bytestash
+
+[Kube]
+Yaml={{ m_outputDir }}/components/bytestash/pod.yaml
+Network=site.network
+PublishPort=127.0.0.1:5000:5000
+
+[Service]
+Restart=on-failure
+
+[Install]
+WantedBy=default.target

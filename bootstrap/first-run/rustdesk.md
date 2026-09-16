@@ -6,16 +6,16 @@ Off-LAN remote desktop is **wg-easy first**, then the same ID/relay as on the LA
 
 ## 1. Directories
 
-If this site already ran `core.sh` before RustDesk existed, run `data-root-perms.sh` so `system/rustdesk` exists. No Komodo secret.
+If this site already ran `core.sh` before RustDesk existed, run `data-root-perms.sh` so `system/rustdesk` exists. No attribute.
 
 ## 2. Deploy
 
-Commit and push to the catalog origin (Gitea). Wait for ResourceSync. Komodo → **Stacks** → **rustdesk** → **Deploy**. Redeploy **caddy** and **homepage** if you want `https://desk.<DOMAIN>` (a text hint, not a desktop session).
+Commit and push to the catalog git origin. Wait for Materia, then re-apply **caddy** and **homepage** if you want `https://desk.<DOMAIN>` (a text hint, not a desktop session).
 
 On Core:
 
 ```text
-docker ps --filter name=hbb --format "table {{.Names}}\t{{.Status}}"
+podman ps --filter name=hbb --format "table {{.Names}}\t{{.Status}}"
 ```
 
 You want `hbbs` and `hbbr` **Up**.
@@ -42,4 +42,4 @@ Test on the LAN first. Then: connect a phone to wg-easy on cellular, confirm `de
 |---|---|
 | Client cannot register | Confirm UDP 21116 is not blocked on the LAN; hbbs must be host-net; key matches `id_ed25519.pub` |
 | Works on LAN, fails on cellular | Connect wg-easy first. Do not open 21116 on the WAN |
-| Relay shows a Docker IP | Catalog must pass `hbbs -r ${NAS_LAN_IP}:21117`. Redeploy **rustdesk** |
+| Relay shows a Docker IP | Catalog must pass `hbbs -r ${NAS_LAN_IP}:21117`. re-apply (Materia / systemd) **rustdesk** |

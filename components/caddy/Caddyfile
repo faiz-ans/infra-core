@@ -1,0 +1,683 @@
+{
+	email off
+	http_port 8080
+	https_port 8443
+	# Edge-only. Do not publish 2019 on the host. CaddyManager and Homepage
+	# talk to this API as http://127.0.0.1:2019. GitOps still owns this file.
+	admin 0.0.0.0:2019 {
+		origins caddy:2019 caddy 127.0.0.1:2019 localhost:2019
+	}
+}
+
+# Aliases 301 to the Homepage host. OIDC APP_URL / cookies / Authelia
+# redirect_uri are single-host; serving the same app on two names breaks login.
+
+(authelia_gate) {
+	forward_auth 127.0.0.1:9091 {
+		uri /api/authz/forward-auth?authelia_url=https://auth.{$DOMAIN}/
+		copy_headers Remote-User Remote-Groups Remote-Name Remote-Email
+	}
+}
+
+#--------------------------------
+# AUTHELIA
+#--------------------------------
+
+https://authelia.{$DOMAIN} {
+	tls internal
+	redir https://auth.{$DOMAIN}{uri} permanent
+}
+
+https://auth.{$DOMAIN} {
+	tls internal
+	handle /pki/local-root.crt {
+		rewrite * /root.crt
+		root * /data/caddy/pki/authorities/local
+		file_server
+	}
+	reverse_proxy 127.0.0.1:9091 {
+		header_up Host auth.{$DOMAIN}
+		header_up X-Forwarded-Host auth.{$DOMAIN}
+		header_up X-Forwarded-Proto https
+	}
+}
+#--------------------------------
+# HOMEPAGE
+#--------------------------------
+
+https://homepage.{$DOMAIN} {
+	tls internal
+	redir https://dash.{$DOMAIN}{uri} permanent
+}
+
+https://dash.{$DOMAIN} {
+	tls internal
+	reverse_proxy 127.0.0.1:3000
+}
+
+#--------------------------------
+# PI-HOLE CORE
+#--------------------------------
+
+https://pihole.{$DOMAIN}, https://pihole-core.{$DOMAIN} {
+	tls internal
+	redir https://dns.{$DOMAIN}{uri} permanent
+}
+
+https://dns.{$DOMAIN} {
+	tls internal
+	redir / /admin
+	reverse_proxy 127.0.0.1:8088
+}
+
+#--------------------------------
+# PI-HOLE MANTLE
+#--------------------------------
+
+https://pihole2.{$DOMAIN}, https://pihole-mantle.{$DOMAIN} {
+	tls internal
+	redir https://dns2.{$DOMAIN}{uri} permanent
+}
+
+https://dns2.{$DOMAIN} {
+	tls internal
+	redir / /admin
+	reverse_proxy {$SURFACE_UPSTREAM}:8083
+}
+
+#--------------------------------
+# WIREGUARD
+#--------------------------------
+
+https://wireguard.{$DOMAIN}, https://wg.{$DOMAIN} {
+	tls internal
+	redir https://vpn.{$DOMAIN}{uri} permanent
+}
+
+https://vpn.{$DOMAIN} {
+	tls internal
+	reverse_proxy 127.0.0.1:51821
+}
+
+#--------------------------------
+# COCKPIT (Core; Cockpit's own login, not Authelia)
+#--------------------------------
+
+https://cockpit.{$DOMAIN} {
+	tls internal
+	redir https://box.{$DOMAIN}{uri} permanent
+}
+
+https://box.{$DOMAIN} {
+	tls internal
+	reverse_proxy 127.0.0.1:9090
+}
+
+#--------------------------------
+# OPENMEDIAVAULT
+#--------------------------------
+
+https://openmediavault.{$DOMAIN}, https://omv.{$DOMAIN} {
+	tls internal
+	redir https://nas.{$DOMAIN}{uri} permanent
+}
+
+https://nas.{$DOMAIN} {
+	tls internal
+	reverse_proxy 127.0.0.1:81
+}
+
+#--------------------------------
+# UPS (PeaNUT)
+#--------------------------------
+
+https://peanut.{$DOMAIN} {
+	tls internal
+	redir https://ups.{$DOMAIN}{uri} permanent
+}
+
+https://ups.{$DOMAIN} {
+	tls internal
+	import authelia_gate
+	reverse_proxy 127.0.0.1:8092 {
+		header_up Host {host}
+		header_up X-Forwarded-Host {host}
+		header_up X-Forwarded-Proto https
+	}
+}
+
+#--------------------------------
+# VAULTWARDEN
+#--------------------------------
+
+https://vaultwarden.{$DOMAIN}, https://pw.{$DOMAIN} {
+	tls internal
+	redir https://pass.{$DOMAIN}{uri} permanent
+}
+
+https://pass.{$DOMAIN} {
+	tls internal
+
+	@admin path /admin /admin/*
+
+	handle @admin {
+		forward_auth 127.0.0.1:9091 {
+			uri /api/authz/forward-auth?authelia_url=https://auth.{$DOMAIN}/
+			copy_headers Remote-User Remote-Groups Remote-Name Remote-Email
+		}
+		reverse_proxy 127.0.0.1:8082
+	}
+
+	handle {
+		reverse_proxy 127.0.0.1:8082
+	}
+}
+
+#--------------------------------
+# JELLYFIN
+#--------------------------------
+
+https://jellyfin.{$DOMAIN} {
+	tls internal
+	redir https://watch.{$DOMAIN}{uri} permanent
+}
+
+https://watch.{$DOMAIN} {
+	tls internal
+	reverse_proxy {$SURFACE_UPSTREAM}:8096
+}
+
+#--------------------------------
+# SEERR
+#--------------------------------
+
+https://seerr.{$DOMAIN}, https://jellyseerr.{$DOMAIN} {
+	tls internal
+	redir https://request.{$DOMAIN}{uri} permanent
+}
+
+https://request.{$DOMAIN} {
+	tls internal
+	reverse_proxy {$SURFACE_UPSTREAM}:5055
+}
+
+#--------------------------------
+# HOME ASSISTANT
+#--------------------------------
+
+https://homeassistant.{$DOMAIN}, https://ha.{$DOMAIN} {
+	tls internal
+	redir https://auto.{$DOMAIN}{uri} permanent
+}
+
+https://auto.{$DOMAIN} {
+	tls internal
+	# HA 400s if X-Forwarded-For is present and the TCP peer is not in trusted_proxies.
+	# Caddy is on Core, HA is on mantle: the peer is often an IPv4-mapped
+	# address that 0.0.0.0/0 does not match. Do not send For; keep Proto/Host for https.
+	reverse_proxy {$SURFACE_UPSTREAM}:8123 {
+		header_up Host {host}
+		header_up X-Forwarded-Host {host}
+		header_up X-Forwarded-Proto {scheme}
+		header_up -X-Forwarded-For
+	}
+}
+
+#--------------------------------
+# OPENCLOUD
+#--------------------------------
+
+https://opencloud.{$DOMAIN}, https://oc.{$DOMAIN} {
+	tls internal
+	redir https://cloud.{$DOMAIN}{uri} permanent
+}
+
+https://cloud.{$DOMAIN} {
+	tls internal
+	reverse_proxy 127.0.0.1:9200 {
+		# Disable buffering for OpenCloud SSE / TUS (nginx equivalent: proxy_buffering off).
+		flush_interval -1
+		transport http {
+			read_timeout 3600s
+			write_timeout 3600s
+		}
+	}
+}
+
+#--------------------------------
+# IMMICH
+#--------------------------------
+
+https://immich.{$DOMAIN}, https://gallery.{$DOMAIN} {
+	tls internal
+	redir https://photos.{$DOMAIN}{uri} permanent
+}
+
+https://photos.{$DOMAIN} {
+	tls internal
+	reverse_proxy {$SURFACE_UPSTREAM}:2283
+}
+
+#--------------------------------
+# COLLABORA
+#--------------------------------
+
+https://collabora.{$DOMAIN}, https://docs.{$DOMAIN} {
+	tls internal
+	redir https://office.{$DOMAIN}{uri} permanent
+}
+
+https://office.{$DOMAIN} {
+	tls internal
+	reverse_proxy {$SURFACE_UPSTREAM}:9980 {
+		header_up Host {host}
+		header_up X-Forwarded-Host {host}
+		header_up X-Forwarded-Proto {scheme}
+		transport http {
+			read_timeout 3600s
+			write_timeout 3600s
+		}
+	}
+}
+
+#--------------------------------
+# JOTTY
+#--------------------------------
+
+https://jotty.{$DOMAIN} {
+	tls internal
+	redir https://notes.{$DOMAIN}{uri} permanent
+}
+
+https://notes.{$DOMAIN} {
+	tls internal
+	reverse_proxy 127.0.0.1:3002
+}
+
+#--------------------------------
+# LINKDING
+#--------------------------------
+
+https://linkding.{$DOMAIN}, https://bookmarks.{$DOMAIN} {
+	tls internal
+	redir https://links.{$DOMAIN}{uri} permanent
+}
+
+https://links.{$DOMAIN} {
+	tls internal
+	reverse_proxy 127.0.0.1:9093
+}
+
+#--------------------------------
+# RUSTDESK
+#--------------------------------
+
+https://rustdesk.{$DOMAIN}, https://remote.{$DOMAIN} {
+	tls internal
+	redir https://desk.{$DOMAIN}{uri} permanent
+}
+
+https://desk.{$DOMAIN} {
+	tls internal
+	respond "RustDesk ID/relay is this host (LAN and WireGuard only). Use the native client. Do not port-forward 21115-21119." 200
+}
+
+#--------------------------------
+# ADVENTURELOG
+#--------------------------------
+
+https://adventurelog.{$DOMAIN}, https://trips.{$DOMAIN} {
+	tls internal
+	redir https://travel.{$DOMAIN}{uri} permanent
+}
+
+https://travel.{$DOMAIN} {
+	tls internal
+	reverse_proxy {$SURFACE_UPSTREAM}:8015 {
+		header_up Host travel.{$DOMAIN}
+		header_up X-Forwarded-Host travel.{$DOMAIN}
+		header_up X-Forwarded-Proto https
+	}
+}
+
+#--------------------------------
+# SCRIBERR
+#--------------------------------
+
+https://scriberr.{$DOMAIN}, https://transcribe.{$DOMAIN} {
+	tls internal
+	redir https://voice.{$DOMAIN}{uri} permanent
+}
+
+https://voice.{$DOMAIN} {
+	tls internal
+	reverse_proxy {$SURFACE_UPSTREAM}:8085 {
+		flush_interval -1
+		transport http {
+			read_timeout 3600s
+			write_timeout 3600s
+		}
+	}
+}
+
+#--------------------------------
+# TRANSMUTE
+#--------------------------------
+
+https://transmute.{$DOMAIN} {
+	tls internal
+	redir https://convert.{$DOMAIN}{uri} permanent
+}
+
+https://convert.{$DOMAIN} {
+	tls internal
+	reverse_proxy {$SURFACE_UPSTREAM}:3313 {
+		flush_interval -1
+		transport http {
+			read_timeout 3600s
+			write_timeout 3600s
+		}
+	}
+}
+
+#--------------------------------
+# BENTOPDF
+#--------------------------------
+
+https://bentopdf.{$DOMAIN} {
+	tls internal
+	redir https://pdf.{$DOMAIN}{uri} permanent
+}
+
+https://pdf.{$DOMAIN} {
+	tls internal
+	import authelia_gate
+	reverse_proxy 127.0.0.1:8084
+}
+
+#--------------------------------
+# LIBRETRANSLATE
+#--------------------------------
+
+https://libretranslate.{$DOMAIN} {
+	tls internal
+	redir https://translate.{$DOMAIN}{uri} permanent
+}
+
+https://translate.{$DOMAIN} {
+	tls internal
+	import authelia_gate
+	reverse_proxy {$SURFACE_UPSTREAM}:5000
+}
+
+#--------------------------------
+# OPENREADER
+#--------------------------------
+
+https://openreader.{$DOMAIN}, https://reader.{$DOMAIN} {
+	tls internal
+	redir https://read.{$DOMAIN}{uri} permanent
+}
+
+https://read.{$DOMAIN} {
+	tls internal
+	reverse_proxy {$SURFACE_UPSTREAM}:3003 {
+		flush_interval -1
+		transport http {
+			read_timeout 3600s
+			write_timeout 3600s
+		}
+	}
+}
+
+#--------------------------------
+# IT TOOLS
+#--------------------------------
+
+https://it-tools.{$DOMAIN}, https://tools.{$DOMAIN} {
+	tls internal
+	redir https://it.{$DOMAIN}{uri} permanent
+}
+
+https://it.{$DOMAIN} {
+	tls internal
+	import authelia_gate
+	reverse_proxy 127.0.0.1:8087
+}
+
+#--------------------------------
+# N8N
+#--------------------------------
+
+https://n8n.{$DOMAIN} {
+	tls internal
+	redir https://flow.{$DOMAIN}{uri} permanent
+}
+
+https://flow.{$DOMAIN} {
+	tls internal
+	reverse_proxy {$SURFACE_UPSTREAM}:5678 {
+		flush_interval -1
+		transport http {
+			read_timeout 3600s
+			write_timeout 3600s
+		}
+	}
+}
+
+#--------------------------------
+# BYTESTASH
+#--------------------------------
+
+https://bytestash.{$DOMAIN}, https://snippets.{$DOMAIN} {
+	tls internal
+	redir https://snip.{$DOMAIN}{uri} permanent
+}
+
+https://snip.{$DOMAIN} {
+	tls internal
+	# ByteStash has no APP_URL; it builds OIDC redirect_uri from these headers.
+	reverse_proxy 127.0.0.1:5000 {
+		header_up Host snip.{$DOMAIN}
+		header_up X-Forwarded-Host snip.{$DOMAIN}
+		header_up X-Forwarded-Proto https
+	}
+}
+
+#--------------------------------
+# FRIGATE
+#--------------------------------
+
+https://frigate.{$DOMAIN}, https://cam.{$DOMAIN}, https://cams.{$DOMAIN} {
+	tls internal
+	redir https://nvr.{$DOMAIN}{uri} permanent
+}
+
+https://nvr.{$DOMAIN} {
+	tls internal
+	reverse_proxy {$SURFACE_UPSTREAM}:8971 {
+		flush_interval -1
+		transport http {
+			read_timeout 3600s
+			write_timeout 3600s
+		}
+	}
+}
+
+#--------------------------------
+# SONARR
+#--------------------------------
+
+https://sonarr.{$DOMAIN} {
+	tls internal
+	reverse_proxy {$SURFACE_UPSTREAM}:8989
+}
+
+#--------------------------------
+# RADARR
+#--------------------------------
+
+https://radarr.{$DOMAIN} {
+	tls internal
+	reverse_proxy {$SURFACE_UPSTREAM}:7878
+}
+
+#--------------------------------
+# PROWLARR
+#--------------------------------
+
+https://prowlarr.{$DOMAIN} {
+	tls internal
+	reverse_proxy {$SURFACE_UPSTREAM}:9696
+}
+
+#--------------------------------
+# QBITTORRENT
+#--------------------------------
+
+https://qbit.{$DOMAIN}, https://qbittorrent.{$DOMAIN} {
+	tls internal
+	redir https://down.{$DOMAIN}{uri} permanent
+}
+
+https://down.{$DOMAIN} {
+	tls internal
+	reverse_proxy {$SURFACE_UPSTREAM}:8081 {
+		header_up Host {http.reverse_proxy.upstream.hostport}
+		header_up X-Forwarded-Host {host}
+		header_up X-Forwarded-Proto {scheme}
+	}
+}
+
+#--------------------------------
+# GRAFANA
+#--------------------------------
+
+https://grafana.{$DOMAIN}, https://monitor.{$DOMAIN}, https://stats.{$DOMAIN} {
+	tls internal
+	redir https://site.{$DOMAIN}{uri} permanent
+}
+
+https://site.{$DOMAIN} {
+	tls internal
+	reverse_proxy {$SURFACE_UPSTREAM}:3000
+}
+
+#--------------------------------
+# PROMETHEUS
+#--------------------------------
+
+https://prometheus.{$DOMAIN} {
+	tls internal
+	redir https://metrics.{$DOMAIN}{uri} permanent
+}
+
+https://metrics.{$DOMAIN} {
+	tls internal
+	import authelia_gate
+	reverse_proxy {$SURFACE_UPSTREAM}:9090
+}
+
+#--------------------------------
+# SCRUTINY
+#--------------------------------
+
+https://scrutiny.{$DOMAIN} {
+	tls internal
+	redir https://disks.{$DOMAIN}{uri} permanent
+}
+
+https://disks.{$DOMAIN} {
+	tls internal
+	import authelia_gate
+	reverse_proxy 127.0.0.1:8080
+}
+
+#--------------------------------
+# UPTIME KUMA
+#--------------------------------
+
+https://kuma.{$DOMAIN}, https://uptime.{$DOMAIN}, https://status.{$DOMAIN} {
+	tls internal
+	redir https://up.{$DOMAIN}{uri} permanent
+}
+
+https://up.{$DOMAIN} {
+	tls internal
+	reverse_proxy 127.0.0.1:3004
+}
+
+#--------------------------------
+# CADDYMANAGER
+#--------------------------------
+
+https://caddymanager.{$DOMAIN} {
+	tls internal
+	redir https://traffic.{$DOMAIN}{uri} permanent
+}
+
+https://traffic.{$DOMAIN} {
+	tls internal
+	import authelia_gate
+	reverse_proxy 127.0.0.1:8086
+}
+
+#--------------------------------
+# GLANCES CORE
+#--------------------------------
+
+https://glances.{$DOMAIN}, https://glances-core.{$DOMAIN} {
+	tls internal
+	redir https://host.{$DOMAIN}{uri} permanent
+}
+
+https://host.{$DOMAIN} {
+	tls internal
+	import authelia_gate
+	reverse_proxy 127.0.0.1:61208
+}
+
+#--------------------------------
+# GLANCES MANTLE
+#--------------------------------
+
+https://glances2.{$DOMAIN}, https://glances-mantle.{$DOMAIN} {
+	tls internal
+	redir https://host2.{$DOMAIN}{uri} permanent
+}
+
+https://host2.{$DOMAIN} {
+	tls internal
+	import authelia_gate
+	reverse_proxy {$SURFACE_UPSTREAM}:61208
+}
+
+#--------------------------------
+# ROUTER
+#--------------------------------
+
+https://router.{$DOMAIN} {
+	tls internal
+	redir https://wifi.{$DOMAIN}{uri} permanent
+}
+
+https://wifi.{$DOMAIN} {
+	tls internal
+	reverse_proxy {$ROUTER_LAN_IP}
+}
+
+#--------------------------------
+# PRINTER
+#--------------------------------
+
+https://printer.{$DOMAIN} {
+	tls internal
+	redir https://print.{$DOMAIN}{uri} permanent
+}
+
+https://print.{$DOMAIN} {
+	tls internal
+	reverse_proxy {$ROUTER_LAN_IP}13 {
+		header_up Host {http.reverse_proxy.upstream.hostport}
+	}
+}

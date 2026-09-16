@@ -1,0 +1,13 @@
+[Unit]
+Description=uptime-kuma
+
+[Kube]
+Yaml={{ m_outputDir }}/components/uptime-kuma/pod.yaml
+Network=site.network
+PublishPort=127.0.0.1:3004:3001
+
+[Service]
+Restart=on-failure
+
+[Install]
+WantedBy=default.target

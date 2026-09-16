@@ -1,0 +1,25 @@
+# Example global vault (encrypt to vault.age; do not commit filled values).
+
+[globals]
+DOMAIN = ""
+TZ = "America/Los_Angeles"
+NAS_LAN_IP = ""
+SURFACE_UPSTREAM = ""
+DATA_ROOT = ""
+PUID = "1000"
+PGID = "1000"
+WG_HOST = ""
+CORE_SERVER = "core"
+SIGNUPS_ALLOWED = "false"
+CADDY_HTTP_PORT = "8080"
+CADDY_HTTPS_PORT = "8443"
+PIHOLE_DNS_PORT = "15353"
+PIHOLE_WEB_PORT = "8088"
+ROUTER_LAN_IP = ""
+PRINTER_LAN_IP = ""
+
+# Mapped into Homepage env (not live domain/IP in git).
+HOMEPAGE_VAR_DOMAIN = ""          # same as DOMAIN
+HOMEPAGE_VAR_SURFACE_UPSTREAM = "" # same as SURFACE_UPSTREAM
+HOMEPAGE_VAR_NAS_LAN_IP = ""       # same as NAS_LAN_IP
+HOMEPAGE_VAR_TZ = ""               # same as TZ

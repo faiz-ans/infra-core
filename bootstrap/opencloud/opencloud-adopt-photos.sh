@@ -110,7 +110,7 @@ status() {
 }
 
 park() {
-  docker stop opencloud
+  podman stop opencloud
   mkdir -p "${INCOMING}" "${PROJECTS}"
   chown "${PUID}:${PGID}" "${PROJECTS}" 2>/dev/null || true
   local u src dst
@@ -133,7 +133,7 @@ park() {
     mv "${src}" "${dst}"
     echo "parked ${u} photos -> system/opencloud/incoming/photos-${u}"
   done
-  docker start opencloud
+  podman start opencloud
   echo
   echo "Browser: Spaces → New Space → name exactly photos-<user> (photos-faiz, …)."
   echo "Add only that user as Can manage. Remove yourself from anyone else's photos space."
@@ -186,8 +186,8 @@ discard_skip_names() {
 }
 
 restore() {
-  docker stop opencloud
-  trap 'docker start opencloud >/dev/null 2>&1 || true' EXIT
+  podman stop opencloud
+  trap 'podman start opencloud >/dev/null 2>&1 || true' EXIT
   local u src dest item name target
   for u in "${HOUSEHOLD[@]}"; do
     src="$(parked_dir "${u}")"
@@ -228,9 +228,9 @@ restore() {
     echo "restored ${u} photos"
   done
   trap - EXIT
-  docker start opencloud
+  podman start opencloud
   echo "Scanning photos spaces:"
-  docker exec opencloud opencloud posixfs scan /posix/projects || true
+  podman exec opencloud opencloud posixfs scan /posix/projects || true
 }
 
 case "$1" in

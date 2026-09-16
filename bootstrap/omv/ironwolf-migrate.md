@@ -1,8 +1,8 @@
 # Move DATA_ROOT from the stand-in USB to the IronWolf
 
-The USB stays mounted until the copy is verified and Komodo `DATA_ROOT` points at the new uuid path. Do **not** re-run `core.sh` (it latches onto the first `/srv/dev-disk-by-uuid-*` that is already mounted).
+The USB stays mounted until the copy is verified and attribute `DATA_ROOT` points at the new uuid path. Do **not** re-run `core.sh` (it latches onto the first `/srv/dev-disk-by-uuid-*` that is already mounted).
 
-Komodo Core (`/etc/komodo`) stays on the Pi OS disk. This move is only the OMV data tree: `system/`, `shared/`, `users/`.
+Materia (`/etc/materia`) stays on the Pi OS disk. This move is only the OMV data tree: `system/`, `shared/`, `users/`.
 
 `rsync` **must** keep xattrs (`-X`) and ACLs (`-A`). OpenCloud Personal is `user.oc.space.*` on `users/faiz`. Drop those and spaces vanish again.
 
@@ -10,7 +10,7 @@ Komodo Core (`/etc/komodo`) stays on the Pi OS disk. This move is only the OMV d
 
 HAT and IronWolf connected, Pi booted. USB data disk still attached.
 
-HTPC copies (Explorer SMB, Docker NFS) are faster on Ethernet than Wi-Fi. Pin `HTPC_UPSTREAM` on the wire with `bootstrap/periphery/htpc-lan-static.ps1` (same idea as Core `core-lan-static.sh`). Keep Komodo `HTPC_UPSTREAM` at that address.
+Copies (Explorer SMB, WSL NFS) are faster on Ethernet. Pin `SURFACE_UPSTREAM` with `bootstrap/surface/surface-lan-static.ps1`.
 
 ## 1. Name the two disks
 
@@ -91,10 +91,10 @@ Both `OLD` and `NEW` must be mounted before the copy.
 
 ## 4. Stop writers
 
-Komodo UI stays up. Stop stacks that bind `DATA_ROOT` (not Caddy, not Komodo):
+Cockpit / systemd stays up. Stop stacks that bind `DATA_ROOT` (not Caddy):
 
 ```text
-sudo docker stop opencloud vaultwarden gitea authelia pihole wireguard \
+sudo podman stop opencloud vaultwarden authelia pihole wireguard \
   jotty linkding rustdesk bytestash glances homepage
 ```
 
@@ -140,61 +140,49 @@ Optional check:
 sudo exportfs -v
 ```
 
-## 7. Switch Komodo `DATA_ROOT`
+## 7. Switch attribute `DATA_ROOT`
 
-Stack env uses `[[DATA_ROOT]]` from Core **`/etc/komodo/core.config.toml`** `[secrets]`. Changing only the Komodo UI Variables page does **not** rewrite that file — Redeploy keeps the old uuid mounts.
+Quadlets read `DATA_ROOT` from `/etc/materia/site.env` (and sops attributes). Changing only a running container env does **not** rewrite that file — a restart keeps the old uuid mounts.
 
-On Core (as root), set **all three** places that still carry the old uuid — secrets toml, answers cache, and **bootstrap `compose.env`** (Core’s `env_file`; a stale `DATA_ROOT` there can win over `[secrets]` at Redeploy):
+On Core (as root), set **site.env**, answers cache, and encrypted attributes, then re-apply:
 
 ```text
 NEW=/srv/dev-disk-by-uuid-<NEW_UUID>
-sudo grep -E '^DATA_ROOT' /etc/komodo/core.config.toml /etc/komodo/bootstrap-answers.env /etc/komodo/bootstrap/compose.env
-sudo sed -i "s|^DATA_ROOT = \".*\"|DATA_ROOT = \"${NEW}\"|" /etc/komodo/core.config.toml
-sudo sed -i "s|^DATA_ROOT=.*|DATA_ROOT='${NEW}'|" /etc/komodo/bootstrap-answers.env
-sudo sed -i "s|^DATA_ROOT=.*|DATA_ROOT=${NEW}|" /etc/komodo/bootstrap/compose.env
-sudo grep -E '^DATA_ROOT' /etc/komodo/core.config.toml /etc/komodo/bootstrap-answers.env /etc/komodo/bootstrap/compose.env
-# Must recreate Core and local Periphery — plain `up -d` leaves them Running;
-# Periphery’s process env is used by `docker compose` and can override the stack `.env`:
-cd /etc/komodo/bootstrap && sudo docker compose --env-file compose.env -f compose.yaml up -d --force-recreate core periphery
-sudo docker exec bootstrap-core-1 printenv DATA_ROOT
-sudo docker exec bootstrap-periphery-1 printenv DATA_ROOT
-sudo docker exec bootstrap-core-1 grep '^DATA_ROOT' /config/config.toml
+sudo grep -E '^DATA_ROOT' /etc/materia/site.env /etc/materia/bootstrap-answers.env
+sudo sed -i "s|^DATA_ROOT=.*|DATA_ROOT=${NEW}|" /etc/materia/site.env
+sudo sed -i "s|^DATA_ROOT=.*|DATA_ROOT='${NEW}'|" /etc/materia/bootstrap-answers.env
+sudo grep -E '^DATA_ROOT' /etc/materia/site.env /etc/materia/bootstrap-answers.env
+# Re-encrypt attributes/core.age on-box, then:
+systemctl --machine=pilot@ --user daemon-reload
+# or wait for the Materia user timer
 ```
 
-Both containers’ `printenv` and the toml line must show `${NEW}`. Then **Redeploy** opencloud (Restart is not enough). Confirm the stack env file before/after:
+No trailing slash. Then re-apply every Core stack that mounts it (Restart is not enough):
 
-```text
-sudo grep -R '^DATA_ROOT=' /etc/komodo/stacks/opencloud --include='.env' --include='*.env' 2>/dev/null
-```
+`authelia`, `pihole`, `wireguard`, `homepage`, `opencloud`, `vaultwarden`, `jotty`, `linkding`, `rustdesk`, `bytestash`, `glances`.
 
-Also set the same path in Komodo → **Settings → Variables** (and Secrets if listed) so the UI matches. No trailing slash. If Variables still has the USB uuid, that can win at Redeploy even after the files are correct.
-
-Then **Redeploy** every Core stack that mounts it (Restart is not enough):
-
-`gitea`, `authelia`, `pihole`, `wireguard`, `homepage`, `opencloud`, `vaultwarden`, `jotty`, `linkding`, `rustdesk`, `bytestash`, `glances`.
-
-Leave `restic` off until this copy is done and the HTPC USB is `BACKUP_DRIVE` ([`bootstrap/first-run/restic.md`](../first-run/restic.md)). Redeploy **caddy** only if something else is wrong; it does not use `DATA_ROOT`.
+Leave `restic` off until this copy is done and the surface USB is `BACKUP_DRIVE` ([`bootstrap/first-run/restic.md`](../first-run/restic.md)). Re-apply **caddy** only if something else is wrong; it does not use `DATA_ROOT`.
 
 On Core:
 
 ```text
-sudo docker inspect opencloud --format '{{range .Mounts}}{{.Source}} -> {{.Destination}}{{"\n"}}{{end}}'
+sudo podman inspect opencloud --format '{{range .Mounts}}{{.Source}} -> {{.Destination}}{{"\n"}}{{end}}'
 ```
 
 You want `${NEW}/system/opencloud/...` and `${NEW}/users` → `/posix/users`, not the old USB uuid.
 
-If mounts are still the USB path: both Core and Periphery `printenv DATA_ROOT`, Settings → Variables, and the stack `.env` under `/etc/komodo/stacks/opencloud/` must all be `${NEW}`, then Redeploy again. Hits under `/etc/komodo/stacks/opencloud/bootstrap/` are only script defaults in the clone — they do not set stack mounts.
+If mounts are still the USB path: `grep DATA_ROOT /etc/materia/site.env` must show `${NEW}`, then re-apply OpenCloud again. Hits under `components/opencloud/` in the clone are only defaults — they do not set live mounts.
 
 Then re-bind OpenCloud spaces. **`rsync` does not preserve bind mounts** — on `${NEW}` you get two separate trees (`shared/files` vs `projects/shared`, and `users/<u>/photos` vs `projects/photos-<u>`). Spaces already have `user.oc.space.id`; do **not** park whole `shared/` (that moves media). Merge into the space dirs, empty the household paths, then publish:
 
 ```text
-CATALOG=/etc/komodo/stacks/opencloud
+CATALOG=/home/pilot/infra-core
 # Optional sanity: sizes should be similar (duplicates from the old binds)
 sudo du -sh "${NEW}/shared/files" "${NEW}/system/opencloud/projects/shared"
 sudo du -sh "${NEW}/users/faiz/photos" "${NEW}/system/opencloud/projects/photos-faiz"
 sudo du -sh "${NEW}/users/diana/photos" "${NEW}/system/opencloud/projects/photos-diana"
 
-sudo docker stop opencloud
+sudo podman stop opencloud
 sudo rsync -aAXH --numeric-ids "${NEW}/shared/files/" "${NEW}/system/opencloud/projects/shared/"
 sudo find "${NEW}/shared/files" -mindepth 1 -delete
 sudo DATA_ROOT="${NEW}" bash "${CATALOG}/bootstrap/opencloud/opencloud-adopt-shared.sh" publish
@@ -204,7 +192,7 @@ sudo rsync -aAXH --numeric-ids "${NEW}/users/diana/photos/" "${NEW}/system/openc
 sudo find "${NEW}/users/faiz/photos" -mindepth 1 -delete
 sudo find "${NEW}/users/diana/photos" -mindepth 1 -delete
 sudo DATA_ROOT="${NEW}" bash "${CATALOG}/bootstrap/opencloud/opencloud-adopt-photos.sh" publish
-sudo docker start opencloud
+sudo podman start opencloud
 
 sudo DATA_ROOT="${NEW}" bash "${CATALOG}/bootstrap/data-root/data-root-layout.sh"
 sudo DATA_ROOT="${NEW}" bash "${CATALOG}/bootstrap/data-root/data-root-perms.sh"
@@ -216,25 +204,25 @@ If you keep a checkout under `/home/pilot/...`, point `CATALOG` at that repo roo
 ## 8. Prove it before unplugging the USB
 
 ```text
-docker ps --format 'table {{.Names}}\t{{.Status}}'
+podman ps --format 'table {{.Names}}\t{{.Status}}'
 sudo getfattr -d "${NEW}/users/faiz" | grep space
 ```
 
-Browser: `https://cloud.home.lan` as **faiz** — Personal still lists. Vaultwarden / Gitea / Authelia still log in.
+Browser: `https://cloud.home.lan` as **faiz** — Personal still lists. Vaultwarden / Authelia still log in.
 
-HTPC (if NFS stacks are up): Explorer/SMB and a docker NFS `ls` of `/shared` still work (`bootstrap/omv/README.md` smoke test).
+HTPC (if NFS stacks are up): Explorer/SMB and a WSL NFS `ls` of `/shared` still work (`bootstrap/omv/README.md` smoke test).
 
 ## 9. Unplug the USB only after that
 
 ```text
-sudo docker stop opencloud vaultwarden gitea authelia pihole wireguard \
+sudo podman stop opencloud vaultwarden authelia pihole wireguard \
   jotty linkding rustdesk bytestash glances homepage
 sudo umount "${OLD}"
 ```
 
 Workbench: unmount/wipe the USB filesystem if OMV still lists it. Physically remove the USB.
 
-Start stacks again (or Komodo Redeploy). Confirm OpenCloud once more.
+Start stacks again (or Materia apply). Confirm OpenCloud once more.
 
 Keep the USB intact (unmounted) for a day if you want a rollback copy. After that it is spare.
 
@@ -244,7 +232,7 @@ Keep the USB intact (unmounted) for a day if you want a rollback copy. After tha
 |---|---|
 | `setMountPoint` / disk missing in OMV | Disk was mounted via a plain fstab line first. Unmount, remove that line, then setMountPoint / Workbench Mount. |
 | `getfattr` empty on `${NEW}/users/faiz` | Recopy with `-aAXH`. Do not change `DATA_ROOT` yet. |
-| OpenCloud blank after switch | Inspect mounts: still on `OLD` uuid means Komodo `DATA_ROOT` or Redeploy did not apply. |
+| OpenCloud blank after switch | Inspect mounts: still on `OLD` uuid means attribute `DATA_ROOT` or Redeploy did not apply. |
 | `shared/files` / `photos` NOT bound after copy | Expected: rsync duplicated trees. Merge into `projects/…`, empty household path, `publish` (see §7). |
 | NFS `permission denied` / HTPC `:/shared` hangs | Hollow `/export/shared` or duplicate NFS clients. Re-run `omv-nfs.sh` with new `DATA_ROOT`; `ls /export/shared/media` must work on Core. |
 | Pi-hole / Authelia unhappy | Those bind `${DATA_ROOT}/system/...`. Redeploy those stacks after the variable change. |

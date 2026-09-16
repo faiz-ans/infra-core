@@ -1,0 +1,366 @@
+# Authelia's template env() refuses names that start with AUTHELIA_ and
+# end in SECRET/KEY. Pass the same values as JWT_SECRET / SESSION_SECRET /
+# STORAGE_ENCRYPTION_KEY / OIDC_HMAC_SECRET instead.
+# OIDC client_secret digest and JWKS live under /config/userdb (DATA_ROOT).
+
+server:
+  address: tcp://0.0.0.0:9091
+  endpoints:
+    authz:
+      forward-auth:
+        implementation: ForwardAuth
+
+log:
+  level: info
+
+authentication_backend:
+  file:
+    path: /config/userdb/users.yml
+    watch: true
+  password_reset:
+    disable: true
+
+access_control:
+  default_policy: deny
+  rules:
+    - domain: 'auth.{{ env "DOMAIN" }}'
+      policy: bypass
+    - domain:
+        - 'pdf.{{ env "DOMAIN" }}'
+        - 'it.{{ env "DOMAIN" }}'
+        - 'translate.{{ env "DOMAIN" }}'
+        - 'ups.{{ env "DOMAIN" }}'
+        - 'peanut.{{ env "DOMAIN" }}'
+      subject: 'group:users'
+      policy: one_factor
+    - domain:
+        - 'metrics.{{ env "DOMAIN" }}'
+        - 'host.{{ env "DOMAIN" }}'
+        - 'host2.{{ env "DOMAIN" }}'
+        - 'disks.{{ env "DOMAIN" }}'
+        - 'traffic.{{ env "DOMAIN" }}'
+      subject: 'group:admins'
+      policy: one_factor
+    - domain: 'pass.{{ env "DOMAIN" }}'
+      resources:
+        - '^/admin([/?].*)?$'
+      subject: 'group:admins'
+      policy: one_factor
+
+session:
+  secret: '{{ env "SESSION_SECRET" }}'
+  cookies:
+    - name: authelia_session
+      domain: '{{ env "DOMAIN" }}'
+      authelia_url: 'https://auth.{{ env "DOMAIN" }}'
+      default_redirection_url: 'https://dash.{{ env "DOMAIN" }}'
+
+storage:
+  encryption_key: '{{ env "STORAGE_ENCRYPTION_KEY" }}'
+  local:
+    path: /data/db.sqlite3
+
+notifier:
+  filesystem:
+    filename: /data/notification.txt
+
+identity_providers:
+  oidc:
+    hmac_secret: '{{ env "OIDC_HMAC_SECRET" }}'
+    jwks:
+      - key: {{ secret "/config/userdb/oidc.pem" | mindent 10 "|" | msquote }}
+    cors:
+      endpoints:
+        - authorization
+        - token
+        - revocation
+        - introspection
+        - userinfo
+      allowed_origins_from_client_redirect_uris: true
+    authorization_policies:
+      admins:
+        default_policy: deny
+        rules:
+          - policy: one_factor
+            subject: 'group:admins'
+      users:
+        default_policy: deny
+        rules:
+          - policy: one_factor
+            subject: 'group:users'
+    # Authelia 4 keeps profile/email on UserInfo only. Adventure Log's allauth
+    # fails the callback if that extra HTTPS call errors; put them in the ID token.
+    claims_policies:
+      adventurelog:
+        id_token:
+          - email
+          - email_verified
+          - preferred_username
+          - name
+    clients:
+      # Web must not request offline_access: Authelia then requires a consent
+      # click on every login (refresh tokens). Mobile/desktop keep it.
+      - client_id: opencloud
+        client_name: OpenCloud
+        public: true
+        authorization_policy: users
+        consent_mode: implicit
+        require_pkce: true
+        pkce_challenge_method: S256
+        scopes:
+          - openid
+          - groups
+          - profile
+          - email
+        redirect_uris:
+          - 'https://cloud.{{ env "DOMAIN" }}/'
+          - 'https://cloud.{{ env "DOMAIN" }}/oidc-callback.html'
+          - 'https://cloud.{{ env "DOMAIN" }}/oidc-silent-redirect.html'
+        response_types:
+          - code
+        grant_types:
+          - authorization_code
+        access_token_signed_response_alg: RS256
+        userinfo_signed_response_alg: none
+        token_endpoint_auth_method: none
+        requested_audience_mode: implicit
+        audience:
+          - opencloud
+      - client_id: opencloud-android
+        client_name: OpenCloud Android
+        public: true
+        authorization_policy: users
+        consent_mode: pre-configured
+        pre_configured_consent_duration: 1y
+        require_pkce: true
+        pkce_challenge_method: S256
+        redirect_uris:
+          - oc://android.opencloud.eu
+        scopes:
+          - openid
+          - offline_access
+          - groups
+          - profile
+          - email
+        response_types:
+          - code
+        grant_types:
+          - authorization_code
+          - refresh_token
+        access_token_signed_response_alg: RS256
+        userinfo_signed_response_alg: none
+        token_endpoint_auth_method: none
+        requested_audience_mode: implicit
+        audience:
+          - opencloud-android
+      - client_id: opencloud-ios
+        client_name: OpenCloud iOS
+        public: true
+        authorization_policy: users
+        consent_mode: pre-configured
+        pre_configured_consent_duration: 1y
+        require_pkce: true
+        pkce_challenge_method: S256
+        redirect_uris:
+          - oc://ios.opencloud.eu
+          - oc.ios://ios.opencloud.eu
+        scopes:
+          - openid
+          - offline_access
+          - groups
+          - profile
+          - email
+        response_types:
+          - code
+        grant_types:
+          - authorization_code
+          - refresh_token
+        access_token_signed_response_alg: RS256
+        userinfo_signed_response_alg: none
+        token_endpoint_auth_method: none
+        requested_audience_mode: implicit
+        audience:
+          - opencloud-ios
+      - client_id: opencloud-desktop
+        client_name: OpenCloud Desktop
+        public: true
+        authorization_policy: users
+        consent_mode: pre-configured
+        pre_configured_consent_duration: 1y
+        require_pkce: true
+        pkce_challenge_method: S256
+        scopes:
+          - openid
+          - offline_access
+          - groups
+          - profile
+          - email
+        redirect_uris:
+          - http://127.0.0.1
+          - http://localhost
+        response_types:
+          - code
+        grant_types:
+          - authorization_code
+          - refresh_token
+        access_token_signed_response_alg: RS256
+        userinfo_signed_response_alg: none
+        token_endpoint_auth_method: none
+        requested_audience_mode: implicit
+        audience:
+          - opencloud-desktop
+      - client_id: immich
+        client_name: Immich
+        client_secret: '{{ secret "/config/userdb/client_secret_digest" }}'
+        public: false
+        authorization_policy: users
+        consent_mode: implicit
+        require_pkce: true
+        pkce_challenge_method: S256
+        redirect_uris:
+          - 'https://photos.{{ env "DOMAIN" }}/auth/login'
+          - 'https://photos.{{ env "DOMAIN" }}/user-settings'
+          - app.immich:///oauth-callback
+        scopes:
+          - openid
+          - profile
+          - email
+        response_types:
+          - code
+        grant_types:
+          - authorization_code
+        access_token_signed_response_alg: none
+        userinfo_signed_response_alg: none
+        token_endpoint_auth_method: client_secret_basic
+      - client_id: grafana
+        client_name: Grafana
+        client_secret: '{{ secret "/config/userdb/client_secret_digest" }}'
+        public: false
+        authorization_policy: admins
+        consent_mode: implicit
+        require_pkce: true
+        pkce_challenge_method: S256
+        redirect_uris:
+          - 'https://site.{{ env "DOMAIN" }}/login/generic_oauth'
+        scopes:
+          - openid
+          - profile
+          - groups
+          - email
+        response_types:
+          - code
+        grant_types:
+          - authorization_code
+        access_token_signed_response_alg: none
+        userinfo_signed_response_alg: none
+        token_endpoint_auth_method: client_secret_basic
+      - client_id: linkding
+        client_name: Linkding
+        client_secret: '{{ secret "/config/userdb/client_secret_digest" }}'
+        public: false
+        authorization_policy: users
+        consent_mode: implicit
+        require_pkce: false
+        redirect_uris:
+          - 'https://links.{{ env "DOMAIN" }}/oidc/callback/'
+        scopes:
+          - openid
+          - email
+          - profile
+        access_token_signed_response_alg: none
+        userinfo_signed_response_alg: none
+        token_endpoint_auth_method: client_secret_post
+      - client_id: jotty
+        client_name: Jotty
+        client_secret: '{{ secret "/config/userdb/client_secret_digest" }}'
+        public: false
+        authorization_policy: users
+        consent_mode: implicit
+        # Jotty with OIDC_CLIENT_SECRET is confidential: it posts the secret
+        # and does not send PKCE. require_pkce + client_secret_basic bounces
+        # the browser back to Jotty's native login after Authelia succeeds.
+        require_pkce: false
+        redirect_uris:
+          - 'https://notes.{{ env "DOMAIN" }}/api/oidc/callback'
+        scopes:
+          - openid
+          - profile
+          - email
+          - groups
+        response_types:
+          - code
+        grant_types:
+          - authorization_code
+        access_token_signed_response_alg: none
+        userinfo_signed_response_alg: none
+        token_endpoint_auth_method: client_secret_post
+      - client_id: transmute
+        client_name: Transmute
+        client_secret: '{{ secret "/config/userdb/client_secret_digest" }}'
+        public: false
+        authorization_policy: users
+        consent_mode: implicit
+        require_pkce: false
+        redirect_uris:
+          - 'https://convert.{{ env "DOMAIN" }}/api/oidc/callback'
+        scopes:
+          - openid
+          - profile
+          - email
+          - offline_access
+        response_types:
+          - code
+        grant_types:
+          - authorization_code
+          - refresh_token
+        access_token_signed_response_alg: none
+        userinfo_signed_response_alg: none
+        # Transmute/Authlib defaults to HTTP Basic. The image sets
+        # token_endpoint_auth_method on oauth.register() (ignored) instead of
+        # client_kwargs, so the token POST is Basic. Post here → 401 invalid_client.
+        token_endpoint_auth_method: client_secret_basic
+      - client_id: bytestash
+        client_name: ByteStash
+        client_secret: '{{ secret "/config/userdb/client_secret_digest" }}'
+        public: false
+        authorization_policy: users
+        consent_mode: implicit
+        # ByteStash (openid-client) always sends PKCE S256. Caddy pins Host to snip.
+        require_pkce: true
+        pkce_challenge_method: S256
+        redirect_uris:
+          - 'https://snip.{{ env "DOMAIN" }}/api/auth/oidc/callback'
+        scopes:
+          - openid
+          - profile
+          - email
+        response_types:
+          - code
+        grant_types:
+          - authorization_code
+        access_token_signed_response_alg: none
+        userinfo_signed_response_alg: none
+        token_endpoint_auth_method: client_secret_post
+      - client_id: adventurelog
+        client_name: Adventure Log
+        client_secret: '{{ secret "/config/userdb/client_secret_digest" }}'
+        public: false
+        authorization_policy: users
+        claims_policy: adventurelog
+        consent_mode: implicit
+        require_pkce: false
+        redirect_uris:
+          - 'https://travel.{{ env "DOMAIN" }}/accounts/oidc/authelia/login/callback/'
+          - 'https://travel.{{ env "DOMAIN" }}/accounts/oidc/adventurelog/login/callback/'
+        scopes:
+          - openid
+          - email
+          - profile
+        response_types:
+          - code
+        grant_types:
+          - authorization_code
+        access_token_signed_response_alg: none
+        userinfo_signed_response_alg: none
+        # allauth uses POST whenever Authelia advertises client_secret_post.
+        token_endpoint_auth_method: client_secret_post

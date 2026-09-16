@@ -1,0 +1,8 @@
+[Unit]
+Description=Materia user update (rootless Quadlets)
+After=network-online.target
+
+[Service]
+Type=oneshot
+Environment=MATERIA_ATTRIBUTES=age
+ExecStart=/usr/local/bin/materia update

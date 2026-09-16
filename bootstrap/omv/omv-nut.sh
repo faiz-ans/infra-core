@@ -26,14 +26,17 @@ SHUTDOWNTIMER="${SHUTDOWNTIMER:-30}"
 # CyberPower HID often reports battery.charge.low=0, which never trips LB.
 CHARGE_LOW="${CHARGE_LOW:-30}"
 NUT_REMOTE_USER="${NUT_REMOTE_USER:-peanut}"
-ANSWERS="${ANSWERS:-/etc/komodo/bootstrap-answers.env}"
-KOMODO_CORE_CONFIG="${KOMODO_CORE_CONFIG:-/etc/komodo/core.config.toml}"
+ANSWERS="${ANSWERS:-/etc/materia/bootstrap-answers.env}"
+KOMODO_CORE_CONFIG="${KOMODO_CORE_CONFIG:-/etc/materia/site.env}"
 
-# PeaNUT (edge) talks to upsd via host.docker.internal; that is not localhost.
-# Remote monitoring makes upsd LISTEN 0.0.0.0:3493. Password is Komodo
+# PeaNUT talks to upsd via host.containers.internal; that is not localhost.
+# Remote monitoring makes upsd LISTEN 0.0.0.0:3493. Password is attribute
 # NUT_REMOTE_PASSWORD (do not WAN-forward 3493).
 if [[ -z "${NUT_REMOTE_PASSWORD:-}" && -f "${KOMODO_CORE_CONFIG}" ]]; then
   NUT_REMOTE_PASSWORD=$(awk -F '"' '/^NUT_REMOTE_PASSWORD/ {print $2; exit}' "${KOMODO_CORE_CONFIG}" || true)
+fi
+if [[ -z "${NUT_REMOTE_PASSWORD:-}" && -f /etc/komodo/core.config.toml ]]; then
+  NUT_REMOTE_PASSWORD=$(awk -F '"' '/^NUT_REMOTE_PASSWORD/ {print $2; exit}' /etc/komodo/core.config.toml || true)
 fi
 if [[ -z "${NUT_REMOTE_PASSWORD:-}" && -f "${ANSWERS}" ]]; then
   # shellcheck disable=SC1090

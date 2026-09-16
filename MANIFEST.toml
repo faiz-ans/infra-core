@@ -1,0 +1,67 @@
+# Materia repository manifest. Host names must match the Linux hostname
+# (`core` on the NAS; `mantle` via WSL `/etc/wsl.conf`). Do not list `surface`.
+#
+# Bootstrap roles first (edge + OpenCloud). Add the matching *-full role when
+# you want the rest of the catalog on that host.
+
+[Roles.core-bootstrap]
+Components = [
+  "site-network",
+  "caddy",
+  "authelia",
+  "pihole",
+  "glances",
+  "peanut",
+  "homepage",
+  "opencloud",
+]
+
+[Roles.core-full]
+Components = [
+  "wireguard-data",
+  "wg-easy",
+  "vaultwarden",
+  "jotty",
+  "linkding",
+  "bentopdf",
+  "it-tools",
+  "bytestash",
+  "rustdesk",
+  "scrutiny",
+  "uptime-kuma",
+  "caddymanager",
+  "restic",
+]
+
+[Roles.mantle-bootstrap]
+Components = [
+  "site-network",
+  "collabora",
+]
+
+[Roles.mantle-full]
+Components = [
+  "jellyfin",
+  "seerr",
+  "arr",
+  "qbittorrent",
+  "immich",
+  "adventurelog",
+  "scriberr",
+  "transmute",
+  "libretranslate",
+  "openreader",
+  "n8n",
+  "frigate",
+  "homeassistant",
+  "glances-mantle",
+  "pihole-mantle",
+  "monitoring",
+  "restic-rest",
+]
+
+[Hosts.core]
+Roles = ["core-bootstrap", "core-full"]
+
+[Hosts.mantle]
+Roles = ["mantle-bootstrap", "mantle-full"]

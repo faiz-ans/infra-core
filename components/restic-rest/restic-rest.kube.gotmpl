@@ -1,0 +1,13 @@
+[Unit]
+Description=restic-rest
+
+[Kube]
+Yaml={{ m_outputDir }}/components/restic-rest/pod.yaml
+Network=site.network
+PublishPort=8000:8000
+
+[Service]
+Restart=on-failure
+
+[Install]
+WantedBy=default.target

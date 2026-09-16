@@ -1,0 +1,13 @@
+[Unit]
+Description=scriberr
+
+[Kube]
+Yaml={{ m_outputDir }}/components/scriberr/pod.yaml
+Network=site.network
+PublishPort=8085:8080
+
+[Service]
+Restart=on-failure
+
+[Install]
+WantedBy=default.target

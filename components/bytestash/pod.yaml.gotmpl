@@ -1,0 +1,60 @@
+apiVersion: v1
+kind: Pod
+metadata:
+  name: bytestash
+  labels:
+    app: bytestash
+spec:
+  hostAliases:
+  - ip: "{{.NAS_LAN_IP}}"
+    hostnames:
+      - "auth.{{.DOMAIN}}"
+
+  restartPolicy: Always
+  containers:
+  - name: bytestash
+    image: ghcr.io/jordan-dalby/bytestash:latest
+    imagePullPolicy: Always
+    env:
+    - name: TZ
+      value: "{{.TZ}}"
+    - name: BASE_PATH
+      value: ""
+    - name: JWT_SECRET
+      value: "{{.BYTESTASH_JWT_SECRET}}"
+    - name: TOKEN_EXPIRY
+      value: "24h"
+    - name: ALLOW_NEW_ACCOUNTS
+      value: "{{.BYTESTASH_ALLOW_NEW_ACCOUNTS}}"
+    - name: DEBUG
+      value: "false"
+    - name: DISABLE_ACCOUNTS
+      value: "false"
+    - name: DISABLE_INTERNAL_ACCOUNTS
+      value: "false"
+    - name: ALLOWED_HOSTS
+      value: "snip.{{.DOMAIN}}"
+    - name: OIDC_ENABLED
+      value: "true"
+    - name: OIDC_DISPLAY_NAME
+      value: "Authelia"
+    - name: OIDC_ISSUER_URL
+      value: "https://auth.{{.DOMAIN}}"
+    - name: OIDC_CLIENT_ID
+      value: "bytestash"
+    - name: OIDC_CLIENT_SECRET
+      value: "{{.OIDC_CLIENT_SECRET}}"
+    - name: OIDC_SCOPES
+      value: "openid profile email"
+    - name: NODE_TLS_REJECT_UNAUTHORIZED
+      value: "0"
+    ports:
+    - containerPort: 5000
+    volumeMounts:
+    - name: data
+      mountPath: /data/snippets
+
+  volumes:
+  - name: data
+    hostPath:
+      path: {{.DATA_ROOT}}/system/bytestash

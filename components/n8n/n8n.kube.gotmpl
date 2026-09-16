@@ -1,0 +1,13 @@
+[Unit]
+Description=n8n
+
+[Kube]
+Yaml={{ m_outputDir }}/components/n8n/pod.yaml
+Network=site.network
+PublishPort=5678:5678
+
+[Service]
+Restart=on-failure
+
+[Install]
+WantedBy=default.target

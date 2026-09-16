@@ -8,12 +8,12 @@ If this site already ran `core.sh` before Jotty existed, run `data-root-perms.sh
 
 ## 2. Deploy
 
-Commit and push to the catalog origin (Gitea). Wait for ResourceSync. Komodo → **Stacks** → **jotty** → **Deploy**. Redeploy **caddy** and **homepage** so the vhost and tile exist.
+Commit and push to the catalog git origin. Wait for Materia, then re-apply **caddy** and **homepage** so the vhost and tile exist.
 
 On Core:
 
 ```text
-docker ps --filter name=jotty --format "table {{.Names}}\t{{.Status}}"
+podman ps --filter name=jotty --format "table {{.Names}}\t{{.Status}}"
 ```
 
 You want `jotty` **Up**. It must **not** publish 3000 on the LAN.
@@ -26,6 +26,6 @@ Open **`https://notes.<DOMAIN>`** (Caddy sends `jotty.` there). With Authelia OI
 
 | Symptom | What to do |
 |---|---|
-| `notes.<DOMAIN>` does not load while `jotty` is Up | Redeploy **caddy**. Then `docker exec caddy wget -S -O- --timeout=10 http://jotty:3000/ \| head` |
-| Authelia succeeds, Jotty stays on the native login | Authelia must use `client_secret_post` and `require_pkce: false` (Jotty drops PKCE when `OIDC_CLIENT_SECRET` is set). Redeploy **authelia** after the catalog change. Then Redeploy **jotty**. |
-| Permission denied on `/app/data` | Stop the container, `chown -R ${PUID}:${PGID}` `system/jotty`, Redeploy |
+| `notes.<DOMAIN>` does not load while `jotty` is Up | re-apply (Materia / systemd) **caddy**. Then `podman exec caddy wget -S -O- --timeout=10 http://jotty:3000/ \| head` |
+| Authelia succeeds, Jotty stays on the native login | Authelia must use `client_secret_post` and `require_pkce: false` (Jotty drops PKCE when `OIDC_CLIENT_SECRET` is set). re-apply (Materia / systemd) **authelia** after the catalog change. Then re-apply (Materia / systemd) **jotty**. |
+| Permission denied on `/app/data` | Stop the container, `chown -R ${PUID}:${PGID}` `system/jotty`, re-apply (Materia / systemd) |

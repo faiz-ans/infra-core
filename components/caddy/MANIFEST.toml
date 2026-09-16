@@ -1,0 +1,7 @@
+[Defaults]
+httpPort = "8080"
+httpsPort = "8443"
+
+[[Services]]
+Service = "caddy.service"
+RestartedBy = ["Caddyfile"]

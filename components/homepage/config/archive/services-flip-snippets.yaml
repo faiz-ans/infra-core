@@ -1,0 +1,40 @@
+# ARCHIVED snippets for services.yaml — not live.
+# Restore under System → Monitoring / Network as needed.
+# No Docker server/container keys (Homepage has no Docker widgets).
+
+# Native Glances (Core) with metric: info
+        - Glances:
+            href: https://host.{{HOMEPAGE_VAR_DOMAIN}}
+            icon: glances.svg
+            description: Host Monitor
+            widget:
+                type: glances
+                url: http://127.0.0.1:61208
+                version: 4
+                metric: info
+
+# Paired surface Glances (requires flip JS)
+        - Glances surface:
+            href: https://host2.{{HOMEPAGE_VAR_DOMAIN}}
+            icon: glances.svg
+            description: Host Monitor
+            widget:
+                type: glances
+                url: http://{{HOMEPAGE_VAR_SURFACE_UPSTREAM}}:61208
+                version: 4
+                metric: info
+
+# Paired mantle Pi-hole (requires flip JS; keep Core Pi-hole entry in live file)
+        - Pi-hole mantle:
+            href: https://dns2.{{HOMEPAGE_VAR_DOMAIN}}/admin
+            icon: pi-hole.svg
+            description: DNS
+            widget:
+                type: pihole
+                url: http://{{HOMEPAGE_VAR_SURFACE_UPSTREAM}}:8083
+                version: 6
+                key: "{{HOMEPAGE_VAR_PIHOLE_MANTLE_TOKEN}}"
+                fields:
+                - queries
+                - blocked_percent
+                - gravity

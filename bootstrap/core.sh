@@ -1,12 +1,9 @@
 #!/usr/bin/env bash
 # Core host Layer 0 bootstrap. Copy the bootstrap/ directory to the Core machine
-# (core.sh plus core/, data-root/, omv/, opencloud/, komodo/) and run as root:
+# and run as root:
 #   sudo bash core.sh
-# Every live command is also shown in a nearby comment for copy-paste.
-#
-# Order: apt → external disk? → (if yes: OMV with -n -r, mount uuid path)
-#        (if no: directory on OS disk) → site prompts → static LAN → Docker
-#        → DATA_ROOT tree (system/<app>, not system/core) → Komodo → NFS → ACLs.
+# Order: apt → disk/OMV → site prompts → static LAN → purge Docker/Komodo
+#        → Podman + Cockpit + Materia → DATA_ROOT tree → NFS → ACLs.
 
 set -euo pipefail
 
@@ -15,15 +12,23 @@ if [[ ${EUID:-0} -ne 0 ]]; then
   exit 1
 fi
 
-KOMODO_DIR=/etc/komodo
-ANSWERS="${KOMODO_DIR}/bootstrap-answers.env"
-STATE="${KOMODO_DIR}/bootstrap-state.env"
+MATERIA_DIR=/etc/materia
+KOMODO_DIR="${MATERIA_DIR}"
+ANSWERS="${MATERIA_DIR}/bootstrap-answers.env"
+STATE="${MATERIA_DIR}/bootstrap-state.env"
 SCRIPT_DIR=$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)
 REPO_BOOTSTRAP="${SCRIPT_DIR}"
 # If you copied only this script, set REPO_BOOTSTRAP to a clone of infra-core/bootstrap.
 
-mkdir -p "${KOMODO_DIR}/backups" "${KOMODO_DIR}/bootstrap"
-# mkdir -p /etc/komodo/backups /etc/komodo/bootstrap
+mkdir -p "${MATERIA_DIR}/bootstrap"
+# mkdir -p /etc/materia/bootstrap
+# Migrate answers from a previous Komodo bootstrap if present.
+if [[ ! -f "${ANSWERS}" && -f /etc/komodo/bootstrap-answers.env ]]; then
+  cp /etc/komodo/bootstrap-answers.env "${ANSWERS}"
+fi
+if [[ ! -f "${STATE}" && -f /etc/komodo/bootstrap-state.env ]]; then
+  cp /etc/komodo/bootstrap-state.env "${STATE}"
+fi
 
 prompt() {
   local var="$1" message="$2" default="${3:-}"
@@ -59,8 +64,8 @@ save_answers() {
 }
 
 # Topology-driven secrets (after prompt/rand/quote_s exist).
-# shellcheck source=komodo/komodo-secrets.sh
-source "${SCRIPT_DIR}/komodo/komodo-secrets.sh"
+# shellcheck source=core/site-secrets.sh
+source "${SCRIPT_DIR}/core/site-secrets.sh"
 
 save_state() {
   local old
@@ -425,7 +430,7 @@ if [[ -f "${ANSWERS}" ]]; then
   fi
 fi
 
-echo "Collecting Komodo secrets required by ${_komodo_topology} ..."
+echo "Collecting site secrets required by ${_komodo_topology} ..."
 # Prefill from an existing Core config so re-runs do not rotate secrets.
 if [[ -f "${KOMODO_DIR}/core.config.toml" ]]; then
   while IFS= read -r line; do
@@ -448,24 +453,19 @@ save_answers
 # sudo NAS_LAN_IP=192.168.1.110 bash bootstrap/core/core-lan-static.sh
 bash "${SCRIPT_DIR}/core/core-lan-static.sh"
 
-# --- Docker ---
-if ! command -v docker >/dev/null 2>&1; then
-  echo "Installing Docker."
-  # curl -fsSL https://get.docker.com | sh
-  curl -fsSL https://get.docker.com | sh
-  # systemctl enable --now docker
-  systemctl enable --now docker
+# --- Purge Docker/Komodo, then Podman + Cockpit + Materia ---
+# sudo DATA_ROOT=... bash bootstrap/core/purge-docker-komodo.sh
+if [[ -x "${SCRIPT_DIR}/core/purge-docker-komodo.sh" ]] || [[ -f "${SCRIPT_DIR}/core/purge-docker-komodo.sh" ]]; then
+  DATA_ROOT="${DATA_ROOT:-}" bash "${SCRIPT_DIR}/core/purge-docker-komodo.sh" || true
 fi
-
-# Cap container json-file logs on the OS disk (/var/lib/docker). DATA_ROOT is separate.
-# sudo bash bootstrap/core/core-docker-engine.sh
-bash "${SCRIPT_DIR}/core/core-docker-engine.sh"
+# sudo bash bootstrap/core/materia-install.sh
+bash "${SCRIPT_DIR}/core/materia-install.sh"
 
 # Host-network WireGuard NAT + IPv6 off (AAAA timeouts on dual-NIC boards).
 # sudo bash bootstrap/core/core-net.sh
 bash "${SCRIPT_DIR}/core/core-net.sh"
 
-# LAN :53 REDIRECT to Pi-hole on 127.0.0.1:15353; Docker starts without wait-online.
+# :53/:80/:443 REDIRECT to Pi-hole 15353 and Caddy 8080/8443 (all ifaces).
 # sudo bash bootstrap/core/core-lan-bind.sh
 bash "${SCRIPT_DIR}/core/core-lan-bind.sh"
 
@@ -488,7 +488,6 @@ fi
 mkdir -p \
   "${DATA_ROOT}/system/authelia" \
   "${DATA_ROOT}/system/vaultwarden" \
-  "${DATA_ROOT}/system/gitea" \
   "${DATA_ROOT}/system/pihole" \
   "${DATA_ROOT}/system/wireguard" \
   "${DATA_ROOT}/system/restic" \
@@ -515,8 +514,8 @@ mkdir -p \
   "${DATA_ROOT}/shared/cameras" \
   "${DATA_ROOT}/users"
 # mkdir -p "${DATA_ROOT}/users/<user>/{files,photos}" as you add household users.
-# Bind-mounts must be files before first stack start. Docker creates a
-# directory when the host path is missing (breaks Gitea/Komodo CA trust).
+# Bind-mounts must be files before first stack start. Podman creates a
+# directory when the host path is missing (breaks CA-file mounts).
 for _ca in caddy-root.crt ca-bundle.crt; do
   _capath="${DATA_ROOT}/system/authelia/${_ca}"
   if [[ -d "${_capath}" ]]; then
@@ -530,20 +529,7 @@ done
 chown -R "${PUID}:${PGID}" "${DATA_ROOT}/system/opencloud"
 chown -R "${PUID}:${PGID}" "${DATA_ROOT}/system/jotty"
 
-# --- Komodo compose.env and core.config.toml ---
-if [[ -f "${KOMODO_DIR}/bootstrap/compose.env" ]]; then
-  # shellcheck disable=SC1090
-  set -a
-  source "${KOMODO_DIR}/bootstrap/compose.env"
-  set +a
-  DB_PASS="${KOMODO_DATABASE_PASSWORD}"
-  WEBHOOK_SECRET="${KOMODO_WEBHOOK_SECRET}"
-  JWT_SECRET="${KOMODO_JWT_SECRET}"
-else
-  DB_PASS=$(rand)
-  WEBHOOK_SECRET=$(rand)
-  JWT_SECRET=$(rand)
-fi
+# --- Authelia secrets (migrate from a previous Komodo core.config.toml if present) ---
 if [[ -f "${KOMODO_DIR}/core.config.toml" ]] && grep -q AUTHELIA_JWT_SECRET "${KOMODO_DIR}/core.config.toml"; then
   : "${AUTHELIA_JWT_SECRET:=$(awk -F '"' '/AUTHELIA_JWT_SECRET/ {print $2; exit}' "${KOMODO_DIR}/core.config.toml")}"
   : "${AUTHELIA_SESSION_SECRET:=$(awk -F '"' '/AUTHELIA_SESSION_SECRET/ {print $2; exit}' "${KOMODO_DIR}/core.config.toml")}"
@@ -587,7 +573,7 @@ authelia_dir="${DATA_ROOT}/system/authelia"
 mkdir -p "${authelia_dir}"
 if [[ ! -f "${authelia_dir}/oidc.pem" ]]; then
   oidc_tmp=$(mktemp -d)
-  docker run --rm -v "${oidc_tmp}:/out" authelia/authelia:4 \
+  podman run --rm -v "${oidc_tmp}:/out" docker.io/authelia/authelia:4 \
     authelia crypto pair rsa generate --directory /out
   if [[ -f "${oidc_tmp}/private.pem" ]]; then
     cp "${oidc_tmp}/private.pem" "${authelia_dir}/oidc.pem"
@@ -602,7 +588,7 @@ if [[ ! -f "${authelia_dir}/oidc.pem" ]]; then
   chmod 600 "${authelia_dir}/oidc.pem"
 fi
 if [[ ! -f "${authelia_dir}/client_secret_digest" ]]; then
-  OIDC_DIGEST=$(docker run --rm authelia/authelia:4 \
+  OIDC_DIGEST=$(podman run --rm docker.io/authelia/authelia:4 \
     authelia crypto hash generate pbkdf2 --variant sha512 --password "${OIDC_CLIENT_SECRET}" \
     | awk '/^Digest:/ {print $2}')
   if [[ -z "${OIDC_DIGEST}" ]]; then
@@ -616,8 +602,8 @@ fi
 if [[ -d "${authelia_dir}/caddy-root.crt" ]]; then
   rm -rf "${authelia_dir}/caddy-root.crt"
 fi
-if docker ps -qf name=^caddy$ | grep -q .; then
-  docker exec caddy cat /data/caddy/pki/authorities/local/root.crt > "${authelia_dir}/caddy-root.crt"
+if podman ps -qf name=^caddy$ | grep -q .; then
+  podman exec caddy cat /data/caddy/pki/authorities/local/root.crt > "${authelia_dir}/caddy-root.crt"
   chmod 644 "${authelia_dir}/caddy-root.crt"
   if [[ -f /etc/ssl/certs/ca-certificates.crt ]]; then
     cat /etc/ssl/certs/ca-certificates.crt "${authelia_dir}/caddy-root.crt" > "${authelia_dir}/ca-bundle.crt"
@@ -629,91 +615,30 @@ fi
 
 # openssl rand -hex 24   (used above)
 
-if [[ -d "${REPO_BOOTSTRAP}/komodo" ]]; then
-  KOMODO_SRC="${REPO_BOOTSTRAP}/komodo"
-elif [[ -d "${SCRIPT_DIR}/komodo" ]]; then
-  KOMODO_SRC="${SCRIPT_DIR}/komodo"
-else
-  echo "Place bootstrap/komodo next to this script (clone infra-core or copy the folder)."
-  exit 1
-fi
-
-cp "${KOMODO_SRC}/compose.yaml" "${KOMODO_DIR}/bootstrap/compose.yaml"
-# cp bootstrap/komodo/compose.yaml /etc/komodo/bootstrap/compose.yaml
-
-cat > "${KOMODO_DIR}/bootstrap/compose.env" <<EOF
-COMPOSE_KOMODO_IMAGE_TAG=2
-COMPOSE_KOMODO_BACKUPS_PATH=${KOMODO_DIR}/backups
-PERIPHERY_ROOT_DIRECTORY=${KOMODO_DIR}
-KOMODO_CORE_CONFIG_TOML=${KOMODO_DIR}/core.config.toml
-KOMODO_DATABASE_USERNAME=komodo
-KOMODO_DATABASE_PASSWORD=${DB_PASS}
+install -d -m 0700 "${MATERIA_DIR}"
+cat > "${MATERIA_DIR}/site.env" <<EOF
 TZ=${TZ}
 DOMAIN=${DOMAIN}
 NAS_LAN_IP=${NAS_LAN_IP}
+SURFACE_UPSTREAM=${SURFACE_UPSTREAM:-${SURFACE_UPSTREAM:-}}
 DATA_ROOT=${DATA_ROOT}
-KOMODO_HOST=https://ops.${DOMAIN}
-KOMODO_TITLE=Komodo
-KOMODO_LOCAL_AUTH=true
-KOMODO_OIDC_ENABLED=true
-KOMODO_OIDC_PROVIDER=https://auth.${DOMAIN}
-KOMODO_OIDC_CLIENT_ID=komodo
-KOMODO_OIDC_CLIENT_SECRET=${OIDC_CLIENT_SECRET}
-KOMODO_INIT_ADMIN_USERNAME=${KOMODO_ADMIN_USER}
-KOMODO_INIT_ADMIN_PASSWORD=${KOMODO_ADMIN_PASSWORD}
-KOMODO_FIRST_SERVER_NAME=${CORE_SERVER}
-KOMODO_PERIPHERY_PUBLIC_KEY=file:/config/keys/periphery.pub
-KOMODO_DISABLE_USER_REGISTRATION=false
-KOMODO_DISABLE_LOCAL_USER_REGISTRATION=true
-KOMODO_DISABLE_OIDC_USER_REGISTRATION=false
-KOMODO_ENABLE_NEW_USERS=true
-KOMODO_DISABLE_CONFIRM_DIALOG=true
-KOMODO_WEBHOOK_SECRET=${WEBHOOK_SECRET}
-KOMODO_JWT_SECRET=${JWT_SECRET}
-KOMODO_RESOURCE_POLL_INTERVAL=15-min
-PERIPHERY_CORE_ADDRESS=ws://core:9120
-PERIPHERY_CONNECT_AS=${CORE_SERVER}
-PERIPHERY_CORE_PUBLIC_KEYS=file:/config/keys/core.pub
-PERIPHERY_ROOT_DIRECTORY=${KOMODO_DIR}
+CORE_SERVER=core
 EOF
-# cat > /etc/komodo/bootstrap/compose.env <<'EOF'
-# ...generated values; not stored in git...
-# EOF
-
-# Write only secrets required by topology (plus always-on platform keys).
+chmod 600 "${MATERIA_DIR}/site.env"
 AUTHELIA_JWT_SECRET="${AUTHELIA_JWT}"
 AUTHELIA_SESSION_SECRET="${AUTHELIA_SESSION}"
 AUTHELIA_STORAGE_ENCRYPTION_KEY="${AUTHELIA_STORAGE}"
 AUTHELIA_OIDC_HMAC_SECRET="${AUTHELIA_OIDC_HMAC}"
 komodo_write_core_secrets
-chmod 600 "${KOMODO_DIR}/core.config.toml" "${KOMODO_DIR}/bootstrap/compose.env" "${ANSWERS}"
-# chmod 600 /etc/komodo/core.config.toml /etc/komodo/bootstrap/compose.env
+chmod 600 "${ANSWERS}" "${MATERIA_DIR}/site.env" 2>/dev/null || true
 
-# --- edge network ---
-# docker network create edge
-docker network create edge 2>/dev/null || true
-
-# --- Core + local Periphery ---
-# docker compose --env-file /etc/komodo/bootstrap/compose.env -f /etc/komodo/bootstrap/compose.yaml up -d
-docker compose --env-file "${KOMODO_DIR}/bootstrap/compose.env" \
-  -f "${KOMODO_DIR}/bootstrap/compose.yaml" up -d
-
-echo "Waiting for Komodo Core on :9120..."
-for _ in $(seq 1 60); do
-  # curl -sf http://127.0.0.1:9120/ >/dev/null
-  if curl -sf "http://127.0.0.1:9120/" >/dev/null 2>&1; then
-    break
-  fi
-  sleep 2
-done
-
-# --- NFS: shared/ and users/ only (HTPC Docker). Do not export system/. ---
+# --- NFS: shared/ and users/ only (mantle WSL). Do not export system/. ---
 if command -v omv-rpc >/dev/null 2>&1 && [[ -f "${REPO_BOOTSTRAP}/omv/omv-nfs.sh" ]]; then
-  echo "Exporting shared/ and users/ over NFS to ${HTPC_UPSTREAM}."
+  echo "Exporting shared/ and users/ over NFS to ${SURFACE_UPSTREAM}."
   # sudo HTPC_IP=<HTPC> DATA_ROOT=<DATA_ROOT> bash bootstrap/omv/omv-nfs.sh
-  HTPC_IP="${HTPC_UPSTREAM}" DATA_ROOT="${DATA_ROOT}" bash "${REPO_BOOTSTRAP}/omv/omv-nfs.sh"
+  HTPC_IP="${SURFACE_UPSTREAM}" DATA_ROOT="${DATA_ROOT}" bash "${REPO_BOOTSTRAP}/omv/omv-nfs.sh"
 else
-  echo "OMV NFS skipped (no omv-rpc). For HTPC compose.nfs.yaml, follow bootstrap/omv/README.md."
+  echo "OMV NFS skipped (no omv-rpc). For mantle NFS mounts, follow bootstrap/omv/README.md."
 fi
 
 # --- Thin prep (system/ + empty users/ + OpenCloud dirs). Full shared layout is
@@ -724,17 +649,17 @@ if [[ -f "${REPO_BOOTSTRAP}/data-root/data-root-prep.sh" ]]; then
 fi
 
 # --- Authelia users file (hash via official image) ---
-# docker run --rm authelia/authelia:4 authelia crypto hash generate argon2 --password '...'
+# podman run --rm docker.io/authelia/authelia:4 authelia crypto hash generate argon2 --password '...'
 users_file="${DATA_ROOT}/system/authelia/users.yml"
 if [[ -d "${users_file}" ]]; then
-  echo "Replacing directory ${users_file} (Docker created it when the file was missing)."
+  echo "Replacing directory ${users_file} (a previous bootstrap created it when the file was missing)."
   rm -rf "${users_file}"
 fi
 if [[ ! -f "${users_file}" ]] || ! grep -q '^    password: '\''\$' "${users_file}"; then
-  FAIZ_HASH=$(docker run --rm authelia/authelia:4 \
+  FAIZ_HASH=$(podman run --rm docker.io/authelia/authelia:4 \
     authelia crypto hash generate argon2 --password "${AUTHELIA_FAIZ_PASSWORD}" \
     | awk '/^Digest:/ {print $2}')
-  DIANA_HASH=$(docker run --rm authelia/authelia:4 \
+  DIANA_HASH=$(podman run --rm docker.io/authelia/authelia:4 \
     authelia crypto hash generate argon2 --password "${AUTHELIA_DIANA_PASSWORD}" \
     | awk '/^Digest:/ {print $2}')
   if [[ -z "${FAIZ_HASH}" ]]; then
@@ -764,8 +689,8 @@ EOF
   chmod 644 "${users_file}"
 fi
 
-echo "WireGuard UI is user wg-admin; password is Komodo secret WG_UI_PASSWORD."
-echo "After ResourceSync deploys the wireguard stack (host network; Caddy vpn.${DOMAIN} → Core :51821):"
+echo "WireGuard UI is user wg-admin; password is attribute WG_UI_PASSWORD."
+echo "After Materia applies wg-easy + wireguard-data (Caddy vpn.${DOMAIN} → 127.0.0.1:51821):"
 echo "  Router: UDP 51820 only → ${NAS_LAN_IP} (not 51821, not 80/443)."
 echo "  WG_HOST must resolve on the public internet to this site's WAN IPv4 (Dynamic DNS if the WAN moves)."
 echo "  Do not set DOMAIN to a public zone that would make Pi-hole answer the WG_HOST name as the LAN IP."
@@ -774,48 +699,25 @@ echo "  Client DNS is the Core LAN IP (INIT_DNS). Test HTTPS on cellular after h
 
 echo
 echo "DATA_ROOT=${DATA_ROOT}"
-echo "Komodo Core should be at http://${NAS_LAN_IP}:9120"
-echo "Log in as ${KOMODO_ADMIN_USER}."
-echo "Server '${CORE_SERVER}' is KOMODO_FIRST_SERVER_NAME / PERIPHERY_CONNECT_AS."
-echo "Remote Periphery should connect_as '${PERIPHERY_SERVER}'."
+echo "Cockpit: https://${NAS_LAN_IP}:9090 (or https://box.${DOMAIN} after Caddy)."
+echo "Materia timers: system (nft/wg-quick/Scrutiny) and user as ${PILOT_USER:-pilot} (rootless Quadlets)."
+echo "Encrypt attributes on-box with /etc/materia/age.pubkey; clone this repo; materia update."
+echo "restic / restic-rest: bootstrap/first-run/restic.md (BACKUP_DRIVE is the surface USB, not the IronWolf)."
 echo
-echo "Create a Komodo Repo (leave Server empty), then a ResourceSync (webhooks disabled):"
-echo "  Repo name:       infra-core   (must match topology.inc linked_repo)"
-echo "  repo:            faiz-ans/infra-core"
-echo "  git provider:    GitHub until Gitea exists, then gitea:3000 (see bootstrap/first-run/gitea.md)"
-echo "  branch:          main"
-echo "  ResourceSync:    Select Repo → infra-core"
-echo "  resource path:   stacks/komodo/stacks-bootstrap.toml  (phase A)"
-echo "  then:            stacks/komodo/stacks-core.toml (+ stacks-periphery.toml)"
-echo "  poll:            enabled"
-echo "  webhook_enabled: false"
-echo "After the remote Periphery server is OK, add stacks/komodo/stacks-periphery.toml."
-echo "restic / restic-rest: bootstrap/first-run/restic.md (BACKUP_DRIVE is the HTPC USB, not the IronWolf)."
+echo "This run purges Docker/Komodo (if present) and leaves Podman + Materia timers."
+echo "Then idle mantle: bootstrap/mantle/README.md (Podman, host NFS, user Materia as pilot)."
 echo
 echo "Target layout:"
-echo "  ${DATA_ROOT}/system/{authelia,vaultwarden,gitea,pihole,wireguard,restic,opencloud,jotty,linkding,rustdesk,bytestash}"
+echo "  ${DATA_ROOT}/system/<app>  (not system/core or system/mantle)"
 echo "  ${DATA_ROOT}/shared/{media,downloads,files,photos,cameras}"
 echo "  ${DATA_ROOT}/users/<user>/{files,photos}"
-echo "  NFS exports /shared and /users to the HTPC IP only (not a LAN /24, not disk root, not system/)."
-echo "  Komodo NFS_EXPORT=/shared NFS_USERS=/users"
-echo "  HTPC /config is a local Docker volume; media/photos/cameras stay on NFS; OpenCloud on Core uses local binds."
-echo "  After ResourceSync deploys caddy, it writes system/authelia/caddy-root.crt (Gitea/Komodo TLS)."
-echo "  Core Docker log caps: /etc/docker/daemon.json (bootstrap/core/core-docker-engine.sh). Recreate containers after first apply."
-echo "  HTPC: bootstrap/periphery/periphery-docker-engine.ps1 (pools + logs + DiskSizeMiB); Deploy periphery stacks one at a time first."
-echo "  Cage fan: sudo bash bootstrap/core/core-fan.sh (PWM from max CPU/HDD; see bootstrap/core/core-fan.md)."
-echo "  UPS: sudo bash bootstrap/omv/omv-nut.sh (CyberPower ST625U USB HID; low-battery shutdown; PeaNUT; see bootstrap/omv/omv-nut.md)."
-echo "  After reboot: core-lan-bind.service REDIRECTs NAS_LAN_IP:53 to 127.0.0.1:15353. Host DNS is 127.0.0.1:15353 (not the LAN REDIRECT)."
-echo "  OpenCloud SMB/NFS assimilate: opencloud-posix-scan.timer (posixfs scan users/*/files and /posix/projects)."
-echo "  Core LAN IPv4 is static ${NAS_LAN_IP} (core-lan-static.sh). Do not depend on a router DHCP reservation for the NAS address."
-echo "  HTPC LAN IPv4 is static ${HTPC_UPSTREAM} on Ethernet (htpc-lan-static.ps1). Do not depend on a Wi-Fi DHCP reservation for that address."
-echo "  First-run: bootstrap/first-run/ (one markdown file per app)."
-echo "  Pi-hole stack names: pihole (Core) and pihole-periphery (HTPC)."
-echo "  Router DHCP DNS: ${NAS_LAN_IP} first, then ${HTPC_UPSTREAM}. No public resolver as a third server."
-echo "  Each Pi-hole fetches its own Gravity."
-echo
-echo "Komodo [secrets] were written to ${KOMODO_DIR}/core.config.toml (topology-filtered)."
-echo "After adding stacks to topology.inc: sudo bash bootstrap/komodo/sync-komodo-secrets.sh"
-echo "Homepage widget API keys stay empty until you set them via sync or answers (not the Komodo UI)."
-echo "Follow bootstrap/periphery/README.md on the HTPC (Docker Desktop engine script, firewall, Periphery env)."
+echo "  NFS exports /shared and /users to SURFACE_UPSTREAM only."
+echo "  mantle /config is a local Podman volume; libraries via WSL NFS hostPath."
+echo "  Cage fan: sudo bash bootstrap/core/core-fan.sh"
+echo "  UPS: sudo bash bootstrap/omv/omv-nut.sh"
+echo "  After reboot: core-lan-bind REDIRECTs :53/:80/:443 to 15353/8080/8443 on all ifaces."
+echo "  Core LAN IPv4 is static ${NAS_LAN_IP}. surface Ethernet is static ${SURFACE_UPSTREAM}."
+echo "  Router DHCP DNS: ${NAS_LAN_IP} first, then ${SURFACE_UPSTREAM}. No public resolver as a third."
+echo "  Pi-hole names: pihole (core) and pihole-mantle."
 echo
 echo "Done."

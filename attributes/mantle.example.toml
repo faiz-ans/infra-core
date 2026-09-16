@@ -1,0 +1,33 @@
+# Example host vault for mantle (encrypt to mantle.age).
+
+[globals]
+NFS_SHARED = "/mnt/nas/shared"
+NFS_USERS = "/mnt/nas/users"
+BACKUP_DRIVE = "/mnt/d"
+
+[components.pihole-mantle]
+PIHOLE_MANTLE_WEBPASSWORD = ""
+
+[components.immich]
+IMMICH_DB_PASSWORD = ""
+
+[components.adventurelog]
+ADVENTURELOG_POSTGRES_PASSWORD = ""
+ADVENTURELOG_ADMIN_PASSWORD = ""
+
+[components.monitoring]
+GRAFANA_ADMIN_PASSWORD = ""
+OIDC_CLIENT_SECRET = ""
+
+[components.transmute]
+TRANSMUTE_AUTH_SECRET_KEY = ""
+
+[components.openreader]
+OPENREADER_AUTH_SECRET = ""
+
+[components.n8n]
+N8N_ENCRYPTION_KEY = ""
+
+[components.restic-rest]
+RESTIC_REST_USER = ""
+RESTIC_REST_PASSWORD = ""

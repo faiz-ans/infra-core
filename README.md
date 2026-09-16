@@ -1,48 +1,52 @@
 # infra-core
 
-Public catalog, environment-agnostic. Site values (domain, IPs, disk paths, secrets, server names) live only in Komodo on-site. Stack-to-server placement is declared in [`stacks/komodo/topology.inc`](stacks/komodo/topology.inc) and generated into ResourceSync TOML. **Gitea on Core is origin**; GitHub is a push mirror (see [`bootstrap/first-run/gitea.md`](bootstrap/first-run/gitea.md)).
+Public catalog, environment-agnostic. Site values live in sops/age attributes on-box (`attributes/`). Host assignment is [`MANIFEST.toml`](MANIFEST.toml). Materia clones whatever git remote you configure on the box (this site uses GitHub). No GitHub webhooks.
+
+## Names
+
+| Hostname | What |
+|---|---|
+| `core` | NAS. Admin `pilot`. Materia host. |
+| `surface` | Windows 11 TV PC. Admin `pilot`. Ethernet `SURFACE_UPSTREAM`. |
+| `mantle` | Ubuntu WSL2 on `surface`. Linux `pilot`. Materia + Podman. Windows owner: `HTPC`. |
 
 ## Layers
 
 ```
-Layer 0  bootstrap/     OMV (optional), Docker, Komodo Core + local Periphery;
-                        remote Docker engine + outbound Periphery
-Layer 1  Komodo         Variables and secrets; polls git; no GitHub webhooks
-Layer 2  this repo      stacks/ + windows/
+Layer 0  bootstrap/     OMV (optional), purge Docker/Komodo, Podman, Cockpit, Materia timers
+Layer 1  Materia        attributes + MANIFEST.toml; systemd Quadlets; no GitHub webhooks
+Layer 2  this repo      components/ + windows/
 ```
 
-Komodo server names in generated ResourceSync TOML are literals from topology (this reference site: **`core`** and **`periphery`**). Komodo does not interpolate `[[VAR]]` on `server`/`repo`. Bootstrap `CORE_SERVER` / `PERIPHERY_SERVER` must match. Edit topology and run `python3 stacks/komodo/generate-stacks.py` (see [`stacks/komodo/README.md`](stacks/komodo/README.md)). Stacks clone GitHub themselves. ResourceSync Selects the Komodo Repo named **`infra-core`**. Komodo Core is on `edge` and the compose default network; default is the internet gateway so GitHub and `gitea:3000` both work (see `bootstrap/komodo/compose.yaml`).
+Kubernetes is a future consumer of the same kube-play YAML (`overlays/k8s/` stub). This site never runs Kubernetes.
 
-## Target state (after bootstrap + ResourceSync)
-
-A finished site matches this layout. Do not reintroduce `system/core` or `system/periphery`, or an NFS export of the disk root.
+## Target state
 
 ```
 ${DATA_ROOT}/
-  system/{authelia,vaultwarden,gitea,pihole,wireguard,restic,opencloud,jotty,linkding,rustdesk,bytestash,scrutiny,uptime-kuma,caddymanager}   # Core bind-mounts only
-  shared/{media,downloads,files,photos,cameras}           # NFS /shared (files/ is OpenCloud; rest is HTPC/SMB)
-  users/<user>/{files,photos}                             # NFS /users (OpenCloud Personal + photos-<user>)
+  system/<app>                         # Core bind-mounts only (not system/core)
+  shared/{media,downloads,files,photos,cameras}
+  users/<user>/{files,photos}
 ```
 
-- Komodo: `NFS_EXPORT=/shared`, `NFS_USERS=/users`. Restic: [`bootstrap/first-run/restic.md`](bootstrap/first-run/restic.md) (`BACKUP_DRIVE` is the HTPC USB).
-- HTPC `/config` is a local Docker volume. Media stacks use NFS. OpenCloud on Core bind-mounts `users/` and `system/opencloud/projects/`; host binds those space leaves onto `shared/files` and `users/<user>/photos`.
-- ResourceSync names are global: Core Pi-hole is `pihole`, HTPC is `pihole-periphery`.
-- Core host IPv4 is static (`NAS_LAN_IP` on the LAN NIC via NetworkManager). A router DHCP reservation is not required and is not sufficient after a cold plug of a USB NIC.
-- Router DHCP DNS: Core LAN IP first, HTPC second. No public resolver as a third server. Each Pi-hole fetches its own Gravity.
-- WireGuard is host-network on Core. Caddy (`edge`) proxies the VPN UI to the host. Router: UDP 51820 to Core only. Do not forward RustDesk 21115–21119; off-LAN desktop is WireGuard. `WG_HOST` is a public DNS name (not `DOMAIN` if that would make Pi-hole steal the endpoint). Client MTU 1280 (catalog rewrites wg-easy’s factory 1420).
+- Restic: [`bootstrap/first-run/restic.md`](bootstrap/first-run/restic.md) (`BACKUP_DRIVE` is the surface USB).
+- mantle `/config` is a local Podman volume. Libraries use WSL NFS of `shared/` and `users/`.
+- Pi-hole: `pihole` on core, `pihole-mantle` on mantle.
+- Core IPv4 is static (`NAS_LAN_IP`). surface Ethernet is static (`SURFACE_UPSTREAM`).
+- Router DHCP DNS: Core first, surface second. No public resolver as a third.
+- WireGuard data plane is host `wg-quick` on Core. wg-easy UI is rootless on `:51821`. Client MTU 1280. Do not forward RustDesk 21115–21119.
 
-## Bootstrap order (greenfield)
+## Bootstrap order
 
-1. **Topology:** edit `stacks/komodo/topology.inc`, regenerate TOML (`stacks/komodo/README.md`).
-2. Copy `bootstrap/` to Core; run `core.sh` as root. It runs **`data-root/data-root-prep.sh`** (system/ + empty users/ + OpenCloud dirs), not full household layout.
-3. Komodo: confirm `core`. ResourceSync path **`stacks/komodo/stacks-bootstrap.toml`** first (phase A: Caddy, Authelia, Pi-hole, Homepage, OpenCloud, Collabora, …). Homepage for a new site: copy `stacks/platform/homepage/config.seed/` → `config/` once (never overwrite a customized `config/`).
-4. OpenCloud greenfield: login (Personal = `users/<user>/files`) → Spaces **`shared`** and **`photos-<user>`** → publish binds → **`data-root/data-root-layout.sh`** → OMV SMB/NFS (`bootstrap/omv/README.md`). Details: [`bootstrap/first-run/opencloud.md`](bootstrap/first-run/opencloud.md). Check: `bootstrap/opencloud/opencloud-check.sh`.
-5. Periphery host: [`bootstrap/periphery/README.md`](bootstrap/periphery/README.md). Then ResourceSync **`stacks-core.toml`** + **`stacks-periphery.toml`** (phase B). First HTPC bring-up: Deploy one stack at a time (`deploy = false` in periphery fragments). Authelia SSO: [`bootstrap/first-run/authelia.md`](bootstrap/first-run/authelia.md). Other apps: [`bootstrap/first-run/`](bootstrap/first-run/).
+1. **surface** wipe / restore Kodi+Firefox / idle `mantle` while Core still has DNS/Caddy — [`windows/kodi-firefox-cutover.md`](windows/kodi-firefox-cutover.md).
+2. Clone this catalog onto Core from your git remote.
+3. Core: export leftover Docker volumes (Caddy `/data`) → `sudo bash bootstrap/core.sh` (purge + Podman + Materia). First apply is `core-bootstrap` (edge + OpenCloud).
+4. OpenCloud publish → `data-root/data-root-layout.sh` → OMV NFS/SMB.
+5. mantle: [`bootstrap/mantle/README.md`](bootstrap/mantle/README.md) then Materia `[Hosts.mantle]`.
+6. Cockpit on Core (`https://box.<DOMAIN>` or `:9090`). No required mantle Cockpit. No `ops.` Komodo vhost.
 
-Existing site: add the bootstrap TOML path without reshuffling stack names ([`stacks/komodo/README.md`](stacks/komodo/README.md) migration). Park scripts remain for non-empty disks.
-
-Winget packages for later Windows apps are listed under `windows/` and are not required for GitOps.
+Winget: [`windows/packages.json`](windows/packages.json).
 
 ## Variable keys
 
-See [`stacks/komodo/VARIABLES.md`](stacks/komodo/VARIABLES.md). Do not put values in this repository.
+See [`attributes/README.md`](attributes/README.md). Do not put values in this repository.

@@ -1,0 +1,246 @@
+- Apps:
+
+    - Personal:
+        - OpenCloud:
+            id: opencloud
+            href: https://cloud.{{HOMEPAGE_VAR_DOMAIN}}
+            icon: open-cloud-dark.svg
+            description: Files
+        - Jotty:
+            id: jotty
+            href: https://notes.{{HOMEPAGE_VAR_DOMAIN}}
+            icon: jotty.svg
+            description: Notes
+        - Linkding:
+            id: linkding
+            href: https://links.{{HOMEPAGE_VAR_DOMAIN}}
+            icon: linkding.svg
+            description: Bookmarks
+        - Scriberr:
+            id: scriberr
+            href: https://voice.{{HOMEPAGE_VAR_DOMAIN}}
+            icon: scriberr.svg
+            description: Transcription
+        - ByteStash:
+            id: bytestash
+            href: https://snip.{{HOMEPAGE_VAR_DOMAIN}}
+            icon: bytestash.svg
+            description: Snippets
+        - Vaultwarden:
+            id: vaultwarden
+            href: https://pass.{{HOMEPAGE_VAR_DOMAIN}}
+            icon: bitwarden.svg
+            description: Passwords
+            
+    - Media & Home:
+        - Immich:
+            id: immich
+            href: https://photos.{{HOMEPAGE_VAR_DOMAIN}}
+            icon: immich.svg
+            description: Photos    
+        - Jellyfin:
+            id: jellyfin
+            href: https://watch.{{HOMEPAGE_VAR_DOMAIN}}
+            icon: jellyfin.svg
+            description: Watch Movies & TV
+        - Seerr:
+            href: https://request.{{HOMEPAGE_VAR_DOMAIN}}
+            icon: seerr.svg
+            description: Request Movies & TV
+        - Adventure Log:
+            id: adventurelog
+            href: https://travel.{{HOMEPAGE_VAR_DOMAIN}}
+            icon: adventure-log.svg
+            description: Travel Logs
+        - Home Assistant:
+            id: homeassistant
+            href: https://auto.{{HOMEPAGE_VAR_DOMAIN}}
+            icon: home-assistant.svg
+            description: Home Automation
+        - Frigate:
+            id: frigate
+            href: https://nvr.{{HOMEPAGE_VAR_DOMAIN}}
+            icon: https://cdn.jsdelivr.net/gh/homarr-labs/dashboard-icons/png/moonfire-nvr.png
+            description: Home NVR
+
+    - Utilities:
+        - Transmute:
+            id: transmute
+            href: https://convert.{{HOMEPAGE_VAR_DOMAIN}}
+            icon: https://cdn.jsdelivr.net/gh/selfhst/icons/svg/transmute.svg
+            description: File Convert
+        - BentoPDF:
+            id: bentopdf
+            href: https://pdf.{{HOMEPAGE_VAR_DOMAIN}}
+            icon: bentopdf.svg
+            description: PDF Tools
+        - LibreTranslate:
+            id: libretranslate
+            href: https://translate.{{HOMEPAGE_VAR_DOMAIN}}
+            icon: https://cdn.jsdelivr.net/gh/selfhst/icons/svg/libretranslate.svg
+            description: Translate
+        - OpenReader:
+            id: openreader
+            href: https://read.{{HOMEPAGE_VAR_DOMAIN}}
+            icon: https://cdn.jsdelivr.net/gh/selfhst/icons@main/webp/openreader.webp
+            description: Text-to-Speech
+        - n8n:
+            id: n8n
+            href: https://flow.{{HOMEPAGE_VAR_DOMAIN}}
+            icon: n8n.svg
+            description: Workflow Automation
+        - IT Tools:
+            id: it-tools
+            href: https://it.{{HOMEPAGE_VAR_DOMAIN}}
+            icon: it-tools.svg
+            description: Developer Utilities
+
+    - Web:
+        - Gmail:
+            href: https://gmail.com
+            icon: gmail.svg
+        - Drive:
+            href: https://drive.google.com
+            icon: google-drive.svg
+        - YouTube:
+            href: https://youtube.com
+            icon: youtube.svg
+        - Spotify:
+            href: https://open.spotify.com
+            icon: spotify.svg
+        - ChatGPT:
+            href: https://chatgpt.com
+            icon: chatgpt.svg
+        - Amazon:
+            href: https://amazon.com/gp/css/order-history
+            icon: amazon.svg
+        - Discord:
+            href: https://discord.com/channels/@me
+            icon: discord.svg
+        - WhatsApp:
+            id: whatsapp
+            href: https://web.whatsapp.com
+            icon: whatsapp.svg
+        - Fidelity:
+            href: https://www.fidelity.com
+            icon: fidelity.svg
+        - GitHub:
+            href: https://github.com
+            icon: github-light.svg
+        - Twitch:
+            href: https://twitch.tv
+            icon: twitch.svg
+            
+- System:
+
+    - Monitoring:
+        - Uptime Kuma:
+            href: https://up.{{HOMEPAGE_VAR_DOMAIN}}
+            icon: uptime-kuma.svg
+            description: Service Monitor
+            widget:
+                type: uptimekuma
+                url: http://uptime-kuma:3001
+                slug: home
+                fields:
+                    - up
+                    - down
+                    - uptime
+                    - incident
+        - Scrutiny:
+            href: https://disks.{{HOMEPAGE_VAR_DOMAIN}}
+            icon: scrutiny.svg
+            description: Disk Monitor
+            widget:
+                type: scrutiny
+                url: http://scrutiny:8080
+        - Peanut:
+            href: https://ups.{{HOMEPAGE_VAR_DOMAIN}}
+            icon: peanut.svg
+            description: UPS Monitor
+            widget:
+                type: peanut
+                url: http://peanut:8080
+                key: ups   
+        - Prometheus:
+            href: https://metrics.{{HOMEPAGE_VAR_DOMAIN}}
+            icon: prometheus.svg
+            description: Metrics
+        - Grafana:
+            href: https://site.{{HOMEPAGE_VAR_DOMAIN}}
+            icon: grafana.svg
+            description: Site Monitor
+
+    - Platform:
+        - Cockpit:
+            href: https://box.{{HOMEPAGE_VAR_DOMAIN}}
+            siteMonitor: http://{{HOMEPAGE_VAR_NAS_LAN_IP}}:9090
+            icon: cockpit.svg
+            description: Hosts and units 
+        - OpenMediaVault:
+            href: https://nas.{{HOMEPAGE_VAR_DOMAIN}}
+            siteMonitor: http://{{HOMEPAGE_VAR_NAS_LAN_IP}}:81
+            icon: openmediavault.svg
+            description: Storage
+        - Authelia:
+            href: https://auth.{{HOMEPAGE_VAR_DOMAIN}}
+            icon: authelia.svg
+            description: Authentication
+
+    - Network:
+        - Pi-hole:
+            href: https://dns.{{HOMEPAGE_VAR_DOMAIN}}/admin
+            icon: pi-hole.svg
+            description: DNS
+            widget:
+                type: pihole
+                url: http://pihole
+                version: 6
+                key: "{{HOMEPAGE_VAR_PIHOLE_TOKEN}}"
+                fields:
+                - queries
+                - blocked_percent
+                - gravity
+        - Caddy:
+            href: https://traffic.{{HOMEPAGE_VAR_DOMAIN}}
+            icon: caddy.svg
+            description: Traffic Manager
+            widget:
+                type: caddy
+                url: http://caddy:2019
+        - WireGuard:
+            href: https://vpn.{{HOMEPAGE_VAR_DOMAIN}}
+            icon: wireguard.svg
+            description: VPN
+        - RustDesk:
+            href: https://desk.{{HOMEPAGE_VAR_DOMAIN}}
+            icon: rustdesk.png
+            description: Remote Desktop
+        - Linksys EA8300:
+            href: https://wifi.{{HOMEPAGE_VAR_DOMAIN}}
+            siteMonitor: https://{{HOMEPAGE_VAR_ROUTER_LAN_IP}}/
+            icon: linksys.svg
+            description: Router
+       #- HP LaserJet M29w:
+       #     href: https://print.{{HOMEPAGE_VAR_DOMAIN}}
+       #     siteMonitor: https://{{HOMEPAGE_VAR_PRINTER_LAN_IP}}/
+       #     icon: hp.svg
+       #     description: Printer
+
+    - Media Backend:
+        - qBittorrent:
+            href: https://down.{{HOMEPAGE_VAR_DOMAIN}}
+            icon: qbittorrent.svg
+            description: Downloads      
+        - Prowlarr:
+            href: https://prowlarr.{{HOMEPAGE_VAR_DOMAIN}}
+            icon: prowlarr.svg
+            description: Indices      
+        - Radarr:
+            href: https://radarr.{{HOMEPAGE_VAR_DOMAIN}}
+            icon: radarr.svg
+            description: Movie Requests
+        - Sonarr:
+            href: https://sonarr.{{HOMEPAGE_VAR_DOMAIN}}
+            icon: sonarr.svg
+            description: TV Show Requests

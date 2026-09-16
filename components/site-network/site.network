@@ -1,0 +1,6 @@
+[Unit]
+Description=Site Podman network (replaces Docker edge)
+
+[Network]
+NetworkName=site
+Driver=bridge

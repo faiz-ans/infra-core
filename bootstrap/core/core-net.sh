@@ -1,7 +1,6 @@
 #!/usr/bin/env bash
-# Host forwarding + IPv6 off. Safe to re-run (does not restart Docker).
-# ip_forward / src_valid_mark: WireGuard NAT. IPv6 off: Docker must not
-# prefer a dual-stack `edge` as the container default gateway (GitHub DNS).
+# Host forwarding + IPv6 off. Safe to re-run.
+# ip_forward / src_valid_mark: WireGuard NAT.
 #
 #   sudo bash bootstrap/core/core-net.sh
 set -euo pipefail
@@ -11,7 +10,7 @@ if [[ ${EUID:-0} -ne 0 ]]; then
   exit 1
 fi
 
-cat > /etc/sysctl.d/99-komodo-net.conf <<'EOF'
+cat > /etc/sysctl.d/99-core-net.conf <<'EOF'
 net.ipv4.ip_forward=1
 net.ipv4.conf.all.src_valid_mark=1
 net.ipv4.conf.all.rp_filter=2
@@ -54,7 +53,7 @@ if [[ -f "${avahi_conf}" ]]; then
   avahi_kv host-name "$(hostname -s)"
   avahi_kv publish-workstation yes
   if grep -q "^#\?deny-interfaces=" "${avahi_conf}"; then
-    sed -i 's/^#\?deny-interfaces=.*/deny-interfaces=docker0/' "${avahi_conf}"
+    sed -i 's/^#\?deny-interfaces=.*/deny-interfaces=podman0,cni-podman0/' "${avahi_conf}"
   fi
   if systemctl restart avahi-daemon 2>/dev/null; then
     echo "Avahi: $(hostname -s).local on IPv4 (macOS smb://$(hostname -s))."
@@ -66,8 +65,7 @@ fi
 
 echo "Default IPv4 route:"
 ip -4 route show default || true
-echo "Apply docker ipv6 false with: sudo bash bootstrap/core/core-docker-engine.sh"
-echo "Then Redeploy wireguard so seed-mtu.mjs rewrites NAT to this iface."
+echo "Then re-apply wireguard-data / wg-easy so NAT matches this iface."
 
 # Host/Docker DNS must not depend on LAN :53 REDIRECT. A DHCP lease (or a
 # leftover resolv.conf) often sets nameserver NAS_LAN_IP; when docker/WG

@@ -1,0 +1,60 @@
+# Example host vault for core (encrypt to core.age).
+
+[globals]
+# Optional overrides for this host only.
+
+[components.pihole]
+PIHOLE_WEBPASSWORD = ""
+
+[components.authelia]
+AUTHELIA_SESSION_SECRET = ""
+AUTHELIA_STORAGE_ENCRYPTION_KEY = ""
+AUTHELIA_OIDC_HMAC_SECRET = ""
+OIDC_CLIENT_SECRET = ""
+
+[components.wg-easy]
+WG_UI_PASSWORD = ""
+
+[components.vaultwarden]
+VAULTWARDEN_ADMIN_TOKEN = ""
+
+[components.opencloud]
+OPENCLOUD_ADMIN_PASSWORD = ""
+
+[components.peanut]
+NUT_REMOTE_PASSWORD = ""
+
+[components.restic]
+RESTIC_PASSWORD = ""
+RESTIC_REST_USER = ""
+RESTIC_REST_PASSWORD = ""
+UPTIME_KUMA_PUSH_URL = ""
+
+[components.caddymanager]
+CADDYMANAGER_JWT_SECRET = ""
+CADDYMANAGER_DISABLED = "true"
+
+[components.bytestash]
+BYTESTASH_JWT_SECRET = ""
+BYTESTASH_ALLOW_NEW_ACCOUNTS = "false"
+
+[components.linkding]
+LINKDING_SUPERUSER_NAME = "admin"
+LINKDING_SUPERUSER_PASSWORD = ""
+
+[components.homepage]
+HOMEPAGE_ALLOWED_HOSTS = ""
+HOMEPAGE_VAR_PIHOLE_TOKEN = ""
+HOMEPAGE_VAR_PIHOLE_MANTLE_TOKEN = ""
+HOMEPAGE_VAR_OMV_USERNAME = ""
+HOMEPAGE_VAR_OMV_PASSWORD = ""
+HOMEPAGE_VAR_JELLYFIN_KEY = ""
+HOMEPAGE_VAR_SONARR_KEY = ""
+HOMEPAGE_VAR_RADARR_KEY = ""
+HOMEPAGE_VAR_PROWLARR_KEY = ""
+HOMEPAGE_VAR_QBIT_USERNAME = ""
+HOMEPAGE_VAR_QBIT_PASSWORD = ""
+HOMEPAGE_VAR_GRAFANA_KEY = ""
+HOMEPAGE_VAR_WGEASY_PASSWORD = ""
+WEATHER_LATITUDE = ""
+WEATHER_LONGITUDE = ""

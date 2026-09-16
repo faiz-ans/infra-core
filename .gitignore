@@ -1,5 +1,6 @@
 .env
 *.env
 !*.env.template
-bootstrap/komodo/compose.env
+attributes/*.age
+!attributes/*.example.toml
 .DS_Store

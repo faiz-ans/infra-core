@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 # Enable OMV NFS for the HTPC: export shared/ and users/ only. Does not modify SMB.
 # Also hardens against failures seen in production:
-#   - duplicate NFS clients on the same share (different fsids → Docker Desktop hangs)
+#   - duplicate NFS clients on the same share (different fsids → WSL NFS hangs)
 #   - empty /export/shared bind after DATA_ROOT / mntent drift (IronWolf migrate)
 #   - missing shared/{media,photos,...} dirs
 #
@@ -173,7 +173,7 @@ PY
   fi
   echo "Shared folder ${SHARE_NAME} uuid=${SHARE_UUID}"
 
-  # Drop other NFS clients for this share (subnet duplicates with different fsids hang Docker Desktop).
+  # Drop other NFS clients for this share (subnet duplicates with different fsids hang WSL NFS).
   python3 - "${SHARE_UUID}" "${HTPC_IP}" <<'PY'
 import json, subprocess, sys
 
@@ -295,7 +295,7 @@ ls /export/shared/media /export/shared/photos /export/users 2>&1 | head -30 || t
 echo
 echo "NFS_EXPORT=/shared"
 echo "NFS_USERS=/users"
-echo "Set those and NAS_LAN_IP in Komodo. SMB is unchanged."
-echo "HTPC smoke test: bootstrap/omv/README.md §4 (soft mount first if unsure)."
+echo "Set those and NAS_LAN_IP in attributes / /etc/materia/site.env. SMB is unchanged."
+echo "mantle smoke test: bootstrap/omv/README.md §4 (host NFS mount)."
 echo "Remove any NFS export of a disk-root share (old name: data)."
 echo "showmount -e \$(hostname -I | awk '{print \$1}')"

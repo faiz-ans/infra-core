@@ -1,0 +1,13 @@
+[Unit]
+Description=adventurelog
+
+[Kube]
+Yaml={{ m_outputDir }}/components/adventurelog/pod.yaml
+Network=site.network
+PublishPort=8015:80
+
+[Service]
+Restart=on-failure
+
+[Install]
+WantedBy=default.target

@@ -1,0 +1,13 @@
+[Unit]
+Description=collabora
+
+[Kube]
+Yaml={{ m_outputDir }}/components/collabora/pod.yaml
+Network=site.network
+PublishPort=9980:9980
+
+[Service]
+Restart=on-failure
+
+[Install]
+WantedBy=default.target

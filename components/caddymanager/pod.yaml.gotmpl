@@ -1,0 +1,59 @@
+apiVersion: v1
+kind: Pod
+metadata:
+  name: caddymanager
+  labels:
+    app: caddymanager
+spec:
+  restartPolicy: Always
+  containers:
+  - name: backend
+    image: docker.io/caddymanager/caddymanager-backend:latest
+    imagePullPolicy: Always
+    env:
+    - name: TZ
+      value: "{{.TZ}}"
+    - name: PORT
+      value: "3000"
+    - name: DB_ENGINE
+      value: "sqlite"
+    - name: SQLITE_DB_PATH
+      value: "/app/data/caddymanager.sqlite"
+    - name: CORS_ORIGIN
+      value: "https://traffic.{{.DOMAIN}}"
+    - name: LOG_LEVEL
+      value: "info"
+    - name: CADDY_SANDBOX_URL
+      value: "http://127.0.0.1:2019"
+    - name: PING_INTERVAL
+      value: "30000"
+    - name: PING_TIMEOUT
+      value: "2000"
+    - name: JWT_SECRET
+      value: "{{.CADDYMANAGER_JWT_SECRET}}"
+    - name: JWT_EXPIRATION
+      value: "24h"
+    ports:
+    - containerPort: 3000
+    volumeMounts:
+    - name: data
+      mountPath: /app/data
+  - name: frontend
+    image: docker.io/caddymanager/caddymanager-frontend:latest
+    imagePullPolicy: Always
+    env:
+    - name: TZ
+      value: "{{.TZ}}"
+    - name: BACKEND_HOST
+      value: "127.0.0.1:3000"
+    - name: APP_NAME
+      value: "Caddy Manager"
+    - name: DARK_MODE
+      value: "true"
+    ports:
+    - containerPort: 80
+
+  volumes:
+  - name: data
+    hostPath:
+      path: {{.DATA_ROOT}}/system/caddymanager

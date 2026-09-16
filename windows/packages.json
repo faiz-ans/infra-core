@@ -4,7 +4,6 @@
   "Sources": [
     {
       "Packages": [
-        { "PackageIdentifier": "Docker.DockerDesktop" },
         { "PackageIdentifier": "XBMCFoundation.Kodi" },
         { "PackageIdentifier": "AutoHotkey.AutoHotkey" },
         { "PackageIdentifier": "Mozilla.Firefox" },

@@ -1,0 +1,4 @@
+[[Services]]
+Service = "caddymanager.service"
+Stopped = true
+Disabled = true

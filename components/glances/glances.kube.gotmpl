@@ -1,0 +1,13 @@
+[Unit]
+Description=glances
+
+[Kube]
+Yaml={{ m_outputDir }}/components/glances/pod.yaml
+Network=site.network
+PublishPort=127.0.0.1:61208:61208
+
+[Service]
+Restart=on-failure
+
+[Install]
+WantedBy=default.target

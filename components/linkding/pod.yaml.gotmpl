@@ -1,0 +1,52 @@
+apiVersion: v1
+kind: Pod
+metadata:
+  name: linkding
+  labels:
+    app: linkding
+spec:
+  hostAliases:
+  - ip: "{{.NAS_LAN_IP}}"
+    hostnames:
+      - "auth.{{.DOMAIN}}"
+
+  restartPolicy: Always
+  containers:
+  - name: linkding
+    image: docker.io/sissbruecker/linkding:latest
+    imagePullPolicy: Always
+    env:
+    - name: TZ
+      value: "{{.TZ}}"
+    - name: LD_SUPERUSER_NAME
+      value: "{{.LINKDING_SUPERUSER_NAME}}"
+    - name: LD_SUPERUSER_PASSWORD
+      value: "{{.LINKDING_SUPERUSER_PASSWORD}}"
+    - name: LD_CSRF_TRUSTED_ORIGINS
+      value: "https://links.{{.DOMAIN}},https://bookmarks.{{.DOMAIN}},https://linkding.{{.DOMAIN}},https://auth.{{.DOMAIN}}"
+    - name: LD_ENABLE_OIDC
+      value: "True"
+    - name: OIDC_RP_CLIENT_ID
+      value: "linkding"
+    - name: OIDC_RP_CLIENT_SECRET
+      value: "{{.OIDC_CLIENT_SECRET}}"
+    - name: OIDC_OP_AUTHORIZATION_ENDPOINT
+      value: "https://auth.{{.DOMAIN}}/api/oidc/authorization"
+    - name: OIDC_OP_TOKEN_ENDPOINT
+      value: "https://auth.{{.DOMAIN}}/api/oidc/token"
+    - name: OIDC_OP_USER_ENDPOINT
+      value: "https://auth.{{.DOMAIN}}/api/oidc/userinfo"
+    - name: OIDC_OP_JWKS_ENDPOINT
+      value: "https://auth.{{.DOMAIN}}/jwks.json"
+    - name: OIDC_VERIFY_SSL
+      value: "False"
+    ports:
+    - containerPort: 9090
+    volumeMounts:
+    - name: data
+      mountPath: /etc/linkding/data
+
+  volumes:
+  - name: data
+    hostPath:
+      path: {{.DATA_ROOT}}/system/linkding

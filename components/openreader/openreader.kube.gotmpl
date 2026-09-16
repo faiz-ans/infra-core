@@ -1,0 +1,13 @@
+[Unit]
+Description=openreader
+
+[Kube]
+Yaml={{ m_outputDir }}/components/openreader/pod.yaml
+Network=site.network
+PublishPort=3003:3003
+
+[Service]
+Restart=on-failure
+
+[Install]
+WantedBy=default.target

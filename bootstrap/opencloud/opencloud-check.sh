@@ -41,19 +41,19 @@ echo "DATA_ROOT=${DATA_ROOT}"
 echo
 
 # --- containers ---
-if docker inspect -f '{{.State.Status}}' opencloud 2>/dev/null | grep -qx running; then
+if podman inspect -f '{{.State.Status}}' opencloud 2>/dev/null | grep -qx running; then
   pass "container opencloud running"
 else
   fail "container opencloud not running"
 fi
-if docker inspect -f '{{.State.Status}}' radicale 2>/dev/null | grep -qx running; then
+if podman inspect -f '{{.State.Status}}' radicale 2>/dev/null | grep -qx running; then
   pass "container radicale running"
 else
   fail "container radicale not running"
 fi
-if docker inspect -f '{{.State.Status}}' collabora 2>/dev/null | grep -qx running; then
+if podman inspect -f '{{.State.Status}}' collabora 2>/dev/null | grep -qx running; then
   pass "container collabora running"
-  if docker inspect -f '{{.State.Status}}' collabora-ca 2>/dev/null | grep -qx running; then
+  if podman inspect -f '{{.State.Status}}' collabora-ca 2>/dev/null | grep -qx running; then
     pass "container collabora-ca running"
   else
     fail "container collabora-ca not running (CA/proof_key sidecar)"
@@ -63,12 +63,12 @@ else
 fi
 
 # --- proof disable ---
-if docker inspect opencloud >/dev/null 2>&1; then
-  if docker exec opencloud /bin/sh -c 'printenv COLLABORATION_APP_PROOF_DISABLE' 2>/dev/null | grep -qx true; then
+if podman inspect opencloud >/dev/null 2>&1; then
+  if podman exec opencloud /bin/sh -c 'printenv COLLABORATION_APP_PROOF_DISABLE' 2>/dev/null | grep -qx true; then
     pass "COLLABORATION_APP_PROOF_DISABLE=true"
   else
     # env may only be on the process; try compose-style inspect
-    if docker inspect -f '{{range .Config.Env}}{{println .}}{{end}}' opencloud 2>/dev/null \
+    if podman inspect -f '{{range .Config.Env}}{{println .}}{{end}}' opencloud 2>/dev/null \
       | grep -qx 'COLLABORATION_APP_PROOF_DISABLE=true'; then
       pass "COLLABORATION_APP_PROOF_DISABLE=true"
     else

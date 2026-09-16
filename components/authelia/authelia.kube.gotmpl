@@ -1,0 +1,13 @@
+[Unit]
+Description=authelia
+
+[Kube]
+Yaml={{ m_outputDir }}/components/authelia/pod.yaml
+Network=site.network
+PublishPort=127.0.0.1:9091:9091
+
+[Service]
+Restart=on-failure
+
+[Install]
+WantedBy=default.target

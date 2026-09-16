@@ -1,0 +1,71 @@
+apiVersion: v1
+kind: Pod
+metadata:
+  name: monitoring
+  labels:
+    app: monitoring
+spec:
+  restartPolicy: Always
+  hostAliases:
+  - ip: "{{.NAS_LAN_IP}}"
+    hostnames:
+      - "auth.{{.DOMAIN}}"
+  containers:
+  - name: prometheus
+    image: docker.io/prom/prometheus:latest
+    command: ["/bin/sh", "-c", "sh /apply-config.sh && exec /bin/prometheus --config.file=/etc/prometheus/prometheus.yml --storage.tsdb.path=/prometheus"]
+    env:
+    - name: TZ
+      value: "{{.TZ}}"
+    - name: NAS_LAN_IP
+      value: "{{.NAS_LAN_IP}}"
+    ports:
+    - containerPort: 9090
+    volumeMounts:
+    - name: tmpl
+      mountPath: /etc/prometheus/prometheus.yml.template
+      readOnly: true
+    - name: apply
+      mountPath: /apply-config.sh
+      readOnly: true
+    - name: data
+      mountPath: /prometheus
+  - name: grafana
+    image: docker.io/grafana/grafana:latest
+    env:
+    - name: TZ
+      value: "{{.TZ}}"
+    - name: GF_SECURITY_ADMIN_PASSWORD
+      value: "{{.GRAFANA_ADMIN_PASSWORD}}"
+    - name: GF_SERVER_ROOT_URL
+      value: "https://site.{{.DOMAIN}}"
+    - name: GF_AUTH_GENERIC_OAUTH_ENABLED
+      value: "true"
+    - name: GF_AUTH_GENERIC_OAUTH_CLIENT_ID
+      value: grafana
+    - name: GF_AUTH_GENERIC_OAUTH_CLIENT_SECRET
+      value: "{{.OIDC_CLIENT_SECRET}}"
+    - name: GF_AUTH_GENERIC_OAUTH_AUTH_URL
+      value: "https://auth.{{.DOMAIN}}/api/oidc/authorization"
+    - name: GF_AUTH_GENERIC_OAUTH_TOKEN_URL
+      value: "https://auth.{{.DOMAIN}}/api/oidc/token"
+    - name: GF_AUTH_GENERIC_OAUTH_API_URL
+      value: "https://auth.{{.DOMAIN}}/api/oidc/userinfo"
+    ports:
+    - containerPort: 3000
+    volumeMounts:
+    - name: graf
+      mountPath: /var/lib/grafana
+  volumes:
+  - name: tmpl
+    hostPath:
+      path: "{{ m_outputDir }}/components/monitoring/prometheus.yml.template"
+  - name: apply
+    hostPath:
+      path: "{{ m_outputDir }}/components/monitoring/apply-config.sh"
+  - name: data
+    persistentVolumeClaim:
+      claimName: prometheus-data
+  - name: graf
+    persistentVolumeClaim:
+      claimName: grafana-data

@@ -1,7 +1,7 @@
 [Unit]
 Description=Assimilate SMB/NFS writes into OpenCloud PosixFS
-After=docker.socket
-Wants=docker.socket
+After=network-online.target
+Wants=network-online.target
 
 [Service]
 Type=oneshot

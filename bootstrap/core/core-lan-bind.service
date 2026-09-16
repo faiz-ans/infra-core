@@ -1,18 +1,14 @@
 [Unit]
-Description=Redirect LAN DNS :53 to Pi-hole on 127.0.0.1:15353
-# Not After=docker.service (socket activation) or network-online (wait-online
-# can hang for minutes). Script starts docker --no-block, then REDIRECTs once
-# the LAN address and 127.0.0.1:15353 both exist.
-After=local-fs.target docker.socket
-Wants=docker.socket docker.service
+Description=Redirect host :53/:80/:443 to rootless Pi-hole and Caddy high ports
+After=local-fs.target network-pre.target
+Wants=network-pre.target
 
 [Service]
 Type=oneshot
-TimeoutStartSec=300
+TimeoutStartSec=60
 Restart=on-failure
 RestartSec=15
 ExecStart=/usr/local/sbin/core-lan-bind
-# RemainAfterExit=no so the timer can re-run (start is a no-op if yes).
 
 [Install]
 WantedBy=multi-user.target

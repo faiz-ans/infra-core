@@ -106,7 +106,7 @@ merge_into() {
 }
 
 live_template() {
-  docker exec opencloud printenv STORAGE_USERS_POSIX_PERSONAL_SPACE_PATH_TEMPLATE 2>/dev/null || true
+  podman exec opencloud printenv STORAGE_USERS_POSIX_PERSONAL_SPACE_PATH_TEMPLATE 2>/dev/null || true
 }
 
 status() {
@@ -146,7 +146,7 @@ status() {
 }
 
 park() {
-  docker stop opencloud
+  podman stop opencloud
   mkdir -p "${INCOMING}"
   local u src dst files
   for u in "${HOUSEHOLD[@]}"; do
@@ -168,16 +168,16 @@ park() {
     mv "${src}" "${dst}"
     echo "parked ${u} -> system/opencloud/incoming/${u}"
   done
-  docker start opencloud
+  podman start opencloud
   echo
-  echo "Komodo must have Redeployed opencloud so the template is users/<user>/files."
-  echo "Check: docker exec opencloud printenv STORAGE_USERS_POSIX_PERSONAL_SPACE_PATH_TEMPLATE"
+  echo "Materia must have re-applied opencloud so the template is users/<user>/files."
+  echo "Check: podman exec opencloud printenv STORAGE_USERS_POSIX_PERSONAL_SPACE_PATH_TEMPLATE"
   echo "Then Authelia as faiz, then diana (not OpenCloud local admin)."
   echo "If $0 status still shows space id on HOME, run $0 relocate, then restore."
 }
 
 drop_wrong_login() {
-  docker stop opencloud
+  podman stop opencloud
   local u home files stamp
   stamp="$(date +%Y%m%dT%H%M%S)"
   for u in "${HOUSEHOLD[@]}"; do
@@ -198,7 +198,7 @@ drop_wrong_login() {
     mv "${home}" "${INCOMING}/${u}.wrong-login-${stamp}"
     echo "moved users/${u} -> incoming/${u}.wrong-login-${stamp}"
   done
-  docker start opencloud
+  podman start opencloud
   echo
   echo "drop-wrong-login only helps before the first Personal space exists."
   echo "If status still shows space id on HOME after a later login, run $0 relocate."
@@ -230,8 +230,8 @@ flatten_nested_files() {
 }
 
 relocate() {
-  docker stop opencloud
-  trap 'docker start opencloud >/dev/null 2>&1 || true' EXIT
+  podman stop opencloud
+  trap 'podman start opencloud >/dev/null 2>&1 || true' EXIT
   mkdir -p "${INCOMING}"
   local u home files staging stamp
   stamp="$(date +%Y%m%dT%H%M%S)"
@@ -264,17 +264,17 @@ relocate() {
     echo "relocated ${u}: space id $(space_id "${files}") now on users/${u}/files"
   done
   trap - EXIT
-  docker start opencloud
+  podman start opencloud
   echo "Scanning personal spaces:"
-  docker exec opencloud sh -c 'for d in /posix/users/*/files; do opencloud posixfs scan "$d" || true; done'
+  podman exec opencloud sh -c 'for d in /posix/users/*/files; do opencloud posixfs scan "$d" || true; done'
   echo
   echo "Check: $0 status  (want space id on users/<u>/files)."
   echo "Then: $0 restore"
 }
 
 restore() {
-  docker stop opencloud
-  trap 'docker start opencloud >/dev/null 2>&1 || true' EXIT
+  podman stop opencloud
+  trap 'podman start opencloud >/dev/null 2>&1 || true' EXIT
   local u src home files item name dest
   for u in "${HOUSEHOLD[@]}"; do
     src="${INCOMING}/${u}"
@@ -323,9 +323,9 @@ restore() {
     echo "restored ${u} (documents → files/, camera roll → photos/ sibling)"
   done
   trap - EXIT
-  docker start opencloud
+  podman start opencloud
   echo "Scanning personal spaces:"
-  docker exec opencloud sh -c 'for d in /posix/users/*/files; do opencloud posixfs scan "$d" || true; done'
+  podman exec opencloud sh -c 'for d in /posix/users/*/files; do opencloud posixfs scan "$d" || true; done'
   echo
   echo "Next: create photos-<user> spaces (opencloud-adopt-photos.sh), then data-root-layout.sh."
 }

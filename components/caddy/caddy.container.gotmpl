@@ -1,0 +1,25 @@
+[Unit]
+Description=Caddy (rootless, host netns)
+After=network-online.target
+
+[Container]
+Image=docker.io/library/caddy:2
+ContainerName=caddy
+Network=host
+Environment=DOMAIN={{.DOMAIN}}
+Environment=SURFACE_UPSTREAM={{.SURFACE_UPSTREAM}}
+Environment=TZ={{.TZ}}
+Volume={{ m_outputDir }}/components/caddy/Caddyfile:/etc/caddy/Caddyfile:ro
+Volume={{ m_outputDir }}/components/caddy/entrypoint.sh:/entrypoint.sh:ro
+Volume={{ m_outputDir }}/components/caddy/export-ca.sh:/export-ca.sh:ro
+Volume={{.DATA_ROOT}}/system/caddy/data:/data
+Volume={{.DATA_ROOT}}/system/caddy/config:/config
+Volume={{.DATA_ROOT}}/system/authelia:/export-ca
+Entrypoint=/bin/sh
+Exec=/entrypoint.sh
+
+[Service]
+Restart=on-failure
+
+[Install]
+WantedBy=default.target

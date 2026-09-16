@@ -1,0 +1,11 @@
+[Unit]
+Description=RustDesk hbbs/hbbr (rootless host netns)
+
+[Kube]
+Yaml={{ m_outputDir }}/components/rustdesk/pod.yaml
+
+[Service]
+Restart=on-failure
+
+[Install]
+WantedBy=default.target

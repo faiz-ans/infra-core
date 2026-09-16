@@ -1,0 +1,31 @@
+apiVersion: v1
+kind: Pod
+metadata:
+  name: restic-rest
+  labels:
+    app: restic-rest
+spec:
+  restartPolicy: Always
+  containers:
+  - name: restic-rest
+    image: docker.io/restic/rest-server:latest
+    imagePullPolicy: Always
+    env:
+    - name: TZ
+      value: "{{.TZ}}"
+    - name: DATA_DIRECTORY
+      value: "/data"
+    - name: PASSWORD_FILE
+      value: "/data/.htpasswd"
+    - name: OPTIONS
+      value: "--listen :8000"
+    ports:
+    - containerPort: 8000
+    volumeMounts:
+    - name: data
+      mountPath: /data
+
+  volumes:
+  - name: data
+    hostPath:
+      path: {{.BACKUP_DRIVE}}/restic
