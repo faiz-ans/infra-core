@@ -1,0 +1,27 @@
+[Unit]
+Description=peanut
+After=network-online.target nut-server.service
+Wants=nut-server.service
+
+[Container]
+Image=docker.io/brandawg93/peanut:latest
+ContainerName=peanut
+Network=host
+UserNS=keep-id
+Environment=TZ=${TZ}
+Environment=NUT_HOST=127.0.0.1
+Environment=NUT_PORT=3493
+Environment=USERNAME=peanut
+Environment=PASSWORD=${NUT_REMOTE_PASSWORD}
+Environment=WEB_HOST=127.0.0.1
+Environment=WEB_PORT=8092
+Environment=AUTH_DISABLED=true
+Environment=AUTH_TRUST_HOST=true
+Volume=${DATA_ROOT}/system/peanut:/config
+Volume=${COMPONENT_DIR}/settings.yml:/config/settings.yml:ro
+
+[Service]
+Restart=on-failure
+
+[Install]
+WantedBy=default.target

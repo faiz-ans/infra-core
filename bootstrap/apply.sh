@@ -62,8 +62,8 @@ if [[ -n "${DOMAIN:-}" ]]; then
   export HOMEPAGE_ALLOWED_HOSTS
 fi
 
-# netavark `site` cannot hairpin to NAS_LAN_IP:3493 (LAN clients can; the
-# peanut container cannot). upsd on 0.0.0.0 is reachable at the bridge GW.
+# Site-network gateway (Homepage scrape of host-net PeaNUT). Netavark default
+# is 10.89.0.1 when inspect cannot run yet (first apply, before site exists).
 SITE_NET_GATEWAY="$(python3 - "${PILOT}" <<'PY'
 import json, os, subprocess, sys
 pilot = sys.argv[1]
@@ -91,7 +91,7 @@ for n in nets:
 PY
 )"
 if [[ -z "${SITE_NET_GATEWAY}" ]]; then
-  SITE_NET_GATEWAY="${NAS_LAN_IP:-}"
+  SITE_NET_GATEWAY="10.89.0.1"
 fi
 export SITE_NET_GATEWAY
 
@@ -198,6 +198,11 @@ install_component() {
   fi
   install -d -m 0755 "${dest}"
   export COMPONENT_DIR="${dest}"
+  # Catalog moved kube→container: drop leftover Quadlet files so start_unit
+  # does not keep using the old .kube unit.
+  if [[ -f "${src}/${name}.container" && ! -f "${src}/${name}.kube" ]]; then
+    rm -f "${dest}/${name}.kube" "${dest}/pod.yaml"
+  fi
   local f rel out
   while IFS= read -r -d '' f; do
     rel="${f#${src}/}"

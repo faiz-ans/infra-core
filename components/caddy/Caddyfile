@@ -153,6 +153,13 @@ https://ups.{$DOMAIN} {
 	}
 }
 
+# Homepage on `site` cannot hairpin to 127.0.0.1. Bind the scrape URL to the
+# netavark gateway only (not the LAN).
+http://{$SITE_NET_GATEWAY}:8093 {
+	bind {$SITE_NET_GATEWAY}
+	reverse_proxy 127.0.0.1:8092
+}
+
 #--------------------------------
 # VAULTWARDEN
 #--------------------------------
