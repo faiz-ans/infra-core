@@ -212,6 +212,16 @@ if [[ -n "${DATA_ROOT:-}" ]]; then
           "${DATA_ROOT}/system/opencloud/posix" \
           "${DATA_ROOT}/system/opencloud/radicale" 2>/dev/null || true
         ;;
+      peanut)
+        # PeaNUT v3+ merges settings.yml over NUT_HOST. An empty/localhost
+        # file (first save, or leftover after :latest) hides the UPS.
+        if [[ -d "${DATA_ROOT}/system/peanut" && -f "${USER_QUADLET}/peanut/settings.yml" ]]; then
+          chown "${PUID:-1000}:${PGID:-1000}" "${DATA_ROOT}/system/peanut"
+          install -m 600 -o "${PUID:-1000}" -g "${PGID:-1000}" \
+            "${USER_QUADLET}/peanut/settings.yml" \
+            "${DATA_ROOT}/system/peanut/settings.yml"
+        fi
+        ;;
     esac
   done
 fi
