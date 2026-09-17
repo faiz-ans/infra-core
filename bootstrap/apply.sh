@@ -54,6 +54,11 @@ fi
 set -a
 source "${SITE_ENV}"
 set +a
+# Homepage v1+ refuses to serve if this is empty (Host validation).
+if [[ -z "${HOMEPAGE_ALLOWED_HOSTS:-}" && -n "${DOMAIN:-}" ]]; then
+  HOMEPAGE_ALLOWED_HOSTS="dash.${DOMAIN},homepage.${DOMAIN},localhost:3000,127.0.0.1:3000"
+  export HOMEPAGE_ALLOWED_HOSTS
+fi
 
 mapfile -t COMPONENTS < <(python3 - "${MANIFEST}" "${HOST}" "${ROLE}" <<'PY'
 import re, sys

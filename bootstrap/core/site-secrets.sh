@@ -126,7 +126,7 @@ site_ensure_site_vars() {
   done <"${list}"
   rm -f "${list}"
   if [[ -z "${HOMEPAGE_ALLOWED_HOSTS:-}" && -n "${DOMAIN:-}" ]]; then
-    HOMEPAGE_ALLOWED_HOSTS="dash.${DOMAIN},homepage.${DOMAIN}"
+    HOMEPAGE_ALLOWED_HOSTS="dash.${DOMAIN},homepage.${DOMAIN},localhost:3000,127.0.0.1:3000"
   fi
 }
 
