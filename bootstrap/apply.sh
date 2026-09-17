@@ -186,30 +186,12 @@ for c in "${COMPONENTS[@]}"; do
   install_component "${c}"
 done
 
-pilot_env() {
-  local uid
-  uid="$(id -u "${PILOT}")"
-  runuser -u "${PILOT}" -- env XDG_RUNTIME_DIR="/run/user/${uid}" "$@"
-}
-
-# kube play uses --network site (NetworkName=site). Create it if the .network
-# Quadlet did not (a custom [Service] section can drop ExecStart).
-ensure_site_network() {
-  if pilot_env podman network exists site >/dev/null 2>&1; then
-    echo "podman network site exists"
-    return 0
-  fi
-  echo "creating rootless podman network site"
-  pilot_env podman network create site
-}
-
 systemctl daemon-reload
 if systemctl --machine="${PILOT}@" --user daemon-reload; then
   :
 else
   echo "user daemon-reload failed (linger ${PILOT}?); system units still reloaded."
 fi
-ensure_site_network || echo "warn: could not create network site"
 
 start_unit() {
   local name="$1" unit=""
@@ -235,26 +217,12 @@ start_unit() {
     echo "${name}: no Quadlet unit to start"
     return 0
   fi
-  # Quadlet units are generated; systemd refuses `enable` on them. Linger +
-  # [Install] WantedBy=default.target in the Quadlet file is what survives reboot.
-  # restart starts a stopped unit and picks up a rewritten Quadlet.
+  # Generated Quadlet units cannot be `enable`d. Linger + WantedBy=default.target
+  # is what survives reboot; restart picks up a rewritten Quadlet.
   if is_system "${name}"; then
-    if ! systemctl restart "${unit}"; then
-      echo "warn: systemctl restart ${unit} failed"
-      journalctl -u "${unit}" -n 25 --no-pager || true
-    fi
+    systemctl restart "${unit}" || echo "warn: systemctl restart ${unit} failed"
   else
-    if ! systemctl --machine="${PILOT}@" --user restart "${unit}"; then
-      echo "warn: user restart ${unit} failed"
-      systemctl --machine="${PILOT}@" --user --no-pager --full status "${unit}" || true
-      if [[ -f "${dest}/pod.yaml" ]]; then
-        echo "---- podman kube play stderr (${name}) ----"
-        pilot_env podman kube play --replace --service-container=true --network site \
-          "${dest}/pod.yaml" || true
-        echo "---- podman network ls ----"
-        pilot_env podman network ls || true
-      fi
-    fi
+    systemctl --machine="${PILOT}@" --user restart "${unit}" || echo "warn: user restart ${unit} failed"
   fi
 }
 

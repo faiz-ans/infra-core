@@ -1,6 +1,5 @@
 [Unit]
 Description=homepage
-After=site-network.service
 
 [Kube]
 Yaml=${COMPONENT_DIR}/pod.yaml

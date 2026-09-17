@@ -1,6 +1,5 @@
 [Unit]
 Description=uptime-kuma
-After=site-network.service
 
 [Kube]
 Yaml=${COMPONENT_DIR}/pod.yaml

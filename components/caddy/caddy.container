@@ -6,6 +6,7 @@ After=network-online.target
 Image=docker.io/library/caddy:2
 ContainerName=caddy
 Network=host
+UserNS=keep-id
 Environment=DOMAIN=${DOMAIN}
 Environment=SURFACE_UPSTREAM=${SURFACE_UPSTREAM}
 Environment=TZ=${TZ}

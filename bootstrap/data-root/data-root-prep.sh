@@ -67,6 +67,8 @@ mkdir -p \
   "${DATA_ROOT}/system/scrutiny/influxdb" \
   "${DATA_ROOT}/system/uptime-kuma" \
   "${DATA_ROOT}/system/caddymanager" \
+  "${DATA_ROOT}/system/caddy/data" \
+  "${DATA_ROOT}/system/caddy/config" \
   "${DATA_ROOT}/system/peanut" \
   "${DATA_ROOT}/users"
 
@@ -96,8 +98,8 @@ chown -R "${PUID}:${PGID}" \
 chown "${PUID}:${PGID}" "${DATA_ROOT}/system/opencloud" "${DATA_ROOT}/system/opencloud/projects"
 chown -R "${PUID}:${PGID}" "${DATA_ROOT}/system/jotty"
 
-mkdir -p "${DATA_ROOT}/system/peanut"
 chown "${PUID}:${PGID}" "${DATA_ROOT}/system/peanut"
+chown -R "${PUID}:${PGID}" "${DATA_ROOT}/system/caddy"
 
 for _ca in caddy-root.crt ca-bundle.crt; do
   _capath="${DATA_ROOT}/system/authelia/${_ca}"
@@ -108,6 +110,7 @@ for _ca in caddy-root.crt ca-bundle.crt; do
     : > "${_capath}"
     chmod 644 "${_capath}"
   fi
+  chown "${PUID}:${PGID}" "${_capath}"
 done
 
 setfacl -b "${DATA_ROOT}/users" || true
