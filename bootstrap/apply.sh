@@ -217,10 +217,13 @@ start_unit() {
     echo "${name}: no Quadlet unit to start"
     return 0
   fi
+  # Quadlet units are generated; systemd refuses `enable` on them. Linger +
+  # [Install] WantedBy=default.target in the Quadlet file is what survives reboot.
+  # restart starts a stopped unit and picks up a rewritten Quadlet.
   if is_system "${name}"; then
-    systemctl enable --now "${unit}" || echo "warn: systemctl enable --now ${unit} failed"
+    systemctl restart "${unit}" || echo "warn: systemctl restart ${unit} failed"
   else
-    systemctl --machine="${PILOT}@" --user enable --now "${unit}" || echo "warn: user enable --now ${unit} failed"
+    systemctl --machine="${PILOT}@" --user restart "${unit}" || echo "warn: user restart ${unit} failed"
   fi
 }
 
