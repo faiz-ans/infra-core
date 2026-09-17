@@ -1,10 +1,6 @@
 [Unit]
 Description=Site Podman network (replaces Docker edge)
 
-# oneshot without this goes inactive; kube units that Require it then fail.
-[Service]
-RemainAfterExit=yes
-
 [Network]
 NetworkName=site
 Driver=bridge

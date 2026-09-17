@@ -186,12 +186,69 @@ for c in "${COMPONENTS[@]}"; do
   install_component "${c}"
 done
 
+# kube play --service-container builds a pause image with catatonit.
+# Debian marks it Recommends; systemd user PATH also misses /usr/libexec.
+ensure_kube_play_helpers() {
+  export DEBIAN_FRONTEND=noninteractive
+  if ! dpkg -s catatonit >/dev/null 2>&1; then
+    apt-get install -y catatonit || echo "warn: apt-get install catatonit failed"
+  fi
+  local dest=/usr/bin/catatonit src
+  if [[ ! -x "${dest}" ]]; then
+    for src in /usr/libexec/catatonit/catatonit /usr/libexec/podman/catatonit; do
+      if [[ -x "${src}" ]]; then
+        ln -sfn "${src}" "${dest}"
+        break
+      fi
+    done
+  fi
+  install -d /etc/containers/containers.conf.d
+  cat >/etc/containers/containers.conf.d/99-infra-core-helpers.conf <<'EOF'
+[engine]
+helper_binaries_dir = [
+  "/usr/bin",
+  "/usr/libexec/podman",
+  "/usr/libexec/catatonit",
+]
+EOF
+  install -d -o "${PILOT}" -g "${PILOT}" "/home/${PILOT}/.config/containers"
+  cat >"/home/${PILOT}/.config/containers/containers.conf" <<'EOF'
+[engine]
+helper_binaries_dir = [
+  "/usr/bin",
+  "/usr/libexec/podman",
+  "/usr/libexec/catatonit",
+]
+EOF
+  chown "${PILOT}:${PILOT}" "/home/${PILOT}/.config/containers/containers.conf"
+}
+
+ensure_kube_play_helpers
+
+pilot_env() {
+  local uid
+  uid="$(id -u "${PILOT}")"
+  runuser -u "${PILOT}" -- env XDG_RUNTIME_DIR="/run/user/${uid}" "$@"
+}
+
+# kube play uses --network site (NetworkName=site). Create it if the .network
+# Quadlet did not (a custom [Service] section can drop ExecStart).
+ensure_site_network() {
+  if pilot_env podman network exists site >/dev/null 2>&1; then
+    echo "podman network site exists"
+    return 0
+  fi
+  echo "creating rootless podman network site"
+  pilot_env podman network create site
+}
+
 systemctl daemon-reload
 if systemctl --machine="${PILOT}@" --user daemon-reload; then
   :
 else
   echo "user daemon-reload failed (linger ${PILOT}?); system units still reloaded."
 fi
+ensure_site_network || echo "warn: could not create network site"
 
 start_unit() {
   local name="$1" unit=""
@@ -229,10 +286,13 @@ start_unit() {
     if ! systemctl --machine="${PILOT}@" --user restart "${unit}"; then
       echo "warn: user restart ${unit} failed"
       systemctl --machine="${PILOT}@" --user --no-pager --full status "${unit}" || true
-      local uid
-      uid="$(id -u "${PILOT}")"
-      runuser -u "${PILOT}" -- env XDG_RUNTIME_DIR="/run/user/${uid}" \
-        journalctl --user -u "${unit}" -n 25 --no-pager || true
+      if [[ -f "${dest}/pod.yaml" ]]; then
+        echo "---- podman kube play stderr (${name}) ----"
+        pilot_env podman kube play --replace --service-container=true --network site \
+          "${dest}/pod.yaml" || true
+        echo "---- podman network ls ----"
+        pilot_env podman network ls || true
+      fi
     fi
   fi
 }

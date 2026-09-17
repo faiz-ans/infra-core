@@ -23,7 +23,25 @@ for _i in $(seq 1 60); do
   sleep 2
 done
 apt-get update
-apt-get install -y podman uidmap slirp4netns fuse-overlayfs dbus-user-session cockpit cockpit-podman curl git gettext-base
+apt-get install -y podman uidmap slirp4netns fuse-overlayfs catatonit dbus-user-session cockpit cockpit-podman curl git gettext-base
+
+if [[ ! -x /usr/bin/catatonit ]]; then
+  for src in /usr/libexec/catatonit/catatonit /usr/libexec/podman/catatonit; do
+    if [[ -x "${src}" ]]; then
+      ln -sfn "${src}" /usr/bin/catatonit
+      break
+    fi
+  done
+fi
+install -d /etc/containers/containers.conf.d
+cat >/etc/containers/containers.conf.d/99-infra-core-helpers.conf <<'EOF'
+[engine]
+helper_binaries_dir = [
+  "/usr/bin",
+  "/usr/libexec/podman",
+  "/usr/libexec/catatonit",
+]
+EOF
 
 loginctl enable-linger "${PILOT}"
 
