@@ -62,6 +62,39 @@ if [[ -n "${DOMAIN:-}" ]]; then
   export HOMEPAGE_ALLOWED_HOSTS
 fi
 
+# netavark `site` cannot hairpin to NAS_LAN_IP:3493 (LAN clients can; the
+# peanut container cannot). upsd on 0.0.0.0 is reachable at the bridge GW.
+SITE_NET_GATEWAY="$(python3 - "${PILOT}" <<'PY'
+import json, os, subprocess, sys
+pilot = sys.argv[1]
+uid = subprocess.check_output(["id", "-u", pilot], text=True).strip()
+env = os.environ.copy()
+env["XDG_RUNTIME_DIR"] = f"/run/user/{uid}"
+r = subprocess.run(
+    ["sudo", "-u", pilot, "--preserve-env=XDG_RUNTIME_DIR", "podman", "network", "inspect", "site"],
+    capture_output=True, text=True, env=env,
+)
+if r.returncode != 0:
+    sys.exit(0)
+try:
+    data = json.loads(r.stdout)
+except json.JSONDecodeError:
+    sys.exit(0)
+nets = data if isinstance(data, list) else [data]
+for n in nets:
+    for key in ("subnets", "Subnets"):
+        for s in n.get(key) or []:
+            gw = s.get("gateway") or s.get("Gateway")
+            if gw:
+                print(gw)
+                sys.exit(0)
+PY
+)"
+if [[ -z "${SITE_NET_GATEWAY}" ]]; then
+  SITE_NET_GATEWAY="${NAS_LAN_IP:-}"
+fi
+export SITE_NET_GATEWAY
+
 mapfile -t COMPONENTS < <(python3 - "${MANIFEST}" "${HOST}" "${ROLE}" <<'PY'
 import re, sys
 path, host, role = sys.argv[1], sys.argv[2], sys.argv[3]
@@ -144,6 +177,7 @@ subst_keys() {
     [[ -n "${k}" ]] && keys+=("\$${k}")
   done < <(awk -F= '/^[A-Za-z_][A-Za-z0-9_]*=/{print $1}' "${SITE_ENV}")
   keys+=("\$COMPONENT_DIR")
+  keys+=("\$SITE_NET_GATEWAY")
   printf '%s' "${keys[*]}"
 }
 

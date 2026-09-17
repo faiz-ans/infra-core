@@ -17,7 +17,7 @@ spec:
     - name: TZ
       value: "${TZ}"
     - name: NUT_HOST
-      value: "${NAS_LAN_IP}"
+      value: "${SITE_NET_GATEWAY}"
     - name: NUT_PORT
       value: "3493"
     - name: USERNAME

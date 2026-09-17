@@ -5,6 +5,7 @@ Description=peanut
 Yaml=${COMPONENT_DIR}/pod.yaml
 Network=site.network
 PublishPort=127.0.0.1:8092:8080
+UserNS=keep-id
 
 [Service]
 Restart=on-failure
