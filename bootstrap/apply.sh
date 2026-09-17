@@ -186,45 +186,6 @@ for c in "${COMPONENTS[@]}"; do
   install_component "${c}"
 done
 
-# kube play --service-container builds a pause image with catatonit.
-# Debian marks it Recommends; systemd user PATH also misses /usr/libexec.
-ensure_kube_play_helpers() {
-  export DEBIAN_FRONTEND=noninteractive
-  if ! dpkg -s catatonit >/dev/null 2>&1; then
-    apt-get install -y catatonit || echo "warn: apt-get install catatonit failed"
-  fi
-  local dest=/usr/bin/catatonit src
-  if [[ ! -x "${dest}" ]]; then
-    for src in /usr/libexec/catatonit/catatonit /usr/libexec/podman/catatonit; do
-      if [[ -x "${src}" ]]; then
-        ln -sfn "${src}" "${dest}"
-        break
-      fi
-    done
-  fi
-  install -d /etc/containers/containers.conf.d
-  cat >/etc/containers/containers.conf.d/99-infra-core-helpers.conf <<'EOF'
-[engine]
-helper_binaries_dir = [
-  "/usr/bin",
-  "/usr/libexec/podman",
-  "/usr/libexec/catatonit",
-]
-EOF
-  install -d -o "${PILOT}" -g "${PILOT}" "/home/${PILOT}/.config/containers"
-  cat >"/home/${PILOT}/.config/containers/containers.conf" <<'EOF'
-[engine]
-helper_binaries_dir = [
-  "/usr/bin",
-  "/usr/libexec/podman",
-  "/usr/libexec/catatonit",
-]
-EOF
-  chown "${PILOT}:${PILOT}" "/home/${PILOT}/.config/containers/containers.conf"
-}
-
-ensure_kube_play_helpers
-
 pilot_env() {
   local uid
   uid="$(id -u "${PILOT}")"

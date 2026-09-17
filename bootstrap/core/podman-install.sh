@@ -23,25 +23,22 @@ for _i in $(seq 1 60); do
   sleep 2
 done
 apt-get update
-apt-get install -y podman uidmap slirp4netns fuse-overlayfs catatonit dbus-user-session cockpit cockpit-podman curl git gettext-base
+apt-get install -y podman uidmap slirp4netns fuse-overlayfs catatonit netavark aardvark-dns passt \
+  dbus-user-session cockpit cockpit-podman curl git gettext-base
 
-if [[ ! -x /usr/bin/catatonit ]]; then
-  for src in /usr/libexec/catatonit/catatonit /usr/libexec/podman/catatonit; do
-    if [[ -x "${src}" ]]; then
-      ln -sfn "${src}" /usr/bin/catatonit
-      break
-    fi
-  done
-fi
-install -d /etc/containers/containers.conf.d
-cat >/etc/containers/containers.conf.d/99-infra-core-helpers.conf <<'EOF'
+# catatonit's helper dir is searched first; netavark lives under /usr/libexec/podman
+# or /usr/lib/podman. Pin both so kube-play and `podman network` keep working.
+install -d -m 0755 /etc/containers/containers.conf.d
+cat > /etc/containers/containers.conf.d/99-infra-core.conf <<'EOF'
 [engine]
 helper_binaries_dir = [
-  "/usr/bin",
   "/usr/libexec/podman",
+  "/usr/lib/podman",
   "/usr/libexec/catatonit",
+  "/usr/bin",
 ]
 EOF
+chmod 644 /etc/containers/containers.conf.d/99-infra-core.conf
 
 loginctl enable-linger "${PILOT}"
 
