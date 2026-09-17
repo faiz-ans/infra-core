@@ -1,0 +1,41 @@
+apiVersion: v1
+kind: Pod
+metadata:
+  name: peanut
+  labels:
+    app: peanut
+spec:
+  restartPolicy: Always
+  containers:
+  - name: peanut
+    image: docker.io/brandawg93/peanut:latest
+    imagePullPolicy: Always
+    env:
+    - name: TZ
+      value: "${TZ}"
+    - name: NUT_HOST
+      value: "host.containers.internal"
+    - name: NUT_PORT
+      value: "3493"
+    - name: USERNAME
+      value: "peanut"
+    - name: PASSWORD
+      value: "${NUT_REMOTE_PASSWORD}"
+    - name: WEB_HOST
+      value: "0.0.0.0"
+    - name: WEB_PORT
+      value: "8080"
+    - name: AUTH_DISABLED
+      value: "true"
+    - name: AUTH_TRUST_HOST
+      value: "true"
+    ports:
+    - containerPort: 8080
+    volumeMounts:
+    - name: config
+      mountPath: /config
+
+  volumes:
+  - name: config
+    hostPath:
+      path: ${DATA_ROOT}/system/peanut

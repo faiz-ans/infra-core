@@ -1,0 +1,15 @@
+[Unit]
+Description=qbittorrent
+
+[Kube]
+Yaml=pod.yaml
+Network=site.network
+PublishPort=8081:8081
+PublishPort=6881:6881
+PublishPort=6881:6881/udp
+
+[Service]
+Restart=on-failure
+
+[Install]
+WantedBy=default.target

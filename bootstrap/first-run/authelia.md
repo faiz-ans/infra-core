@@ -25,7 +25,9 @@ sudo mv "${DATA_ROOT}/system/authelia/private.pem" "${DATA_ROOT}/system/authelia
 | `${DATA_ROOT}/system/authelia/caddy-root.crt` | Caddy `tls internal` CA (for OIDC discovery from app containers) |
 | `${DATA_ROOT}/system/authelia/ca-bundle.crt` | Public CAs + Caddy CA |
 
-Keep **`AUTHELIA_OIDC_HMAC_SECRET`** and **`OIDC_CLIENT_SECRET`** in `/etc/materia/site.env` (and sops attributes) so `core.sh` re-runs do not rotate them.
+Keep **`AUTHELIA_OIDC_HMAC_SECRET`** and **`OIDC_CLIENT_SECRET`** in `/etc/infra-core/site.env` so `core.sh` re-runs do not rotate them.
+
+Do **not** restore Authelia sqlite from a previous storage key. File backend is `users.yml` plus `oidc.pem` / client-secret files. Skip `db.sqlite3`.
 
 ## 2. Caddy CA bundle (OIDC discovery)
 
@@ -44,7 +46,7 @@ Cockpit on Core (`https://box.<DOMAIN>` or `:9090`) is the host UI. There is no 
 
 ## 3. Re-apply catalog stacks
 
-Push this catalog to your git origin. Wait for Materia. Then re-apply in this order:
+Re-apply with `sudo bash bootstrap/apply.sh` in this order:
 
 1. **authelia** (must see `oidc.pem` and `client_secret_digest` or it will not start)
 2. **caddy** (forward-auth gates, Host pins, CA export)

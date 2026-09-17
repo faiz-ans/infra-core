@@ -6,7 +6,7 @@ No attribute. No data directory.
 
 ## 1. Deploy
 
-Commit and push to the catalog git origin. Wait for Materia, then re-apply **caddy** and **homepage**.
+Re-apply with `apply.sh` **caddy** and **homepage**.
 
 On Core:
 
@@ -24,4 +24,4 @@ Open **`https://pdf.<DOMAIN>`**. Tools run in the browser. HTTPS (`tls internal`
 
 | Symptom | What to do |
 |---|---|
-| `pdf.<DOMAIN>` does not load while `bentopdf` is Up | re-apply (Materia / systemd) **caddy**. Then `podman exec caddy wget -S -O- --timeout=10 http://bentopdf:8080/ \| head` |
+| `pdf.<DOMAIN>` does not load while `bentopdf` is Up | re-apply (apply.sh / systemd) **caddy**. Then `podman exec caddy wget -S -O- --timeout=10 http://bentopdf:8080/ \| head` |

@@ -1,0 +1,23 @@
+[Unit]
+Description=Pi-hole (rootless, host netns)
+After=network-online.target
+
+[Container]
+Image=docker.io/pihole/pihole:latest
+ContainerName=pihole
+Network=host
+Environment=TZ=${TZ}
+Environment=FTLCONF_dns_listeningMode=ALL
+Environment=FTLCONF_webserver_api_password=${PIHOLE_WEBPASSWORD}
+Environment=FTLCONF_dns_port=${PIHOLE_DNS_PORT}
+Environment=FTLCONF_webserver_port=${PIHOLE_WEB_PORT}
+Environment=FTLCONF_dns_hosts=${NAS_LAN_IP} ${CORE_SERVER}
+Environment=FTLCONF_misc_dnsmasq_lines=local=/${DOMAIN}/;address=/${DOMAIN}/${NAS_LAN_IP};host-record=${CORE_SERVER},${NAS_LAN_IP}
+Volume=${DATA_ROOT}/system/pihole:/etc/pihole
+AddCapability=NET_ADMIN
+
+[Service]
+Restart=on-failure
+
+[Install]
+WantedBy=default.target

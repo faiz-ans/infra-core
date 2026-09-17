@@ -7,7 +7,7 @@
 # Prep alone (data-root-prep.sh) is not enough for sticky/layout checks.
 set -euo pipefail
 
-DATA_ROOT="${DATA_ROOT:-/srv/dev-disk-by-uuid-d6e267fd-109f-4971-bfb1-26b3d99e0d47}"
+DATA_ROOT="${DATA_ROOT:-}"
 PUID="${PUID:-1000}"
 PGID="${PGID:-1000}"
 HOUSEHOLD=(faiz diana)

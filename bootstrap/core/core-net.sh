@@ -67,23 +67,29 @@ echo "Default IPv4 route:"
 ip -4 route show default || true
 echo "Then re-apply wireguard-data / wg-easy so NAT matches this iface."
 
-# Host/Docker DNS must not depend on LAN :53 REDIRECT. A DHCP lease (or a
-# leftover resolv.conf) often sets nameserver NAS_LAN_IP; when docker/WG
-# rebuilds iptables that REDIRECT vanishes and Core cannot resolve
-# github.com while LAN still works via the HTPC Pi-hole. Query Pi-hole on
-# 127.0.0.1:15353; fall back to public DNS so GitHub still works if
-# Pi-hole is down. core-lan-static.sh sets ipv4.ignore-auto-dns.
+# Layer 0 uses public DNS (Pi-hole is not up yet). After lan-bind --enable,
+# CORE_DNS_MODE=pihole points at 127.0.0.1:15353. FallbackDNS is never
+# REDIRECTed (lan-bind uses PREROUTING only).
+CORE_DNS_MODE="${CORE_DNS_MODE:-public}"
 if [[ -d /etc/systemd ]]; then
   install -d /etc/systemd/resolved.conf.d
-  cat > /etc/systemd/resolved.conf.d/99-infra-core.conf <<'EOF'
+  if [[ "${CORE_DNS_MODE}" == "pihole" ]]; then
+    cat > /etc/systemd/resolved.conf.d/99-infra-core.conf <<'EOF'
 [Resolve]
 DNS=127.0.0.1:15353
 FallbackDNS=1.1.1.1 8.8.8.8
 EOF
+    echo "Host DNS: 127.0.0.1:15353 (Pi-hole), FallbackDNS 1.1.1.1"
+  else
+    cat > /etc/systemd/resolved.conf.d/99-infra-core.conf <<'EOF'
+[Resolve]
+DNS=1.1.1.1 8.8.8.8
+EOF
+    echo "Host DNS: public 1.1.1.1 8.8.8.8 (enable Pi-hole DNS after lan-bind)"
+  fi
   if [[ -f /run/systemd/resolve/stub-resolv.conf ]]; then
     ln -sfn /run/systemd/resolve/stub-resolv.conf /etc/resolv.conf
   fi
   systemctl reload-or-restart systemd-resolved 2>/dev/null || true
   resolvectl flush-caches 2>/dev/null || true
-  echo "Host DNS: 127.0.0.1:15353 (Pi-hole), FallbackDNS 1.1.1.1"
 fi

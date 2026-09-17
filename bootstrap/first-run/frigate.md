@@ -18,7 +18,7 @@ Do not re-run `core.sh` only for this directory.
 
 ## 2. Deploy
 
-Commit and push to the catalog git origin. Wait for Materia, then re-apply **caddy** and **homepage**.
+Re-apply with `apply.sh` **caddy** and **homepage**.
 
 On mantle, allow Windows Firewall from the LAN (Caddy / Home Assistant):
 
@@ -52,7 +52,7 @@ In HA: **Settings → Devices & services → MQTT**. Broker host is surface LAN 
 
 | Symptom | What to do |
 |---|---|
-| `nvr.<DOMAIN>` does not load while `frigate` is Up | re-apply (Materia / systemd) **caddy**. From Core: `podman exec caddy wget -S -O- --timeout=10 http://<SURFACE_UPSTREAM>:8971/ \| head` |
+| `nvr.<DOMAIN>` does not load while `frigate` is Up | re-apply (apply.sh / systemd) **caddy**. From Core: `podman exec caddy wget -S -O- --timeout=10 http://<SURFACE_UPSTREAM>:8971/ \| head` |
 | Caddy 400 | `tls.enabled: false` in `/config/config.yml`, then restart |
 | NFS / `cameras` mount error | Directory missing on Core, or `NFS_EXPORT` not `/shared`. Run `data-root-perms.sh`. See `bootstrap/omv/README.md` |
 | Bus error / Frigate exits | Raise shm in the Quadlet (site edit). 256mb is sized for a couple of 720p detect streams |

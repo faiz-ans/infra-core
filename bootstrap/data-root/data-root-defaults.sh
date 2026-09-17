@@ -2,11 +2,11 @@
 # New sites: set these from bootstrap step 0 (or export before running prep/layout).
 # Sourced by data-root-prep.sh and data-root-layout.sh — do not run alone.
 
-DATA_ROOT="${DATA_ROOT:-/srv/dev-disk-by-uuid-d6e267fd-109f-4971-bfb1-26b3d99e0d47}"
+DATA_ROOT="${DATA_ROOT:-}"
 PUID="${PUID:-1000}"
 PGID="${PGID:-1000}"
 HOUSEHOLD=(faiz diana)
-HTPC=periphery
+HTPC="${HTPC:-htpc}"
 ADMIN=pilot
 SHARED_GROUP=sharedwrite
 HTPC_GROUP=htpc

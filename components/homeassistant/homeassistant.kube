@@ -1,0 +1,13 @@
+[Unit]
+Description=homeassistant
+
+[Kube]
+Yaml=pod.yaml
+Network=site.network
+PublishPort=8123:8123
+
+[Service]
+Restart=on-failure
+
+[Install]
+WantedBy=default.target

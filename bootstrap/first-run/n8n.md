@@ -6,17 +6,17 @@ Scheduled workflows run only while surface is up. This catalog does not WAN-publ
 
 ## 1. Secrets (existing Core)
 
-If this site already ran `core.sh` before n8n existed, add the key in `/etc/materia/site.env`. Do not re-run bootstrap only for this.
+If this site already ran `core.sh` before n8n existed, add the key in `/etc/infra-core/site.env`. Do not re-run bootstrap only for this.
 
 1. Generate a key: `openssl rand -hex 24`
-2. Set **`N8N_ENCRYPTION_KEY`** in `/etc/materia/site.env` (and sops attributes).
+2. Set **`N8N_ENCRYPTION_KEY`** in `/etc/infra-core/site.env` (and sops attributes).
 3. Write it down. Without the same key, stored credentials cannot be decrypted.
 
-New Core installs get the key from `core.sh` into `/etc/materia/core.config.toml`.
+New Core installs get the key from `core.sh` into `/etc/infra-core/site.env`.
 
 ## 2. Deploy
 
-Commit and push to the catalog git origin. Wait for Materia, then re-apply **caddy** and **homepage**.
+Re-apply with `apply.sh` **caddy** and **homepage**.
 
 On mantle, allow Windows Firewall TCP **5678** from the LAN (Caddy). See `bootstrap/mantle/README.md`.
 
@@ -30,7 +30,7 @@ You want `n8n` **Up**.
 
 Open **`https://flow.<DOMAIN>`**. The first visit creates the owner account. Changing `N8N_ENCRYPTION_KEY` later orphans every stored credential.
 
-Webhook URLs must show `https://flow.<DOMAIN>/webhook/...`. If they show `localhost:5678`, re-apply (Materia / systemd) **n8n** after the catalog pull (`WEBHOOK_URL` / `N8N_HOST`).
+Webhook URLs must show `https://flow.<DOMAIN>/webhook/...`. If they show `localhost:5678`, re-apply (apply.sh / systemd) **n8n** after the catalog pull (`WEBHOOK_URL` / `N8N_HOST`).
 
 Internet SaaS callbacks (GitHub, Stripe, …) cannot reach this host without WireGuard. LAN and VPN triggers are the intended use.
 
@@ -38,7 +38,7 @@ Internet SaaS callbacks (GitHub, Stripe, …) cannot reach this host without Wir
 
 | Symptom | What to do |
 |---|---|
-| `flow.<DOMAIN>` does not load while the container is Up | re-apply (Materia / systemd) **caddy**. From Core: `podman exec caddy wget -S -O- --timeout=10 http://<SURFACE_UPSTREAM>:5678/ \| head` |
+| `flow.<DOMAIN>` does not load while the container is Up | re-apply (apply.sh / systemd) **caddy**. From Core: `podman exec caddy wget -S -O- --timeout=10 http://<SURFACE_UPSTREAM>:5678/ \| head` |
 | Editor websocket drops | Caddy already proxies websockets. Confirm Windows Firewall **5678** |
-| Credentials fail after re-apply (Materia / systemd) | `N8N_ENCRYPTION_KEY` must match the key used when credentials were saved |
-| Webhook URL is localhost | `WEBHOOK_URL` must be `https://flow.<DOMAIN>/`. re-apply (Materia / systemd) **n8n** |
+| Credentials fail after re-apply (apply.sh / systemd) | `N8N_ENCRYPTION_KEY` must match the key used when credentials were saved |
+| Webhook URL is localhost | `WEBHOOK_URL` must be `https://flow.<DOMAIN>/`. re-apply (apply.sh / systemd) **n8n** |

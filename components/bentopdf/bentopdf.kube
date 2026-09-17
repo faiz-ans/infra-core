@@ -1,0 +1,13 @@
+[Unit]
+Description=bentopdf
+
+[Kube]
+Yaml=pod.yaml
+Network=site.network
+PublishPort=127.0.0.1:8084:80
+
+[Service]
+Restart=on-failure
+
+[Install]
+WantedBy=default.target

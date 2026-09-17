@@ -10,20 +10,25 @@ OpenCloud on **Core** (edge): PosixFS **documents** and **camera rolls** only.
 
 `shared/{media,games,photos,downloads,cameras}` stay on SMB/NFS for Jellyfin/Arr/qBit/Kodi/Immich/Frigate. They are **not** OpenCloud spaces.
 
-**Default path:** empty disk → OpenCloud creates space roots → publish binds → layout.  
+**Empty disk:** OpenCloud creates space roots → publish binds → layout → NFS.  
+**Remounted data disk (this site):** if `getfattr` shows `user.oc.space.*` on `users/<user>/files` and `system/opencloud/projects/shared`, **do not** create Space `shared` again. Phase A remounts the tree; then layout + NFS. Park/adopt only if `system/opencloud/{config,data}` is corrupt.  
 **Park/restore** utilities: `opencloud-adopt-homes.sh`, `opencloud-adopt-shared.sh`, `opencloud-adopt-photos.sh`.
 
-## Greenfield checklist
+## Greenfield checklist (empty disk)
 
 ### 0. Topology and host prep
 
 1. Confirm `[Hosts.core]` includes `opencloud` (`Roles.core-bootstrap`).
-2. Bootstrap Core (`core.sh`): Podman, OMV, Materia, Authelia `users.yml`, **`data-root-prep.sh`**.
-3. attributes include **`OPENCLOUD_ADMIN_PASSWORD`**.
+2. Bootstrap Core (`core.sh`): Podman, OMV, Authelia `users.yml` if missing, **`data-root-prep.sh`**. Materia is optional and not required here.
+3. `/etc/infra-core/site.env` includes **`OPENCLOUD_ADMIN_PASSWORD`**.
 
-### 1. Phase A Materia
+### 1. Phase A apply
 
-Apply core-bootstrap (Caddy, Authelia, Pi-hole, Homepage, OpenCloud). Re-apply **caddy** if the Caddyfile just gained `cloud.` / `office.`.
+```text
+sudo bash bootstrap/apply.sh --role core-bootstrap
+```
+
+Re-apply **caddy** if the Caddyfile just gained `cloud.` / `office.`.
 
 ```text
 podman ps --filter name='opencloud|radicale|collabora|caddy|authelia' --format 'table {{.Names}}\t{{.Status}}'
@@ -68,7 +73,7 @@ sudo systemctl start opencloud-posix-scan.service
 
 ### 5. Phase B stacks
 
-Add the `core-full` / `mantle-full` roles in `MANIFEST.toml` (or wait for both host roles already listed). Apply Immich, Jellyfin, etc. via Materia.
+Add the `core-full` / `mantle-full` roles in `MANIFEST.toml` when you want them. Apply Immich, Jellyfin, etc. with `apply.sh --role core-full` / `mantle-full`. Do not install idle mantle `*-full`.
 
 ### 6. Verify
 
@@ -90,7 +95,7 @@ sudo DATA_ROOT=$DATA bash bootstrap/opencloud/opencloud-check.sh
 sudo DATA_ROOT=$DATA bash bootstrap/opencloud/opencloud-adopt-shared.sh narrow
 ```
 
-That umounts the old bind, leaves media/games on `shared/`, and rebinds the space onto `shared/files`. Then re-apply (Materia / systemd) **opencloud** (new Personal template), then:
+That umounts the old bind, leaves media/games on `shared/`, and rebinds the space onto `shared/files`. Then re-apply (apply.sh / systemd) **opencloud** (new Personal template), then:
 
 ```text
 sudo DATA_ROOT=$DATA bash bootstrap/opencloud/opencloud-adopt-homes.sh park
@@ -125,7 +130,7 @@ sudo DATA_ROOT=$DATA bash bootstrap/data-root/data-root-layout.sh
 
 | Symptom | What to do |
 |---|---|
-| `cloud.<DOMAIN>` dead while `opencloud` Up | re-apply (Materia / systemd) **caddy** |
+| `cloud.<DOMAIN>` dead while `opencloud` Up | re-apply (apply.sh / systemd) **caddy** |
 | Permission / xattr on first start | Re-run **prep**; `chown` OpenCloud dirs to PUID |
 | Login HTTP 500 | Wipe **both** `system/opencloud/config` and `…/data` (not posix/users/shared/radicale) |
 | `files` has no space id after login | Personal already exists on `users/<user>` (template is only used at CreateStorageSpace). `opencloud-adopt-homes.sh relocate`, then restore. Do not drop-wrong-login again. |
@@ -133,6 +138,6 @@ sudo DATA_ROOT=$DATA bash bootstrap/data-root/data-root-layout.sh
 | Whole `shared/` still in OpenCloud | `adopt-shared.sh narrow` |
 | OC→SMB works, SMB→OC does not | Install/reinstall `opencloud-posix-scan.sh` (scan users+projects only), `core-net.sh`, start the oneshot |
 | `posixfs scan /posix` failed | Expected on the old script (`uploads/` + media). Use the new scanner |
-| Collabora white iframe / ProofKeys | re-apply (Materia / systemd) collabora + opencloud; proof disable + CA |
+| Collabora white iframe / ProofKeys | re-apply (apply.sh / systemd) collabora + opencloud; proof disable + CA |
 | `radicale` permission denied | prep should have PUID-owned radicale data |
 | Layout sticky missing | Re-run **data-root-layout.sh** after publish |

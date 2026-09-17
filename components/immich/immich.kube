@@ -1,0 +1,13 @@
+[Unit]
+Description=immich
+
+[Kube]
+Yaml=pod.yaml
+Network=site.network
+PublishPort=2283:2283
+
+[Service]
+Restart=on-failure
+
+[Install]
+WantedBy=default.target

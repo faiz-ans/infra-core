@@ -1,23 +1,23 @@
 # Components
 
-Each directory under `components/` is a Materia component: a `MANIFEST.toml` plus Quadlets and data files.
+Each directory under `components/` is a Quadlet app: kube-play YAML and/or `.container` / `.kube` / `.network`, plus config files.
 
 ```
 components/<name>/
-  MANIFEST.toml          # required (empty is valid)
+  MANIFEST.toml          # optional service list
   <name>.kube            # kube-play wrapper, or
   <name>.container       # host-net / single Quadlet
-  <name>.yaml            # kube-play Pod(s)
-  *.gotmpl               # Go-templated from attributes
+  pod.yaml               # kube-play Pod(s)
   config/                # Caddyfile, Homepage YAML, Authelia, …
 ```
 
-- **kube-play subset only:** Pod, ConfigMap, Secret, PVC. No Ingress/Service/HPA here (`overlays/k8s/` is the stub for that).
-- **Host-netns rootless** (Caddy, Pi-hole, RustDesk, wg-easy UI): `.container` with `Network=host`.
-- **Rootful host plumbing** (nft redirects, `wg-quick`, Scrutiny): system Quadlets / units, Core system Materia timer.
-- **Site mesh:** `site-network` installs `site.network`. Other Core/mantle app units set `Network=site.network`.
-- **Caddy** is host-net and reverse-proxies Core apps at `127.0.0.1:<published>` and mantle at `{$SURFACE_UPSTREAM}`.
-- **Placeholders:** `{{.DOMAIN}}`, `{{.DATA_ROOT}}`, `{{.SURFACE_UPSTREAM}}`, … from attributes. No live IPs/domains/secrets in git.
-- **Materia:** pin **v0.7.2**. Install from the GitHub release for the host arch. `materia update` on a systemd timer; not `materia server`.
+`bootstrap/apply.sh` copies these into `/etc/containers/systemd/<name>/` (rootful: Scrutiny) or `/home/pilot/.config/containers/systemd/<name>/` (rootless), substituting `${VAR}` from `/etc/infra-core/site.env`. `Yaml=pod.yaml` is beside the unit after install.
 
-Linuxserver images: `PUID`/`PGID` attributes. Mantle libraries: `hostPath` from WSL NFS (`{{.NFS_SHARED}}`, `{{.NFS_USERS}}`), not a Docker NFS driver. GPU: CDI `nvidia.com/gpu=all` on Immich ML / Jellyfin.
+- **kube-play subset only:** Pod, ConfigMap, Secret, PVC. No Ingress/Service/HPA here (`overlays/k8s/` is the stub).
+- **Host-netns rootless** (Caddy, Pi-hole, RustDesk, wg-easy UI): `.container` with `Network=host`.
+- **Rootful host plumbing** (`wg-quick`, Scrutiny): system Quadlets / units.
+- **Site mesh:** `site-network` installs `site.network`. Other Core/mantle app units set `Network=site.network`.
+- **Placeholders:** `${DOMAIN}`, `${DATA_ROOT}`, `${SURFACE_UPSTREAM}`, … from `site.env`. No live IPs/domains/secrets in git.
+- **Materia:** optional. `bootstrap/core/materia-enable.sh` polls git and runs `apply.sh`. Not required.
+
+Linuxserver images: `PUID`/`PGID`. Mantle libraries: `hostPath` from WSL NFS (`${NFS_SHARED}`, `${NFS_USERS}`). GPU: CDI `nvidia.com/gpu=all` on Immich ML / Jellyfin.

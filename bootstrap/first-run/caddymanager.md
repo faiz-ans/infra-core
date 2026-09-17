@@ -10,7 +10,7 @@ The admin API listens on `0.0.0.0:2019` in Caddy’s host netns. CaddyManager re
 
 1. Set `CADDYMANAGER_JWT_SECRET` in `attributes/core.age`.
 2. Clear `Stopped` / `Disabled` on the caddymanager component (host override or edit the component MANIFEST).
-3. `mkdir -p ${DATA_ROOT}/system/caddymanager` and `materia update`.
+3. `mkdir -p ${DATA_ROOT}/system/caddymanager` and `apply.sh`.
 
 ## 2. Check
 

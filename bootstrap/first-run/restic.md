@@ -26,12 +26,12 @@ If the bind smoke test fails (`/mnt/d` missing): Windows shares **Fixed** drive 
 
 ## 2. Secrets and BACKUP_DRIVE (Core)
 
-Commit and push this catalog after the WSL bind smoke test. Then on Core, set `BACKUP_DRIVE`, `RESTIC_PASSWORD`, `RESTIC_REST_PASSWORD`, and `RESTIC_REST_USER` (default `restic`) in `/etc/materia/site.env` (or re-run the secrets portion of `core.sh`). Existing secrets are kept.
+Commit and push this catalog after the WSL bind smoke test. Then on Core, set `BACKUP_DRIVE`, `RESTIC_PASSWORD`, `RESTIC_REST_PASSWORD`, and `RESTIC_REST_USER` (default `restic`) in `/etc/infra-core/site.env` (or re-run the secrets portion of `core.sh`). Existing secrets are kept.
 
 Read the REST password when you need htpasswd (do not paste it into git):
 
 ```text
-sudo awk -F\" '/^RESTIC_REST_PASSWORD /{print $2}' /etc/materia/site.env
+sudo awk -F= '/^RESTIC_REST_PASSWORD=/{gsub(/['\''"]/, "", $2); print $2}' /etc/infra-core/site.env
 ```
 
 ## 3. htpasswd on the USB (surface)
@@ -52,7 +52,7 @@ The file stays on the USB, not in git.
 
 ## 4. Apply
 
-Wait for Materia. Apply **restic-rest** on mantle first, then **restic** on Core.
+Apply with `apply.sh`. **restic-rest** on mantle first, then **restic** on Core.
 
 On mantle:
 

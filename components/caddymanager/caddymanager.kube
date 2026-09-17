@@ -1,0 +1,13 @@
+[Unit]
+Description=caddymanager
+
+[Kube]
+Yaml=pod.yaml
+Network=site.network
+PublishPort=127.0.0.1:8086:80
+
+[Service]
+Restart=on-failure
+
+[Install]
+WantedBy=default.target

@@ -2,7 +2,9 @@
 
 Linux user: `pilot`. Windows owner: `HTPC` (`C:\Users\HTPC\.wslconfig`). Hostname in `/etc/wsl.conf` is `mantle`.
 
-Idle state (already done on this site): mirrored networking, systemd, hostname `mantle`. Do **not** install Docker Desktop or Podman Desktop.
+Idle state (already done on this site): mirrored networking, systemd, hostname `mantle`. Do **not** install Docker Desktop or Podman Desktop. Do **not** install `mantle-full` while Core DNS/Caddy/OpenCloud/NFS are still settling.
+
+Materia is **not** part of mantle Layer 0. Optional later: `bootstrap/mantle/materia-enable.sh` (user timer: `git pull && apply.sh`).
 
 ## After Core is on Podman
 
@@ -15,10 +17,10 @@ Idle state (already done on this site): mirrored networking, systemd, hostname `
    sudo mount -t nfs -o nfsvers=4 ${NAS_LAN_IP}:/users /mnt/nas/users
    ```
 
-   Persist in `/etc/fstab`. Attributes: `NFS_SHARED=/mnt/nas/shared`, `NFS_USERS=/mnt/nas/users`, `BACKUP_DRIVE=/mnt/d`.
+   Persist in `/etc/fstab`. `site.env`: `NFS_SHARED=/mnt/nas/shared`, `NFS_USERS=/mnt/nas/users`, `BACKUP_DRIVE=/mnt/d`.
 
 3. NVIDIA: current Windows NVIDIA driver + WSL NVIDIA Container Toolkit CDI (`nvidia.com/gpu=all`).
-4. Age key + Materia **v0.7.2** user timer as `pilot` (`materia update`, not `materia server`). Hostname must be `mantle`.
+4. Apply Collabora first: `sudo bash bootstrap/apply.sh --role mantle-bootstrap`. Then add `mantle-full` in `MANIFEST.toml` when ready.
 5. Windows + Hyper-V firewall: allow published ports on `SURFACE_UPSTREAM` (8096, 53, 61208, 8000, …).
 
 Smoke: `podman run --rm --device nvidia.com/gpu=all nvidia/cuda:12.0.0-base-ubuntu22.04 nvidia-smi`

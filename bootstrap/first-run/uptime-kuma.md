@@ -10,7 +10,7 @@ If this site already ran `core.sh` before Kuma existed, run `data-root-perms.sh`
 
 ## 2. Deploy
 
-Commit and push. Wait for Materia, then re-apply **caddy** and **homepage**.
+Re-apply with `apply.sh` **caddy** and **homepage**.
 
 On Core:
 
@@ -45,7 +45,7 @@ Do not point HTTP monitors at Docker-internal names (`http://glances:61208`); Ku
 
 1. In Kuma, add a **Push** monitor (heartbeat). Copy the URL.
 2. For the NAS restic container, rewrite the host to the edge name, e.g. `http://uptime-kuma:3001/api/push/<token>?status=up&msg=OK&ping=`.
-3. Set **`UPTIME_KUMA_PUSH_URL`** in `/etc/materia/site.env`. Bring-up for the backup stacks is [`restic.md`](restic.md). Then re-apply **restic**.
+3. Set **`UPTIME_KUMA_PUSH_URL`** in `/etc/infra-core/site.env`. Bring-up for the backup stacks is [`restic.md`](restic.md). Then re-apply **restic**.
 
 `backup.sh` pings that URL after a successful `restic backup`. An empty value skips the ping. A failed ping does not fail the backup.
 
@@ -55,7 +55,7 @@ The restic image talks to Kuma over HTTP on `edge` only if you use `http://uptim
 
 | Symptom | What to do |
 |---|---|
-| `up.<DOMAIN>` does not load while `uptime-kuma` is Up | re-apply (Materia / systemd) **caddy**. Then `podman exec caddy wget -S -O- --timeout=10 http://uptime-kuma:3001/ \| head` |
+| `up.<DOMAIN>` does not load while `uptime-kuma` is Up | re-apply (apply.sh / systemd) **caddy**. Then `podman exec caddy wget -S -O- --timeout=10 http://uptime-kuma:3001/ \| head` |
 | Live UI does not update | Caddy `reverse_proxy` already upgrades WebSockets. Hard-refresh. Confirm you are on `up.` not `status.` (that alias 301s) |
 | Homepage widget API error | Status page slug must be exactly `home`. Widget URL is `http://uptime-kuma:3001` (edge), not `https://up.<DOMAIN>` |
 | Push monitor goes down | Token/URL mismatch. From Core: `podman exec restic wget -S -O- --timeout=10 --no-check-certificate "$UPTIME_KUMA_PUSH_URL"` after restic has the env |

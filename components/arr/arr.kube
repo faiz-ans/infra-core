@@ -1,0 +1,15 @@
+[Unit]
+Description=arr
+
+[Kube]
+Yaml=pod.yaml
+Network=site.network
+PublishPort=8989:8989
+PublishPort=7878:7878
+PublishPort=9696:9696
+
+[Service]
+Restart=on-failure
+
+[Install]
+WantedBy=default.target

@@ -1,8 +1,12 @@
+# Lab history only — not Layer 0.
+
 # Move DATA_ROOT from the stand-in USB to the IronWolf
 
-The USB stays mounted until the copy is verified and attribute `DATA_ROOT` points at the new uuid path. Do **not** re-run `core.sh` (it latches onto the first `/srv/dev-disk-by-uuid-*` that is already mounted).
+This document is **not** the happy path for a new site. Default deploy remounts an existing ext4 data disk or formats an empty one (`bootstrap/SITE-DEPLOY.md`). Use this file only if you still have the USB stand-in from the original lab.
 
-Materia (`/etc/materia`) stays on the Pi OS disk. This move is only the OMV data tree: `system/`, `shared/`, `users/`.
+The USB stays mounted until the copy is verified and `DATA_ROOT` in `/etc/infra-core/site.env` points at the new uuid path. Do **not** re-run `core.sh` (it latches onto the first `/srv/dev-disk-by-uuid-*` that is already mounted).
+
+Site env (`/etc/infra-core`) stays on the Pi OS disk. This move is only the OMV data tree: `system/`, `shared/`, `users/`.
 
 `rsync` **must** keep xattrs (`-X`) and ACLs (`-A`). OpenCloud Personal is `user.oc.space.*` on `users/faiz`. Drop those and spaces vanish again.
 
@@ -142,16 +146,16 @@ sudo exportfs -v
 
 ## 7. Switch attribute `DATA_ROOT`
 
-Quadlets read `DATA_ROOT` from `/etc/materia/site.env` (and sops attributes). Changing only a running container env does **not** rewrite that file — a restart keeps the old uuid mounts.
+Quadlets read `DATA_ROOT` from `/etc/infra-core/site.env` (and sops attributes). Changing only a running container env does **not** rewrite that file — a restart keeps the old uuid mounts.
 
 On Core (as root), set **site.env**, answers cache, and encrypted attributes, then re-apply:
 
 ```text
 NEW=/srv/dev-disk-by-uuid-<NEW_UUID>
-sudo grep -E '^DATA_ROOT' /etc/materia/site.env /etc/materia/bootstrap-answers.env
-sudo sed -i "s|^DATA_ROOT=.*|DATA_ROOT=${NEW}|" /etc/materia/site.env
-sudo sed -i "s|^DATA_ROOT=.*|DATA_ROOT='${NEW}'|" /etc/materia/bootstrap-answers.env
-sudo grep -E '^DATA_ROOT' /etc/materia/site.env /etc/materia/bootstrap-answers.env
+sudo grep -E '^DATA_ROOT' /etc/infra-core/site.env /etc/infra-core/bootstrap-answers.env
+sudo sed -i "s|^DATA_ROOT=.*|DATA_ROOT=${NEW}|" /etc/infra-core/site.env
+sudo sed -i "s|^DATA_ROOT=.*|DATA_ROOT='${NEW}'|" /etc/infra-core/bootstrap-answers.env
+sudo grep -E '^DATA_ROOT' /etc/infra-core/site.env /etc/infra-core/bootstrap-answers.env
 # Re-encrypt attributes/core.age on-box, then:
 systemctl --machine=pilot@ --user daemon-reload
 # or wait for the Materia user timer
@@ -171,7 +175,7 @@ sudo podman inspect opencloud --format '{{range .Mounts}}{{.Source}} -> {{.Desti
 
 You want `${NEW}/system/opencloud/...` and `${NEW}/users` → `/posix/users`, not the old USB uuid.
 
-If mounts are still the USB path: `grep DATA_ROOT /etc/materia/site.env` must show `${NEW}`, then re-apply OpenCloud again. Hits under `components/opencloud/` in the clone are only defaults — they do not set live mounts.
+If mounts are still the USB path: `grep DATA_ROOT /etc/infra-core/site.env` must show `${NEW}`, then re-apply OpenCloud again. Hits under `components/opencloud/` in the clone are only defaults — they do not set live mounts.
 
 Then re-bind OpenCloud spaces. **`rsync` does not preserve bind mounts** — on `${NEW}` you get two separate trees (`shared/files` vs `projects/shared`, and `users/<u>/photos` vs `projects/photos-<u>`). Spaces already have `user.oc.space.id`; do **not** park whole `shared/` (that moves media). Merge into the space dirs, empty the household paths, then publish:
 

@@ -1,0 +1,13 @@
+[Unit]
+Description=libretranslate
+
+[Kube]
+Yaml=pod.yaml
+Network=site.network
+PublishPort=5000:5000
+
+[Service]
+Restart=on-failure
+
+[Install]
+WantedBy=default.target

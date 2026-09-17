@@ -15,8 +15,8 @@ SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 # shellcheck source=data-root-defaults.sh
 source "${SCRIPT_DIR}/data-root-defaults.sh"
 
-if [[ ! -d "${DATA_ROOT}" ]]; then
-  echo "DATA_ROOT not a directory: ${DATA_ROOT}"
+if [[ -z "${DATA_ROOT}" || ! -d "${DATA_ROOT}" ]]; then
+  echo "DATA_ROOT not a directory: ${DATA_ROOT:-<empty>}"
   exit 1
 fi
 

@@ -1,0 +1,70 @@
+apiVersion: v1
+kind: Pod
+metadata:
+  name: homepage
+  labels:
+    app: homepage
+spec:
+  restartPolicy: Always
+  containers:
+  - name: homepage
+    image: ghcr.io/gethomepage/homepage:latest
+    env:
+    - name: TZ
+      value: "${TZ}"
+    - name: NODE_OPTIONS
+      value: "--dns-result-order=ipv4first"
+    - name: HOMEPAGE_ALLOWED_HOSTS
+      value: "${HOMEPAGE_ALLOWED_HOSTS}"
+    - name: HOMEPAGE_VAR_DOMAIN
+      value: "${DOMAIN}"
+    - name: HOMEPAGE_VAR_SURFACE_UPSTREAM
+      value: "${SURFACE_UPSTREAM}"
+    - name: HOMEPAGE_VAR_NAS_LAN_IP
+      value: "${NAS_LAN_IP}"
+    - name: HOMEPAGE_VAR_OMV_USERNAME
+      value: "${HOMEPAGE_VAR_OMV_USERNAME}"
+    - name: HOMEPAGE_VAR_OMV_PASSWORD
+      value: "${HOMEPAGE_VAR_OMV_PASSWORD}"
+    - name: HOMEPAGE_VAR_PIHOLE_TOKEN
+      value: "${HOMEPAGE_VAR_PIHOLE_TOKEN}"
+    - name: HOMEPAGE_VAR_PIHOLE_MANTLE_TOKEN
+      value: "${HOMEPAGE_VAR_PIHOLE_MANTLE_TOKEN}"
+    - name: HOMEPAGE_VAR_JELLYFIN_KEY
+      value: "${HOMEPAGE_VAR_JELLYFIN_KEY}"
+    - name: HOMEPAGE_VAR_SONARR_KEY
+      value: "${HOMEPAGE_VAR_SONARR_KEY}"
+    - name: HOMEPAGE_VAR_RADARR_KEY
+      value: "${HOMEPAGE_VAR_RADARR_KEY}"
+    - name: HOMEPAGE_VAR_PROWLARR_KEY
+      value: "${HOMEPAGE_VAR_PROWLARR_KEY}"
+    - name: HOMEPAGE_VAR_QBIT_USERNAME
+      value: "${HOMEPAGE_VAR_QBIT_USERNAME}"
+    - name: HOMEPAGE_VAR_QBIT_PASSWORD
+      value: "${HOMEPAGE_VAR_QBIT_PASSWORD}"
+    - name: HOMEPAGE_VAR_GRAFANA_KEY
+      value: "${HOMEPAGE_VAR_GRAFANA_KEY}"
+    - name: HOMEPAGE_VAR_WGEASY_PASSWORD
+      value: "${HOMEPAGE_VAR_WGEASY_PASSWORD}"
+    - name: HOMEPAGE_VAR_TZ
+      value: "${TZ}"
+    - name: HOMEPAGE_VAR_WEATHER_LATITUDE
+      value: "${WEATHER_LATITUDE}"
+    - name: HOMEPAGE_VAR_WEATHER_LONGITUDE
+      value: "${WEATHER_LONGITUDE}"
+    - name: HOMEPAGE_VAR_ROUTER_LAN_IP
+      value: "${ROUTER_LAN_IP}"
+    ports:
+    - containerPort: 3000
+    volumeMounts:
+    - name: config
+      mountPath: /app/config
+    - name: images
+      mountPath: /app/public/images
+  volumes:
+  - name: config
+    hostPath:
+      path: "${COMPONENT_DIR}/config"
+  - name: images
+    hostPath:
+      path: "${COMPONENT_DIR}/images"

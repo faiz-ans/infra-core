@@ -1,0 +1,30 @@
+[Unit]
+Description=wg-easy UI (rootless, host netns)
+After=network-online.target wireguard-data.service
+
+[Container]
+Image=ghcr.io/wg-easy/wg-easy:15
+ContainerName=wg-easy
+Network=host
+Environment=TZ=${TZ}
+Environment=PORT=51821
+Environment=INSECURE=true
+Environment=DISABLE_IPV6=true
+Environment=INIT_ENABLED=true
+Environment=INIT_USERNAME=wg-admin
+Environment=INIT_PASSWORD=${WG_UI_PASSWORD}
+Environment=INIT_HOST=${WG_HOST}
+Environment=INIT_PORT=51820
+Environment=INIT_DNS=${NAS_LAN_IP}
+Environment=NAS_LAN_IP=${NAS_LAN_IP}
+Volume=${DATA_ROOT}/system/wireguard:/etc/wireguard
+Volume=${COMPONENT_DIR}/entrypoint.sh:/entrypoint.sh:ro
+Volume=${COMPONENT_DIR}/seed-mtu.mjs:/seed-mtu.mjs:ro
+Entrypoint=/bin/sh
+Exec=/entrypoint.sh
+
+[Service]
+Restart=on-failure
+
+[Install]
+WantedBy=default.target

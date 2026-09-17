@@ -1,0 +1,13 @@
+[Unit]
+Description=transmute
+
+[Kube]
+Yaml=pod.yaml
+Network=site.network
+PublishPort=3313:3313
+
+[Service]
+Restart=on-failure
+
+[Install]
+WantedBy=default.target

@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# Pin Core's LAN IPv4 on the uplink NIC. Safe to re-run. Does not restart Docker.
+# Pin Core's LAN IPv4 on the uplink NIC. Safe to re-run. Does not restart Podman.
 # Do not rely on a router DHCP reservation: a USB 2.5G NIC can have carrier
 # while NetworkManager never binds a lease (no SSH, nothing in the DHCP list).
 #
@@ -15,8 +15,8 @@ if [[ ${EUID:-0} -ne 0 ]]; then
   exit 1
 fi
 
-ENV_FILE=/etc/komodo/bootstrap/compose.env
-ANSWERS=/etc/komodo/bootstrap-answers.env
+ENV_FILE=/etc/infra-core/site.env
+ANSWERS=/etc/infra-core/bootstrap-answers.env
 
 is_lan_iface() {
   local d=$1

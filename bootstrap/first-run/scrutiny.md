@@ -14,7 +14,7 @@ If this site already ran `core.sh` before Scrutiny existed, run `data-root-perms
 
 ## 2. Deploy the hub
 
-Commit and push. Wait for Materia, then re-apply **authelia**, **caddy**, and **homepage**.
+Re-apply with `apply.sh` **authelia**, **caddy**, and **homepage**.
 
 On Core:
 
@@ -43,12 +43,12 @@ Do not pass the USB into a Linux collector container: WSL Podman file-sharing is
 
 | Symptom | What to do |
 |---|---|
-| `disks.<DOMAIN>` does not load while `scrutiny` is Up | re-apply (Materia / systemd) **caddy**. Then `podman exec caddy wget -S -O- --timeout=10 http://scrutiny:8080/api/health` |
-| Forbidden / 403 | Authelia `default_policy` is deny. re-apply (Materia / systemd) **authelia** so `disks.` is in the `admins` gate. Log in as **faiz** |
+| `disks.<DOMAIN>` does not load while `scrutiny` is Up | re-apply (apply.sh / systemd) **caddy**. Then `podman exec caddy wget -S -O- --timeout=10 http://scrutiny:8080/api/health` |
+| Forbidden / 403 | Authelia `default_policy` is deny. re-apply (apply.sh / systemd) **authelia** so `disks.` is in the `admins` gate. Log in as **faiz** |
 | Authelia loop / 401 | Log in as **faiz** (or **diana**). Private window to confirm the gate |
 | IronWolf missing | `podman exec scrutiny smartctl --scan`. Confirm the SATA disk is `/dev/sdX`, not only the OS mmc. Privileged + `/dev` is required |
 | `hdd=0C` on the cage fan | Separate from Scrutiny; see `bootstrap/core/core-fan.md`. `smartctl -A` on the host |
 | surface USB missing | Collector is the Windows task, not a Quadlet. `smartctl --scan` in an **elevated** PowerShell. Endpoint must be `http://<NAS_LAN_IP>:8080` |
 | Collector cannot POST | From surface: `curl http://<NAS_LAN_IP>:8080/api/health`. Bind is `NAS_LAN_IP:8080`, not `0.0.0.0` |
-| Homepage widget empty | re-apply (Materia / systemd) **homepage**. Then `podman exec homepage wget -S -O- --timeout=5 http://scrutiny:8080/api/summary` |
+| Homepage widget empty | re-apply (apply.sh / systemd) **homepage**. Then `podman exec homepage wget -S -O- --timeout=5 http://scrutiny:8080/api/summary` |
 | Core RAM pressure | Omnibus includes InfluxDB. If the Pi is swapping, stop other Core stacks first; do not move the hub to surface if you still want IronWolf health when WSL Podman is down |

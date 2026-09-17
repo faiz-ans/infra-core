@@ -6,16 +6,16 @@ Phone camera ingest is **OpenCloud** into `users/<user>/photos` (space `photos-<
 
 ## 1. Secret (existing Core)
 
-If this site already ran `core.sh` before `IMMICH_DB_PASSWORD` existed, add it in `/etc/materia/site.env`. Do not re-run bootstrap only for this key.
+If this site already ran `core.sh` before `IMMICH_DB_PASSWORD` existed, add it in `/etc/infra-core/site.env`. Do not re-run bootstrap only for this key.
 
 1. Generate a password: `openssl rand -hex 24`
-2. Set **`IMMICH_DB_PASSWORD`** in `/etc/materia/site.env` (and sops attributes).
+2. Set **`IMMICH_DB_PASSWORD`** in `/etc/infra-core/site.env` (and sops attributes).
 
 New Core installs get the key from `core.sh`.
 
 ## 2. Deploy
 
-Wait for Materia to apply the component. (this site uses WSL NFS hostPath).
+Apply with `sudo bash bootstrap/apply.sh`. (this site uses WSL NFS hostPath).
 
 On mantle:
 
@@ -47,7 +47,7 @@ Immich has no compose OAuth (config file would freeze every admin setting). Afte
 
 Enable **PKCE** if the form has a checkbox (Authelia requires it).
 
-Discovery runs **inside the Immich container**, not in the browser. WSL Podman does not use Pi-hole, so the catalog sets `extra_hosts` for `auth.<DOMAIN>` → `NAS_LAN_IP` and `NODE_TLS_REJECT_UNAUTHORIZED=0` (Caddy `tls internal`). re-apply (Materia / systemd) **immich** after that catalog lands, then save OAuth again.
+Discovery runs **inside the Immich container**, not in the browser. WSL Podman does not use Pi-hole, so the catalog sets `extra_hosts` for `auth.<DOMAIN>` → `NAS_LAN_IP` and `NODE_TLS_REJECT_UNAUTHORIZED=0` (Caddy `tls internal`). re-apply (apply.sh / systemd) **immich** after that catalog lands, then save OAuth again.
 
 The Immich image has no `wget`. From surface this must print `200` and JSON (not `ENOTFOUND` / timeout):
 
@@ -82,13 +82,13 @@ podman rm immich immich-ml immich-db immich-redis
 podman volume rm immich-postgres
 ```
 
-Do **not** delete `immich-photos` / `immich-users` (NFS) or files under `shared/photos` and `users/`. re-apply (Materia / systemd) **immich**.
+Do **not** delete `immich-photos` / `immich-users` (NFS) or files under `shared/photos` and `users/`. re-apply (apply.sh / systemd) **immich**.
 
 ## If it fails
 
 | Symptom | What to do |
 |---|---|
-| `password authentication failed` | Secret does not match the volume. Set `IMMICH_DB_PASSWORD` in `/etc/materia/site.env`, wipe `immich-postgres`, re-apply. |
+| `password authentication failed` | Secret does not match the volume. Set `IMMICH_DB_PASSWORD` in `/etc/infra-core/site.env`, wipe `immich-postgres`, re-apply. |
 | `immich-db` never healthy | Stack env missing `IMMICH_DB_PASSWORD`. Add the secret, re-apply. |
 | Empty timeline | External Library paths wrong or scan not run. Confirm `/mnt/photos` and `/mnt/users/<user>/photos` inside the `immich` container. |
 | `immich-ml` won't start / no CUDA | WSL Podman → Resources → GPU. Current NVIDIA Windows driver. `podman exec immich-ml nvidia-smi` |

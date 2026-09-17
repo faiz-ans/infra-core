@@ -15,7 +15,7 @@ if [[ ${EUID:-0} -ne 0 ]]; then
   exit 1
 fi
 
-DATA_ROOT="${DATA_ROOT:-/srv/dev-disk-by-uuid-d6e267fd-109f-4971-bfb1-26b3d99e0d47}"
+DATA_ROOT="${DATA_ROOT:-}"
 DATA_ROOT="${DATA_ROOT%/}"
 HTPC_IP="${HTPC_IP:-}"
 OMV_NEW_UUID="fa4b1c66-ef79-11e5-87a0-0002b3a176b4"
@@ -295,7 +295,7 @@ ls /export/shared/media /export/shared/photos /export/users 2>&1 | head -30 || t
 echo
 echo "NFS_EXPORT=/shared"
 echo "NFS_USERS=/users"
-echo "Set those and NAS_LAN_IP in attributes / /etc/materia/site.env. SMB is unchanged."
+echo "Set those and NAS_LAN_IP in /etc/infra-core/site.env. SMB is unchanged."
 echo "mantle smoke test: bootstrap/omv/README.md §4 (host NFS mount)."
 echo "Remove any NFS export of a disk-root share (old name: data)."
 echo "showmount -e \$(hostname -I | awk '{print \$1}')"

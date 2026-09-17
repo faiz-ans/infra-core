@@ -26,17 +26,15 @@ SHUTDOWNTIMER="${SHUTDOWNTIMER:-30}"
 # CyberPower HID often reports battery.charge.low=0, which never trips LB.
 CHARGE_LOW="${CHARGE_LOW:-30}"
 NUT_REMOTE_USER="${NUT_REMOTE_USER:-peanut}"
-ANSWERS="${ANSWERS:-/etc/materia/bootstrap-answers.env}"
-KOMODO_CORE_CONFIG="${KOMODO_CORE_CONFIG:-/etc/materia/site.env}"
+ANSWERS="${ANSWERS:-/etc/infra-core/bootstrap-answers.env}"
+SITE_ENV="${SITE_ENV:-/etc/infra-core/site.env}"
 
 # PeaNUT talks to upsd via host.containers.internal; that is not localhost.
 # Remote monitoring makes upsd LISTEN 0.0.0.0:3493. Password is attribute
 # NUT_REMOTE_PASSWORD (do not WAN-forward 3493).
-if [[ -z "${NUT_REMOTE_PASSWORD:-}" && -f "${KOMODO_CORE_CONFIG}" ]]; then
-  NUT_REMOTE_PASSWORD=$(awk -F '"' '/^NUT_REMOTE_PASSWORD/ {print $2; exit}' "${KOMODO_CORE_CONFIG}" || true)
-fi
-if [[ -z "${NUT_REMOTE_PASSWORD:-}" && -f /etc/komodo/core.config.toml ]]; then
-  NUT_REMOTE_PASSWORD=$(awk -F '"' '/^NUT_REMOTE_PASSWORD/ {print $2; exit}' /etc/komodo/core.config.toml || true)
+if [[ -z "${NUT_REMOTE_PASSWORD:-}" && -f "${SITE_ENV}" ]]; then
+  # shellcheck disable=SC1090
+  source "${SITE_ENV}"
 fi
 if [[ -z "${NUT_REMOTE_PASSWORD:-}" && -f "${ANSWERS}" ]]; then
   # shellcheck disable=SC1090
@@ -44,7 +42,7 @@ if [[ -z "${NUT_REMOTE_PASSWORD:-}" && -f "${ANSWERS}" ]]; then
 fi
 if [[ -z "${NUT_REMOTE_PASSWORD:-}" ]]; then
   NUT_REMOTE_PASSWORD=$(openssl rand -hex 16)
-  echo "Generated NUT_REMOTE_PASSWORD (not printed). Keep it via ${ANSWERS} / sync-komodo-secrets.sh."
+  echo "Generated NUT_REMOTE_PASSWORD (not printed). Keep it in ${ANSWERS}."
 fi
 mkdir -p "$(dirname "${ANSWERS}")"
 if [[ -f "${ANSWERS}" ]] && grep -qE '^NUT_REMOTE_PASSWORD=' "${ANSWERS}"; then
@@ -57,8 +55,12 @@ export NUT_REMOTE_PASSWORD NUT_REMOTE_USER
 # apt-get update
 # apt-get install -y openmediavault-nut usbutils
 export DEBIAN_FRONTEND=noninteractive
-apt-get update -qq
-apt-get install -y openmediavault-nut usbutils
+if dpkg -s openmediavault-nut >/dev/null 2>&1; then
+  echo "openmediavault-nut already installed; skipping apt."
+else
+  apt-get update -qq
+  apt-get install -y openmediavault-nut usbutils
+fi
 
 # Plugin RPC lands after engined reloads.
 # systemctl restart openmediavault-engined

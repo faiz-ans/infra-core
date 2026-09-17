@@ -1,0 +1,33 @@
+apiVersion: v1
+kind: Pod
+metadata:
+  name: openreader
+  labels:
+    app: openreader
+spec:
+  restartPolicy: Always
+  containers:
+  - name: openreader
+    image: ghcr.io/richardr1126/openreader:latest
+    imagePullPolicy: Always
+    env:
+    - name: TZ
+      value: "${TZ}"
+    - name: BASE_URL
+      value: "https://read.${DOMAIN}"
+    - name: AUTH_SECRET
+      value: "${OPENREADER_AUTH_SECRET}"
+    - name: AUTH_TRUSTED_ORIGINS
+      value: "https://read.${DOMAIN},https://openreader.${DOMAIN},https://reader.${DOMAIN}"
+    - name: ADMIN_EMAILS
+      value: "admin@${DOMAIN}"
+    ports:
+    - containerPort: 3003
+    volumeMounts:
+    - name: docstore
+      mountPath: /app/docstore
+
+  volumes:
+  - name: docstore
+    persistentVolumeClaim:
+      claimName: openreader-docstore

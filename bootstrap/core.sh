@@ -2,8 +2,8 @@
 # Core host Layer 0 bootstrap. Copy the bootstrap/ directory to the Core machine
 # and run as root:
 #   sudo bash core.sh
-# Order: apt → disk/OMV → site prompts → static LAN → purge Docker/Komodo
-#        → Podman + Cockpit + Materia → DATA_ROOT tree → NFS → ACLs.
+# Order: apt → disk/OMV → site prompts → static LAN → Podman + Cockpit
+#        → DATA_ROOT prep. Does not install Materia, lan-bind, NFS, or stacks.
 
 set -euo pipefail
 
@@ -12,23 +12,15 @@ if [[ ${EUID:-0} -ne 0 ]]; then
   exit 1
 fi
 
-MATERIA_DIR=/etc/materia
-KOMODO_DIR="${MATERIA_DIR}"
-ANSWERS="${MATERIA_DIR}/bootstrap-answers.env"
-STATE="${MATERIA_DIR}/bootstrap-state.env"
+INFRA_DIR=/etc/infra-core
+ANSWERS="${INFRA_DIR}/bootstrap-answers.env"
+STATE="${INFRA_DIR}/bootstrap-state.env"
+SITE_ENV="${INFRA_DIR}/site.env"
 SCRIPT_DIR=$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)
 REPO_BOOTSTRAP="${SCRIPT_DIR}"
 # If you copied only this script, set REPO_BOOTSTRAP to a clone of infra-core/bootstrap.
 
-mkdir -p "${MATERIA_DIR}/bootstrap"
-# mkdir -p /etc/materia/bootstrap
-# Migrate answers from a previous Komodo bootstrap if present.
-if [[ ! -f "${ANSWERS}" && -f /etc/komodo/bootstrap-answers.env ]]; then
-  cp /etc/komodo/bootstrap-answers.env "${ANSWERS}"
-fi
-if [[ ! -f "${STATE}" && -f /etc/komodo/bootstrap-state.env ]]; then
-  cp /etc/komodo/bootstrap-state.env "${STATE}"
-fi
+mkdir -p "${INFRA_DIR}"
 
 prompt() {
   local var="$1" message="$2" default="${3:-}"
@@ -60,7 +52,7 @@ quote_s() {
 }
 
 save_answers() {
-  komodo_save_answers
+  site_save_answers
 }
 
 # Topology-driven secrets (after prompt/rand/quote_s exist).
@@ -301,12 +293,10 @@ subprocess.check_call([tool, "update", "conf.webadmin", json.dumps(cfg)])
 print(json.dumps(cfg))
 PY
   # omv-salt deploy run nginx
-  omv-salt deploy run nginx
-
-  if command -v docker >/dev/null 2>&1 && docker inspect caddy >/dev/null 2>&1; then
-    # docker start caddy
-    docker start caddy >/dev/null 2>&1 || docker restart caddy >/dev/null 2>&1 || true
-  fi
+  systemctl restart monit 2>/dev/null || true
+  omv-salt deploy run nginx || {
+    echo "omv-salt nginx failed; workbench may stay on :80 until you retry after monit is up."
+  }
 
   echo "Host listeners after OMV move:"
   # ss -tlnp | grep -E ':80|:443|:81|:9120'
@@ -430,44 +420,26 @@ if [[ -f "${ANSWERS}" ]]; then
   fi
 fi
 
-echo "Collecting site secrets required by ${_komodo_topology} ..."
-# Prefill from an existing Core config so re-runs do not rotate secrets.
-if [[ -f "${KOMODO_DIR}/core.config.toml" ]]; then
-  while IFS= read -r line; do
-    if [[ "${line}" =~ ^([A-Z0-9_]+)[[:space:]]*=[[:space:]]*\"(.*)\"[[:space:]]*$ ]]; then
-      k="${BASH_REMATCH[1]}"
-      v="${BASH_REMATCH[2]}"
-      v="${v//\\\"/\"}"
-      v="${v//\\\\/\\}"
-      if [[ -z "${!k-}" ]]; then
-        printf -v "${k}" '%s' "${v}"
-      fi
-    fi
-  done < <(awk '/^\[secrets\]/{p=1;next} /^\[/{p=0} p && /=/{print}' "${KOMODO_DIR}/core.config.toml")
-fi
-komodo_ensure_site_vars
+echo "Collecting site secrets ..."
+site_ensure_site_vars
 save_answers
+site_write_site_env
 
 # Pin NAS_LAN_IP on the uplink. Router DHCP reservation is not enough
 # (USB 2.5G NIC can link without a lease). Same IP as the live session.
 # sudo NAS_LAN_IP=192.168.1.110 bash bootstrap/core/core-lan-static.sh
 bash "${SCRIPT_DIR}/core/core-lan-static.sh"
 
-# --- Purge Docker/Komodo, then Podman + Cockpit + Materia ---
-# sudo DATA_ROOT=... bash bootstrap/core/purge-docker-komodo.sh
-if [[ -x "${SCRIPT_DIR}/core/purge-docker-komodo.sh" ]] || [[ -f "${SCRIPT_DIR}/core/purge-docker-komodo.sh" ]]; then
-  DATA_ROOT="${DATA_ROOT:-}" bash "${SCRIPT_DIR}/core/purge-docker-komodo.sh" || true
-fi
-# sudo bash bootstrap/core/materia-install.sh
-bash "${SCRIPT_DIR}/core/materia-install.sh"
+# Podman + Cockpit (not Materia).
+bash "${SCRIPT_DIR}/core/podman-install.sh"
 
 # Host-network WireGuard NAT + IPv6 off (AAAA timeouts on dual-NIC boards).
+# Public DNS until Pi-hole exists.
 # sudo bash bootstrap/core/core-net.sh
-bash "${SCRIPT_DIR}/core/core-net.sh"
+CORE_DNS_MODE=public bash "${SCRIPT_DIR}/core/core-net.sh"
 
-# :53/:80/:443 REDIRECT to Pi-hole 15353 and Caddy 8080/8443 (all ifaces).
-# sudo bash bootstrap/core/core-lan-bind.sh
-bash "${SCRIPT_DIR}/core/core-lan-bind.sh"
+# Install lan-bind units disabled. Do not enable until Pi-hole and Caddy listen.
+bash "${SCRIPT_DIR}/core/core-lan-bind.sh" --install-only
 
 # PosixFS assimilate timer (SMB/NFS → OpenCloud). No-op until opencloud is up.
 # sudo bash bootstrap/opencloud/opencloud-posix-scan.sh
@@ -478,97 +450,18 @@ bash "${SCRIPT_DIR}/opencloud/opencloud-posix-scan.sh"
 bash "${SCRIPT_DIR}/core/core-fan.sh"
 
 # USB CyberPower ST625U: NUT monitor + low-battery shutdown.
-# sudo bash bootstrap/omv/omv-nut.sh
 if command -v omv-rpc >/dev/null 2>&1 && [[ -f "${REPO_BOOTSTRAP}/omv/omv-nut.sh" ]]; then
   bash "${REPO_BOOTSTRAP}/omv/omv-nut.sh"
 fi
 
-# --- DATA_ROOT tree ---
-# Core app state under system/<app>. Periphery /config is local on the HTPC.
-mkdir -p \
-  "${DATA_ROOT}/system/authelia" \
-  "${DATA_ROOT}/system/vaultwarden" \
-  "${DATA_ROOT}/system/pihole" \
-  "${DATA_ROOT}/system/wireguard" \
-  "${DATA_ROOT}/system/restic" \
-  "${DATA_ROOT}/system/opencloud/config" \
-  "${DATA_ROOT}/system/opencloud/data" \
-  "${DATA_ROOT}/system/opencloud/posix" \
-  "${DATA_ROOT}/system/opencloud/radicale" \
-  "${DATA_ROOT}/system/opencloud/radicale/collections" \
-  "${DATA_ROOT}/system/jotty/data" \
-  "${DATA_ROOT}/system/jotty/config" \
-  "${DATA_ROOT}/system/jotty/cache" \
-  "${DATA_ROOT}/system/linkding" \
-  "${DATA_ROOT}/system/rustdesk" \
-  "${DATA_ROOT}/system/bytestash" \
-  "${DATA_ROOT}/system/scrutiny/config" \
-  "${DATA_ROOT}/system/scrutiny/influxdb" \
-  "${DATA_ROOT}/system/uptime-kuma" \
-  "${DATA_ROOT}/system/caddymanager" \
-  "${DATA_ROOT}/system/peanut" \
-  "${DATA_ROOT}/shared/media" \
-  "${DATA_ROOT}/shared/downloads" \
-  "${DATA_ROOT}/shared/files" \
-  "${DATA_ROOT}/shared/photos" \
-  "${DATA_ROOT}/shared/cameras" \
-  "${DATA_ROOT}/users"
-# mkdir -p "${DATA_ROOT}/users/<user>/{files,photos}" as you add household users.
-# Bind-mounts must be files before first stack start. Podman creates a
-# directory when the host path is missing (breaks CA-file mounts).
-for _ca in caddy-root.crt ca-bundle.crt; do
-  _capath="${DATA_ROOT}/system/authelia/${_ca}"
-  if [[ -d "${_capath}" ]]; then
-    rm -rf "${_capath}"
-  fi
-  if [[ ! -e "${_capath}" ]]; then
-    : > "${_capath}"
-    chmod 644 "${_capath}"
-  fi
-done
-chown -R "${PUID}:${PGID}" "${DATA_ROOT}/system/opencloud"
-chown -R "${PUID}:${PGID}" "${DATA_ROOT}/system/jotty"
 
-# --- Authelia secrets (migrate from a previous Komodo core.config.toml if present) ---
-if [[ -f "${KOMODO_DIR}/core.config.toml" ]] && grep -q AUTHELIA_JWT_SECRET "${KOMODO_DIR}/core.config.toml"; then
-  : "${AUTHELIA_JWT_SECRET:=$(awk -F '"' '/AUTHELIA_JWT_SECRET/ {print $2; exit}' "${KOMODO_DIR}/core.config.toml")}"
-  : "${AUTHELIA_SESSION_SECRET:=$(awk -F '"' '/AUTHELIA_SESSION_SECRET/ {print $2; exit}' "${KOMODO_DIR}/core.config.toml")}"
-  : "${AUTHELIA_STORAGE_ENCRYPTION_KEY:=$(awk -F '"' '/AUTHELIA_STORAGE_ENCRYPTION_KEY/ {print $2; exit}' "${KOMODO_DIR}/core.config.toml")}"
-fi
-: "${AUTHELIA_JWT_SECRET:=$(rand)}"
-: "${AUTHELIA_SESSION_SECRET:=$(rand)}"
-: "${AUTHELIA_STORAGE_ENCRYPTION_KEY:=$(rand)}"
-# Short names used by older comments / OIDC seeding below
-AUTHELIA_JWT="${AUTHELIA_JWT_SECRET}"
-AUTHELIA_SESSION="${AUTHELIA_SESSION_SECRET}"
-AUTHELIA_STORAGE="${AUTHELIA_STORAGE_ENCRYPTION_KEY}"
-
-if [[ -z "${WG_UI_PASSWORD:-}" ]]; then
-  if [[ -f "${KOMODO_DIR}/core.config.toml" ]] && grep -q '^WG_UI_PASSWORD' "${KOMODO_DIR}/core.config.toml"; then
-    WG_UI_PASSWORD=$(awk -F '"' '/^WG_UI_PASSWORD/ {print $2; exit}' "${KOMODO_DIR}/core.config.toml")
-  else
-    WG_UI_PASSWORD=$(rand)
-    echo "WireGuard UI user wg-admin password (save now): ${WG_UI_PASSWORD}"
-  fi
-fi
-: "${AUTHELIA_OIDC_HMAC_SECRET:=${AUTHELIA_OIDC_HMAC:-}}"
-if [[ -z "${AUTHELIA_OIDC_HMAC_SECRET:-}" ]]; then
-  if [[ -f "${KOMODO_DIR}/core.config.toml" ]] && grep -q '^AUTHELIA_OIDC_HMAC_SECRET' "${KOMODO_DIR}/core.config.toml"; then
-    AUTHELIA_OIDC_HMAC_SECRET=$(awk -F '"' '/^AUTHELIA_OIDC_HMAC_SECRET/ {print $2; exit}' "${KOMODO_DIR}/core.config.toml")
-  else
-    AUTHELIA_OIDC_HMAC_SECRET=$(rand)
-  fi
-fi
-AUTHELIA_OIDC_HMAC="${AUTHELIA_OIDC_HMAC_SECRET}"
-if [[ -z "${OIDC_CLIENT_SECRET:-}" ]]; then
-  if [[ -f "${KOMODO_DIR}/core.config.toml" ]] && grep -q '^OIDC_CLIENT_SECRET' "${KOMODO_DIR}/core.config.toml"; then
-    OIDC_CLIENT_SECRET=$(awk -F '"' '/^OIDC_CLIENT_SECRET/ {print $2; exit}' "${KOMODO_DIR}/core.config.toml")
-  else
-    OIDC_CLIENT_SECRET=$(openssl rand -hex 32)
-  fi
+# --- Thin prep (system/ + empty users/ + OpenCloud dirs). Full shared layout is
+# data-root-layout.sh after OpenCloud publish. See bootstrap/first-run/opencloud.md. ---
+if [[ -f "${REPO_BOOTSTRAP}/data-root/data-root-prep.sh" ]]; then
+  DATA_ROOT="${DATA_ROOT}" bash "${REPO_BOOTSTRAP}/data-root/data-root-prep.sh"
 fi
 
-# OIDC JWKS + hashed client secret (Authelia reads these from DATA_ROOT).
+# OIDC JWKS + hashed client secret. Skip files that already exist (remount).
 authelia_dir="${DATA_ROOT}/system/authelia"
 mkdir -p "${authelia_dir}"
 if [[ ! -f "${authelia_dir}/oidc.pem" ]]; then
@@ -602,60 +495,16 @@ fi
 if [[ -d "${authelia_dir}/caddy-root.crt" ]]; then
   rm -rf "${authelia_dir}/caddy-root.crt"
 fi
-if podman ps -qf name=^caddy$ | grep -q .; then
-  podman exec caddy cat /data/caddy/pki/authorities/local/root.crt > "${authelia_dir}/caddy-root.crt"
-  chmod 644 "${authelia_dir}/caddy-root.crt"
-  if [[ -f /etc/ssl/certs/ca-certificates.crt ]]; then
-    cat /etc/ssl/certs/ca-certificates.crt "${authelia_dir}/caddy-root.crt" > "${authelia_dir}/ca-bundle.crt"
-  else
-    cp "${authelia_dir}/caddy-root.crt" "${authelia_dir}/ca-bundle.crt"
-  fi
-  chmod 644 "${authelia_dir}/ca-bundle.crt"
-fi
 
-# openssl rand -hex 24   (used above)
+site_write_site_env
+chmod 600 "${ANSWERS}" "${SITE_ENV}" 2>/dev/null || true
 
-install -d -m 0700 "${MATERIA_DIR}"
-cat > "${MATERIA_DIR}/site.env" <<EOF
-TZ=${TZ}
-DOMAIN=${DOMAIN}
-NAS_LAN_IP=${NAS_LAN_IP}
-SURFACE_UPSTREAM=${SURFACE_UPSTREAM:-${SURFACE_UPSTREAM:-}}
-DATA_ROOT=${DATA_ROOT}
-CORE_SERVER=core
-EOF
-chmod 600 "${MATERIA_DIR}/site.env"
-AUTHELIA_JWT_SECRET="${AUTHELIA_JWT}"
-AUTHELIA_SESSION_SECRET="${AUTHELIA_SESSION}"
-AUTHELIA_STORAGE_ENCRYPTION_KEY="${AUTHELIA_STORAGE}"
-AUTHELIA_OIDC_HMAC_SECRET="${AUTHELIA_OIDC_HMAC}"
-komodo_write_core_secrets
-chmod 600 "${ANSWERS}" "${MATERIA_DIR}/site.env" 2>/dev/null || true
-
-# --- NFS: shared/ and users/ only (mantle WSL). Do not export system/. ---
-if command -v omv-rpc >/dev/null 2>&1 && [[ -f "${REPO_BOOTSTRAP}/omv/omv-nfs.sh" ]]; then
-  echo "Exporting shared/ and users/ over NFS to ${SURFACE_UPSTREAM}."
-  # sudo HTPC_IP=<HTPC> DATA_ROOT=<DATA_ROOT> bash bootstrap/omv/omv-nfs.sh
-  HTPC_IP="${SURFACE_UPSTREAM}" DATA_ROOT="${DATA_ROOT}" bash "${REPO_BOOTSTRAP}/omv/omv-nfs.sh"
-else
-  echo "OMV NFS skipped (no omv-rpc). For mantle NFS mounts, follow bootstrap/omv/README.md."
-fi
-
-# --- Thin prep (system/ + empty users/ + OpenCloud dirs). Full shared layout is
-# data-root-layout.sh after OpenCloud publish (greenfield). See bootstrap/first-run/opencloud.md. ---
-if [[ -f "${REPO_BOOTSTRAP}/data-root/data-root-prep.sh" ]]; then
-  # sudo DATA_ROOT=<DATA_ROOT> bash bootstrap/data-root/data-root-prep.sh
-  DATA_ROOT="${DATA_ROOT}" bash "${REPO_BOOTSTRAP}/data-root/data-root-prep.sh"
-fi
-
-# --- Authelia users file (hash via official image) ---
-# podman run --rm docker.io/authelia/authelia:4 authelia crypto hash generate argon2 --password '...'
 users_file="${DATA_ROOT}/system/authelia/users.yml"
 if [[ -d "${users_file}" ]]; then
   echo "Replacing directory ${users_file} (a previous bootstrap created it when the file was missing)."
   rm -rf "${users_file}"
 fi
-if [[ ! -f "${users_file}" ]] || ! grep -q '^    password: '\''\$' "${users_file}"; then
+if [[ ! -f "${users_file}" ]]; then
   FAIZ_HASH=$(podman run --rm docker.io/authelia/authelia:4 \
     authelia crypto hash generate argon2 --password "${AUTHELIA_FAIZ_PASSWORD}" \
     | awk '/^Digest:/ {print $2}')
@@ -687,37 +536,25 @@ users:
       - users
 EOF
   chmod 644 "${users_file}"
+else
+  echo "Keeping existing ${users_file}"
 fi
-
-echo "WireGuard UI is user wg-admin; password is attribute WG_UI_PASSWORD."
-echo "After Materia applies wg-easy + wireguard-data (Caddy vpn.${DOMAIN} → 127.0.0.1:51821):"
-echo "  Router: UDP 51820 only → ${NAS_LAN_IP} (not 51821, not 80/443)."
-echo "  WG_HOST must resolve on the public internet to this site's WAN IPv4 (Dynamic DNS if the WAN moves)."
-echo "  Do not set DOMAIN to a public zone that would make Pi-hole answer the WG_HOST name as the LAN IP."
-echo "  Redeploy wireguard once after first start (or set Interface MTU 1280 in the UI) before adding phones."
-echo "  Client DNS is the Core LAN IP (INIT_DNS). Test HTTPS on cellular after handshake."
 
 echo
 echo "DATA_ROOT=${DATA_ROOT}"
+echo "site.env: ${SITE_ENV}"
 echo "Cockpit: https://${NAS_LAN_IP}:9090 (or https://box.${DOMAIN} after Caddy)."
-echo "Materia timers: system (nft/wg-quick/Scrutiny) and user as ${PILOT_USER:-pilot} (rootless Quadlets)."
-echo "Encrypt attributes on-box with /etc/materia/age.pubkey; clone this repo; materia update."
-echo "restic / restic-rest: bootstrap/first-run/restic.md (BACKUP_DRIVE is the surface USB, not the IronWolf)."
 echo
-echo "This run purges Docker/Komodo (if present) and leaves Podman + Materia timers."
-echo "Then idle mantle: bootstrap/mantle/README.md (Podman, host NFS, user Materia as pilot)."
+echo "Layer 0 done. Materia was not installed."
+echo "Check DOMAIN/NAS_LAN_IP/SURFACE_UPSTREAM/WG_HOST in ${SITE_ENV} before apply."
 echo
-echo "Target layout:"
-echo "  ${DATA_ROOT}/system/<app>  (not system/core or system/mantle)"
-echo "  ${DATA_ROOT}/shared/{media,downloads,files,photos,cameras}"
-echo "  ${DATA_ROOT}/users/<user>/{files,photos}"
-echo "  NFS exports /shared and /users to SURFACE_UPSTREAM only."
-echo "  mantle /config is a local Podman volume; libraries via WSL NFS hostPath."
-echo "  Cage fan: sudo bash bootstrap/core/core-fan.sh"
-echo "  UPS: sudo bash bootstrap/omv/omv-nut.sh"
-echo "  After reboot: core-lan-bind REDIRECTs :53/:80/:443 to 15353/8080/8443 on all ifaces."
-echo "  Core LAN IPv4 is static ${NAS_LAN_IP}. surface Ethernet is static ${SURFACE_UPSTREAM}."
-echo "  Router DHCP DNS: ${NAS_LAN_IP} first, then ${SURFACE_UPSTREAM}. No public resolver as a third."
-echo "  Pi-hole names: pihole (core) and pihole-mantle."
+echo "Next:"
+echo "  sudo bash bootstrap/apply.sh --role core-bootstrap"
+echo "  Wait until :15353 :8080 :8443 listen, then:"
+echo "    sudo bash bootstrap/core/core-lan-bind.sh --enable"
+echo "  OpenCloud spaces (or verify existing xattrs) → data-root-layout.sh → OMV NFS."
+echo "  Then add core-full in MANIFEST.toml and: sudo bash bootstrap/apply.sh --role core-full"
+echo "  Optional GitOps poller (this lab only): sudo bash bootstrap/core/materia-enable.sh"
+echo "  Runbook: bootstrap/SITE-DEPLOY.md"
 echo
 echo "Done."

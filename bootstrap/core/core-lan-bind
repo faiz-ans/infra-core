@@ -12,18 +12,13 @@ set -u
 DNS_PROXY_PORT=15353
 HTTP_PORT=8080
 HTTPS_PORT=8443
-ENV_FILE=/etc/materia/site.env
-# Legacy path while Core is still on Docker/Komodo:
-LEGACY_ENV=/etc/komodo/bootstrap/compose.env
+ENV_FILE=/etc/infra-core/site.env
 
 lan_ip() {
   local ip=""
-  for f in "${ENV_FILE}" "${LEGACY_ENV}"; do
-    if [[ -f "${f}" ]]; then
-      ip=$(awk -F= '/^NAS_LAN_IP=/{gsub(/["'\'' ]/, "", $2); print $2}' "${f}" | tail -1)
-      [[ -n "${ip}" ]] && break
-    fi
-  done
+  if [[ -f "${ENV_FILE}" ]]; then
+    ip=$(awk -F= '/^NAS_LAN_IP=/{gsub(/["'\'' ]/, "", $2); print $2}' "${ENV_FILE}" | tail -1)
+  fi
   if [[ -z "${ip}" ]]; then
     ip=$(ip -4 route get 1.1.1.1 2>/dev/null | awk '{for (i=1;i<=NF;i++) if ($i=="src") {print $(i+1); exit}}')
   fi
@@ -56,17 +51,16 @@ del_nat() {
 
 add_redirects() {
   local proto
+  # PREROUTING only (LAN + WG). Do not REDIRECT OUTPUT — that loops host
+  # FallbackDNS (1.1.1.1:53) back to an empty Pi-hole and kills apt/git.
   for proto in udp tcp; do
     iptables -t nat -A PREROUTING -p "${proto}" --dport 53 -j REDIRECT --to-ports "${DNS_PROXY_PORT}"
-    iptables -t nat -A OUTPUT -p "${proto}" --dport 53 -j REDIRECT --to-ports "${DNS_PROXY_PORT}"
   done
   iptables -t nat -A PREROUTING -p tcp --dport 80 -j REDIRECT --to-ports "${HTTP_PORT}"
-  iptables -t nat -A OUTPUT -p tcp --dport 80 -j REDIRECT --to-ports "${HTTP_PORT}"
   for proto in tcp udp; do
     iptables -t nat -A PREROUTING -p "${proto}" --dport 443 -j REDIRECT --to-ports "${HTTPS_PORT}"
-    iptables -t nat -A OUTPUT -p "${proto}" --dport 443 -j REDIRECT --to-ports "${HTTPS_PORT}"
   done
-  echo "core-lan-bind: REDIRECT :53->${DNS_PROXY_PORT} :80->${HTTP_PORT} :443->${HTTPS_PORT} (all ifaces, host netns)"
+  echo "core-lan-bind: PREROUTING REDIRECT :53->${DNS_PROXY_PORT} :80->${HTTP_PORT} :443->${HTTPS_PORT}"
 }
 
 fix_wg_nat() {

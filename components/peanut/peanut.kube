@@ -1,0 +1,13 @@
+[Unit]
+Description=peanut
+
+[Kube]
+Yaml=pod.yaml
+Network=site.network
+PublishPort=127.0.0.1:8092:8080
+
+[Service]
+Restart=on-failure
+
+[Install]
+WantedBy=default.target
