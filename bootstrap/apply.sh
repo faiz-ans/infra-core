@@ -56,7 +56,7 @@ source "${SITE_ENV}"
 set +a
 # Homepage v1+ refuses to serve if this is empty (Host validation).
 if [[ -z "${HOMEPAGE_ALLOWED_HOSTS:-}" && -n "${DOMAIN:-}" ]]; then
-  HOMEPAGE_ALLOWED_HOSTS="dash.${DOMAIN},homepage.${DOMAIN},localhost:3000,127.0.0.1:3000"
+  HOMEPAGE_ALLOWED_HOSTS="dash.${DOMAIN},dash.${DOMAIN}:443,dash.${DOMAIN}:8443,homepage.${DOMAIN},localhost:3000,127.0.0.1:3000"
   export HOMEPAGE_ALLOWED_HOSTS
 fi
 

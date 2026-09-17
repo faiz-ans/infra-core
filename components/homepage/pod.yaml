@@ -15,7 +15,7 @@ spec:
     - name: NODE_OPTIONS
       value: "--dns-result-order=ipv4first"
     - name: HOMEPAGE_ALLOWED_HOSTS
-      value: "dash.${DOMAIN},homepage.${DOMAIN},localhost:3000,127.0.0.1:3000"
+      value: "dash.${DOMAIN},dash.${DOMAIN}:443,dash.${DOMAIN}:8443,homepage.${DOMAIN},localhost:3000,127.0.0.1:3000"
     - name: HOMEPAGE_VAR_DOMAIN
       value: "${DOMAIN}"
     - name: HOMEPAGE_VAR_SURFACE_UPSTREAM
