@@ -148,3 +148,7 @@ echo "Layout done. Reconnect household SMB sessions. HTPC apps use NFS; remount/
 if [[ "${HAVE_ADMIN}" -eq 1 && ${#PRESENT_HOUSEHOLD[@]} -gt 0 ]]; then
   echo "Admin (${ADMIN}) uses:  sudo ls ${DATA_ROOT}/users/${PRESENT_HOUSEHOLD[0]}"
 fi
+# core.sh already enabled the timer; catch up now that spaces/layout exist.
+if systemctl list-unit-files opencloud-posix-scan.service >/dev/null 2>&1; then
+  systemctl start opencloud-posix-scan.service 2>/dev/null || true
+fi

@@ -41,7 +41,7 @@ sudo mkdir -p /etc/infra-core
 sudo bash bootstrap/core.sh
 ```
 
-Confirm `/etc/infra-core/site.env` (`DOMAIN`, `NAS_LAN_IP`, `SURFACE_UPSTREAM`, `WG_HOST`, `DATA_ROOT`). Materia is not installed.
+Confirm `/etc/infra-core/site.env` (`DOMAIN`, `NAS_LAN_IP`, `SURFACE_UPSTREAM`, `WG_HOST`, `DATA_ROOT`). Materia is not installed. Layer 0 chowns `system/authelia` to `PUID` so rootless Authelia can read `oidc.pem`.
 
 ## 5. Phase A
 
@@ -65,9 +65,27 @@ Router DHCP DNS: Core first, surface second. No public third.
 
 ## 7. OpenCloud, layout, NFS
 
-**Empty disk:** Authelia login → create Space `shared` → publish → photos spaces → `data-root-layout.sh` → `bootstrap/omv/omv-nfs.sh`.
+Layer 0 already installed `attr` (`getfattr`) and enabled `opencloud-posix-scan.timer` (SMB/NFS writes into OpenCloud). Layout starts a catch-up scan. Do not install packages or the scan script by hand.
 
-**Existing data disk:** if `user.oc.space.*` xattrs exist, do **not** create spaces. Verify, layout, NFS. Park/adopt only if `system/opencloud/{config,data}` is corrupt.
+Scripts below read `DATA_ROOT` and `SURFACE_UPSTREAM` from `/etc/infra-core/site.env`.
+
+**Existing data disk (this site):** do **not** create spaces if xattrs are present.
+
+```text
+sudo bash -c 'set -a; source /etc/infra-core/site.env; set +a
+getfattr -n user.oc.space.id --only-values "$DATA_ROOT/users/faiz/files"
+getfattr -n user.oc.space.id --only-values "$DATA_ROOT/users/diana/files"
+getfattr -n user.oc.space.id --only-values "$DATA_ROOT/system/opencloud/projects/shared"'
+sudo bash bootstrap/data-root/data-root-layout.sh
+sudo bash bootstrap/omv/omv-nfs.sh
+sudo bash bootstrap/opencloud/opencloud-check.sh
+```
+
+UUIDs from `getfattr` mean the remounted spaces are intact. Park/adopt only if `system/opencloud/{config,data}` is corrupt (`bootstrap/first-run/opencloud.md`).
+
+**Empty disk:** Authelia login at `https://cloud.<DOMAIN>` → create Space `shared` → `sudo bash bootstrap/opencloud/opencloud-adopt-shared.sh publish` → photos spaces `photos-faiz` / `photos-diana` (only that user Can manage) → layout → NFS → check (same three scripts as above). Details: `bootstrap/first-run/opencloud.md`.
+
+`ls /export/shared/media` on Core must list content. Mantle NFS smoke: `bootstrap/omv/README.md` §4.
 
 ## 8. Phase B
 

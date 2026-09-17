@@ -2,6 +2,16 @@
 # New sites: set these from bootstrap step 0 (or export before running prep/layout).
 # Sourced by data-root-prep.sh and data-root-layout.sh — do not run alone.
 
+if [[ -z "${DATA_ROOT:-}" && -f /etc/infra-core/site.env ]]; then
+  set -a
+  # shellcheck disable=SC1091
+  source /etc/infra-core/site.env
+  set +a
+fi
+if ! command -v getfattr >/dev/null 2>&1; then
+  apt-get install -y attr
+fi
+
 DATA_ROOT="${DATA_ROOT:-}"
 PUID="${PUID:-1000}"
 PGID="${PGID:-1000}"

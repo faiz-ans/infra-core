@@ -186,6 +186,29 @@ for c in "${COMPONENTS[@]}"; do
   install_component "${c}"
 done
 
+# Rootless keep-id units must own their DATA_ROOT binds (Authelia JWKS,
+# OpenCloud posix/config). Remounted Docker trees are root-owned.
+if [[ -n "${DATA_ROOT:-}" ]]; then
+  for _c in "${COMPONENTS[@]}"; do
+    case "${_c}" in
+      authelia)
+        if [[ -d "${DATA_ROOT}/system/authelia" ]]; then
+          chown -R "${PUID:-1000}:${PGID:-1000}" "${DATA_ROOT}/system/authelia"
+        fi
+        ;;
+      opencloud)
+        chown "${PUID:-1000}:${PGID:-1000}" "${DATA_ROOT}/system/opencloud" \
+          "${DATA_ROOT}/system/opencloud/projects" 2>/dev/null || true
+        chown -R "${PUID:-1000}:${PGID:-1000}" \
+          "${DATA_ROOT}/system/opencloud/config" \
+          "${DATA_ROOT}/system/opencloud/data" \
+          "${DATA_ROOT}/system/opencloud/posix" \
+          "${DATA_ROOT}/system/opencloud/radicale" 2>/dev/null || true
+        ;;
+    esac
+  done
+fi
+
 systemctl daemon-reload
 if systemctl --machine="${PILOT}@" --user daemon-reload; then
   :

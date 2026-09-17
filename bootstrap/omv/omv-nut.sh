@@ -29,7 +29,7 @@ NUT_REMOTE_USER="${NUT_REMOTE_USER:-peanut}"
 ANSWERS="${ANSWERS:-/etc/infra-core/bootstrap-answers.env}"
 SITE_ENV="${SITE_ENV:-/etc/infra-core/site.env}"
 
-# PeaNUT talks to upsd via host.containers.internal; that is not localhost.
+# PeaNUT talks to upsd at NAS_LAN_IP:3493 (site-network Quadlet). That is not localhost.
 # Remote monitoring makes upsd LISTEN 0.0.0.0:3493. Password is attribute
 # NUT_REMOTE_PASSWORD (do not WAN-forward 3493).
 if [[ -z "${NUT_REMOTE_PASSWORD:-}" && -f "${SITE_ENV}" ]]; then

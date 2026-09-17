@@ -51,16 +51,28 @@ spec:
       value: "https://auth.${DOMAIN}"
     - name: WEB_OIDC_CLIENT_ID
       value: opencloud
+    - name: WEB_OIDC_SCOPE
+      value: "openid groups profile email"
     - name: COLLABORA_DOMAIN
       value: "office.${DOMAIN}"
+    - name: COLLABORATION_APP_ADDR
+      value: "https://office.${DOMAIN}"
+    - name: COLLABORATION_WOPI_SRC
+      value: "https://cloud.${DOMAIN}"
+    - name: COLLABORATION_APP_PROOF_DISABLE
+      value: "true"
     - name: PROXY_CSP_CONFIG_FILE_LOCATION
       value: /etc/opencloud/csp.yaml
+    - name: PROXY_ENABLE_BASIC_AUTH
+      value: "true"
     - name: OC_ADD_RUN_SERVICES
       value: collaboration
     - name: STORAGE_USERS_DRIVER
       value: posix
     - name: STORAGE_USERS_POSIX_ROOT
       value: /posix
+    - name: STORAGE_USERS_POSIX_WATCH_FS
+      value: "true"
     - name: STORAGE_USERS_POSIX_PERSONAL_SPACE_PATH_TEMPLATE
       value: "users/{{.User.Username}}/files"
     - name: STORAGE_USERS_POSIX_GENERAL_SPACE_PATH_TEMPLATE

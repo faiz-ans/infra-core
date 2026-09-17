@@ -7,6 +7,16 @@
 # Prep alone (data-root-prep.sh) is not enough for sticky/layout checks.
 set -euo pipefail
 
+if [[ -z "${DATA_ROOT:-}" && -f /etc/infra-core/site.env ]]; then
+  set -a
+  # shellcheck disable=SC1091
+  source /etc/infra-core/site.env
+  set +a
+fi
+if ! command -v getfattr >/dev/null 2>&1; then
+  apt-get install -y attr
+fi
+
 DATA_ROOT="${DATA_ROOT:-}"
 PUID="${PUID:-1000}"
 PGID="${PGID:-1000}"

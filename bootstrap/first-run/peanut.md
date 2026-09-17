@@ -15,7 +15,7 @@ NUT is already running. Enable remote monitoring with the site password:
 sudo bash bootstrap/omv/omv-nut.sh
 ```
 
-`omv-nut.sh` reads `NUT_REMOTE_PASSWORD` from `/etc/infra-core/site.env` (or generates one into answers). `upsc ups@127.0.0.1` still works. From Podman, NUT is `host.containers.internal:3493`.
+`omv-nut.sh` reads `NUT_REMOTE_PASSWORD` from `/etc/infra-core/site.env` (or generates one into answers). `upsc ups@127.0.0.1` still works. PeaNUT on the `site` network talks to `upsd` at **`${NAS_LAN_IP}:3493`** (not `host.containers.internal` — that name is not on a netavark bridge and made the Homepage widget wait on DNS).
 
 ```text
 sudo mkdir -p "${DATA_ROOT}/system/peanut"
@@ -40,7 +40,7 @@ Open **`https://ups.<DOMAIN>`**. Homepage UPS tile should show charge, load, and
 
 | Symptom | What to do |
 |---|---|
-| Widget API error / empty | re-apply (apply.sh / systemd) **homepage**. `podman exec homepage wget -S -O- --timeout=5 http://peanut:8080` |
+| Widget API error / empty / slow | re-apply (apply.sh / systemd) **peanut** and **homepage**. `NUT_HOST` must be `${NAS_LAN_IP}`. `podman exec homepage wget -S -O- --timeout=5 http://peanut:8080` |
 | `ups.<DOMAIN>` 403 | See **403 diagnosis** below. re-apply (apply.sh / systemd) **authelia** and **caddy** (not just Restart). `ups.` must appear in the household `group:users` rule in the live Authelia config |
 | `ups.<DOMAIN>` does not load | re-apply (apply.sh / systemd) **caddy**. PeaNUT Up on `edge`. `podman exec caddy wget -S -O- --timeout=5 http://peanut:8080/api/ping` |
 | PeaNUT “no devices” / NUT timeout | Remote monitoring off, or password mismatch. Re-run `omv-nut.sh` after sync so OMV `remoteuser=peanut` matches `NUT_REMOTE_PASSWORD`. `grep LISTEN /etc/nut/upsd.conf` should not be localhost-only |

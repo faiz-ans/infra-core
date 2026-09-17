@@ -63,13 +63,7 @@ sudo DATA_ROOT=$DATA bash bootstrap/data-root/data-root-layout.sh
 
 Layout creates `shared/media`, household `shared/photos`, `users/<name>/photos` ACLs/sticky. Then OMV SMB/NFS (`bootstrap/omv/README.md`) for `shared` and `users`.
 
-Host timer assimilates SMB writes OpenCloud’s inotify miss (`opencloud-posix-scan.timer`). It scans **`users/<u>/files` and `/posix/projects` only** (not `/posix/users`, which walks home parents and the photos binds).
-
-```text
-sudo bash bootstrap/opencloud/opencloud-posix-scan.sh
-sudo bash bootstrap/core/core-net.sh
-sudo systemctl start opencloud-posix-scan.service
-```
+Host timer assimilates SMB writes OpenCloud’s inotify miss (`opencloud-posix-scan.timer`). `core.sh` enables it (Layer 0). `data-root-layout.sh` starts a catch-up oneshot. It scans **`users/<u>/files` and `/posix/projects` only** (not `/posix/users`). Re-run `bootstrap/opencloud/opencloud-posix-scan.sh` only if `systemctl is-enabled opencloud-posix-scan.timer` is not enabled.
 
 ### 5. Phase B stacks
 
@@ -131,7 +125,7 @@ sudo DATA_ROOT=$DATA bash bootstrap/data-root/data-root-layout.sh
 | Symptom | What to do |
 |---|---|
 | `cloud.<DOMAIN>` dead while `opencloud` Up | re-apply (apply.sh / systemd) **caddy** |
-| Permission / xattr on first start | Re-run **prep**; `chown` OpenCloud dirs to PUID |
+| Permission / xattr on first start | Rootless OpenCloud uses `UserNS=keep-id`. `apply.sh` / prep chown config/data/posix/radicale to PUID. Do not recreate spaces if `user.oc.space.*` exists. |
 | Login HTTP 500 | Wipe **both** `system/opencloud/config` and `…/data` (not posix/users/shared/radicale) |
 | `files` has no space id after login | Personal already exists on `users/<user>` (template is only used at CreateStorageSpace). `opencloud-adopt-homes.sh relocate`, then restore. Do not drop-wrong-login again. |
 | `shared/files` empty in UI but SMB has docs | Bind missing — `adopt-shared.sh publish` (inode check), not findmnt alone |

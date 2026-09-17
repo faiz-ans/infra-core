@@ -115,6 +115,7 @@ Homepage (`dash.` / `homepage.`) has no Authelia gate. Widgets scrape internal U
 
 | Symptom | What to do |
 |---|---|
+| Authelia Restarting / `oidc.pem: permission denied` / empty config (jwt_secret, cookies, storage all “missing”) | Rootless Authelia cannot read root-owned `600` JWKS. `core.sh` / `apply.sh` chown `${DATA_ROOT}/system/authelia` to `PUID` and the Quadlet uses `UserNS=keep-id`. Do not chmod the key world-readable. Then re-apply **authelia**. |
 | Authelia Restarting / template error / JWKS | `${DATA_ROOT}/system/authelia/oidc.pem` must be a PEM private key. Generate with `podman run --rm -v "${DATA_ROOT}/system/authelia:/out" authelia/authelia:4 authelia crypto pair rsa generate --directory /out` and copy `private.pem` to `oidc.pem`. Confirm `client_secret_digest` exists. Then re-apply **authelia**. |
 | Authelia: client_secret | `${DATA_ROOT}/system/authelia/client_secret_digest` must be a pbkdf2 digest, not the plaintext. |
 | `pdf.<DOMAIN>` / `metrics.<DOMAIN>` open with no Authelia login | The live Caddyfile is stale. Re-apply **caddy**, then open `https://pdf.<DOMAIN>` / `https://metrics.<DOMAIN>` (not a host port). Homepage itself is ungated on purpose. |

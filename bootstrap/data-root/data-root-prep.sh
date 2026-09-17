@@ -112,6 +112,8 @@ for _ca in caddy-root.crt ca-bundle.crt; do
   fi
   chown "${PUID}:${PGID}" "${_capath}"
 done
+# Rootless Authelia (keep-id) must read oidc.pem / users.yml (core.sh writes them 600 root).
+chown -R "${PUID}:${PGID}" "${DATA_ROOT}/system/authelia"
 
 setfacl -b "${DATA_ROOT}/users" || true
 chown root:"${PGID}" "${DATA_ROOT}/users"

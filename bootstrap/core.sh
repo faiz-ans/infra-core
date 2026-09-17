@@ -368,6 +368,8 @@ if ! apt-get update; then
   apt-get update
 fi
 apt-get upgrade -y
+# OpenCloud space verify (getfattr) and adopt/check scripts. Always, including remount.
+apt-get install -y attr
 
 USE_EXTERNAL_DISK=""
 DATA_ROOT=""
@@ -479,6 +481,7 @@ if [[ ! -f "${authelia_dir}/oidc.pem" ]]; then
   fi
   rm -rf "${oidc_tmp}"
   chmod 600 "${authelia_dir}/oidc.pem"
+  chown "${PUID:-1000}:${PGID:-1000}" "${authelia_dir}/oidc.pem"
 fi
 if [[ ! -f "${authelia_dir}/client_secret_digest" ]]; then
   OIDC_DIGEST=$(podman run --rm docker.io/authelia/authelia:4 \
@@ -491,6 +494,7 @@ if [[ ! -f "${authelia_dir}/client_secret_digest" ]]; then
   printf '%s' "${OIDC_CLIENT_SECRET}" > "${authelia_dir}/client_secret"
   printf '%s' "${OIDC_DIGEST}" > "${authelia_dir}/client_secret_digest"
   chmod 600 "${authelia_dir}/client_secret" "${authelia_dir}/client_secret_digest"
+  chown "${PUID:-1000}:${PGID:-1000}" "${authelia_dir}/client_secret" "${authelia_dir}/client_secret_digest"
 fi
 if [[ -d "${authelia_dir}/caddy-root.crt" ]]; then
   rm -rf "${authelia_dir}/caddy-root.crt"
@@ -539,6 +543,7 @@ EOF
 else
   echo "Keeping existing ${users_file}"
 fi
+chown -R "${PUID:-1000}:${PGID:-1000}" "${authelia_dir}"
 
 echo
 echo "DATA_ROOT=${DATA_ROOT}"
@@ -550,11 +555,9 @@ echo "Check DOMAIN/NAS_LAN_IP/SURFACE_UPSTREAM/WG_HOST in ${SITE_ENV} before app
 echo
 echo "Next:"
 echo "  sudo bash bootstrap/apply.sh --role core-bootstrap"
-echo "  Wait until :15353 :8080 :8443 listen, then:"
+echo "  Wait until :15353 :8080 :8443 :9091 listen, then:"
 echo "    sudo bash bootstrap/core/core-lan-bind.sh --enable"
-echo "  OpenCloud spaces (or verify existing xattrs) → data-root-layout.sh → OMV NFS."
-echo "  Then add core-full in MANIFEST.toml and: sudo bash bootstrap/apply.sh --role core-full"
-echo "  Optional GitOps poller (this lab only): sudo bash bootstrap/core/materia-enable.sh"
+echo "  Then SITE-DEPLOY.md §7 (OpenCloud xattrs → layout → NFS) through §10."
 echo "  Runbook: bootstrap/SITE-DEPLOY.md"
 echo
 echo "Done."

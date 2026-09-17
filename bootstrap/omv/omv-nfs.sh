@@ -5,9 +5,9 @@
 #   - empty /export/shared bind after DATA_ROOT / mntent drift (IronWolf migrate)
 #   - missing shared/{media,photos,...} dirs
 #
-# Run on Core as root (after DATA_ROOT exists):
-#   sudo HTPC_IP=192.168.1.111 bash bootstrap/omv/omv-nfs.sh
-#   sudo HTPC_IP=192.168.1.111 DATA_ROOT=/srv/dev-disk-by-uuid-... bash bootstrap/omv/omv-nfs.sh
+# Run on Core as root (after DATA_ROOT exists). Reads DATA_ROOT and
+# SURFACE_UPSTREAM from /etc/infra-core/site.env when unset:
+#   sudo bash bootstrap/omv/omv-nfs.sh
 set -euo pipefail
 
 if [[ ${EUID:-0} -ne 0 ]]; then
@@ -15,14 +15,20 @@ if [[ ${EUID:-0} -ne 0 ]]; then
   exit 1
 fi
 
+if [[ -f /etc/infra-core/site.env ]]; then
+  set -a
+  # shellcheck disable=SC1091
+  source /etc/infra-core/site.env
+  set +a
+fi
 DATA_ROOT="${DATA_ROOT:-}"
 DATA_ROOT="${DATA_ROOT%/}"
-HTPC_IP="${HTPC_IP:-}"
+HTPC_IP="${HTPC_IP:-${SURFACE_UPSTREAM:-}}"
 OMV_NEW_UUID="fa4b1c66-ef79-11e5-87a0-0002b3a176b4"
 EXTRA_OPTIONS="${EXTRA_OPTIONS:-insecure,no_root_squash,subtree_check}"
 
 if [[ -z "${HTPC_IP}" ]]; then
-  echo "Set HTPC_IP to the HTPC LAN address (the NFS client). Do not use a whole /24 here."
+  echo "Set HTPC_IP or SURFACE_UPSTREAM in /etc/infra-core/site.env (NFS client). Do not use a whole /24."
   exit 1
 fi
 if [[ "${HTPC_IP}" == */* ]]; then
