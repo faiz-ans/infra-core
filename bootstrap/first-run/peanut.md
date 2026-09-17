@@ -1,6 +1,6 @@
 # PeaNUT first-run
 
-PeaNUT is the HTTP front for host NUT (CyberPower ST625U). Homepage’s UPS tile scrapes `http://peanut:8080` on `edge`. Browser: `https://ups.<DOMAIN>` (alias `peanut.`). Authelia forward-auth is on `ups.` and `peanut.` (any logged-in Authelia user). Homepage still scrapes internally (not through Caddy).
+PeaNUT is the HTTP front for host NUT (CyberPower ST625U). Host netns reaches `upsd` at `127.0.0.1:3493`; Caddy proxies `127.0.0.1:8092`. Browser: `https://ups.<DOMAIN>`. Authelia forward-auth is on `ups.` and `peanut.`. Homepage is on `site` and cannot open host ports (connection refused). This Podman rejects `slirp4netns` (`invalid network mode`).
 
 PeaNUT’s own login is off (`AUTH_DISABLED`). NUT remote user is **`peanut`**; password is attribute `NUT_REMOTE_PASSWORD`. Host NUT must have **Remote monitoring** on so `upsd` listens beyond localhost (`bootstrap/omv/omv-nut.sh`).
 
@@ -40,7 +40,7 @@ Open **`https://ups.<DOMAIN>`**. Homepage UPS tile should show charge, load, and
 
 | Symptom | What to do |
 |---|---|
-| Widget API error / empty / slow | re-apply (apply.sh / systemd) **peanut** and **homepage**. `NUT_HOST` must be `${NAS_LAN_IP}`. `podman exec homepage wget -S -O- --timeout=5 http://peanut:8080` |
+| Widget API error / empty / slow | Homepage is on `site`; host-net PeaNUT is unreachable from there. Do not combine `site` + slirp on the same Quadlet (that fails the unit). |
 | `ups.<DOMAIN>` 403 | See **403 diagnosis** below. re-apply (apply.sh / systemd) **authelia** and **caddy** (not just Restart). `ups.` must appear in the household `group:users` rule in the live Authelia config |
 | `ups.<DOMAIN>` does not load | re-apply (apply.sh / systemd) **caddy**. PeaNUT Up on `edge`. `podman exec caddy wget -S -O- --timeout=5 http://peanut:8080/api/ping` |
 | PeaNUT “no devices” / NUT timeout | Remote monitoring off, or password mismatch. Re-run `omv-nut.sh` after sync so OMV `remoteuser=peanut` matches `NUT_REMOTE_PASSWORD`. `grep LISTEN /etc/nut/upsd.conf` should not be localhost-only |

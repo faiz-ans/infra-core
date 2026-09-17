@@ -13,10 +13,11 @@ Environment=NUT_HOST=127.0.0.1
 Environment=NUT_PORT=3493
 Environment=USERNAME=peanut
 Environment=PASSWORD=${NUT_REMOTE_PASSWORD}
-Environment=WEB_HOST=127.0.0.1
+Environment=WEB_HOST=0.0.0.0
 Environment=WEB_PORT=8092
 Environment=AUTH_DISABLED=true
 Environment=AUTH_TRUST_HOST=true
+Environment=AUTH_SECRET=${NUT_REMOTE_PASSWORD}
 Volume=${DATA_ROOT}/system/peanut:/config
 Volume=${COMPONENT_DIR}/settings.yml:/config/settings.yml:ro
 

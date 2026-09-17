@@ -147,17 +147,10 @@ https://ups.{$DOMAIN} {
 	tls internal
 	import authelia_gate
 	reverse_proxy 127.0.0.1:8092 {
-		header_up Host {host}
-		header_up X-Forwarded-Host {host}
+		header_up Host ups.{$DOMAIN}
+		header_up X-Forwarded-Host ups.{$DOMAIN}
 		header_up X-Forwarded-Proto https
 	}
-}
-
-# Homepage on `site` cannot hairpin to 127.0.0.1. Bind the scrape URL to the
-# netavark gateway only (not the LAN).
-http://{$SITE_NET_GATEWAY}:8093 {
-	bind {$SITE_NET_GATEWAY}
-	reverse_proxy 127.0.0.1:8092
 }
 
 #--------------------------------

@@ -160,8 +160,8 @@
             description: UPS Monitor
             widget:
                 type: peanut
-                url: http://{{HOMEPAGE_VAR_SITE_NET_GATEWAY}}:8093
-                key: ups   
+                url: http://peanut:8080
+                key: ups 
         - Prometheus:
             href: https://metrics.{{HOMEPAGE_VAR_DOMAIN}}
             icon: prometheus.svg

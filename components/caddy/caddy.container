@@ -10,7 +10,6 @@ UserNS=keep-id
 Environment=DOMAIN=${DOMAIN}
 Environment=SURFACE_UPSTREAM=${SURFACE_UPSTREAM}
 Environment=TZ=${TZ}
-Environment=SITE_NET_GATEWAY=${SITE_NET_GATEWAY}
 Volume=${COMPONENT_DIR}/Caddyfile:/etc/caddy/Caddyfile:ro
 Volume=${COMPONENT_DIR}/entrypoint.sh:/entrypoint.sh:ro
 Volume=${COMPONENT_DIR}/export-ca.sh:/export-ca.sh:ro

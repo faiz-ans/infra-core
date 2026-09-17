@@ -252,14 +252,20 @@ if [[ -n "${DATA_ROOT:-}" ]]; then
           "${DATA_ROOT}/system/opencloud/radicale" 2>/dev/null || true
         ;;
       peanut)
-        # PeaNUT v3+ merges settings.yml over NUT_HOST. An empty/localhost
-        # file (first save, or leftover after :latest) hides the UPS.
         if [[ -d "${DATA_ROOT}/system/peanut" && -f "${USER_QUADLET}/peanut/settings.yml" ]]; then
           chown "${PUID:-1000}:${PGID:-1000}" "${DATA_ROOT}/system/peanut"
           install -m 600 -o "${PUID:-1000}" -g "${PGID:-1000}" \
             "${USER_QUADLET}/peanut/settings.yml" \
             "${DATA_ROOT}/system/peanut/settings.yml"
         fi
+        # Drop the previous kube pod so it cannot keep :8092 or leave a
+        # second PeaNUT on host :8080 (Caddy's port).
+        XDG_RUNTIME_DIR="/run/user/$(id -u "${PILOT}")" \
+          sudo -u "${PILOT}" --preserve-env=XDG_RUNTIME_DIR \
+          podman rm -f peanut-peanut 2>/dev/null || true
+        XDG_RUNTIME_DIR="/run/user/$(id -u "${PILOT}")" \
+          sudo -u "${PILOT}" --preserve-env=XDG_RUNTIME_DIR \
+          podman pod rm -f peanut 2>/dev/null || true
         ;;
     esac
   done
