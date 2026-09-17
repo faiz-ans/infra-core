@@ -2,6 +2,11 @@
 	email off
 	http_port 8080
 	https_port 8443
+	# Public URL is :443 (lan-bind). Default alt-svc is h3=":8443"; Firefox
+	# then sends Host: name:8443 and Homepage v1+ 400s. Safari/phone stay on h2.
+	servers {
+		protocols h1 h2
+	}
 	# Edge-only. Do not publish 2019 on the host. CaddyManager and Homepage
 	# talk to this API as http://127.0.0.1:2019. GitOps still owns this file.
 	admin 0.0.0.0:2019 {
@@ -52,7 +57,12 @@ https://homepage.{$DOMAIN} {
 
 https://dash.{$DOMAIN} {
 	tls internal
-	reverse_proxy 127.0.0.1:3000
+	header Alt-Svc "clear"
+	reverse_proxy 127.0.0.1:3000 {
+		# Homepage v1+ exact-matches Host. Caddy https_port is 8443 and
+		# passes Host through, so :8443 clients send dash.{$DOMAIN}:8443.
+		header_up Host {host}
+	}
 }
 
 #--------------------------------

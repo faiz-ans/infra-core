@@ -54,6 +54,12 @@ fi
 set -a
 source "${SITE_ENV}"
 set +a
+# Homepage v1+ 400s unless Host is in this list. Layer 0 fills it; apply
+# must too or an empty site.env bakes value:"" and only localhost:3000 works.
+if [[ -z "${HOMEPAGE_ALLOWED_HOSTS:-}" && -n "${DOMAIN:-}" ]]; then
+  HOMEPAGE_ALLOWED_HOSTS="dash.${DOMAIN},homepage.${DOMAIN}"
+  export HOMEPAGE_ALLOWED_HOSTS
+fi
 
 mapfile -t COMPONENTS < <(python3 - "${MANIFEST}" "${HOST}" "${ROLE}" <<'PY'
 import re, sys
