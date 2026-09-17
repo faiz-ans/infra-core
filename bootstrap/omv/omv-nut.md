@@ -52,4 +52,4 @@ Brief blips never reach step 3.
 | Salt `Failed: 2` / `There is no service named "nut-server"` | Harmless if `nut-server` and `nut-monitor` are active. OMV asks monit to watch NUT before those checks exist. `omv-salt deploy run monit` creates them; the script does that after nut |
 | Workbench Apply fails / wrong driver | `/etc/nut/*` is Salt-managed. Change via **Services → UPS** or re-run the script — do not hand-edit |
 
-Leave **Remote monitoring** on so PeaNUT can reach `upsd` at `${NAS_LAN_IP}:3493`. The NUT user is **`peanut`**. Do not WAN-forward 3493.
+Leave **Remote monitoring** on. PeaNUT is host-net and uses `127.0.0.1:3493` (`bootstrap/first-run/peanut.md`). The NUT user is **`peanut`**. Do not WAN-forward 3493.

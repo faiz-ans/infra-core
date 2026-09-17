@@ -53,6 +53,24 @@ spec:
       value: opencloud
     - name: WEB_OIDC_SCOPE
       value: "openid groups profile email"
+    # Authelia access tokens are opaque. JWT verify → "Not logged in / safety log out".
+    # Official: opencloud-compose idm/external-authelia.yml
+    - name: PROXY_OIDC_ACCESS_TOKEN_VERIFY_METHOD
+      value: "none"
+    - name: PROXY_OIDC_SKIP_VERIFICATION
+      value: "false"
+    - name: PROXY_USER_OIDC_CLAIM
+      value: preferred_username
+    - name: PROXY_AUTOPROVISION_ACCOUNTS
+      value: "true"
+    - name: PROXY_AUTOPROVISION_CLAIM_USERNAME
+      value: preferred_username
+    - name: PROXY_ROLE_ASSIGNMENT_OIDC_CLAIM
+      value: groups
+    - name: GRAPH_ASSIGN_DEFAULT_USER_ROLE
+      value: "true"
+    - name: OC_EXCLUDE_RUN_SERVICES
+      value: idp
     - name: COLLABORA_DOMAIN
       value: "office.${DOMAIN}"
     - name: COLLABORATION_APP_ADDR

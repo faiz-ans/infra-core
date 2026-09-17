@@ -242,6 +242,9 @@ https://opencloud.{$DOMAIN}, https://oc.{$DOMAIN} {
 https://cloud.{$DOMAIN} {
 	tls internal
 	reverse_proxy 127.0.0.1:9200 {
+		header_up Host cloud.{$DOMAIN}
+		header_up X-Forwarded-Host cloud.{$DOMAIN}
+		header_up X-Forwarded-Proto https
 		# Disable buffering for OpenCloud SSE / TUS (nginx equivalent: proxy_buffering off).
 		flush_interval -1
 		transport http {

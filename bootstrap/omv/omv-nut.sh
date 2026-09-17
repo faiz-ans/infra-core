@@ -29,9 +29,9 @@ NUT_REMOTE_USER="${NUT_REMOTE_USER:-peanut}"
 ANSWERS="${ANSWERS:-/etc/infra-core/bootstrap-answers.env}"
 SITE_ENV="${SITE_ENV:-/etc/infra-core/site.env}"
 
-# PeaNUT talks to upsd at NAS_LAN_IP:3493 (site-network Quadlet). That is not localhost.
-# Remote monitoring makes upsd LISTEN 0.0.0.0:3493. Password is attribute
-# NUT_REMOTE_PASSWORD (do not WAN-forward 3493).
+# PeaNUT is host-net and talks to upsd at 127.0.0.1:3493. Remote monitoring
+# still makes upsd LISTEN beyond localhost. Password is NUT_REMOTE_PASSWORD
+# (do not WAN-forward 3493).
 if [[ -z "${NUT_REMOTE_PASSWORD:-}" && -f "${SITE_ENV}" ]]; then
   # shellcheck disable=SC1090
   source "${SITE_ENV}"

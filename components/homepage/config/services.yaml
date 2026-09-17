@@ -160,7 +160,8 @@
             description: UPS Monitor
             widget:
                 type: peanut
-                url: http://peanut:8080
+                # pasta host-loopback (= host.containers.internal). IP skips Node AAAA stall.
+                url: http://169.254.1.2:8092
                 key: ups 
         - Prometheus:
             href: https://metrics.{{HOMEPAGE_VAR_DOMAIN}}

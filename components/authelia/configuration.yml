@@ -97,6 +97,13 @@ identity_providers:
           - email_verified
           - preferred_username
           - name
+      opencloud:
+        id_token:
+          - email
+          - email_verified
+          - preferred_username
+          - name
+          - groups
     clients:
       # Web must not request offline_access: Authelia then requires a consent
       # click on every login (refresh tokens). Mobile/desktop keep it.
@@ -105,6 +112,7 @@ identity_providers:
         public: true
         authorization_policy: users
         consent_mode: implicit
+        claims_policy: opencloud
         require_pkce: true
         pkce_challenge_method: S256
         scopes:

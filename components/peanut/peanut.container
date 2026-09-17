@@ -6,6 +6,9 @@ Wants=nut-server.service
 [Container]
 Image=docker.io/brandawg93/peanut:latest
 ContainerName=peanut
+# Host netns: NUT is 127.0.0.1:3493. Do not use Network=site (Homepage cannot
+# reach host LAN IPs). Do not add slirp4netns/pasta as a second network
+# (this Podman: "invalid network mode").
 Network=host
 UserNS=keep-id
 Environment=TZ=${TZ}
@@ -13,6 +16,8 @@ Environment=NUT_HOST=127.0.0.1
 Environment=NUT_PORT=3493
 Environment=USERNAME=peanut
 Environment=PASSWORD=${NUT_REMOTE_PASSWORD}
+# WEB_HOST is copied to HOSTNAME. 127.0.0.1 makes the HTML renderer hang.
+# 0.0.0.0 is required. Do not set WEB_PORT=8080 (Caddy).
 Environment=WEB_HOST=0.0.0.0
 Environment=WEB_PORT=8092
 Environment=AUTH_DISABLED=true

@@ -1,77 +1,79 @@
 # PeaNUT first-run
 
-PeaNUT is the HTTP front for host NUT (CyberPower ST625U). Host netns reaches `upsd` at `127.0.0.1:3493`; Caddy proxies `127.0.0.1:8092`. Browser: `https://ups.<DOMAIN>`. Authelia forward-auth is on `ups.` and `peanut.`. Homepage is on `site` and cannot open host ports (connection refused). This Podman rejects `slirp4netns` (`invalid network mode`).
+PeaNUT is the HTTP front for host NUT (CyberPower ST625U). `core-bootstrap` apply must produce this layout with no extra steps:
 
-PeaNUT’s own login is off (`AUTH_DISABLED`). NUT remote user is **`peanut`**; password is attribute `NUT_REMOTE_PASSWORD`. Host NUT must have **Remote monitoring** on so `upsd` listens beyond localhost (`bootstrap/omv/omv-nut.sh`).
+| Path | Value |
+|---|---|
+| Unit | Quadlet `.container`, **host netns**, `UserNS=keep-id` |
+| NUT | `127.0.0.1:3493` (env + `settings.yml`). User `peanut` / `NUT_REMOTE_PASSWORD` |
+| Listen | `WEB_HOST=0.0.0.0` `WEB_PORT=8092` (not `127.0.0.1`, not `8080`) |
+| Auth | `AUTH_DISABLED=true` `AUTH_TRUST_HOST=true` `AUTH_SECRET` set. Do **not** set `AUTH_URL` / `NEXTAUTH_URL` |
+| Browser | `https://ups.<DOMAIN>` (alias `peanut.`). Caddy `reverse_proxy 127.0.0.1:8092` with `Host` / `X-Forwarded-Host` **`ups.<DOMAIN>`** (no `:8443`) |
+| Homepage tile | `http://169.254.1.2:8092` `key: ups` (pasta host-loopback). Not `peanut`, `127.0.0.1`, LAN IP, or `host.containers.internal` |
 
-No LAN publish of PeaNUT. Do not WAN-forward TCP **3493**.
+`apply.sh` chowns `${DATA_ROOT}/system/peanut`, envsubst-copies `settings.yml`, and removes leftover kube `peanut-peanut` / pod `peanut` so a second container cannot steal Caddy `:8080`.
 
-## 1. NUT remote user (existing Core)
+Do not WAN-forward **3493** or **8092**. Authelia forward-auth is on `ups.` and `peanut.` (any logged-in user).
 
-NUT is already running. Enable remote monitoring with the site password:
-
-```text
-# NUT_REMOTE_PASSWORD is in /etc/infra-core/site.env (set by core.sh)
-sudo bash bootstrap/omv/omv-nut.sh
-```
-
-`omv-nut.sh` reads `NUT_REMOTE_PASSWORD` from `/etc/infra-core/site.env` (or generates one into answers). `upsc ups@127.0.0.1` still works. PeaNUT on the `site` network talks to `upsd` at **`${NAS_LAN_IP}:3493`** (not `host.containers.internal` — that name is not on a netavark bridge and made the Homepage widget wait on DNS).
+## Layer 0 (already in `core.sh` / prep)
 
 ```text
 sudo mkdir -p "${DATA_ROOT}/system/peanut"
 sudo chown 1000:1000 "${DATA_ROOT}/system/peanut"
 ```
 
-If this site already ran `core.sh` before PeaNUT, `data-root-prep.sh` also creates that dir.
+`data-root-prep.sh` creates that dir. Host NUT: `sudo bash bootstrap/omv/omv-nut.sh` (`NUT_REMOTE_PASSWORD` in `/etc/infra-core/site.env`). `upsc ups@127.0.0.1` must work.
 
-## 2. Deploy
-
-Re-apply with `apply.sh` **authelia**, **caddy**, and **homepage**.
+## Deploy
 
 ```text
-podman ps --filter name=peanut --format "table {{.Names}}\t{{.Status}}"
+sudo bash bootstrap/apply.sh --role core-bootstrap
 ```
 
-You want `peanut` **Up**. It must **not** publish 8080 on the LAN.
+Want `peanut` **Up**, `ss` showing `*:8092` (and Caddy `*:8080`). Open `https://ups.<DOMAIN>`. Homepage UPS tile: charge, load, **OL**.
 
-Open **`https://ups.<DOMAIN>`**. Homepage UPS tile should show charge, load, and status (`OL`).
+## Do not
+
+- `Network=site` or a second `Network=slirp4netns` / `pasta` (this Podman rejects those modes; Homepage still cannot hairpin to `192.168.x.x`)
+- `WEB_HOST=127.0.0.1` (Next.js HTML hangs; API still answers)
+- `WEB_PORT=8080` on host netns (takes Caddy down)
+- `AUTH_URL` / `NEXTAUTH_URL` (HTML 500 / proxy loop)
+- Caddy extra listener on `10.89.0.1:8093` (can fail the whole Caddy process)
+- Widget `http://peanut:8080`, `http://127.0.0.1:8092`, or `http://<NAS_LAN_IP>:8092` (Homepage is on `site`; those are connection-refused or NXDOMAIN)
+- Widget `http://host.containers.internal:8092` (works, but Node AAAA stalls the tile)
 
 ## If it fails
 
-| Symptom | What to do |
+| Symptom | Cause / fix |
 |---|---|
-| Widget API error / empty / slow | Homepage is on `site`; host-net PeaNUT is unreachable from there. Do not combine `site` + slirp on the same Quadlet (that fails the unit). |
-| `ups.<DOMAIN>` 403 | See **403 diagnosis** below. re-apply (apply.sh / systemd) **authelia** and **caddy** (not just Restart). `ups.` must appear in the household `group:users` rule in the live Authelia config |
-| `ups.<DOMAIN>` does not load | re-apply (apply.sh / systemd) **caddy**. PeaNUT Up on `edge`. `podman exec caddy wget -S -O- --timeout=5 http://peanut:8080/api/ping` |
-| PeaNUT “no devices” / NUT timeout | Remote monitoring off, or password mismatch. Re-run `omv-nut.sh` after sync so OMV `remoteuser=peanut` matches `NUT_REMOTE_PASSWORD`. `grep LISTEN /etc/nut/upsd.conf` should not be localhost-only |
-| Click opens `http://peanut:8080` | re-apply (apply.sh / systemd) **homepage** (href is `https://ups.<DOMAIN>`) |
-| EACCES `/config` | `chown 1000:1000 ${DATA_ROOT}/system/peanut` then re-apply (apply.sh / systemd) **peanut** |
+| Widget API error | Live `services.yaml` URL must be `http://169.254.1.2:8092`. From Homepage: `wget http://169.254.1.2:8092/api/ping` → `pong` |
+| Widget slow, then fills | URL is the name `host.containers.internal` (AAAA wait). Use `169.254.1.2` |
+| `ups.<DOMAIN>` Internal Server Error / hang | `WEB_HOST` is not `0.0.0.0`, or `AUTH_URL` is set. Direct `curl -m 15 http://127.0.0.1:8092/` must be **200** |
+| `ups.<DOMAIN>` 403 | Authelia ACL, not PeaNUT. See below |
+| No devices in UI | `upsc ups@127.0.0.1`. `settings.yml` HOST must be `127.0.0.1`. Re-run `omv-nut.sh` if `upsc` fails |
+| Everything down / Caddy dead | Two peanuts or PeaNUT on host `:8080`. `podman rm -f peanut-peanut peanut`; `podman pod rm -f peanut`; re-apply **peanut** then **caddy** |
+| EACCES `/config` | `chown 1000:1000 ${DATA_ROOT}/system/peanut` then re-apply **peanut** |
+| Click opens `http://peanut:8080` | Stale Homepage href. re-apply **homepage** |
 
 ## 403 diagnosis
 
-PeaNUT v6 has `trustHost: true` baked in and skips auth when `AUTH_DISABLED=true`, so a browser **403** is usually **Authelia forward-auth** (logged in, but ACL deny) or a **stale Caddyfile/Authelia config** (Restart does not reload ConfigMaps — use **re-apply (apply.sh / systemd)**).
-
-On Core (replace `home.lan` if your `DOMAIN` differs):
+PeaNUT v6 skips its own login when `AUTH_DISABLED=true`. A browser **403** is Authelia (logged in, ACL deny) or a stale Caddy/Authelia file.
 
 ```text
 DOMAIN=home.lan
 
-# Live Authelia ACL — ups./peanut. must be on the pdf/it/translate household rule
-sudo podman exec authelia cat /config/configuration.yml | sed -n '/access_control:/,/session:/p' | grep -E 'ups\.|peanut\.|pdf\.'
+sudo podman exec authelia cat /config/configuration.yml | sed -n '/access_control:/,/session:/p' | grep -E 'ups\.|peanut\.'
 
-# PeaNUT direct on edge (bypasses Authelia) — expect HTTP 200 and body "pong"
-sudo podman exec caddy wget -S -O- --timeout=5 http://peanut:8080/api/ping 2>&1 | head -15
+# Same host netns as Caddy. Expect 200 pong
+curl -sS --max-time 5 http://127.0.0.1:8092/api/ping
 
-# PeaNUT env (image has no printenv)
-sudo podman inspect peanut --format '{{range .Config.Env}}{{println .}}{{end}}' | grep -E '^(AUTH_|WEB_|NUT_)'
+podman inspect peanut --format '{{range .Config.Env}}{{println .}}{{end}}' | grep -E '^(AUTH_|WEB_|NUT_)'
 
-# Reload https://ups.<DOMAIN> in the browser, then:
-sudo podman logs authelia --since 2m 2>&1 | tail -30
+podman logs authelia --since 2m 2>&1 | tail -30
 ```
 
 | Result | Meaning |
 |---|---|
-| `/api/ping` → 200 `pong`, browser still 403 | Authelia or Caddy gate. Confirm live config (first command). re-apply (apply.sh / systemd) **authelia** + **caddy**. Log in at `https://auth.<DOMAIN>` first, then retry `ups.` |
-| `/api/ping` → 403 | PeaNUT itself. re-apply (apply.sh / systemd) **peanut**; confirm `AUTH_DISABLED=true` in inspect output |
-| Authelia log `Access denied` for `ups.` | Live `configuration.yml` is stale or missing `ups.` — re-apply (apply.sh / systemd) **authelia** |
-| `grep ups` shows nothing | Authelia never picked up the catalog — re-apply (apply.sh / systemd) **authelia** after apply.sh |
+| `/api/ping` → 200 `pong`, browser 403 | Authelia/Caddy. re-apply **authelia** + **caddy**. Log in at `https://auth.<DOMAIN>` first |
+| `/api/ping` → 403 | PeaNUT. re-apply **peanut**; `AUTH_DISABLED=true` in inspect |
+| Authelia `Access denied` for `ups.` | Live ACL missing `ups.` — re-apply **authelia** |

@@ -52,6 +52,8 @@ ss -lntup | grep -E ':15353|:8080|:8443|:9091'
 
 `core-bootstrap` is site-network, Caddy, Authelia, Pi-hole, Glances, PeaNUT, Homepage, OpenCloud.
 
+PeaNUT must come up host-net on `:8092` (NUT `127.0.0.1:3493`). Browser `https://ups.<DOMAIN>`. Homepage tile scrapes `http://169.254.1.2:8092`. Do not put PeaNUT on `site` or on host `:8080`. Details: `bootstrap/first-run/peanut.md`.
+
 Restore Caddy PKI / Authelia users from the off-box copy only if the remounted tree is missing them.
 
 ## 6. Lan-bind
