@@ -54,10 +54,11 @@ fi
 set -a
 source "${SITE_ENV}"
 set +a
-# Homepage v1+ 400s unless Host is in this list. Layer 0 fills it; apply
-# must too or an empty site.env bakes value:"" and only localhost:3000 works.
-if [[ -z "${HOMEPAGE_ALLOWED_HOSTS:-}" && -n "${DOMAIN:-}" ]]; then
-  HOMEPAGE_ALLOWED_HOSTS="dash.${DOMAIN},homepage.${DOMAIN}"
+# Homepage v1+ exact-matches Host. Caddy https_port 8443 and leftover
+# Alt-Svc clients send dash.${DOMAIN}:8443; :443 lan-bind sends no port.
+# Always set this at apply — a non-empty site.env missing :8443 still 400s.
+if [[ -n "${DOMAIN:-}" ]]; then
+  HOMEPAGE_ALLOWED_HOSTS="dash.${DOMAIN},dash.${DOMAIN}:443,dash.${DOMAIN}:8443,homepage.${DOMAIN}"
   export HOMEPAGE_ALLOWED_HOSTS
 fi
 

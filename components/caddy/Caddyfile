@@ -2,8 +2,8 @@
 	email off
 	http_port 8080
 	https_port 8443
-	# Public URL is :443 (lan-bind). Default alt-svc is h3=":8443"; Firefox
-	# then sends Host: name:8443 and Homepage v1+ 400s. Safari/phone stay on h2.
+	# lan-bind is TCP 443→8443. HTTP/3 Alt-Svc would be h3=":8443", so
+	# HTTP/3 clients (Firefox) skip DNAT and send Host: name:8443.
 	servers {
 		protocols h1 h2
 	}
@@ -57,11 +57,8 @@ https://homepage.{$DOMAIN} {
 
 https://dash.{$DOMAIN} {
 	tls internal
-	header Alt-Svc "clear"
 	reverse_proxy 127.0.0.1:3000 {
-		# Homepage v1+ exact-matches Host. Caddy https_port is 8443 and
-		# passes Host through, so :8443 clients send dash.{$DOMAIN}:8443.
-		header_up Host {host}
+		header_up Host dash.{$DOMAIN}
 	}
 }
 
