@@ -63,6 +63,8 @@ sudo bash bootstrap/core/core-lan-bind.sh --enable
 getent hosts github.com
 ```
 
+That unit is PREROUTING `:53`/`:80`/`:443` for LAN/WG, plus OUTPUT `127.0.0.1`/`NAS_LAN_IP` `:443` → Caddy `:8443` so `site` containers (OpenCloud OIDC) can reach Authelia. Do not OUTPUT `:53` (host FallbackDNS).
+
 Router DHCP DNS: Core first, surface second. No public third.
 
 ## 7. OpenCloud, layout, NFS

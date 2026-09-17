@@ -51,7 +51,7 @@ del_nat() {
 
 add_redirects() {
   local proto
-  # PREROUTING only (LAN + WG). Do not REDIRECT OUTPUT — that loops host
+  # PREROUTING: LAN + WG clients. Do not OUTPUT :53 — that loops host
   # FallbackDNS (1.1.1.1:53) back to an empty Pi-hole and kills apt/git.
   for proto in udp tcp; do
     iptables -t nat -A PREROUTING -p "${proto}" --dport 53 -j REDIRECT --to-ports "${DNS_PROXY_PORT}"
@@ -60,7 +60,16 @@ add_redirects() {
   for proto in tcp udp; do
     iptables -t nat -A PREROUTING -p "${proto}" --dport 443 -j REDIRECT --to-ports "${HTTPS_PORT}"
   done
+  # Site containers (OpenCloud) cannot PREROUTING-hairpin NAS_LAN_IP:443
+  # (connection refused). Pasta maps host.containers.internal 169.254.1.2
+  # to 127.0.0.1; OIDC issuer is https://auth.<DOMAIN>:443. Redirect that
+  # loopback :443 only. Also cover host-local fetches to NAS_LAN_IP:443.
+  for proto in tcp udp; do
+    iptables -t nat -A OUTPUT -p "${proto}" -d 127.0.0.1 --dport 443 -j REDIRECT --to-ports "${HTTPS_PORT}"
+    iptables -t nat -A OUTPUT -p "${proto}" -d "${IP}" --dport 443 -j REDIRECT --to-ports "${HTTPS_PORT}"
+  done
   echo "core-lan-bind: PREROUTING REDIRECT :53->${DNS_PROXY_PORT} :80->${HTTP_PORT} :443->${HTTPS_PORT}"
+  echo "core-lan-bind: OUTPUT REDIRECT 127.0.0.1/${IP}:443->${HTTPS_PORT} (site OIDC; not :53)"
 }
 
 fix_wg_nat() {

@@ -11,6 +11,10 @@ spec:
     hostnames:
       - "cloud.${DOMAIN}"
       - "office.${DOMAIN}"
+  # Pasta host-loopback (same as Homepage → PeaNUT). site → NAS_LAN_IP:443
+  # is connection refused; lan-bind OUTPUT maps 127.0.0.1:443 → Caddy :8443.
+  - ip: "169.254.1.2"
+    hostnames:
       - "auth.${DOMAIN}"
   containers:
   - name: radicale

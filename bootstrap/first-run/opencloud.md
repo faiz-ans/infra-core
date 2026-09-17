@@ -126,7 +126,7 @@ sudo DATA_ROOT=$DATA bash bootstrap/data-root/data-root-layout.sh
 |---|---|
 | `cloud.<DOMAIN>` dead while `opencloud` Up | re-apply (apply.sh / systemd) **caddy** |
 | Permission / xattr on first start | Rootless OpenCloud uses `UserNS=keep-id`. `apply.sh` / prep chown config/data/posix/radicale to PUID. Do not recreate spaces if `user.oc.space.*` exists. |
-| Authelia ok, then “Not logged in / routine safety log out” | Authelia access tokens are opaque. Catalog must set `PROXY_OIDC_ACCESS_TOKEN_VERIFY_METHOD=none` and autoprovision `preferred_username`. re-apply **opencloud** + **authelia**. Do not wipe posix/users/shared. |
+| Authelia ok, then “Not logged in / routine safety log out” | OpenCloud on `site` must fetch `https://auth.<DOMAIN>/.well-known/openid-configuration`. `NAS_LAN_IP:443` is connection refused (PREROUTING lan-bind does not hairpin). Catalog maps `auth.<DOMAIN>` → `169.254.1.2` and lan-bind OUTPUT `127.0.0.1:443` → Caddy `:8443`. Re-run `core-lan-bind.sh --enable`, then re-apply **opencloud**. Do not wipe posix/users/shared. |
 | `files` has no space id after login | Personal already exists on `users/<user>` (template is only used at CreateStorageSpace). `opencloud-adopt-homes.sh relocate`, then restore. Do not drop-wrong-login again. |
 | `shared/files` empty in UI but SMB has docs | Bind missing — `adopt-shared.sh publish` (inode check), not findmnt alone |
 | Whole `shared/` still in OpenCloud | `adopt-shared.sh narrow` |
