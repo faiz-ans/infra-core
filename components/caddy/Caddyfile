@@ -2,6 +2,11 @@
 	email off
 	http_port 8080
 	https_port 8443
+	# lan-bind DNAT is 443→8443. Advertising h3 on :8443 makes browsers
+	# send Host: name:8443; Homepage then 400s host validation.
+	servers {
+		protocols h1 h2
+	}
 	# Edge-only. Do not publish 2019 on the host. CaddyManager and Homepage
 	# talk to this API as http://127.0.0.1:2019. GitOps still owns this file.
 	admin 0.0.0.0:2019 {
@@ -54,9 +59,9 @@ https://dash.{$DOMAIN} {
 	tls internal
 	reverse_proxy 127.0.0.1:3000 {
 		flush_interval -1
-		header_up Host {host}
-		header_up X-Forwarded-Host {host}
-		header_up X-Forwarded-Proto {scheme}
+		header_up Host dash.{$DOMAIN}
+		header_up X-Forwarded-Host dash.{$DOMAIN}
+		header_up X-Forwarded-Proto https
 		transport http {
 			versions 1.1
 		}
