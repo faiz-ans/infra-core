@@ -26,19 +26,25 @@ apt-get update
 apt-get install -y podman uidmap slirp4netns fuse-overlayfs catatonit netavark aardvark-dns passt \
   dbus-user-session cockpit cockpit-podman curl git gettext-base
 
-# catatonit's helper dir is searched first; netavark lives under /usr/libexec/podman
-# or /usr/lib/podman. Pin both so kube-play and `podman network` keep working.
-install -d -m 0755 /etc/containers/containers.conf.d
-cat > /etc/containers/containers.conf.d/99-infra-core.conf <<'EOF'
-[engine]
+# Debian netavark is /usr/lib/podman/netavark, not /usr/libexec/podman.
+# Rootless Podman reads ~/.config/containers/containers.conf and that key
+# replaces the system drop-in — write both.
+HELPERS_CONF='[engine]
 helper_binaries_dir = [
-  "/usr/libexec/podman",
   "/usr/lib/podman",
+  "/usr/libexec/podman",
   "/usr/libexec/catatonit",
   "/usr/bin",
 ]
-EOF
+'
+install -d -m 0755 /etc/containers/containers.conf.d
+printf '%s' "${HELPERS_CONF}" > /etc/containers/containers.conf.d/99-infra-core.conf
 chmod 644 /etc/containers/containers.conf.d/99-infra-core.conf
+rm -f /etc/containers/containers.conf.d/99-infra-core-helpers.conf
+install -d -m 0755 "/home/${PILOT}/.config/containers"
+printf '%s' "${HELPERS_CONF}" > "/home/${PILOT}/.config/containers/containers.conf"
+chown "${PILOT}:${PILOT}" "/home/${PILOT}/.config/containers/containers.conf"
+chmod 644 "/home/${PILOT}/.config/containers/containers.conf"
 
 loginctl enable-linger "${PILOT}"
 
