@@ -3,7 +3,7 @@ Description=bytestash
 After=site-network.service
 
 [Kube]
-Yaml=pod.yaml
+Yaml=${COMPONENT_DIR}/pod.yaml
 Network=site.network
 PublishPort=127.0.0.1:5000:5000
 

@@ -3,7 +3,7 @@ Description=arr
 After=site-network.service
 
 [Kube]
-Yaml=pod.yaml
+Yaml=${COMPONENT_DIR}/pod.yaml
 Network=site.network
 PublishPort=8989:8989
 PublishPort=7878:7878

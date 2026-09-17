@@ -2,7 +2,7 @@
 Description=RustDesk hbbs/hbbr (rootless host netns)
 
 [Kube]
-Yaml=pod.yaml
+Yaml=${COMPONENT_DIR}/pod.yaml
 [Service]
 Restart=on-failure
 

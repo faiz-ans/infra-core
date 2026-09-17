@@ -228,7 +228,11 @@ start_unit() {
   else
     if ! systemctl --machine="${PILOT}@" --user restart "${unit}"; then
       echo "warn: user restart ${unit} failed"
-      journalctl --user -M "${PILOT}@" -u "${unit}" -n 25 --no-pager || true
+      systemctl --machine="${PILOT}@" --user --no-pager --full status "${unit}" || true
+      local uid
+      uid="$(id -u "${PILOT}")"
+      runuser -u "${PILOT}" -- env XDG_RUNTIME_DIR="/run/user/${uid}" \
+        journalctl --user -u "${unit}" -n 25 --no-pager || true
     fi
   fi
 }

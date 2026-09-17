@@ -3,7 +3,7 @@ Description=transmute
 After=site-network.service
 
 [Kube]
-Yaml=pod.yaml
+Yaml=${COMPONENT_DIR}/pod.yaml
 Network=site.network
 PublishPort=3313:3313
 

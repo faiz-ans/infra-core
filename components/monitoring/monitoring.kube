@@ -3,7 +3,7 @@ Description=monitoring
 After=site-network.service
 
 [Kube]
-Yaml=pod.yaml
+Yaml=${COMPONENT_DIR}/pod.yaml
 Network=site.network
 PublishPort=9090:9090
 PublishPort=3000:3000
