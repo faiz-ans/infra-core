@@ -128,6 +128,10 @@ if [[ -z "${con}" ]]; then
     | awk -F: -v d="${iface}" '$2==d {print $1; exit}')
 fi
 
+# ignore-auto-dns drops the DHCP resolver. Pin public DNS on the connection
+# so apt/git still work before Pi-hole exists (core-net.sh / systemd-resolved
+# may not be active on Pi OS).
+want_dns="1.1.1.1,8.8.8.8"
 want_method=manual
 already=0
 if [[ -n "${con}" ]]; then
@@ -135,13 +139,14 @@ if [[ -n "${con}" ]]; then
   cur_addr=$(nmcli -g ipv4.addresses connection show "${con}" 2>/dev/null | awk -F, '{print $1; exit}')
   cur_addr=${cur_addr// /}
   cur_gw=$(nmcli -g ipv4.gateway connection show "${con}" 2>/dev/null || true)
-  if [[ "${cur_method}" == "${want_method}" && "${cur_addr}" == "${cidr}" && "${cur_gw}" == "${gw}" ]]; then
+  cur_dns=$(nmcli -g ipv4.dns connection show "${con}" 2>/dev/null | tr '|' ',' | tr -d ' ')
+  if [[ "${cur_method}" == "${want_method}" && "${cur_addr}" == "${cidr}" && "${cur_gw}" == "${gw}" && "${cur_dns}" == "${want_dns}" ]]; then
     already=1
   fi
 fi
 
 if [[ "${already}" -eq 1 ]]; then
-  echo "core-lan-static: ${con} already ${cidr} via ${gw} on ${iface} (manual)."
+  echo "core-lan-static: ${con} already ${cidr} via ${gw} dns ${want_dns} on ${iface} (manual)."
 else
   if [[ -z "${con}" ]]; then
     con=core-lan
@@ -151,17 +156,19 @@ else
       ipv4.method manual \
       ipv4.addresses "${cidr}" \
       ipv4.gateway "${gw}" \
+      ipv4.dns "${want_dns}" \
       ipv4.ignore-auto-dns yes \
       ipv6.method disabled \
       connection.autoconnect yes \
       connection.interface-name "${iface}"
   else
-    echo "core-lan-static: ${con} → ${cidr} via ${gw} on ${iface} (manual)"
+    echo "core-lan-static: ${con} → ${cidr} via ${gw} dns ${want_dns} on ${iface} (manual)"
     # nmcli connection modify "Wired connection 1" ipv4.method manual ...
     nmcli connection modify "${con}" \
       ipv4.method manual \
       ipv4.addresses "${cidr}" \
       ipv4.gateway "${gw}" \
+      ipv4.dns "${want_dns}" \
       ipv4.ignore-auto-dns yes \
       ipv6.method disabled \
       connection.autoconnect yes \
@@ -181,6 +188,6 @@ if ! ip -4 route show default | grep -q "via ${gw} dev ${iface}"; then
   exit 1
 fi
 
-echo "core-lan-static: ${iface} ${cidr} via ${gw} (NetworkManager manual, DNS via systemd-resolved)."
+echo "core-lan-static: ${iface} ${cidr} via ${gw} dns ${want_dns} (NetworkManager manual)."
 ip -4 -br addr show "${iface}"
 ip -4 route show default

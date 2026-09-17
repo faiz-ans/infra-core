@@ -425,6 +425,11 @@ site_ensure_site_vars
 save_answers
 site_write_site_env
 
+# Public DNS + forwarding *before* pinning the NIC. core-lan-static sets
+# ignore-auto-dns; without resolvers here, apt in podman-install cannot resolve.
+# sudo bash bootstrap/core/core-net.sh
+CORE_DNS_MODE=public bash "${SCRIPT_DIR}/core/core-net.sh"
+
 # Pin NAS_LAN_IP on the uplink. Router DHCP reservation is not enough
 # (USB 2.5G NIC can link without a lease). Same IP as the live session.
 # sudo NAS_LAN_IP=192.168.1.110 bash bootstrap/core/core-lan-static.sh
@@ -432,11 +437,6 @@ bash "${SCRIPT_DIR}/core/core-lan-static.sh"
 
 # Podman + Cockpit (not Materia).
 bash "${SCRIPT_DIR}/core/podman-install.sh"
-
-# Host-network WireGuard NAT + IPv6 off (AAAA timeouts on dual-NIC boards).
-# Public DNS until Pi-hole exists.
-# sudo bash bootstrap/core/core-net.sh
-CORE_DNS_MODE=public bash "${SCRIPT_DIR}/core/core-net.sh"
 
 # Install lan-bind units disabled. Do not enable until Pi-hole and Caddy listen.
 bash "${SCRIPT_DIR}/core/core-lan-bind.sh" --install-only

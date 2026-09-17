@@ -13,6 +13,15 @@ fi
 PILOT="${PILOT_USER:-pilot}"
 
 export DEBIAN_FRONTEND=noninteractive
+# Wait out a leftover apt-get from a previous failed run / unattended-upgrades.
+for _i in $(seq 1 60); do
+  if ! fuser /var/lib/dpkg/lock-frontend >/dev/null 2>&1 \
+     && ! fuser /var/cache/apt/archives/lock >/dev/null 2>&1; then
+    break
+  fi
+  echo "Waiting for apt lock (pid $(fuser /var/cache/apt/archives/lock 2>/dev/null || true))..."
+  sleep 2
+done
 apt-get update
 apt-get install -y podman uidmap slirp4netns fuse-overlayfs dbus-user-session cockpit cockpit-podman curl git gettext-base
 

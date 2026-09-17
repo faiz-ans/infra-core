@@ -89,6 +89,8 @@ EOF
   fi
   if [[ -f /run/systemd/resolve/stub-resolv.conf ]]; then
     ln -sfn /run/systemd/resolve/stub-resolv.conf /etc/resolv.conf
+  elif [[ ! -s /etc/resolv.conf ]] || ! grep -q '^nameserver' /etc/resolv.conf; then
+    printf 'nameserver 1.1.1.1\nnameserver 8.8.8.8\n' >/etc/resolv.conf
   fi
   systemctl reload-or-restart systemd-resolved 2>/dev/null || true
   resolvectl flush-caches 2>/dev/null || true
