@@ -79,7 +79,9 @@ else
 fi
 
 chown root:root "${DATA_ROOT}/system"
-chmod 700 "${DATA_ROOT}/system"
+# 711: SMB still cannot list system/, but rootless Quadlets (pilot) can
+# traverse to bind-mount system/<app>. 700 made every rootless unit fail.
+chmod 711 "${DATA_ROOT}/system"
 setfacl -b "${DATA_ROOT}/system" || true
 
 mkdir -p \

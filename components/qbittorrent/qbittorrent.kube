@@ -1,5 +1,6 @@
 [Unit]
 Description=qbittorrent
+After=site-network.service
 
 [Kube]
 Yaml=pod.yaml

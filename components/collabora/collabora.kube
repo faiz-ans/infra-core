@@ -1,5 +1,6 @@
 [Unit]
 Description=collabora
+After=site-network.service
 
 [Kube]
 Yaml=pod.yaml

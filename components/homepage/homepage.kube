@@ -1,5 +1,6 @@
 [Unit]
 Description=homepage
+After=site-network.service
 
 [Kube]
 Yaml=pod.yaml

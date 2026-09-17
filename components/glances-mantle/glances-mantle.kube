@@ -1,5 +1,6 @@
 [Unit]
 Description=glances-mantle
+After=site-network.service
 
 [Kube]
 Yaml=pod.yaml

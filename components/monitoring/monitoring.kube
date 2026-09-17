@@ -1,5 +1,6 @@
 [Unit]
 Description=monitoring
+After=site-network.service
 
 [Kube]
 Yaml=pod.yaml

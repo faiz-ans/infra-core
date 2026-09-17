@@ -1,5 +1,6 @@
 [Unit]
 Description=restic-rest
+After=site-network.service
 
 [Kube]
 Yaml=pod.yaml

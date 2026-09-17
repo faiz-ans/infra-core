@@ -221,9 +221,15 @@ start_unit() {
   # [Install] WantedBy=default.target in the Quadlet file is what survives reboot.
   # restart starts a stopped unit and picks up a rewritten Quadlet.
   if is_system "${name}"; then
-    systemctl restart "${unit}" || echo "warn: systemctl restart ${unit} failed"
+    if ! systemctl restart "${unit}"; then
+      echo "warn: systemctl restart ${unit} failed"
+      journalctl -u "${unit}" -n 25 --no-pager || true
+    fi
   else
-    systemctl --machine="${PILOT}@" --user restart "${unit}" || echo "warn: user restart ${unit} failed"
+    if ! systemctl --machine="${PILOT}@" --user restart "${unit}"; then
+      echo "warn: user restart ${unit} failed"
+      journalctl --user -M "${PILOT}@" -u "${unit}" -n 25 --no-pager || true
+    fi
   fi
 }
 

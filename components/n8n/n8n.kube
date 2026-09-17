@@ -1,5 +1,6 @@
 [Unit]
 Description=n8n
+After=site-network.service
 
 [Kube]
 Yaml=pod.yaml

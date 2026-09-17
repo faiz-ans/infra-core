@@ -1,5 +1,6 @@
 [Unit]
 Description=arr
+After=site-network.service
 
 [Kube]
 Yaml=pod.yaml

@@ -1,5 +1,6 @@
 [Unit]
 Description=linkding
+After=site-network.service
 
 [Kube]
 Yaml=pod.yaml
