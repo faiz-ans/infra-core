@@ -37,6 +37,7 @@ podman ps --filter name=glances-mantle --format "table {{.Names}}\t{{.Status}}"
 | Click opens `http://glances:61208` | re-apply (apply.sh / systemd) **homepage** (href is `https://host.<DOMAIN>`). re-apply (apply.sh / systemd) **caddy** |
 | `host.<DOMAIN>` does not load | re-apply (apply.sh / systemd) **caddy**. Core glances must be Up on `edge`. From Core: `podman exec caddy wget -S -O- --timeout=5 http://glances:61208/ \| head` |
 | `host2.<DOMAIN>` does not load | Windows Firewall **61208**. re-apply (apply.sh / systemd) **caddy**. From Core: `podman exec caddy wget -S -O- --timeout=5 http://<SURFACE_UPSTREAM>:61208/ \| head` |
+| `glances.service` failed on apply, then Up | kube-play race. `apply.sh` retries the user unit once. If still down: `systemctl --user restart glances.service` |
 | Core widget empty / API error | re-apply (apply.sh / systemd) **homepage**. Then `podman exec homepage wget -S -O- --timeout=5 http://glances:61208/api/4/cpu` |
 | mantle widget empty | Windows Firewall **61208**. From Core: `podman exec homepage wget -S -O- --timeout=5 http://<SURFACE_UPSTREAM>:61208/api/4/cpu` |
 | API 404 | Image is Glances 4; widgets use `version: 4`. Do not set version 3 |

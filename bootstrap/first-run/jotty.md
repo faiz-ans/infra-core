@@ -28,4 +28,5 @@ Open **`https://notes.<DOMAIN>`** (Caddy sends `jotty.` there). With Authelia OI
 |---|---|
 | `notes.<DOMAIN>` does not load while `jotty` is Up | re-apply (apply.sh / systemd) **caddy**. Then `podman exec caddy wget -S -O- --timeout=10 http://jotty:3000/ \| head` |
 | Authelia succeeds, Jotty stays on the native login | Authelia must use `client_secret_post` and `require_pkce: false` (Jotty drops PKCE when `OIDC_CLIENT_SECRET` is set). re-apply (apply.sh / systemd) **authelia** after the catalog change. Then re-apply (apply.sh / systemd) **jotty**. |
+| Authelia ok, then Jotty cannot finish OIDC | Core `site` cannot hairpin `NAS_LAN_IP:443`. Catalog `hostAliases` `auth.<DOMAIN>` → `SITE_HOST_LOOPBACK`. Same as OpenCloud; see `authelia.md`. |
 | Permission denied on `/app/data` | Stop the container, `chown -R ${PUID}:${PGID}` `system/jotty`, re-apply (apply.sh / systemd) |

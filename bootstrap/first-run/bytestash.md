@@ -37,4 +37,5 @@ Open **`https://snip.<DOMAIN>`**. Create or keep the local household account as 
 | `snip.<DOMAIN>` does not load while `bytestash` is Up | re-apply (apply.sh / systemd) **caddy**. Then `podman exec caddy wget -S -O- --timeout=10 http://bytestash:5000/ \| head` |
 | Host / CSRF errors | `ALLOWED_HOSTS` must be `snip.<DOMAIN>`. re-apply (apply.sh / systemd) **bytestash** after the catalog pull |
 | Authelia `invalid_request` | ByteStash builds `redirect_uri` from Host. Authelia only allows `https://snip.<DOMAIN>/api/auth/oidc/callback`. re-apply (apply.sh / systemd) **caddy** and **authelia** |
+| Authelia ok, then ByteStash cannot finish OIDC | Core `site` cannot hairpin `NAS_LAN_IP:443`. Catalog `hostAliases` `auth.<DOMAIN>` → `SITE_HOST_LOOPBACK`. Same as OpenCloud; see `authelia.md`. |
 | Cannot create the first user | `BYTESTASH_ALLOW_NEW_ACCOUNTS` must be `true` for that first visit |

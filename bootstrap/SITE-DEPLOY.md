@@ -7,7 +7,8 @@ Materia is **optional** (`bootstrap/core/materia-enable.sh`) and is not Layer 0.
 ## This site’s exceptions
 
 - Do **not** wipe the NAS data disk. Remount it. Prove `users/`, `shared/`, and `system/vaultwarden` exist before `core.sh`.
-- Re-insert saved Caddy PKI, Authelia `users.yml` (not sqlite), Homepage YAML if it differs from git, Vaultwarden live dir or JSON import if empty.
+- Re-insert saved Caddy PKI, Authelia `users.yml` (not sqlite), Vaultwarden live dir or JSON import if empty.
+- Do **not** restore a pre-Podman Homepage YAML over the catalog. Those scrape URLs (`NAS_LAN_IP`, `pihole`, `caddy`) fail from `site`. Use git `components/homepage/config/`.
 
 ## 0. Copy configs off-box
 
@@ -47,25 +48,51 @@ Confirm `/etc/infra-core/site.env` (`DOMAIN`, `NAS_LAN_IP`, `SURFACE_UPSTREAM`, 
 
 ```text
 sudo bash bootstrap/apply.sh --role core-bootstrap
-ss -lntup | grep -E ':15353|:8080|:8443|:9091'
+ss -lntup | grep -E ':15353|:8080|:8443|:9091|:8092'
 ```
 
 `core-bootstrap` is site-network, Caddy, Authelia, Pi-hole, Glances, PeaNUT, Homepage, OpenCloud.
 
-PeaNUT must come up host-net on `:8092` (NUT `127.0.0.1:3493`). Browser `https://ups.<DOMAIN>`. Homepage tile scrapes `http://169.254.1.2:8092`. Do not put PeaNUT on `site` or on host `:8080`. Details: `bootstrap/first-run/peanut.md`.
-
 Restore Caddy PKI / Authelia users from the off-box copy only if the remounted tree is missing them.
 
-## 6. Lan-bind
+Do **not** expect OpenCloud Authelia login or `https://*.<DOMAIN>` on `:443` until §6. Before lan-bind, Caddy is `:8080`/`:8443` only.
+
+Contracts (no chat-only extra steps):
+
+| Piece | Must be | Details |
+|---|---|---|
+| PeaNUT | host-net `:8092`, NUT `127.0.0.1:3493` | `bootstrap/first-run/peanut.md` |
+| Homepage tiles | host scrapes via `169.254.1.2`, Glances via `glances:61208` | `bootstrap/first-run/homepage.md` |
+| Caddy | `https_port 8443`, `h1`/`h2` only, `Host` pins on `dash.`/`auth.`/`ups.`/`cloud.` | |
+| Authelia | `UserNS=keep-id`, `system/authelia` owned by `PUID`, OpenCloud `claims_policy` | `bootstrap/first-run/authelia.md` |
+| OpenCloud | Authelia OIDC env + `auth.<DOMAIN>` → `169.254.1.2` | `bootstrap/first-run/opencloud.md` |
+
+## 6. Lan-bind, then prove Phase A
 
 ```text
 sudo bash bootstrap/core/core-lan-bind.sh --enable
 getent hosts github.com
 ```
 
-That unit is PREROUTING `:53`/`:80`/`:443` for LAN/WG, plus OUTPUT `127.0.0.1`/`NAS_LAN_IP` `:443` → Caddy `:8443` so `site` containers (OpenCloud OIDC) can reach Authelia. Do not OUTPUT `:53` (host FallbackDNS).
+That unit is PREROUTING `:53`/`:80`/`:443` for LAN/WG, plus OUTPUT `127.0.0.1`/`NAS_LAN_IP` `:443` → Caddy `:8443` so **Core `site` containers** can fetch `https://auth.<DOMAIN>/.well-known` (OpenCloud OIDC). Do not OUTPUT `:53` (host FallbackDNS). Mantle OIDC still uses `NAS_LAN_IP` (real LAN, not a hairpin).
 
 Router DHCP DNS: Core first, surface second. No public third.
+
+Prove this before layout/NFS (as **faiz** in the browser; `wget` as `pilot` with `XDG_RUNTIME_DIR=/run/user/$(id -u)`):
+
+```text
+# Host listeners
+ss -lntup | grep -E ':15353|:8080|:8443|:9091|:8092'
+
+# OpenCloud → Authelia (must be JSON, not "connection refused")
+podman exec opencloud-opencloud wget -S -O - --timeout=5 --no-check-certificate \
+  https://auth.<DOMAIN>/.well-known/openid-configuration | head
+
+# Homepage → PeaNUT
+podman exec homepage-homepage wget -qO- --timeout=5 http://169.254.1.2:8092/api/ping
+```
+
+Then in a browser: `https://dash.<DOMAIN>` (PeaNUT tile **OL**, Glances NAS numbers), `https://auth.<DOMAIN>`, `https://ups.<DOMAIN>`, `https://cloud.<DOMAIN>` → Authelia → files (not the safety-logout page).
 
 ## 7. OpenCloud, layout, NFS
 

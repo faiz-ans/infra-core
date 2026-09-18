@@ -6,7 +6,7 @@ metadata:
     app: bytestash
 spec:
   hostAliases:
-  - ip: "${NAS_LAN_IP}"
+  - ip: "${SITE_HOST_LOOPBACK}"
     hostnames:
       - "auth.${DOMAIN}"
 

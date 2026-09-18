@@ -160,8 +160,8 @@
             description: UPS Monitor
             widget:
                 type: peanut
-                # pasta host-loopback (= host.containers.internal). IP skips Node AAAA stall.
-                url: http://169.254.1.2:8092
+                # pasta host-loopback. IP, not hostname (Node AAAA stall).
+                url: http://{{HOMEPAGE_VAR_HOST_LOOPBACK}}:8092
                 key: ups 
         - Prometheus:
             href: https://metrics.{{HOMEPAGE_VAR_DOMAIN}}
@@ -175,12 +175,12 @@
     - Platform:
         - Cockpit:
             href: https://box.{{HOMEPAGE_VAR_DOMAIN}}
-            siteMonitor: http://{{HOMEPAGE_VAR_NAS_LAN_IP}}:9090
+            siteMonitor: http://{{HOMEPAGE_VAR_HOST_LOOPBACK}}:9090
             icon: cockpit.svg
             description: Hosts and units 
         - OpenMediaVault:
             href: https://nas.{{HOMEPAGE_VAR_DOMAIN}}
-            siteMonitor: http://{{HOMEPAGE_VAR_NAS_LAN_IP}}:81
+            siteMonitor: http://{{HOMEPAGE_VAR_HOST_LOOPBACK}}:81
             icon: openmediavault.svg
             description: Storage
         - Authelia:
@@ -195,7 +195,7 @@
             description: DNS
             widget:
                 type: pihole
-                url: http://pihole
+                url: http://{{HOMEPAGE_VAR_HOST_LOOPBACK}}:{{HOMEPAGE_VAR_PIHOLE_WEB_PORT}}
                 version: 6
                 key: "{{HOMEPAGE_VAR_PIHOLE_TOKEN}}"
                 fields:
@@ -208,7 +208,7 @@
             description: Traffic Manager
             widget:
                 type: caddy
-                url: http://caddy:2019
+                url: http://{{HOMEPAGE_VAR_HOST_LOOPBACK}}:2019
         - WireGuard:
             href: https://vpn.{{HOMEPAGE_VAR_DOMAIN}}
             icon: wireguard.svg

@@ -61,9 +61,15 @@ if [[ -n "${DOMAIN:-}" ]]; then
   HOMEPAGE_ALLOWED_HOSTS="dash.${DOMAIN},dash.${DOMAIN}:443,dash.${DOMAIN}:8443,homepage.${DOMAIN}"
   export HOMEPAGE_ALLOWED_HOSTS
 fi
+PIHOLE_WEB_PORT="${PIHOLE_WEB_PORT:-8088}"
+export PIHOLE_WEB_PORT
 
-# Site-network gateway (Homepage scrape of host-net PeaNUT). Netavark default
-# is 10.89.0.1 when inspect cannot run yet (first apply, before site exists).
+# Pasta host.containers.internal on this Podman. Homepage tiles and Core
+# site OIDC (OpenCloud/Jotty/…) must use this, not NAS_LAN_IP:443 (refused).
+SITE_HOST_LOOPBACK="${SITE_HOST_LOOPBACK:-169.254.1.2}"
+export SITE_HOST_LOOPBACK
+
+# Site-network gateway (unused by PeaNUT; kept for Homepage env).
 SITE_NET_GATEWAY="$(python3 - "${PILOT}" <<'PY'
 import json, os, subprocess, sys
 pilot = sys.argv[1]
@@ -178,6 +184,7 @@ subst_keys() {
   done < <(awk -F= '/^[A-Za-z_][A-Za-z0-9_]*=/{print $1}' "${SITE_ENV}")
   keys+=("\$COMPONENT_DIR")
   keys+=("\$SITE_NET_GATEWAY")
+  keys+=("\$SITE_HOST_LOOPBACK")
   printf '%s' "${keys[*]}"
 }
 
@@ -307,7 +314,10 @@ start_unit() {
   if is_system "${name}"; then
     systemctl restart "${unit}" || echo "warn: systemctl restart ${unit} failed"
   else
-    systemctl --machine="${PILOT}@" --user restart "${unit}" || echo "warn: user restart ${unit} failed"
+    if ! systemctl --machine="${PILOT}@" --user restart "${unit}"; then
+      sleep 2
+      systemctl --machine="${PILOT}@" --user restart "${unit}" || echo "warn: user restart ${unit} failed"
+    fi
   fi
 }
 

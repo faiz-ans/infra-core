@@ -22,6 +22,10 @@ spec:
       value: "${SURFACE_UPSTREAM}"
     - name: HOMEPAGE_VAR_NAS_LAN_IP
       value: "${NAS_LAN_IP}"
+    - name: HOMEPAGE_VAR_HOST_LOOPBACK
+      value: "${SITE_HOST_LOOPBACK}"
+    - name: HOMEPAGE_VAR_PIHOLE_WEB_PORT
+      value: "${PIHOLE_WEB_PORT}"
     - name: HOMEPAGE_VAR_SITE_NET_GATEWAY
       value: "${SITE_NET_GATEWAY}"
     - name: HOMEPAGE_VAR_OMV_USERNAME

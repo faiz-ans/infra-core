@@ -36,5 +36,6 @@ Open **`https://links.<DOMAIN>`**. Local `LINKDING_SUPERUSER_NAME` stays as brea
 | Symptom | What to do |
 |---|---|
 | `links.<DOMAIN>` does not load while `linkding` is Up | re-apply (apply.sh / systemd) **caddy**. Then `podman exec caddy wget -S -O- --timeout=10 http://linkding:9090/ \| head` |
+| Authelia ok, then Linkding cannot finish OIDC | Core `site` cannot hairpin `NAS_LAN_IP:443`. Catalog `hostAliases` `auth.<DOMAIN>` → `SITE_HOST_LOOPBACK`. Same as OpenCloud; see `authelia.md`. |
 | CSRF verification failed | Confirm `LD_CSRF_TRUSTED_ORIGINS` includes `https://links.<DOMAIN>` (re-apply (apply.sh / systemd) **linkding** after the catalog pull) |
 | Secret does not match | `LD_SUPERUSER_*` applies only when that user does not already exist |

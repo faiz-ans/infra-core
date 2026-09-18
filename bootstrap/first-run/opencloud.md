@@ -14,6 +14,21 @@ OpenCloud on **Core** (edge): PosixFS **documents** and **camera rolls** only.
 **Remounted data disk (this site):** if `getfattr` shows `user.oc.space.*` on `users/<user>/files` and `system/opencloud/projects/shared`, **do not** create Space `shared` again. Phase A remounts the tree; then layout + NFS. Park/adopt only if `system/opencloud/{config,data}` is corrupt.  
 **Park/restore** utilities: `opencloud-adopt-homes.sh`, `opencloud-adopt-shared.sh`, `opencloud-adopt-photos.sh`.
 
+## OIDC (required on every Core apply)
+
+Authelia is the IdP (`OC_EXCLUDE_RUN_SERVICES=idp`). After Authelia, OpenCloud’s proxy fetches `https://auth.<DOMAIN>/.well-known/openid-configuration` **from inside the container**.
+
+| Requirement | Why |
+|---|---|
+| `auth.<DOMAIN>` → `SITE_HOST_LOOPBACK` (`169.254.1.2`) | `site` → `NAS_LAN_IP:443` is connection refused |
+| lan-bind OUTPUT `127.0.0.1:443` → `:8443` | Pasta loopback is host `:443`; Caddy listens `:8443` |
+| `PROXY_OIDC_ACCESS_TOKEN_VERIFY_METHOD=none` | Authelia access tokens are opaque (not JWTs) |
+| `PROXY_AUTOPROVISION_ACCOUNTS` + `preferred_username` | Household users after remount / new IDM |
+| Authelia client `opencloud` `claims_policy` | Profile/groups in the ID token (no UserInfo hairpin) |
+| Caddy `Host` / `X-Forwarded-Host` `cloud.<DOMAIN>` | Callback Host must not be `cloud.<DOMAIN>:8443` |
+
+Login is **after** `core-lan-bind.sh --enable` (`SITE-DEPLOY.md` §6). Prove with `podman exec opencloud-opencloud wget --no-check-certificate https://auth.<DOMAIN>/.well-known/openid-configuration` → JSON. Do not wipe posix/users/shared.
+
 ## Greenfield checklist (empty disk)
 
 ### 0. Topology and host prep

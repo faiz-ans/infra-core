@@ -9,7 +9,7 @@ PeaNUT is the HTTP front for host NUT (CyberPower ST625U). `core-bootstrap` appl
 | Listen | `WEB_HOST=0.0.0.0` `WEB_PORT=8092` (not `127.0.0.1`, not `8080`) |
 | Auth | `AUTH_DISABLED=true` `AUTH_TRUST_HOST=true` `AUTH_SECRET` set. Do **not** set `AUTH_URL` / `NEXTAUTH_URL` |
 | Browser | `https://ups.<DOMAIN>` (alias `peanut.`). Caddy `reverse_proxy 127.0.0.1:8092` with `Host` / `X-Forwarded-Host` **`ups.<DOMAIN>`** (no `:8443`) |
-| Homepage tile | `http://169.254.1.2:8092` `key: ups` (pasta host-loopback). Not `peanut`, `127.0.0.1`, LAN IP, or `host.containers.internal` |
+| Homepage tile | `http://{{HOMEPAGE_VAR_HOST_LOOPBACK}}:8092` (`169.254.1.2`) `key: ups`. Not `peanut`, `127.0.0.1`, LAN IP, or `host.containers.internal` |
 
 `apply.sh` chowns `${DATA_ROOT}/system/peanut`, envsubst-copies `settings.yml`, and removes leftover kube `peanut-peanut` / pod `peanut` so a second container cannot steal Caddy `:8080`.
 
