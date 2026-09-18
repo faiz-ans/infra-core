@@ -63,6 +63,13 @@ if [[ -n "${DOMAIN:-}" ]]; then
 fi
 PIHOLE_WEB_PORT="${PIHOLE_WEB_PORT:-8088}"
 export PIHOLE_WEB_PORT
+# Homepage Pi-hole v6 key is the web password (or app password). Do not
+# keep a second HOMEPAGE_VAR_PIHOLE_TOKEN in site.env (old v5 API tokens
+# 401). Layer 0 already has PIHOLE_WEBPASSWORD.
+HOMEPAGE_VAR_PIHOLE_TOKEN="${PIHOLE_WEBPASSWORD:-}"
+export HOMEPAGE_VAR_PIHOLE_TOKEN
+HOMEPAGE_VAR_PIHOLE_MANTLE_TOKEN="${PIHOLE_MANTLE_WEBPASSWORD:-}"
+export HOMEPAGE_VAR_PIHOLE_MANTLE_TOKEN
 
 # Pasta host.containers.internal on this Podman. Homepage tiles and Core
 # site OIDC (OpenCloud/Jotty/…) must use this, not NAS_LAN_IP:443 (refused).
@@ -185,6 +192,10 @@ subst_keys() {
   keys+=("\$COMPONENT_DIR")
   keys+=("\$SITE_NET_GATEWAY")
   keys+=("\$SITE_HOST_LOOPBACK")
+  keys+=("\$PIHOLE_WEBPASSWORD")
+  keys+=("\$PIHOLE_MANTLE_WEBPASSWORD")
+  keys+=("\$HOMEPAGE_VAR_PIHOLE_TOKEN")
+  keys+=("\$HOMEPAGE_VAR_PIHOLE_MANTLE_TOKEN")
   printf '%s' "${keys[*]}"
 }
 

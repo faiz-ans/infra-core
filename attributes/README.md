@@ -25,7 +25,7 @@ Do not put live IPs, domains, or secrets in git. Keys (written by `core.sh` or b
 
 **Secrets:** Authelia session/storage/OIDC, `OIDC_CLIENT_SECRET`, Pi-hole passwords (`PIHOLE_WEBPASSWORD`, `PIHOLE_MANTLE_WEBPASSWORD`), Vaultwarden, Restic, Immich DB, Adventure Log, Grafana, NUT, Homepage widget keys (`HOMEPAGE_VAR_*` except those mapped from `DOMAIN` / `SURFACE_UPSTREAM` / `NAS_LAN_IP` / `TZ`).
 
-`HOMEPAGE_VAR_SURFACE_UPSTREAM` is mapped from `SURFACE_UPSTREAM` in the Homepage Quadlet. `HOMEPAGE_VAR_PIHOLE_MANTLE_TOKEN` maps from `PIHOLE_MANTLE_WEBPASSWORD`. There is no `HOMEPAGE_VAR_KOMODO_*`.
+`HOMEPAGE_VAR_SURFACE_UPSTREAM` is mapped from `SURFACE_UPSTREAM` in the Homepage Quadlet. `apply.sh` maps `HOMEPAGE_VAR_PIHOLE_TOKEN` from `PIHOLE_WEBPASSWORD` and `HOMEPAGE_VAR_PIHOLE_MANTLE_TOKEN` from `PIHOLE_MANTLE_WEBPASSWORD` (Pi-hole v6 widget key = web password). Do not store a second Pi-hole API token. There is no `HOMEPAGE_VAR_KOMODO_*`.
 
 ## Optional Materia
 

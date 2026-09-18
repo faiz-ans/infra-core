@@ -12,7 +12,7 @@ Homepage is on the `site` netavark bridge. Caddy, Pi-hole, PeaNUT, Cockpit, and 
 | Glances (NAS) | `http://glances:61208` | Both on `site` |
 | Cockpit | `http://169.254.1.2:9090` | Host `:9090` |
 | OpenMediaVault | `http://169.254.1.2:81` | Host `:81` |
-| Pi-hole | `http://169.254.1.2:<PIHOLE_WEB_PORT>` | Host-net; default `8088` |
+| Pi-hole | `http://169.254.1.2:<PIHOLE_WEB_PORT>` | Host-net; default `8088`. `key` = `PIHOLE_WEBPASSWORD` (v6). `apply.sh` maps it; not a second site.env token |
 | Caddy admin | `http://169.254.1.2:2019` | Origins include `169.254.1.2:2019` |
 
 Browser: `https://dash.<DOMAIN>` (alias `homepage.`). No Authelia gate.
@@ -33,6 +33,7 @@ Glances on mantle (`SURFACE_UPSTREAM:61208`) and router `siteMonitor` are **othe
 |---|---|
 | Firefox laptop 400 / “invalid host”, phone works | `HOMEPAGE_ALLOWED_HOSTS` missing `:8443`, or Caddy still advertises HTTP/3. re-apply **homepage** + **caddy**. Clear site data for `dash.<DOMAIN>` |
 | Firefox NXDOMAIN `dash.<DOMAIN>`, `dig` works | macOS mDNSResponder negative cache (~30h). Flush or use `dash.<DOMAIN>:8443` once, or wait |
-| PeaNUT / Pi-hole / Caddy / Cockpit / OMV tile API error | Scrape URL must be `http://169.254.1.2:<port>`. From Homepage: `wget -qO- --timeout=5 http://169.254.1.2:8092/api/ping` → `pong` |
+| PeaNUT / Caddy / Cockpit / OMV tile API error | Scrape URL must be `http://169.254.1.2:<port>`. From Homepage: `wget -qO- --timeout=5 http://169.254.1.2:8092/api/ping` → `pong` |
+| Pi-hole tile API error, `wget` to `:8088/api/auth` is **401** | Reachability is fine (unauthenticated GET is 401). Widget key must be `PIHOLE_WEBPASSWORD`. `apply.sh` maps it onto `HOMEPAGE_VAR_PIHOLE_TOKEN`. Do not keep a leftover v5 API token in site.env. re-apply **homepage** |
 | Core Glances tile empty | `wget` from Homepage to `http://glances:61208/api/4/cpu`. re-apply **glances** (apply retries once; kube-play can flap) |
 | Click opens `http://glances:61208` | Stale href. re-apply **homepage** |
