@@ -62,7 +62,7 @@ Contracts (no chat-only extra steps):
 | Piece | Must be | Details |
 |---|---|---|
 | PeaNUT | host-net `:8092`, NUT `127.0.0.1:3493` | `bootstrap/first-run/peanut.md` |
-| Homepage tiles | host scrapes via `169.254.1.2`, Glances via `glances:61208` | `bootstrap/first-run/homepage.md` |
+| Homepage tiles | host scrapes via `169.254.1.2`, Glances via `glances:61208`; Core status dots via user `podman.sock` | `bootstrap/first-run/homepage.md` |
 | Caddy | `https_port 8443`, `h1`/`h2` only, `Host` pins on `dash.`/`auth.`/`ups.`/`cloud.` | |
 | Authelia | `UserNS=keep-id`, `system/authelia` owned by `PUID`, OpenCloud `claims_policy` | `bootstrap/first-run/authelia.md` |
 | OpenCloud | Authelia OIDC env + `auth.<DOMAIN>` → `169.254.1.2` | `bootstrap/first-run/opencloud.md` |

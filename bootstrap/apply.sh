@@ -289,6 +289,15 @@ if [[ -n "${DATA_ROOT:-}" ]]; then
   done
 fi
 
+# Homepage status dots: user podman.sock must exist before kube play mounts it.
+for _c in "${COMPONENTS[@]}"; do
+  if [[ "${_c}" == "homepage" ]]; then
+    systemctl --machine="${PILOT}@" --user enable --now podman.socket \
+      || echo "warn: user podman.socket not started (Homepage docker.yaml)"
+    break
+  fi
+done
+
 systemctl daemon-reload
 if systemctl --machine="${PILOT}@" --user daemon-reload; then
   :

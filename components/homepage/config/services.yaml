@@ -6,16 +6,22 @@
             href: https://cloud.{{HOMEPAGE_VAR_DOMAIN}}
             icon: open-cloud-dark.svg
             description: Files
+            server: core
+            container: opencloud-opencloud
         - Jotty:
             id: jotty
             href: https://notes.{{HOMEPAGE_VAR_DOMAIN}}
             icon: jotty.svg
             description: Notes
+            server: core
+            container: jotty-jotty
         - Linkding:
             id: linkding
             href: https://links.{{HOMEPAGE_VAR_DOMAIN}}
             icon: linkding.svg
             description: Bookmarks
+            server: core
+            container: linkding-linkding
         - Scriberr:
             id: scriberr
             href: https://voice.{{HOMEPAGE_VAR_DOMAIN}}
@@ -26,11 +32,15 @@
             href: https://snip.{{HOMEPAGE_VAR_DOMAIN}}
             icon: bytestash.svg
             description: Snippets
+            server: core
+            container: bytestash-bytestash
         - Vaultwarden:
             id: vaultwarden
             href: https://pass.{{HOMEPAGE_VAR_DOMAIN}}
             icon: bitwarden.svg
             description: Passwords
+            server: core
+            container: vaultwarden-vaultwarden
             
     - Media & Home:
         - Immich:
@@ -74,6 +84,8 @@
             href: https://pdf.{{HOMEPAGE_VAR_DOMAIN}}
             icon: bentopdf.svg
             description: PDF Tools
+            server: core
+            container: bentopdf-bentopdf
         - LibreTranslate:
             id: libretranslate
             href: https://translate.{{HOMEPAGE_VAR_DOMAIN}}
@@ -94,6 +106,8 @@
             href: https://it.{{HOMEPAGE_VAR_DOMAIN}}
             icon: it-tools.svg
             description: Developer Utilities
+            server: core
+            container: it-tools-it-tools
 
     - Web:
         - Gmail:
@@ -138,6 +152,8 @@
             href: https://up.{{HOMEPAGE_VAR_DOMAIN}}
             icon: uptime-kuma.svg
             description: Service Monitor
+            server: core
+            container: uptime-kuma-uptime-kuma
             widget:
                 type: uptimekuma
                 url: http://uptime-kuma:3001
@@ -158,6 +174,8 @@
             href: https://ups.{{HOMEPAGE_VAR_DOMAIN}}
             icon: peanut.svg
             description: UPS Monitor
+            server: core
+            container: peanut
             widget:
                 type: peanut
                 # pasta host-loopback. IP, not hostname (Node AAAA stall).
@@ -187,12 +205,16 @@
             href: https://auth.{{HOMEPAGE_VAR_DOMAIN}}
             icon: authelia.svg
             description: Authentication
+            server: core
+            container: authelia-authelia
 
     - Network:
         - Pi-hole:
             href: https://dns.{{HOMEPAGE_VAR_DOMAIN}}/admin
             icon: pi-hole.svg
             description: DNS
+            server: core
+            container: pihole
             widget:
                 type: pihole
                 url: http://{{HOMEPAGE_VAR_HOST_LOOPBACK}}:{{HOMEPAGE_VAR_PIHOLE_WEB_PORT}}
@@ -206,6 +228,8 @@
             href: https://traffic.{{HOMEPAGE_VAR_DOMAIN}}
             icon: caddy.svg
             description: Traffic Manager
+            server: core
+            container: caddy
             widget:
                 type: caddy
                 url: http://{{HOMEPAGE_VAR_HOST_LOOPBACK}}:2019
@@ -213,10 +237,14 @@
             href: https://vpn.{{HOMEPAGE_VAR_DOMAIN}}
             icon: wireguard.svg
             description: VPN
+            server: core
+            container: wg-easy
         - RustDesk:
             href: https://desk.{{HOMEPAGE_VAR_DOMAIN}}
             icon: rustdesk.png
             description: Remote Desktop
+            server: core
+            container: rustdesk-hbbs
         - Linksys EA8300:
             href: https://wifi.{{HOMEPAGE_VAR_DOMAIN}}
             siteMonitor: https://{{HOMEPAGE_VAR_ROUTER_LAN_IP}}/

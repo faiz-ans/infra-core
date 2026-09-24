@@ -1,0 +1,18 @@
+---
+description: Do not guess root causes; ask for evidence and give short commands the user can run
+alwaysApply: true
+---
+
+# Diagnose from evidence — do not guess
+
+When the user reports a problem, **do not invent a fix**. Change catalog or host state only after evidence shows the actual cause.
+
+- If the repo, live logs, or this conversation already prove the cause, fix that cause.
+- If they do not, **stop and ask**. Say exactly what is missing (which log, which URL, which container, which listener).
+- If gathering that needs the user (SSH password, a browser, host settings), give **short, pasteable commands** and a few numbered steps. One concern per command block. Do not dump a long script they cannot edit.
+- Do not offer a second unverified patch after the first one failed. Re-diagnose from new output.
+
+```
+❌ BAD: "This is probably the token. I updated three files; apply and see."
+✅ GOOD: "Need the reject line. Paste this as pilot, then send the output."
+```

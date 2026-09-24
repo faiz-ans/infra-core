@@ -1,0 +1,4 @@
+# Rootless Podman API (Docker-compatible). Do not use the system
+# /run/podman/podman.sock — that only sees rootful units (Scrutiny).
+core:
+  socket: /run/podman/podman.sock

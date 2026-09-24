@@ -37,6 +37,8 @@ loginctl enable-linger "${PILOT}"
 
 systemctl enable --now podman.socket
 systemctl enable --now cockpit.socket
+# User socket is what Homepage status dots use (rootless Quadlets).
+systemctl --machine="${PILOT}@" --user enable --now podman.socket 2>/dev/null || true
 
 systemctl daemon-reload
 systemctl --machine="${PILOT}@" --user daemon-reload 2>/dev/null || true

@@ -4,6 +4,7 @@ Description=homepage
 [Kube]
 Yaml=${COMPONENT_DIR}/pod.yaml
 Network=site.network
+UserNS=keep-id
 PublishPort=127.0.0.1:3000:3000
 
 [Service]

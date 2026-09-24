@@ -67,6 +67,9 @@ spec:
       mountPath: /app/config
     - name: images
       mountPath: /app/public/images
+    - name: podman
+      mountPath: /run/podman
+      readOnly: true
   volumes:
   - name: config
     hostPath:
@@ -74,3 +77,6 @@ spec:
   - name: images
     hostPath:
       path: "${COMPONENT_DIR}/images"
+  - name: podman
+    hostPath:
+      path: "/run/user/${PUID}/podman"

@@ -4,6 +4,14 @@ Homepage is on the `site` netavark bridge. Caddy, Pi-hole, PeaNUT, Cockpit, and 
 
 `apply.sh` sets `SITE_HOST_LOOPBACK=169.254.1.2` and `HOMEPAGE_ALLOWED_HOSTS` (includes `dash.<DOMAIN>:8443`). Caddy pins `Host: dash.<DOMAIN>` and disables HTTP/3 (`h1`/`h2` only) so Firefox does not send `Host: dash.<DOMAIN>:8443` via Alt-Svc.
 
+## Container status dots
+
+Homepage talks to the **user** Podman API (Docker-compatible). `apply.sh` starts `podman.socket` for `pilot` and mounts `/run/user/<PUID>/podman` at `/run/podman`. `config/docker.yaml` is `core` → `/run/podman/podman.sock`. Quadlet `UserNS=keep-id` so the socket is readable.
+
+Kube-play names are `{pod}-{container}` (`opencloud-opencloud`). `.container` units use `ContainerName` (`caddy`, `pihole`, `peanut`). Mantle tiles have no `server`/`container` (this socket is Core only). Cockpit, OMV, and the router are host services (no dot). Scrutiny is rootful and is not on this socket.
+
+Click a green dot for Docker-style stats. Undeployed Core-full tiles (Jotty, …) show as down until `core-full`.
+
 ## Phase A tiles that must work after lan-bind
 
 | Tile | Scrape URL | Notes |
@@ -37,3 +45,5 @@ Glances on mantle (`SURFACE_UPSTREAM:61208`) and router `siteMonitor` are **othe
 | Pi-hole tile API error, `wget` to `:8088/api/auth` is **401** | Reachability is fine (unauthenticated GET is 401). Widget key must be `PIHOLE_WEBPASSWORD`. `apply.sh` maps it onto `HOMEPAGE_VAR_PIHOLE_TOKEN`. Do not keep a leftover v5 API token in site.env. re-apply **homepage** |
 | Core Glances tile empty | `wget` from Homepage to `http://glances:61208/api/4/cpu`. re-apply **glances** (apply retries once; kube-play can flap) |
 | Click opens `http://glances:61208` | Stale href. re-apply **homepage** |
+| No status dots / all tiles gray | User `podman.socket` down or socket not mounted. `systemctl --user is-active podman.socket`; `ls /run/user/$(id -u)/podman/podman.sock`. re-apply **homepage** |
+| Dots missing only on mantle tiles | Expected. Core Homepage cannot see mantle Podman. |
