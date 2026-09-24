@@ -18,7 +18,7 @@ Click a green dot for Docker-style stats. Undeployed Core-full tiles (Jotty, …
 |---|---|---|
 | PeaNUT | `http://169.254.1.2:8092` `key: ups` | Host-net PeaNUT. Details: `peanut.md` |
 | Glances (NAS) | `http://glances:61208` | Both on `site` |
-| Cockpit | `http://169.254.1.2:9090` | Host `:9090` |
+| Cockpit | `http://169.254.1.2:9090/ping` | Host `:9090`. `/` 301s to HTTPS and Homepage shows 500 |
 | OpenMediaVault | `http://169.254.1.2:81` | Host `:81` |
 | Pi-hole | `http://169.254.1.2:<PIHOLE_WEB_PORT>` | Host-net; default `8088`. `key` = `PIHOLE_WEBPASSWORD` (v6). `apply.sh` maps it; not a second site.env token |
 | Caddy admin | `http://169.254.1.2:2019` | Origins include `169.254.1.2:2019` |
@@ -47,3 +47,5 @@ Glances on mantle (`SURFACE_UPSTREAM:61208`) and router `siteMonitor` are **othe
 | Click opens `http://glances:61208` | Stale href. re-apply **homepage** |
 | No status dots / all tiles gray | User `podman.socket` down or socket not mounted. `systemctl --user is-active podman.socket`; `ls /run/user/$(id -u)/podman/podman.sock`. re-apply **homepage** |
 | Dots missing only on mantle tiles | Expected. Core Homepage cannot see mantle Podman. |
+| Cockpit tile 500, login page still opens | `siteMonitor` must be `http://169.254.1.2:9090/ping` (not `/`). `/` 301s to Cockpit TLS. re-apply **homepage** |
+| `box.<DOMAIN>` login as `pilot` fails / blank after submit | No `/etc/cockpit/cockpit.conf`. `apply.sh` writes Origins for `box.`/`cockpit.` and Caddy proxies `https://127.0.0.1:9090`. re-apply **caddy**. Then `https://box.<DOMAIN>` again |

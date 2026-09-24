@@ -193,7 +193,7 @@
     - Platform:
         - Cockpit:
             href: https://box.{{HOMEPAGE_VAR_DOMAIN}}
-            siteMonitor: http://{{HOMEPAGE_VAR_HOST_LOOPBACK}}:9090
+            siteMonitor: http://{{HOMEPAGE_VAR_HOST_LOOPBACK}}:9090/ping
             icon: cockpit.svg
             description: Hosts and units 
         - OpenMediaVault:

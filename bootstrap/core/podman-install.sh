@@ -39,6 +39,18 @@ systemctl enable --now podman.socket
 systemctl enable --now cockpit.socket
 # User socket is what Homepage status dots use (rootless Quadlets).
 systemctl --machine="${PILOT}@" --user enable --now podman.socket 2>/dev/null || true
+if [[ -f /etc/infra-core/site.env && -f "$(dirname "$0")/cockpit.conf" ]]; then
+  # shellcheck disable=SC1091
+  set -a
+  # shellcheck disable=SC1090
+  source /etc/infra-core/site.env
+  set +a
+  if [[ -n "${DOMAIN:-}" ]]; then
+    install -d -m 0755 /etc/cockpit
+    envsubst '${DOMAIN}' <"$(dirname "$0")/cockpit.conf" >/etc/cockpit/cockpit.conf
+    chmod 644 /etc/cockpit/cockpit.conf
+  fi
+fi
 
 systemctl daemon-reload
 systemctl --machine="${PILOT}@" --user daemon-reload 2>/dev/null || true

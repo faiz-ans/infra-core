@@ -289,6 +289,19 @@ if [[ -n "${DATA_ROOT:-}" ]]; then
   done
 fi
 
+# Cockpit behind Caddy: Origins + ProtocolHeader. Missing file → login page
+# loads, session stays on 127.0.0.1 (pilot login fails). Homepage /ping
+# is the HTTP check that does not 301 to Cockpit TLS.
+for _c in "${COMPONENTS[@]}"; do
+  if [[ "${_c}" == "caddy" && -n "${DOMAIN:-}" ]]; then
+    install -d -m 0755 /etc/cockpit
+    envsubst '${DOMAIN}' <"${SCRIPT_DIR}/core/cockpit.conf" >/etc/cockpit/cockpit.conf
+    chmod 644 /etc/cockpit/cockpit.conf
+    systemctl try-restart cockpit.service 2>/dev/null || true
+    break
+  fi
+done
+
 # Homepage status dots: user podman.sock must exist before kube play mounts it.
 for _c in "${COMPONENTS[@]}"; do
   if [[ "${_c}" == "homepage" ]]; then
