@@ -93,7 +93,3 @@ App config that belongs in git (Caddyfile, Homepage YAML, and similar templates)
 
 ### Requirement: Kubernetes overlay is unused here
 YAML in `components/` SHALL be limited to kinds `podman kube play` accepts (Pod, Deployment, ConfigMap, Secret, PVC, and documented Quadlet-only units). Ingress, Service, HPA, and operators MUST live only under `overlays/k8s/` (stub until a future site).
-
-#### Scenario: Materia path has no Ingress
-- **WHEN** Materia applies this site’s components
-- **THEN** it does not install Kubernetes Ingress, Service, or HPA resources
