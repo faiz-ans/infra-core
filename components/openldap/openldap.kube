@@ -1,0 +1,13 @@
+[Unit]
+Description=openldap
+After=network-online.target
+
+[Kube]
+Yaml=pod.yaml
+Network=site.network
+
+[Service]
+Restart=on-failure
+
+[Install]
+WantedBy=default.target

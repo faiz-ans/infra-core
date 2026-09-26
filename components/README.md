@@ -1,24 +1,24 @@
 # Components
 
-Each directory under `components/` is a Quadlet app: kube-play YAML and/or `.container` / `.kube` / `.network`, plus config files.
+Each directory under `components/` is an official Quadlet: kube-play Pod YAML and/or `.container` / `.kube` / `.network`. Placement is `site.yaml` (`hosts[].roles.workload.services`), not a host-role manifest.
 
 ```
 components/<name>/
-  MANIFEST.toml          # optional service list
   <name>.kube            # kube-play wrapper, or
-  <name>.container       # host-net / single Quadlet
-  pod.yaml               # kube-play Pod(s)
-  config/                # Caddyfile, Homepage YAML, Authelia, …
+  <name>.container       # host-net / single process
+  pod.yaml               # kube-play Pod
 ```
 
-`bootstrap/apply.sh` copies these into `/etc/containers/systemd/<name>/` (rootful: Scrutiny) or `/home/pilot/.config/containers/systemd/<name>/` (rootless), substituting `${VAR}` from `/etc/infra-core/site.env`. `Yaml=pod.yaml` is beside the unit after install.
+`components/pack.yaml` is the official service pack (subdomains, ports, OIDC vs forward-auth, host-net vs site, rootful vs rootless). Comment-only engines in the example topology are vocabulary, not implementations.
 
-- **kube-play subset only:** Pod, ConfigMap, Secret, PVC. No Ingress/Service/HPA here (`overlays/k8s/` is the stub).
-- **Host-netns rootless** (Caddy, Pi-hole, PeaNUT, RustDesk, wg-easy UI): `.container` with `Network=host`. PeaNUT stays host-net so it can reach `upsd` on `127.0.0.1:3493`.
-- **Site mesh:** `site-network` installs `site.network`. Other Core/mantle app units set `Network=site.network`.
-- **Core `site` → host:** `NAS_LAN_IP` and `127.0.0.1` are refused. Use pasta loopback `SITE_HOST_LOOPBACK` (`169.254.1.2`) for Homepage tiles and Core OIDC `hostAliases` on `auth.<DOMAIN>`. lan-bind OUTPUT maps `127.0.0.1:443` → Caddy `:8443`. Mantle OIDC keeps `NAS_LAN_IP` (real LAN). See `bootstrap/first-run/homepage.md` and `opencloud.md`.
-- **Rootful host plumbing** (`wg-quick`, Scrutiny): system Quadlets / units.
-- **Placeholders:** `${DOMAIN}`, `${DATA_ROOT}`, `${SURFACE_UPSTREAM}`, … from `site.env`. No live IPs/domains/secrets in git.
-- **Materia:** optional. `bootstrap/core/materia-enable.sh` polls git and runs `apply.sh`. Not required.
+SET (`ansible/site.py set`) resolves `${site.*}`, `${host.*}`, `${secrets.*}` and the legacy `${DOMAIN}` / `${NAS_LAN_IP}` aliases on the runner, strips Kubernetes-only kinds (Ingress, Service, HPA), and installs into the system tree (rootful) or the workload-user tree (rootless).
 
-Linuxserver images: `PUID`/`PGID`. Mantle libraries: `hostPath` from WSL NFS (`${NFS_SHARED}`, `${NFS_USERS}`). GPU: CDI `nvidia.com/gpu=all` on Immich ML / Jellyfin.
+Lessons encoded in the pack and generators:
+
+- Caddy / Authelia: `UserNS=keep-id` and PKI/oidc.pem ownership
+- lan-bind: PREROUTING 53/80/443 plus OUTPUT `:443` on loopback and the ingress LAN IP — never OUTPUT `:53`
+- OpenCloud: `PROXY_OIDC_ACCESS_TOKEN_VERIFY_METHOD=none`, autoprovision, `auth.` → pasta `169.254.1.2`
+- Homepage: `HOMEPAGE_ALLOWED_HOSTS` includes `:8443`; host scrapes via `169.254.1.2`; Pi-hole widget key is the web password
+- PeaNUT: host-net `:8092`, NUT `127.0.0.1`, no `AUTH_URL`
+- WireGuard MTU 1280
+- Do not recreate OpenCloud spaces when xattrs already exist

@@ -1,0 +1,307 @@
+# Official service pack. Comment-only engines in example YAML are not listed.
+# network: site | host
+# privilege: rootless | rootful
+# sso: oidc | forward-auth | none | admin-only
+# dirs: extra dirs under groups/all created only when this service is desired
+# Lessons: keep-id on Caddy/Authelia/OpenCloud/PeaNUT; lan-bind OUTPUT :443 not :53;
+# OpenCloud OIDC verify=none + 169.254.1.2 auth.; Homepage :8443 + loopback scrapes;
+# Pi-hole widget key = web password; PeaNUT host-net :8092 / NUT localhost / no AUTH_URL;
+# WG MTU 1280; no OpenCloud space recreate if xattrs exist.
+
+services:
+  caddy:
+    component: caddy
+    network: host
+    privilege: rootless
+    sso: none
+    tile: false
+    ports: { http: 8080, https: 8443 }
+    keep_id: true
+  authelia:
+    component: authelia
+    network: site
+    privilege: rootless
+    sso: none
+    tile: true
+    subdomain: { primary: auth, aliases: [authelia] }
+    keep_id: true
+    publish: ["127.0.0.1:9091:9091"]
+  openldap:
+    component: openldap
+    network: site
+    privilege: rootless
+    sso: none
+    tile: false
+    publish: ["127.0.0.1:389:389"]
+  opencloud:
+    component: opencloud
+    network: site
+    privilege: rootless
+    sso: oidc
+    tile: true
+    subdomain: { primary: cloud, aliases: [oc, opencloud] }
+    keep_id: true
+    publish: ["127.0.0.1:9200:9200"]
+  pi-hole:
+    component: pihole
+    network: host
+    privilege: rootless
+    sso: none
+    tile: true
+    subdomain: { primary: dns, aliases: [pihole] }
+    ports: { dns: 15353, web: 8088 }
+  pi-hole-mantle:
+    component: pihole-mantle
+    network: host
+    privilege: rootless
+    sso: none
+    tile: true
+    subdomain: { primary: dns2, aliases: [pihole2] }
+  glances:
+    component: glances
+    network: site
+    privilege: rootless
+    sso: forward-auth
+    tile: true
+    subdomain: { primary: host, aliases: [glances] }
+    implicit_workload: true
+  homepage:
+    component: homepage
+    network: site
+    privilege: rootless
+    sso: none
+    tile: false
+    subdomain: { primary: dash, aliases: [homepage] }
+    publish: ["127.0.0.1:3000:3000"]
+  peanut:
+    component: peanut
+    network: host
+    privilege: rootless
+    sso: forward-auth
+    tile: true
+    subdomain: { primary: ups, aliases: [peanut] }
+    ports: { web: 8092 }
+    keep_id: true
+  vaultwarden:
+    component: vaultwarden
+    network: site
+    privilege: rootless
+    sso: admin-only
+    tile: true
+    subdomain: { primary: pass, aliases: [pw, vaultwarden] }
+  jotty:
+    component: jotty
+    network: site
+    privilege: rootless
+    sso: oidc
+    tile: true
+    subdomain: { primary: notes, aliases: [jotty] }
+  linkding:
+    component: linkding
+    network: site
+    privilege: rootless
+    sso: oidc
+    tile: true
+    subdomain: { primary: links, aliases: [bookmarks, linkding] }
+  bytestash:
+    component: bytestash
+    network: site
+    privilege: rootless
+    sso: oidc
+    tile: true
+    subdomain: { primary: snip, aliases: [snippets, bytestash] }
+  bentopdf:
+    component: bentopdf
+    network: site
+    privilege: rootless
+    sso: forward-auth
+    tile: true
+    subdomain: { primary: pdf, aliases: [bentopdf] }
+  it-tools:
+    component: it-tools
+    network: site
+    privilege: rootless
+    sso: forward-auth
+    tile: true
+    subdomain: { primary: it, aliases: [it-tools] }
+  libretranslate:
+    component: libretranslate
+    network: site
+    privilege: rootless
+    sso: forward-auth
+    tile: true
+    subdomain: { primary: translate, aliases: [libretranslate] }
+  immich:
+    component: immich
+    network: site
+    privilege: rootless
+    sso: oidc
+    tile: true
+    subdomain: { primary: photos, aliases: [immich, gallery] }
+  adventurelog:
+    component: adventurelog
+    network: site
+    privilege: rootless
+    sso: oidc
+    tile: true
+    subdomain: { primary: travel, aliases: [adventurelog] }
+  transmute:
+    component: transmute
+    network: site
+    privilege: rootless
+    sso: oidc
+    tile: true
+    subdomain: { primary: convert, aliases: [transmute] }
+  jellyfin:
+    component: jellyfin
+    network: site
+    privilege: rootless
+    sso: none
+    tile: true
+    subdomain: { primary: watch, aliases: [jellyfin] }
+    dirs: [media]
+  seerr:
+    component: seerr
+    network: site
+    privilege: rootless
+    sso: none
+    tile: true
+    subdomain: { primary: request, aliases: [seerr] }
+  arr:
+    component: arr
+    network: site
+    privilege: rootless
+    sso: none
+    tile: true
+  qbittorrent:
+    component: qbittorrent
+    network: site
+    privilege: rootless
+    sso: none
+    tile: true
+    subdomain: { primary: down, aliases: [qbittorrent] }
+    dirs: [downloads]
+  frigate:
+    component: frigate
+    network: site
+    privilege: rootless
+    sso: none
+    tile: true
+    subdomain: { primary: nvr, aliases: [cam, cams, frigate] }
+    dirs: [cameras]
+  homeassistant:
+    component: homeassistant
+    network: site
+    privilege: rootless
+    sso: none
+    tile: true
+    subdomain: { primary: auto, aliases: [homeassistant] }
+  scrutiny:
+    component: scrutiny
+    network: host
+    privilege: rootful
+    sso: forward-auth
+    tile: true
+    subdomain: { primary: disks, aliases: [scrutiny] }
+  uptime-kuma:
+    component: uptime-kuma
+    network: site
+    privilege: rootless
+    sso: none
+    tile: true
+    subdomain: { primary: up, aliases: [uptime] }
+  rustdesk:
+    component: rustdesk
+    network: host
+    privilege: rootless
+    sso: none
+    tile: true
+    subdomain: { primary: desk, aliases: [rustdesk] }
+  wireguard:
+    component: wg-easy
+    network: host
+    privilege: rootless
+    sso: none
+    tile: true
+    subdomain: { primary: vpn, aliases: [wg, wireguard] }
+    mtu: 1280
+  wireguard-data:
+    component: wireguard-data
+    network: host
+    privilege: rootful
+    sso: none
+    tile: false
+    mtu: 1280
+  collabora:
+    component: collabora
+    network: site
+    privilege: rootless
+    sso: none
+    tile: false
+    subdomain: { primary: office, aliases: [collabora] }
+  restic:
+    component: restic
+    network: site
+    privilege: rootless
+    sso: none
+    tile: false
+  restic-rest:
+    component: restic-rest
+    network: site
+    privilege: rootless
+    sso: none
+    tile: false
+  n8n:
+    component: n8n
+    network: site
+    privilege: rootless
+    sso: none
+    tile: true
+    subdomain: { primary: flow, aliases: [n8n] }
+  scriberr:
+    component: scriberr
+    network: site
+    privilege: rootless
+    sso: none
+    tile: true
+    subdomain: { primary: voice, aliases: [scriberr] }
+  openreader:
+    component: openreader
+    network: site
+    privilege: rootless
+    sso: none
+    tile: true
+    subdomain: { primary: read, aliases: [openreader] }
+  caddymanager:
+    component: caddymanager
+    network: site
+    privilege: rootless
+    sso: forward-auth
+    tile: true
+    subdomain: { primary: traffic, aliases: [caddymanager] }
+  monitoring:
+    component: monitoring
+    network: site
+    privilege: rootless
+    sso: oidc
+    tile: true
+    subdomain: { primary: site, aliases: [grafana] }
+  site-network:
+    component: site-network
+    network: site
+    privilege: rootless
+    sso: none
+    tile: false
+    implicit_workload: true
+
+engines:
+  dns: { pi-hole: pi-hole }
+  ingress: { caddy: caddy }
+  sso: { authelia: authelia }
+  ldap: { openldap: openldap }
+  web: { opencloud: opencloud }
+  host.manager: { cockpit: host }
+  host.monitor: { glances: glances }
+  storage.monitor: { scrutiny: scrutiny }
+  workload.monitor: { uptime-kuma: uptime-kuma }
+  tunnel: { wireguard: wireguard }

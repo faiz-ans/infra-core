@@ -1,0 +1,9 @@
+---
+- name: Task B site-influenced state
+  script: "{{ playbook_dir }}/../scripts/site_state.py"
+  register: site_state_raw
+  changed_when: false
+
+- name: Parse site state
+  set_fact:
+    site_state: "{{ site_state_raw.stdout | from_json }}"

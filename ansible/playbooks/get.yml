@@ -1,0 +1,39 @@
+---
+# GET: Task A (census) always on Day 0; Task B (site-influenced) on Day 2.
+# Writes observed.yaml on the runner. Never overwrites site.yaml.
+- name: Load plan if present
+  hosts: localhost
+  connection: local
+  gather_facts: false
+  tasks:
+    - name: Read plan JSON
+      set_fact:
+        site_plan: "{{ lookup('file', plan_json) | from_json }}"
+      when: plan_json is defined
+
+- name: OS family guard
+  hosts: all
+  become: true
+  roles:
+    - os_guard
+
+- name: Task A census
+  hosts: all
+  become: true
+  roles:
+    - role: census
+      when: get_task | default('all') in ['a', 'all']
+
+- name: Task B site-influenced state
+  hosts: all
+  become: true
+  roles:
+    - role: site_state
+      when: get_task | default('all') in ['b', 'all']
+
+- name: Write observed.yaml on the runner
+  hosts: localhost
+  connection: local
+  gather_facts: false
+  roles:
+    - observed_write

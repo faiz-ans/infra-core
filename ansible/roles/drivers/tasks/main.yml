@@ -1,0 +1,21 @@
+---
+# NVIDIA when GPU listed. NUT when UPS present. PeaNUT is a listed service only.
+- name: This host
+  set_fact:
+    site_this_host: "{{ site_plan.hosts | selectattr('name', 'equalto', site_host_name) | list | first }}"
+
+- name: NVIDIA packages when a GPU is declared
+  apt:
+    name:
+      - nvidia-container-toolkit
+    state: present
+  when: (site_this_host.resources.gpu | default([])) | length > 0
+  failed_when: false
+
+- name: NUT when UPS resource is present (not PeaNUT)
+  apt:
+    name:
+      - nut-server
+      - nut-client
+    state: present
+  when: site_this_host.resources.ups is defined

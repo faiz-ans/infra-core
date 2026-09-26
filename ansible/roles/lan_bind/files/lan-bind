@@ -1,0 +1,65 @@
+#!/usr/bin/env bash
+# Host nft/iptables: preserve source IPs. Pi-hole and Caddy bind high ports.
+# PREROUTING :53/:80/:443. OUTPUT :443 for 127.0.0.1 and the ingress LAN IP.
+# Never OUTPUT :53 — that loops host FallbackDNS back to Pi-hole.
+set -u
+
+DNS_PROXY_PORT=15353
+HTTP_PORT=8080
+HTTPS_PORT=8443
+IP="${SITE_INGRESS_IP:-}"
+
+if [[ -z "${IP}" ]]; then
+  IP=$(ip -4 route get 1.1.1.1 2>/dev/null | awk '{for (i=1;i<=NF;i++) if ($i=="src") {print $(i+1); exit}}')
+fi
+if [[ -z "${IP}" ]]; then
+  echo "lan-bind: no ingress IP."
+  exit 1
+fi
+
+port_up() {
+  local port=$1 proto=${2:-tcp}
+  if [[ "${proto}" == udp ]]; then
+    ss -uln 2>/dev/null | grep -qE ":${port}[[:space:]]"
+  else
+    ss -tln 2>/dev/null | grep -qE ":${port}[[:space:]]"
+  fi
+}
+
+del_nat() {
+  local chain line spec n
+  for chain in PREROUTING OUTPUT; do
+    n=0
+    while [[ "${n}" -lt 32 ]]; do
+      line=$(iptables -t nat -S "${chain}" 2>/dev/null | grep -E -- "--to-ports (53|80|443|${DNS_PROXY_PORT}|${HTTP_PORT}|${HTTPS_PORT})" | head -n 1 || true)
+      [[ -z "${line}" ]] && break
+      spec=${line#-A ${chain} }
+      # shellcheck disable=SC2086
+      iptables -t nat -D "${chain}" ${spec} 2>/dev/null || break
+      n=$((n + 1))
+    done
+  done
+}
+
+add_redirects() {
+  local proto
+  for proto in udp tcp; do
+    iptables -t nat -A PREROUTING -p "${proto}" --dport 53 -j REDIRECT --to-ports "${DNS_PROXY_PORT}"
+  done
+  iptables -t nat -A PREROUTING -p tcp --dport 80 -j REDIRECT --to-ports "${HTTP_PORT}"
+  for proto in tcp udp; do
+    iptables -t nat -A PREROUTING -p "${proto}" --dport 443 -j REDIRECT --to-ports "${HTTPS_PORT}"
+  done
+  for proto in tcp udp; do
+    iptables -t nat -A OUTPUT -p "${proto}" -d 127.0.0.1 --dport 443 -j REDIRECT --to-ports "${HTTPS_PORT}"
+    iptables -t nat -A OUTPUT -p "${proto}" -d "${IP}" --dport 443 -j REDIRECT --to-ports "${HTTPS_PORT}"
+  done
+  echo "lan-bind: PREROUTING :53->${DNS_PROXY_PORT} :80->${HTTP_PORT} :443->${HTTPS_PORT}"
+  echo "lan-bind: OUTPUT 127.0.0.1/${IP}:443->${HTTPS_PORT} (not :53)"
+}
+
+del_nat
+add_redirects
+port_up "${DNS_PROXY_PORT}" udp || echo "lan-bind: warn: UDP ${DNS_PROXY_PORT} not listening yet"
+port_up "${HTTPS_PORT}" tcp || echo "lan-bind: warn: TCP ${HTTPS_PORT} not listening yet"
+exit 0

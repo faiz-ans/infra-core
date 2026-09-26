@@ -1,0 +1,39 @@
+---
+- name: Host desired object
+  set_fact:
+    site_this_host: "{{ site_plan.hosts | selectattr('name', 'equalto', site_host_name) | list | first }}"
+
+- name: Local sysadmins
+  set_fact:
+    site_sysadmins: "{{ site_this_host.users | default([]) | selectattr('roles', 'defined') | selectattr('roles', 'contains', 'sysadmin') | list }}"
+
+- name: Create sysadmin accounts
+  user:
+    name: "{{ item.name }}"
+    groups: sudo
+    append: true
+    shell: /bin/bash
+    create_home: true
+  loop: "{{ site_sysadmins }}"
+
+- name: Install SSH keys for sysadmins
+  authorized_key:
+    user: "{{ item.0.name }}"
+    key: "{{ item.1 }}"
+    state: present
+  loop: "{{ site_sysadmins | subelements('ssh-keys', skip_missing=True) }}"
+
+- name: Refuse key-only without a sysadmin key
+  fail:
+    msg: "identity.ssh is key-only on {{ site_host_name }} but no sysadmin has ssh-keys"
+  when:
+    - (site_this_host.override.identity.ssh | default(site_plan.policy.ssh)) == 'key-only'
+    - site_sysadmins | selectattr('ssh-keys', 'defined') | selectattr('ssh-keys', 'ne', []) | list | length == 0
+
+- name: Key-only SSHD
+  lineinfile:
+    path: /etc/ssh/sshd_config
+    regexp: "^#?PasswordAuthentication"
+    line: "PasswordAuthentication no"
+  notify: reload ssh
+  when: (site_this_host.override.identity.ssh | default(site_plan.policy.ssh)) == 'key-only'

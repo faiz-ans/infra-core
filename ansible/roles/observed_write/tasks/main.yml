@@ -1,0 +1,24 @@
+---
+- name: Assemble host facts
+  set_fact:
+    observed_host_facts: >-
+      {{
+        observed_host_facts | default([]) + [
+          {
+            'name': hostvars[item].site_host_name | default(item),
+            'ip': hostvars[item].site_host_ip | default(hostvars[item].ansible_host),
+            'census': hostvars[item].site_census | default({}),
+            'state': hostvars[item].site_state | default({})
+          }
+        ]
+      }}
+  loop: "{{ groups['all'] }}"
+
+- name: Write observed.yaml
+  command:
+    argv:
+      - python3
+      - "{{ playbook_dir }}/../scripts/write_observed.py"
+      - "{{ observed_path }}"
+    stdin: "{{ observed_host_facts | to_json }}"
+  changed_when: true

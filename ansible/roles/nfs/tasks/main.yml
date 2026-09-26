@@ -1,0 +1,42 @@
+---
+# Inferred NFS: export only to consumer IPs as the workload UID. Same-host stays local.
+# Day 2 drops unused inferred exports (site-inferred.exports only).
+- name: NFS packages on owners and consumers
+  apt:
+    name:
+      - nfs-common
+    state: present
+
+- name: NFS server on export hosts
+  apt:
+    name: nfs-kernel-server
+    state: present
+  when: site_plan.nfs_exports | selectattr('host', 'equalto', site_host_name) | list | length > 0
+
+- name: Inferred exports file
+  copy:
+    dest: /etc/exports.d/site-inferred.exports
+    mode: "0644"
+    content: |
+      {% for ex in site_plan.nfs_exports if ex.host == site_host_name %}
+      {{ ex.path }} {{ ex.client_ip }}(rw,sync,no_subtree_check,all_squash,anonuid=1000,anongid=1000)
+      {% endfor %}
+  when: site_plan.nfs_exports | selectattr('host', 'equalto', site_host_name) | list | length > 0
+  notify: reload nfs
+
+- name: Remove unused inferred exports
+  file:
+    path: /etc/exports.d/site-inferred.exports
+    state: absent
+  when: site_plan.nfs_exports | selectattr('host', 'equalto', site_host_name) | list | length == 0
+  notify: reload nfs
+
+- name: Mount inferred NFS on consumers
+  mount:
+    path: "{{ item.path }}"
+    src: "{{ item.server_ip }}:{{ item.export }}"
+    fstype: nfs
+    opts: rw,nfsvers=4
+    state: mounted
+  loop: "{{ site_plan.nfs_mounts }}"
+  when: item.host == site_host_name

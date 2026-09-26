@@ -1,0 +1,19 @@
+---
+# Implicit: every host when operations.host.manager is cockpit.
+- name: Skip unless Cockpit is the host manager
+  meta: end_host
+  when: not site_plan.cockpit | default(false)
+
+- name: Cockpit packages
+  apt:
+    name:
+      - cockpit
+      - cockpit-podman
+      - cockpit-networkmanager
+    state: present
+
+- name: Enable Cockpit
+  service:
+    name: cockpit.socket
+    enabled: true
+    state: started

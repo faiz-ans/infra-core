@@ -1,0 +1,61 @@
+---
+# People access via SMB. No OMV packages.
+- name: Owns people roots?
+  set_fact:
+    site_owns_people: >-
+      {{
+        (site_plan.owners.groups.host | default('') == site_host_name)
+        or (site_plan.owners.users.host | default('') == site_host_name)
+      }}
+
+- name: Skip
+  meta: end_host
+  when: not site_owns_people or site_plan.policy.filesystem != 'smb'
+
+- name: Samba packages
+  apt:
+    name:
+      - samba
+    state: present
+
+- name: Samba site config
+  copy:
+    dest: /etc/samba/smb.conf
+    mode: "0644"
+    content: |
+      [global]
+      workgroup = SITE
+      server role = standalone server
+      map to guest = never
+      unix extensions = yes
+      ea support = yes
+      vfs objects = fruit streams_xattr
+      fruit:metadata = stream
+
+      [users]
+      path = {{ site_plan.roots.users }}
+      browseable = yes
+      read only = no
+      valid users = @all
+      inherit acls = yes
+
+      [groups]
+      path = {{ site_plan.roots.groups }}
+      browseable = yes
+      read only = no
+      valid users = @all
+      inherit acls = yes
+
+      [all]
+      path = {{ site_plan.roots.groups }}/all
+      browseable = yes
+      read only = no
+      valid users = @all
+      inherit acls = yes
+  notify: restart smbd
+
+- name: Enable smbd
+  service:
+    name: smbd
+    enabled: true
+    state: started

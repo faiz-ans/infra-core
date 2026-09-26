@@ -1,0 +1,33 @@
+---
+# Pin LAN IPv4 only when the desired IP is already on the uplink (would not drop SSH).
+- name: This host
+  set_fact:
+    site_this_host: "{{ site_plan.hosts | selectattr('name', 'equalto', site_host_name) | list | first }}"
+    site_want_ip: "{{ site_host_ip }}"
+
+- name: Live uplink source
+  command: ip -4 route get 1.1.1.1
+  register: site_route
+  changed_when: false
+  failed_when: false
+
+- name: Parse live source IP
+  set_fact:
+    site_live_ip: "{{ site_route.stdout | regex_search('src ([0-9.]+)', '\\1') }}"
+
+- name: Skip static pin when desired IP is not the live SSH address
+  debug:
+    msg: "refusing static IP {{ site_want_ip }} (live {{ site_live_ip }}); would drop the Ansible session"
+  when: site_live_ip and site_want_ip != site_live_ip
+
+- name: nmcli connection show
+  command: nmcli -t -f DEVICE,TYPE,STATE dev
+  register: site_nm
+  changed_when: false
+  failed_when: false
+  when: site_live_ip == site_want_ip
+
+- name: Already on desired IP
+  debug:
+    msg: "LAN IP {{ site_want_ip }} already matches live uplink; no address change"
+  when: site_live_ip == site_want_ip

@@ -1,0 +1,27 @@
+---
+- name: SSSD packages
+  apt:
+    name:
+      - sssd
+      - sssd-ldap
+      - libnss-sss
+      - libpam-sss
+    state: present
+
+- name: SSSD config
+  copy:
+    dest: /etc/sssd/sssd.conf
+    mode: "0600"
+    content: |
+      [sssd]
+      services = nss, pam
+      domains = site
+
+      [domain/site]
+      id_provider = ldap
+      auth_provider = ldap
+      ldap_uri = ldap://{{ (site_plan.services | selectattr('key', 'equalto', 'openldap') | list | first).host_ip | default('127.0.0.1') }}
+      ldap_search_base = dc=site,dc=lan
+      ldap_id_use_start_tls = false
+      cache_credentials = true
+  notify: restart sssd

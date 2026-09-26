@@ -1,0 +1,16 @@
+---
+# OpenLDAP is a placed Quadlet, not implicit. Provision after the unit exists.
+- name: OpenLDAP instances on this host
+  set_fact:
+    site_openldap: "{{ site_plan.services | selectattr('host', 'equalto', site_host_name) | selectattr('key', 'equalto', 'openldap') | list }}"
+
+- name: Skip when not placed here
+  meta: end_host
+  when: site_openldap | length == 0
+
+- name: Wait for slapd port after Quadlets (best-effort)
+  wait_for:
+    host: 127.0.0.1
+    port: 389
+    timeout: 5
+  failed_when: false

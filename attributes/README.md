@@ -1,32 +1,13 @@
-# Site values
+# Secrets
 
-Default apply reads **`/etc/infra-core/site.env`** on the box (`bootstrap/apply.sh`). That file is never committed.
+SET decrypts Age/SOPS files **on the operator machine** and installs Podman secrets on targets. Hosts do not receive a `site.env`.
 
-Encrypted vaults in this directory are **optional** and only used if you later enable Materia (`bootstrap/core/materia-enable.sh`). Layer 0 does not create `/etc/materia` or an age key.
-
-| File | Scope |
-|---|---|
-| `vault.example.toml` | Shared globals schema (copy; do not commit filled values) |
-| `core.example.toml` | NAS (`core`) extras |
-| `mantle.example.toml` | WSL (`mantle`) extras |
-| `vault.age` / `core.age` / `mantle.age` | Optional encrypted vaults (Materia only) |
-
-If you enable Materia, generate the age key **on the box** and never commit it:
+Convention: keep `secrets.yaml` or `secrets.sops.yaml` beside local `site.yaml` (both gitignored). Schema: `examples/secrets.example.yaml`.
 
 ```bash
-age -r "$(cat /etc/materia/age.pubkey)" -o attributes/vault.age attributes/vault.example.toml
+# encrypt (Age key stays on the runner)
+sops --encrypt --age "$AGE_RECIPIENT" examples/secrets.example.yaml > secrets.sops.yaml
+python3 ansible/site.py set --secrets secrets.sops.yaml
 ```
 
-## Catalog variables
-
-Do not put live IPs, domains, or secrets in git. Keys (written by `core.sh` or by hand into `site.env`):
-
-**Globals:** `DOMAIN`, `TZ`, `NAS_LAN_IP`, `SURFACE_UPSTREAM`, `DATA_ROOT`, `PUID`, `PGID`, `NFS_SHARED` (WSL host path to OMV `shared/`, e.g. `/mnt/nas/shared`), `NFS_USERS`, `BACKUP_DRIVE` (WSL path, e.g. `/mnt/d`), `WG_HOST`, `CORE_SERVER` (always `core`), `HOMEPAGE_ALLOWED_HOSTS`.
-
-**Secrets:** Authelia session/storage/OIDC, `OIDC_CLIENT_SECRET`, Pi-hole passwords (`PIHOLE_WEBPASSWORD`, `PIHOLE_MANTLE_WEBPASSWORD`), Vaultwarden, Restic, Immich DB, Adventure Log, Grafana, NUT, Homepage widget keys (`HOMEPAGE_VAR_*` except those mapped from `DOMAIN` / `SURFACE_UPSTREAM` / `NAS_LAN_IP` / `TZ`).
-
-`HOMEPAGE_VAR_SURFACE_UPSTREAM` is mapped from `SURFACE_UPSTREAM` in the Homepage Quadlet. `apply.sh` maps `HOMEPAGE_VAR_PIHOLE_TOKEN` from `PIHOLE_WEBPASSWORD` and `HOMEPAGE_VAR_PIHOLE_MANTLE_TOKEN` from `PIHOLE_MANTLE_WEBPASSWORD` (Pi-hole v6 widget key = web password). Do not store a second Pi-hole API token. There is no `HOMEPAGE_VAR_KOMODO_*`.
-
-## Optional Materia
-
-Skip this on a static future site. If this lab still wants git-poll, `materia-enable.sh` installs a timer that runs `git pull && apply.sh` (not a second Quadlet renderer). Age vaults remain optional even then.
+Catalog Quadlets still accept `${DOMAIN}`, `${DATA_ROOT}`, `${secrets.*}` after the resolver runs. Do not commit live IPs, domains, or secret values.

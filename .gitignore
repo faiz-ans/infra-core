@@ -4,3 +4,14 @@
 attributes/*.age
 !attributes/*.example.toml
 .DS_Store
+
+# Local site (desired + observed). Never commit a household topology.
+/site.yaml
+/observed.yaml
+/secrets.yaml
+/secrets.sops.yaml
+/*.age
+/keys.txt
+/age.key
+ansible/inventory/hosts.yml
+ansible/.tmp/

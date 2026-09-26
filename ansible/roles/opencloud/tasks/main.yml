@@ -1,0 +1,41 @@
+---
+# When OpenCloud is placed: posix layout, ACL/sticky, do not recreate spaces if xattrs exist.
+- name: OpenCloud on this host
+  set_fact:
+    site_oc: "{{ site_plan.services | selectattr('host', 'equalto', site_host_name) | selectattr('key', 'equalto', 'opencloud') | list }}"
+
+- name: Skip
+  meta: end_host
+  when: site_oc | length == 0
+
+- name: OpenCloud host dirs
+  file:
+    path: "{{ item }}"
+    state: directory
+    mode: "0750"
+  loop:
+    - "{{ site_plan.roots.appdata }}/system/opencloud"
+    - "{{ site_plan.roots.appdata }}/system/opencloud/config"
+    - "{{ site_plan.roots.appdata }}/system/opencloud/data"
+    - "{{ site_plan.roots.appdata }}/system/opencloud/posix"
+    - "{{ site_plan.roots.appdata }}/system/opencloud/projects"
+
+- name: Sticky/ACL on people trees so SMB and OpenCloud can share writers
+  file:
+    path: "{{ item }}"
+    state: directory
+    mode: "2775"
+  loop:
+    - "{{ site_plan.roots.users }}"
+    - "{{ site_plan.roots.groups }}/all"
+
+- name: Detect existing space xattrs
+  command: getfattr -n user.oc.space.id --only-values "{{ site_plan.roots.users }}"
+  register: site_oc_xattr
+  changed_when: false
+  failed_when: false
+
+- name: Leave existing spaces in place
+  debug:
+    msg: "OpenCloud xattrs present; not recreating spaces"
+  when: site_oc_xattr.rc == 0

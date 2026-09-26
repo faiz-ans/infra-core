@@ -1,0 +1,62 @@
+---
+# Install/remove Quadlets into system vs workload-user trees.
+- name: Services on this host
+  set_fact:
+    site_here: "{{ site_plan.services | selectattr('host', 'equalto', site_host_name) | list }}"
+    site_wl_user: "{{ (site_plan.hosts | selectattr('name', 'equalto', site_host_name) | list | first).roles.workload.user | default('') }}"
+
+- name: Skip non-workload
+  meta: end_host
+  when: site_wl_user | length == 0
+
+- name: Render catalog on the runner
+  command:
+    argv:
+      - python3
+      - "{{ playbook_dir }}/../scripts/install_quadlets.py"
+      - "{{ desired_path }}"
+      - "{{ site_host_name }}"
+      - "{{ site_repo }}/ansible/.tmp/quadlets/{{ site_host_name }}"
+      - "{{ site_repo }}/ansible/.tmp/secrets.json"
+  delegate_to: localhost
+  become: false
+
+- name: Copy generated edge into Caddy/Authelia/Homepage trees
+  copy:
+    src: "{{ site_repo }}/ansible/.tmp/edge/"
+    dest: "{{ site_repo }}/ansible/.tmp/quadlets/{{ site_host_name }}/{{ item }}/"
+  delegate_to: localhost
+  become: false
+  loop:
+    - caddy
+    - authelia
+    - homepage
+  when: site_here | selectattr('key', 'equalto', item) | list | length > 0
+
+- name: Rootless install dir
+  file:
+    path: "/home/{{ site_wl_user }}/.config/containers/systemd"
+    state: directory
+    owner: "{{ site_wl_user }}"
+    mode: "0755"
+
+- name: Rootful install dir
+  file:
+    path: /etc/containers/systemd
+    state: directory
+    mode: "0755"
+
+- name: Sync each service tree
+  synchronize:
+    src: "{{ site_repo }}/ansible/.tmp/quadlets/{{ site_host_name }}/{{ item.name }}/"
+    dest: "{{ '/etc/containers/systemd/' + item.name if item.privilege == 'rootful' else '/home/' + site_wl_user + '/.config/containers/systemd/' + item.name }}"
+    delete: true
+  loop: "{{ site_here }}"
+  notify: reload systemd user
+
+- name: Remove Quadlets no longer desired
+  file:
+    path: "{{ item }}"
+    state: absent
+  loop: "{{ (delta_json | default('{}') | from_json).services.remove | default([]) }}"
+  when: false

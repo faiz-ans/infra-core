@@ -1,0 +1,8 @@
+---
+- name: Generate edge configs on the runner
+  command:
+    argv:
+      - python3
+      - "{{ playbook_dir }}/../scripts/generate_edge.py"
+      - "{{ desired_path }}"
+      - "{{ site_repo }}/ansible/.tmp/edge"

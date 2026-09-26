@@ -1,0 +1,14 @@
+---
+# Decrypt on the runner only. No host site.env.
+- name: Decrypt secrets to runner tmp
+  command:
+    argv:
+      - python3
+      - "{{ playbook_dir }}/../scripts/decrypt_secrets.py"
+      - "{{ secrets_file }}"
+      - "{{ site_repo }}/ansible/.tmp/secrets.json"
+  args:
+    chdir: "{{ site_repo }}"
+  register: site_secrets_dec
+  changed_when: false
+  failed_when: false

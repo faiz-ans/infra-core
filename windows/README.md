@@ -1,4 +1,6 @@
-# Windows on `surface`
+# Windows HTPC
+
+GET/SET (`ansible/site.py`) does not drive this tree.
 
 Winget list: [`packages.json`](packages.json) (no Docker Desktop).
 
@@ -8,4 +10,4 @@ Winget list: [`packages.json`](packages.json) (no Docker Desktop).
 
 Optional: ePSXe has no reliable official winget id. Install manually later if needed.
 
-WSL2 (`mantle`) bootstrap is [`bootstrap/mantle/README.md`](../bootstrap/mantle/README.md). Ethernet pin and backup-drive scripts live under [`bootstrap/surface/`](../bootstrap/surface/).
+Retired WSL/Ethernet notes live under [`archive/bootstrap/`](../archive/bootstrap/).

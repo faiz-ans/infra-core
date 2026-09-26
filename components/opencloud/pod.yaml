@@ -12,7 +12,7 @@ spec:
       - "cloud.${DOMAIN}"
       - "office.${DOMAIN}"
   # Pasta host-loopback. site → NAS_LAN_IP:443 is refused; lan-bind OUTPUT
-  # maps 127.0.0.1:443 → Caddy :8443. Mantle OIDC still uses NAS_LAN_IP.
+  # maps 127.0.0.1:443 → Caddy :8443. Off-host OIDC still uses NAS_LAN_IP.
   - ip: "${SITE_HOST_LOOPBACK}"
     hostnames:
       - "auth.${DOMAIN}"

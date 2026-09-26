@@ -1,0 +1,52 @@
+---
+# Unix or OpenLDAP+SSSD on storage that owns groups/users.
+# Account delete does not remove homes or group directories.
+- name: Owns people roots?
+  set_fact:
+    site_owns_people: >-
+      {{
+        (site_plan.owners.groups.host | default('') == site_host_name)
+        or (site_plan.owners.users.host | default('') == site_host_name)
+      }}
+
+- name: Skip other storage hosts
+  meta: end_host
+  when: not site_owns_people
+
+- name: Group homes (never deleted later)
+  file:
+    path: "{{ site_plan.roots.groups }}/{{ item }}"
+    state: directory
+    mode: "2775"
+  loop: "{{ site_plan.groups }}"
+
+- name: Unix groups
+  group:
+    name: "{{ item }}"
+    state: present
+  loop: "{{ site_plan.groups }}"
+  when: site_plan.ldap != 'openldap'
+
+- name: Site unix users (homes stay if later removed)
+  user:
+    name: "{{ item.name }}"
+    groups: "{{ (item.groups | default(['all'])) | join(',') }}"
+    append: true
+    create_home: true
+    home: "{{ site_plan.roots.users }}/{{ item.name }}"
+    shell: /usr/sbin/nologin
+    remove: false
+  loop: "{{ site_plan.users }}"
+  when: site_plan.ldap != 'openldap'
+
+- name: Delete accounts that left desired (homes stay)
+  user:
+    name: "{{ item }}"
+    state: absent
+    remove: false
+  loop: "{{ (delta_json | default('{}') | from_json).users.remove | default([]) }}"
+  when: site_plan.ldap != 'openldap' and delta_json is defined
+
+- name: Join SSSD when LDAP is the SoT
+  include_tasks: sssd.yml
+  when: site_plan.ldap == 'openldap'

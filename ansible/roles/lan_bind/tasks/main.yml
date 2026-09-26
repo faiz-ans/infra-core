@@ -1,0 +1,41 @@
+---
+# Only on the unique ingress host (Caddy).
+- name: Ingress services on this host
+  set_fact:
+    site_caddy_here: "{{ site_plan.services | selectattr('host', 'equalto', site_host_name) | selectattr('key', 'equalto', 'caddy') | list }}"
+
+- name: Skip non-ingress hosts
+  meta: end_host
+  when: site_caddy_here | length == 0
+
+- name: Install lan-bind
+  copy:
+    src: lan-bind
+    dest: /usr/local/sbin/site-lan-bind
+    mode: "0755"
+
+- name: lan-bind service
+  copy:
+    dest: /etc/systemd/system/site-lan-bind.service
+    mode: "0644"
+    content: |
+      [Unit]
+      Description=site lan-bind (PREROUTING 53/80/443 + OUTPUT 443)
+      After=network-online.target
+
+      [Service]
+      Type=oneshot
+      Environment=SITE_INGRESS_IP={{ site_host_ip }}
+      ExecStart=/usr/local/sbin/site-lan-bind
+      RemainAfterExit=yes
+
+      [Install]
+      WantedBy=multi-user.target
+
+- name: Enable lan-bind when high ports listen
+  systemd:
+    name: site-lan-bind.service
+    enabled: true
+    state: started
+    daemon_reload: true
+  failed_when: false

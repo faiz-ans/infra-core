@@ -1,0 +1,9 @@
+---
+- name: Task A census
+  script: "{{ playbook_dir }}/../scripts/census.py"
+  register: site_census_raw
+  changed_when: false
+
+- name: Parse census
+  set_fact:
+    site_census: "{{ site_census_raw.stdout | from_json }}"

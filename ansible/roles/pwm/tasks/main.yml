@@ -1,0 +1,19 @@
+---
+- name: This host
+  set_fact:
+    site_this_host: "{{ site_plan.hosts | selectattr('name', 'equalto', site_host_name) | list | first }}"
+
+- name: Skip unless PWM enabled in desired
+  meta: end_host
+  when: not (site_this_host.resources.pwm.enabled | default(false))
+
+- name: Enable PWM sysfs if a path exists
+  command: "sh -c 'echo 1 > {{ site_this_host.resources.pwm.path }}'"
+  when: site_this_host.resources.pwm.path is defined
+  failed_when: false
+
+- name: Apply operator-written scale only
+  command: "sh -c 'echo {{ site_this_host.resources.pwm.scale }} > {{ site_this_host.resources.pwm.path }}'"
+  when:
+    - site_this_host.resources.pwm.scale is defined
+    - site_this_host.resources.pwm.path is defined

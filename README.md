@@ -1,40 +1,35 @@
 # infra-core
 
-Public catalog, environment-agnostic. Site values live in `/etc/infra-core/site.env` on the box (never git). Host assignment is [`MANIFEST.toml`](MANIFEST.toml). Apply with [`bootstrap/apply.sh`](bootstrap/apply.sh). Materia is an optional poller, not Layer 0.
+Site-agnostic on-prem catalog. Desired topology is a local `site.yaml` (gitignored). Observed state is a local `observed.yaml` (gitignored). Apply is push-based Ansible from the operator machine.
 
-## Names
+```
+Day 0   python3 ansible/site.py get --task a --host 10.0.0.10,admin
+        # prints a scaffold; copy to site.yaml. Does not overwrite an existing desired file.
+Day 1   edit site.yaml   # schema: schema/site.schema.json
+        python3 ansible/site.py set --secrets secrets.yaml
+Day 2   python3 ansible/site.py apply   # GET A+B → observed.yaml, then SET delta
+```
 
-| Hostname | What |
+`examples/site.example.yaml` is the placeholder topology. Encrypt secrets with Age/SOPS (`examples/secrets.example.yaml`). The Age key stays on the runner; SET installs Podman secrets. Hosts never get a `site.env`.
+
+## What SET does
+
+Two host roles: **storage** (native mounts, Samba for people, inferred NFS for apps) and **workload** (Podman Quadlets). Official services live under `components/` plus OpenLDAP. OpenMediaVault is not used. Cockpit is optional on every host. Windows/HTPC under `windows/` is not driven by GET/SET.
+
+SET may delete accounts. It never deletes user or group home data.
+
+## Layout
+
+| Path | Role |
 |---|---|
-| `core` | NAS. Admin `pilot`. |
-| `surface` | Windows 11 TV PC. Admin `pilot`. Ethernet `SURFACE_UPSTREAM`. |
-| `mantle` | Ubuntu WSL2 on `surface`. Linux `pilot`. Windows owner: `HTPC`. |
+| `schema/site.schema.json` | Desired topology schema |
+| `examples/` | Placeholder site + secrets |
+| `ansible/` | `site.py`, playbooks `get.yml` / `set.yml`, roles |
+| `components/` | Official Quadlets + `pack.yaml` |
+| `windows/` | Unhooked from GET/SET |
+| `archive/bootstrap/` | Retired `apply.sh` / OMV / first-run tree |
 
-## Layers
+## Requirements
 
-```
-Layer 0  bootstrap/core.sh   OMV (optional), Podman, Cockpit, site.env
-Layer 1  bootstrap/apply.sh  Quadlets from MANIFEST.toml roles
-Layer 2  this repo           components/ + windows/
-```
-
-Optional: [`bootstrap/core/materia-enable.sh`](bootstrap/core/materia-enable.sh) (`git pull && apply.sh`). Kubernetes is a future consumer of the same kube-play YAML (`overlays/k8s/` stub). This site never runs Kubernetes.
-
-## Target state
-
-```
-${DATA_ROOT}/
-  system/<app>
-  shared/{media,downloads,files,photos,cameras}
-  users/<user>/{files,photos}
-```
-
-## Bootstrap order
-
-Follow **[`bootstrap/SITE-DEPLOY.md`](bootstrap/SITE-DEPLOY.md)** (flash OS only, remount data disk, phase A, lan-bind, OpenCloud/layout/NFS, phase B). Do not export Docker volumes or purge Komodo.
-
-Winget: [`windows/packages.json`](windows/packages.json).
-
-## Variable keys
-
-See [`attributes/README.md`](attributes/README.md) for optional age vaults (Materia only). Default apply uses `/etc/infra-core/site.env`.
+- Operator: Python 3, Ansible, PyYAML (`pip install -r ansible/requirements.txt`), `sops` + Age when secrets are encrypted.
+- Hosts: Debian or Ubuntu only. SSH as a host sysadmin.

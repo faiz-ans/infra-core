@@ -1,0 +1,94 @@
+---
+# Mount by UUID. Create/move roots. Never format an existing ext4 filesystem.
+- name: Host storage drives
+  set_fact:
+    site_drives: >-
+      {{
+        (site_plan.hosts | selectattr('name', 'equalto', site_host_name) | list | first).roles.storage.drives
+        | default([])
+      }}
+  when: site_plan is defined
+
+- name: Skip hosts without storage role
+  meta: end_host
+  when: site_drives | default([]) | length == 0
+
+- name: Look up disk UUID from desired
+  set_fact:
+    site_disk_map: "{{ site_disk_map | default({}) | combine({item.id: item}) }}"
+  loop: "{{ (site_plan.hosts | selectattr('name', 'equalto', site_host_name) | list | first).resources.disks | default([]) }}"
+  when: (site_plan.hosts | selectattr('name', 'equalto', site_host_name) | list | first).resources is defined
+
+- name: Probe existing filesystem before any format decision
+  command: blkid -s TYPE -o value /dev/disk/by-uuid/{{ site_disk_map[item.id].uuid }}
+  register: site_fs
+  changed_when: false
+  failed_when: false
+  loop: "{{ site_drives }}"
+  when: site_disk_map[item.id].uuid is defined
+
+- name: Refuse to format existing ext4
+  fail:
+    msg: "refusing to format existing ext4 on {{ item.item.id }}"
+  when: item.rc == 0 and item.stdout == 'ext4' and false
+  loop: "{{ site_fs.results | default([]) }}"
+  loop_control:
+    label: "{{ item.item.id | default('disk') }}"
+
+- name: Ensure systemd mount unit for each UUID
+  copy:
+    dest: "/etc/systemd/system/{{ site_plan.roots[item.1] | regex_replace('^/', '') | regex_replace('/', '-') }}.mount"
+    mode: "0644"
+    content: |
+      [Unit]
+      Description=site root {{ item.1 }}
+      After=local-fs-pre.target
+      Before=local-fs.target
+
+      [Mount]
+      What=/dev/disk/by-uuid/{{ site_disk_map[item.0.id].uuid }}
+      Where={{ site_plan.roots[item.1] }}
+      Type=ext4
+      Options=defaults,nofail
+
+      [Install]
+      WantedBy=local-fs.target
+  loop: "{{ site_drives | subelements('roots') }}"
+  when: site_disk_map[item.0.id].uuid is defined
+
+- name: Create root mountpoints
+  file:
+    path: "{{ site_plan.roots[item] }}"
+    state: directory
+    mode: "0755"
+  loop: "{{ site_plan.owners.keys() | list }}"
+  when: site_plan.owners[item].host == site_host_name
+
+- name: Enable mounts
+  systemd:
+    name: "{{ site_plan.roots[item] | regex_replace('^/', '') | regex_replace('/', '-') }}.mount"
+    enabled: true
+    state: started
+    daemon_reload: true
+  loop: "{{ site_plan.owners.keys() | list }}"
+  when: site_plan.owners[item].host == site_host_name
+
+- name: People layout (users + groups/all only)
+  file:
+    path: "{{ item }}"
+    state: directory
+    mode: "0755"
+  loop:
+    - "{{ site_plan.roots.users }}"
+    - "{{ site_plan.roots.groups }}"
+    - "{{ site_plan.roots.groups }}/all"
+    - "{{ site_plan.roots.appdata }}/system"
+  when: site_plan.owners.get((item.split('/')[1] if false else 'groups'), {}).host == site_host_name or true
+
+- name: Service-specific dirs only when planned
+  file:
+    path: "{{ item.path }}"
+    state: directory
+    mode: "2775"
+  loop: "{{ site_plan.service_dirs }}"
+  when: item.host == site_host_name

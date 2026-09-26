@@ -1,0 +1,108 @@
+---
+# SET graph: disks → users → LDAP → drivers/PWM → Cockpit/Podman →
+# secrets → NFS → generated edge → Quadlets → OpenCloud binds.
+# Day 2 uses desired − observed delta when observed.yaml exists.
+- name: Load plan
+  hosts: localhost
+  connection: local
+  gather_facts: false
+  tasks:
+    - name: Read plan JSON
+      set_fact:
+        site_plan: "{{ lookup('file', plan_json) | from_json }}"
+    - name: Publish plan
+      set_fact:
+        site_plan: "{{ site_plan }}"
+      delegate_facts: true
+      delegate_to: "{{ item }}"
+      loop: "{{ groups['all'] }}"
+
+- name: Host facts and OS guard
+  hosts: all
+  become: true
+  roles:
+    - os_guard
+
+- name: Disks, roots, imports
+  hosts: storage
+  become: true
+  roles:
+    - storage
+    - import_trees
+
+- name: Host sysadmins and SSH
+  hosts: all
+  become: true
+  roles:
+    - ssh_users
+
+- name: Site users and groups
+  hosts: storage
+  become: true
+  roles:
+    - identity
+
+- name: Site directory (if placed)
+  hosts: workload
+  become: true
+  roles:
+    - openldap
+
+- name: Drivers, NUT, PWM
+  hosts: all
+  become: true
+  roles:
+    - drivers
+    - pwm
+
+- name: Cockpit and Podman
+  hosts: all
+  become: true
+  roles:
+    - cockpit
+    - podman
+
+- name: Secrets on the runner then Podman secrets
+  hosts: localhost
+  connection: local
+  gather_facts: false
+  roles:
+    - secrets_decrypt
+- name: Install Podman secrets
+  hosts: workload
+  become: true
+  roles:
+    - secrets
+
+- name: Inferred NFS then Samba
+  hosts: all
+  become: true
+  roles:
+    - nfs
+    - samba
+
+- name: Generate Caddy / Authelia / Homepage
+  hosts: localhost
+  connection: local
+  gather_facts: false
+  roles:
+    - edge_generate
+
+- name: Lan-bind and Quadlets
+  hosts: workload
+  become: true
+  roles:
+    - lan_bind
+    - quadlets
+
+- name: OpenCloud binds when placed
+  hosts: workload
+  become: true
+  roles:
+    - opencloud
+
+- name: Static LAN IP (refuse if it would drop SSH)
+  hosts: all
+  become: true
+  roles:
+    - static_ip

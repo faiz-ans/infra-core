@@ -1,0 +1,12 @@
+---
+- name: Load SET plan when present
+  set_fact:
+    site_plan: "{{ lookup('file', plan_json) | from_json }}"
+  when: plan_json is defined
+
+- name: Require Debian or Ubuntu
+  fail:
+    msg: >-
+      GET/SET supports Debian or Ubuntu only
+      (got {{ ansible_distribution | default('unknown') }}).
+  when: ansible_distribution | default('') not in ['Debian', 'Ubuntu']

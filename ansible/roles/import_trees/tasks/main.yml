@@ -1,0 +1,43 @@
+---
+# Remap import trees once. Stamp success. Generated files land as *.old.
+- name: Host import blocks
+  set_fact:
+    site_imports: "{{ site_plan.imports | selectattr('host', 'equalto', site_host_name) | list }}"
+  when: site_plan is defined
+
+- name: Skip when no imports
+  meta: end_host
+  when: site_imports | default([]) | length == 0
+
+- name: Stamp directory
+  file:
+    path: "{{ site_plan.roots.appdata }}/system/.import-stamps"
+    state: directory
+    mode: "0755"
+
+- name: Copy import tree unless stamped
+  command:
+    cmd: >
+      rsync -a --ignore-existing
+      {{ item.from }}/
+      {{ item.to }}/
+    creates: "{{ site_plan.roots.appdata }}/system/.import-stamps/{{ item.from | regex_replace('[^A-Za-z0-9]+', '_') }}.ok"
+  register: site_import_rsync
+  loop: "{{ site_imports }}"
+  when: not item.generated | default(false)
+
+- name: Import generated files as .old
+  copy:
+    src: "{{ item.from }}"
+    dest: "{{ item.to }}.old"
+    remote_src: true
+    force: false
+  loop: "{{ site_imports }}"
+  when: item.generated | default(false)
+
+- name: Stamp successful import
+  copy:
+    dest: "{{ site_plan.roots.appdata }}/system/.import-stamps/{{ item.from | regex_replace('[^A-Za-z0-9]+', '_') }}.ok"
+    content: "ok\n"
+    mode: "0644"
+  loop: "{{ site_imports }}"

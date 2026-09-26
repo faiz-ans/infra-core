@@ -1,0 +1,214 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://example.invalid/infra-core/site.schema.json",
+  "title": "Desired site topology",
+  "type": "object",
+  "required": ["site"],
+  "additionalProperties": false,
+  "properties": {
+    "site": {
+      "type": "object",
+      "required": ["hosts"],
+      "properties": {
+        "data": {
+          "type": "object",
+          "properties": {
+            "roots": {
+              "type": "object",
+              "properties": {
+                "appdata": { "type": "string", "default": "/appdata" },
+                "groups": { "type": "string", "default": "/groups" },
+                "users": { "type": "string", "default": "/users" }
+              },
+              "additionalProperties": false
+            },
+            "access": {
+              "type": "object",
+              "properties": {
+                "filesystem": { "type": "string", "enum": ["smb"] },
+                "web": { "type": "string", "enum": ["none", "opencloud", "nextcloud"] }
+              },
+              "additionalProperties": false
+            }
+          },
+          "additionalProperties": false
+        },
+        "networking": {
+          "type": "object",
+          "properties": {
+            "dns": { "type": "string" },
+            "ingress": { "type": "string" },
+            "tunnel": {
+              "type": "object",
+              "properties": {
+                "engine": { "type": "string" },
+                "endpoint": { "type": "string" }
+              },
+              "additionalProperties": false
+            }
+          },
+          "additionalProperties": false
+        },
+        "identity": {
+          "type": "object",
+          "properties": {
+            "ldap": { "type": "string" },
+            "sso": { "type": "string" },
+            "ssh": { "type": "string", "enum": ["true", "false", "key-only"] }
+          },
+          "additionalProperties": false
+        },
+        "operations": {
+          "type": "object",
+          "properties": {
+            "host": {
+              "type": "object",
+              "properties": {
+                "manager": { "type": "string" },
+                "monitor": { "type": "string" }
+              },
+              "additionalProperties": false
+            },
+            "storage": {
+              "type": "object",
+              "properties": {
+                "engine": { "type": "string", "enum": ["native", "ceph"] },
+                "monitor": { "type": "string" }
+              },
+              "additionalProperties": false
+            },
+            "workload": {
+              "type": "object",
+              "properties": {
+                "engine": { "type": "string", "enum": ["podman", "kubelet"] },
+                "monitor": { "type": "string" }
+              },
+              "additionalProperties": false
+            }
+          },
+          "additionalProperties": false
+        },
+        "env": {
+          "type": "object",
+          "additionalProperties": { "type": ["string", "number", "boolean"] }
+        },
+        "users": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "required": ["name"],
+            "properties": {
+              "name": { "type": "string" },
+              "roles": {
+                "type": "array",
+                "items": { "type": "string", "enum": ["sysadmin", "sysuser", "appadmin", "appuser"] }
+              },
+              "displayname": { "type": "string" },
+              "email": { "type": "string" },
+              "groups": { "type": "array", "items": { "type": "string" } }
+            },
+            "additionalProperties": false
+          }
+        },
+        "hosts": {
+          "type": "array",
+          "minItems": 1,
+          "items": { "$ref": "#/$defs/host" }
+        }
+      },
+      "additionalProperties": false
+    }
+  },
+  "$defs": {
+    "host": {
+      "type": "object",
+      "required": ["name"],
+      "properties": {
+        "name": { "type": "string" },
+        "mac": { "type": "string" },
+        "ip": { "type": "string" },
+        "os": {
+          "type": "object",
+          "properties": {
+            "name": { "type": "string" },
+            "version": { "type": ["string", "number"] }
+          },
+          "additionalProperties": false
+        },
+        "override": { "type": "object" },
+        "resources": {
+          "type": "object",
+          "properties": {
+            "disks": {
+              "type": "array",
+              "items": {
+                "type": "object",
+                "required": ["id"],
+                "properties": {
+                  "id": { "type": "string" },
+                  "internal": { "type": "boolean" },
+                  "uuid": { "type": "string" },
+                  "import": { "type": "object" }
+                },
+                "additionalProperties": true
+              }
+            },
+            "ups": { "type": "object" },
+            "pwm": { "type": "object" },
+            "gpu": { "type": "array" }
+          },
+          "additionalProperties": false
+        },
+        "users": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "required": ["name"],
+            "properties": {
+              "name": { "type": "string" },
+              "roles": { "type": "array", "items": { "type": "string" } },
+              "ssh-keys": { "type": "array", "items": { "type": "string" } }
+            },
+            "additionalProperties": false
+          }
+        },
+        "roles": {
+          "type": "object",
+          "properties": {
+            "storage": {
+              "type": "object",
+              "properties": {
+                "drives": {
+                  "type": "array",
+                  "items": {
+                    "type": "object",
+                    "required": ["id", "roots"],
+                    "properties": {
+                      "id": { "type": "string" },
+                      "roots": {
+                        "type": "array",
+                        "items": { "type": "string", "enum": ["appdata", "groups", "users"] }
+                      }
+                    },
+                    "additionalProperties": false
+                  }
+                }
+              },
+              "additionalProperties": false
+            },
+            "workload": {
+              "type": "object",
+              "properties": {
+                "user": { "type": "string" },
+                "services": { "type": "object" }
+              },
+              "additionalProperties": false
+            }
+          },
+          "additionalProperties": false
+        }
+      },
+      "additionalProperties": false
+    }
+  }
+}

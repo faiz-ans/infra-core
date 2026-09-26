@@ -1,0 +1,92 @@
+# Copy to ./site.yaml (gitignored) and fill in. Validate against schema/site.schema.json.
+# Comment-only engines (traefik, authentik, nextcloud, ceph, …) are vocabulary, not implemented.
+
+site:
+  data:
+    roots:
+      appdata: /appdata
+      groups: /groups
+      users: /users
+    access:
+      filesystem: smb
+      web: opencloud
+  networking:
+    dns: pi-hole
+    ingress: caddy
+    tunnel:
+      engine: none
+      endpoint: vpn.example.lan
+  identity:
+    ldap: none
+    sso: authelia
+    ssh: key-only
+  operations:
+    host:
+      manager: cockpit
+      monitor: glances
+    storage:
+      engine: native
+      monitor: none
+    workload:
+      engine: podman
+      monitor: none
+  env:
+    domain: example.lan
+    timezone: UTC
+    locale: en_US.UTF-8
+  users:
+    - name: alice
+      roles: [sysuser, appadmin]
+      displayname: Alice
+      email: alice@example.lan
+      groups: [all]
+    - name: bob
+      roles: [sysuser, appuser]
+      displayname: Bob
+      email: bob@example.lan
+      groups: [all]
+  hosts:
+    - name: storage
+      ip: 10.0.0.10
+      os:
+        name: debian
+        version: "13"
+      resources:
+        disks:
+          - id: data
+            uuid: 00000000-0000-0000-0000-000000000001
+      users:
+        - name: admin
+          roles: [sysadmin]
+          ssh-keys: ["ssh-ed25519 AAAAEXAMPLE replace-me"]
+      roles:
+        storage:
+          drives:
+            - id: data
+              roots: [appdata, groups, users]
+        workload:
+          user: admin
+          services:
+            caddy:
+            authelia:
+            opencloud:
+            pi-hole:
+              - name: pi-hole
+                subdomain:
+                  primary: dns
+                  aliases: [pihole]
+            homepage:
+    - name: compute
+      ip: 10.0.0.11
+      os:
+        name: ubuntu
+        version: "24.04"
+      users:
+        - name: admin
+          roles: [sysadmin]
+          ssh-keys: ["ssh-ed25519 AAAAEXAMPLE replace-me"]
+      roles:
+        workload:
+          user: admin
+          services:
+            glances:

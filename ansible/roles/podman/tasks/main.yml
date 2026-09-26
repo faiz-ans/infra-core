@@ -1,0 +1,39 @@
+---
+- name: This host
+  set_fact:
+    site_this_host: "{{ site_plan.hosts | selectattr('name', 'equalto', site_host_name) | list | first }}"
+
+- name: Workload user
+  set_fact:
+    site_wl_user: "{{ site_this_host.roles.workload.user | default('') }}"
+
+- name: Skip hosts without workload
+  meta: end_host
+  when: site_wl_user | length == 0
+
+- name: Debian vs Ubuntu podman packages
+  set_fact:
+    site_podman_pkgs: "{{ ['podman', 'passt', 'catatonit', 'uidmap'] if ansible_distribution == 'Debian' else ['podman', 'passt', 'uidmap'] }}"
+
+- name: Install Podman
+  apt:
+    name: "{{ site_podman_pkgs }}"
+    state: present
+
+- name: Linger for workload user
+  command: "loginctl enable-linger {{ site_wl_user }}"
+  changed_when: false
+
+- name: Site network (rootless)
+  become: true
+  become_user: "{{ site_wl_user }}"
+  command: podman network exists site
+  register: site_net
+  changed_when: false
+  failed_when: false
+
+- name: Create site network
+  become: true
+  become_user: "{{ site_wl_user }}"
+  command: podman network create site
+  when: site_net.rc | default(1) != 0
