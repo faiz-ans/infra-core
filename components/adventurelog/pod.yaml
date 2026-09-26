@@ -7,9 +7,9 @@ metadata:
 spec:
   restartPolicy: Always
   hostAliases:
-  - ip: "${NAS_LAN_IP}"
+  - ip: "${site.networking.ingress.host.ip}"
     hostnames:
-      - "auth.${DOMAIN}"
+      - "auth.${site.env.domain}"
   containers:
   - name: db
     image: docker.io/postgis/postgis:16-3.5
@@ -19,7 +19,9 @@ spec:
     - name: POSTGRES_USER
       value: adventure
     - name: POSTGRES_PASSWORD
-      value: "${ADVENTURELOG_POSTGRES_PASSWORD}"
+      valueFrom:
+        secretKeyRef:
+          name: ${secrets.adventurelog.postgres_password}
     volumeMounts:
     - name: pg
       mountPath: /var/lib/postgresql/data
@@ -29,19 +31,21 @@ spec:
     args: ["supervisord", "-c", "/aio/supervisord.conf"]
     env:
     - name: TZ
-      value: "${TZ}"
+      value: "${site.env.timezone}"
     - name: SITE_URL
-      value: "https://travel.${DOMAIN}"
+      value: "https://travel.${site.env.domain}"
     - name: PUBLIC_URL
-      value: "https://travel.${DOMAIN}"
+      value: "https://travel.${site.env.domain}"
     - name: FRONTEND_URL
-      value: "https://travel.${DOMAIN}"
+      value: "https://travel.${site.env.domain}"
     - name: ORIGIN
-      value: "https://travel.${DOMAIN}"
+      value: "https://travel.${site.env.domain}"
     - name: CSRF_TRUSTED_ORIGINS
-      value: "https://travel.${DOMAIN}"
+      value: "https://travel.${site.env.domain}"
     - name: POSTGRES_PASSWORD
-      value: "${ADVENTURELOG_POSTGRES_PASSWORD}"
+      valueFrom:
+        secretKeyRef:
+          name: ${secrets.adventurelog.postgres_password}
     - name: PGHOST
       value: "127.0.0.1"
     - name: POSTGRES_DB
@@ -51,17 +55,23 @@ spec:
     - name: DJANGO_ADMIN_USERNAME
       value: admin
     - name: DJANGO_ADMIN_PASSWORD
-      value: "${ADVENTURELOG_ADMIN_PASSWORD}"
+      valueFrom:
+        secretKeyRef:
+          name: ${secrets.adventurelog.admin_password}
     - name: DJANGO_ADMIN_EMAIL
-      value: "admin@${DOMAIN}"
+      value: "admin@${site.env.domain}"
     - name: SECRET_KEY
-      value: "${ADVENTURELOG_ADMIN_PASSWORD}"
+      valueFrom:
+        secretKeyRef:
+          name: ${secrets.adventurelog.admin_password}
     - name: DISABLE_REGISTRATION
       value: "True"
     - name: DOMAIN
-      value: "${DOMAIN}"
+      value: "${site.env.domain}"
     - name: OIDC_CLIENT_SECRET
-      value: "${OIDC_CLIENT_SECRET}"
+      valueFrom:
+        secretKeyRef:
+          name: ${secrets.authelia.oidc_client_secret}
     - name: PYTHONPATH
       value: /tmp/oidc-hooks
     ports:
@@ -87,10 +97,10 @@ spec:
       claimName: adventurelog-media
   - name: wrap
     hostPath:
-      path: "${COMPONENT_DIR}/entrypoint-oidc.sh"
+      path: "${component.dir}/entrypoint-oidc.sh"
   - name: site
     hostPath:
-      path: "${COMPONENT_DIR}/sitecustomize-oidc.py"
+      path: "${component.dir}/sitecustomize-oidc.py"
   - name: seed
     hostPath:
-      path: "${COMPONENT_DIR}/seed-oidc.py"
+      path: "${component.dir}/seed-oidc.py"

@@ -2,7 +2,7 @@
 Description=uptime-kuma
 
 [Kube]
-Yaml=${COMPONENT_DIR}/pod.yaml
+Yaml=${component.dir}/pod.yaml
 Network=site.network
 PublishPort=127.0.0.1:3004:3001
 

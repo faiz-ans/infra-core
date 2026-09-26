@@ -12,13 +12,13 @@ spec:
     imagePullPolicy: Always
     env:
     - name: TZ
-      value: "${TZ}"
+      value: "${site.env.timezone}"
     - name: PUID
-      value: "${PUID}"
+      value: "${host.roles.workload.uid}"
     - name: PGID
-      value: "${PGID}"
+      value: "${host.roles.workload.gid}"
     - name: NVIDIA_VISIBLE_DEVICES
-      value: "all"
+      value: "${host.resources.gpu.gpu0.visible}"
     - name: NVIDIA_DRIVER_CAPABILITIES
       value: "compute,video,utility"
     ports:
@@ -30,7 +30,7 @@ spec:
       mountPath: /data/media
     resources:
       limits:
-        nvidia.com/gpu: 1
+        ${host.resources.gpu.gpu0.resource}: ${host.resources.gpu.gpu0.count}
 
   volumes:
   - name: config
@@ -38,4 +38,4 @@ spec:
       claimName: jellyfin-config
   - name: media
     hostPath:
-      path: ${NFS_SHARED}/media
+      path: ${site.data.roots.groups}/all/media

@@ -12,7 +12,7 @@ spec:
     imagePullPolicy: Always
     env:
     - name: TZ
-      value: "${TZ}"
+      value: "${site.env.timezone}"
     - name: PORT
       value: "3000"
     - name: DB_ENGINE
@@ -20,7 +20,7 @@ spec:
     - name: SQLITE_DB_PATH
       value: "/app/data/caddymanager.sqlite"
     - name: CORS_ORIGIN
-      value: "https://traffic.${DOMAIN}"
+      value: "https://traffic.${site.env.domain}"
     - name: LOG_LEVEL
       value: "info"
     - name: CADDY_SANDBOX_URL
@@ -30,7 +30,9 @@ spec:
     - name: PING_TIMEOUT
       value: "2000"
     - name: JWT_SECRET
-      value: "${CADDYMANAGER_JWT_SECRET}"
+      valueFrom:
+        secretKeyRef:
+          name: ${secrets.caddymanager.jwt}
     - name: JWT_EXPIRATION
       value: "24h"
     ports:
@@ -43,7 +45,7 @@ spec:
     imagePullPolicy: Always
     env:
     - name: TZ
-      value: "${TZ}"
+      value: "${site.env.timezone}"
     - name: BACKEND_HOST
       value: "127.0.0.1:3000"
     - name: APP_NAME
@@ -56,4 +58,4 @@ spec:
   volumes:
   - name: data
     hostPath:
-      path: ${DATA_ROOT}/system/caddymanager
+      path: ${site.data.roots.appdata}/system/caddymanager

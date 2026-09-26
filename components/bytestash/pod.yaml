@@ -6,9 +6,9 @@ metadata:
     app: bytestash
 spec:
   hostAliases:
-  - ip: "${SITE_HOST_LOOPBACK}"
+  - ip: "${site.networking.loopback}"
     hostnames:
-      - "auth.${DOMAIN}"
+      - "auth.${site.env.domain}"
 
   restartPolicy: Always
   containers:
@@ -17,15 +17,17 @@ spec:
     imagePullPolicy: Always
     env:
     - name: TZ
-      value: "${TZ}"
+      value: "${site.env.timezone}"
     - name: BASE_PATH
       value: ""
     - name: JWT_SECRET
-      value: "${BYTESTASH_JWT_SECRET}"
+      valueFrom:
+        secretKeyRef:
+          name: ${secrets.bytestash.jwt}
     - name: TOKEN_EXPIRY
       value: "24h"
     - name: ALLOW_NEW_ACCOUNTS
-      value: "${BYTESTASH_ALLOW_NEW_ACCOUNTS}"
+      value: "${site.env.bytestash_allow_new_accounts}"
     - name: DEBUG
       value: "false"
     - name: DISABLE_ACCOUNTS
@@ -33,17 +35,19 @@ spec:
     - name: DISABLE_INTERNAL_ACCOUNTS
       value: "false"
     - name: ALLOWED_HOSTS
-      value: "snip.${DOMAIN}"
+      value: "snip.${site.env.domain}"
     - name: OIDC_ENABLED
       value: "true"
     - name: OIDC_DISPLAY_NAME
       value: "Authelia"
     - name: OIDC_ISSUER_URL
-      value: "https://auth.${DOMAIN}"
+      value: "https://auth.${site.env.domain}"
     - name: OIDC_CLIENT_ID
       value: "bytestash"
     - name: OIDC_CLIENT_SECRET
-      value: "${OIDC_CLIENT_SECRET}"
+      valueFrom:
+        secretKeyRef:
+          name: ${secrets.authelia.oidc_client_secret}
     - name: OIDC_SCOPES
       value: "openid profile email"
     - name: NODE_TLS_REJECT_UNAUTHORIZED
@@ -57,4 +61,4 @@ spec:
   volumes:
   - name: data
     hostPath:
-      path: ${DATA_ROOT}/system/bytestash
+      path: ${site.data.roots.appdata}/system/bytestash

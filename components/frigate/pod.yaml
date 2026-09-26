@@ -20,7 +20,7 @@ spec:
     command: ["/bin/sh", "-c", "if [ ! -f /config/config.yml ] && [ ! -f /config/config.yaml ]; then cp /seed/config.yml /config/config.yml; fi; exec /init"]
     env:
     - name: TZ
-      value: "${TZ}"
+      value: "${site.env.timezone}"
     ports:
     - containerPort: 8971
     - containerPort: 8554
@@ -38,15 +38,15 @@ spec:
   volumes:
   - name: mosq
     hostPath:
-      path: "${COMPONENT_DIR}/mosquitto"
+      path: "${component.dir}/mosquitto"
   - name: config
     persistentVolumeClaim:
       claimName: frigate-config
   - name: media
     hostPath:
-      path: "${NFS_SHARED}/cameras"
+      path: "${site.data.roots.groups}/all/cameras"
   - name: seed
     hostPath:
-      path: "${COMPONENT_DIR}/seed"
+      path: "${component.dir}/seed"
   - name: cache
     emptyDir: {}

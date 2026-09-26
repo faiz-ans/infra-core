@@ -12,15 +12,17 @@ spec:
     imagePullPolicy: Always
     env:
     - name: TZ
-      value: "${TZ}"
+      value: "${site.env.timezone}"
     - name: RESTIC_REPOSITORY
-      value: "rest:http://${RESTIC_REST_USER}:${RESTIC_REST_PASSWORD}@${SURFACE_UPSTREAM}:8000/core"
+      value: "rest:http://${site.env.upstream}:8000/${host.name}"
     - name: RESTIC_PASSWORD
-      value: "${RESTIC_PASSWORD}"
+      valueFrom:
+        secretKeyRef:
+          name: ${secrets.restic.password}
     - name: RESTIC_CACHE_DIR
       value: "/cache"
     - name: UPTIME_KUMA_PUSH_URL
-      value: "${UPTIME_KUMA_PUSH_URL}"
+      value: "${site.env.uptime_kuma_push_url}"
     volumeMounts:
     - name: data
       mountPath: /data
@@ -35,10 +37,10 @@ spec:
   volumes:
   - name: data
     hostPath:
-      path: ${DATA_ROOT}
+      path: ${site.data.roots.appdata}
   - name: cache
     hostPath:
-      path: ${DATA_ROOT}/system/restic
+      path: ${site.data.roots.appdata}/system/restic
   - name: script
     hostPath:
-      path: ${COMPONENT_DIR}/backup.sh
+      path: ${component.dir}/backup.sh

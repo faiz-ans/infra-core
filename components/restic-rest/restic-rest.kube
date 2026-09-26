@@ -2,7 +2,7 @@
 Description=restic-rest
 
 [Kube]
-Yaml=${COMPONENT_DIR}/pod.yaml
+Yaml=${component.dir}/pod.yaml
 Network=site.network
 PublishPort=8000:8000
 

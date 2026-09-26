@@ -17,7 +17,6 @@
       - "{{ desired_path }}"
       - "{{ site_host_name }}"
       - "{{ site_repo }}/ansible/.tmp/quadlets/{{ site_host_name }}"
-      - "{{ site_repo }}/ansible/.tmp/secrets.json"
   delegate_to: localhost
   become: false
 

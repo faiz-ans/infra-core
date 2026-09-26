@@ -81,6 +81,13 @@ site:
       os:
         name: ubuntu
         version: "24.04"
+      resources:
+        gpu:
+          - id: gpu0
+            device: nvidia.com/gpu=all
+            resource: nvidia.com/gpu
+            count: 1
+            visible: true
       users:
         - name: admin
           roles: [sysadmin]

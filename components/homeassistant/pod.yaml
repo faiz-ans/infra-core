@@ -12,9 +12,9 @@ spec:
     imagePullPolicy: Always
     env:
     - name: TZ
-      value: "${TZ}"
+      value: "${site.env.timezone}"
     - name: NAS_LAN_IP
-      value: "${NAS_LAN_IP}"
+      value: "${site.networking.ingress.host.ip}"
     ports:
     - containerPort: 8123
     volumeMounts:
@@ -31,4 +31,4 @@ spec:
       claimName: ha-config
   - name: ensure
     hostPath:
-      path: ${COMPONENT_DIR}/ensure-http
+      path: ${component.dir}/ensure-http

@@ -51,15 +51,31 @@ class TestExample(unittest.TestCase):
         bad["site"]["hosts"][0]["users"][0]["ssh-keys"] = []
         self.assertTrue(key_only_ready(bad))
 
-    def test_resolver_aliases(self) -> None:
-        m = bind(self.desired, self.desired["site"]["hosts"][0], {"secrets": {"pihole": {"web_password": "x"}}})
-        self.assertEqual(m["DOMAIN"], "example.lan")
-        self.assertEqual(m["NAS_LAN_IP"], "10.0.0.10")
+    def test_resolver_namespaces(self) -> None:
+        m = bind(self.desired, self.desired["site"]["hosts"][0])
+        self.assertNotIn("DOMAIN", m)
+        self.assertNotIn("NAS_LAN_IP", m)
+        self.assertEqual(m["site.env.domain"], "example.lan")
         self.assertEqual(m["site.networking.ingress.host.ip"], "10.0.0.10")
-        self.assertEqual(m["SITE_HOST_LOOPBACK"], LOOPBACK)
-        self.assertIn(":8443", m["HOMEPAGE_ALLOWED_HOSTS"])
-        self.assertEqual(m["HOMEPAGE_VAR_PIHOLE_TOKEN"], "x")
-        self.assertEqual(render("https://cloud.${DOMAIN}", m), "https://cloud.example.lan")
+        self.assertEqual(m["site.networking.loopback"], LOOPBACK)
+        self.assertIn(":8443", m["site.homepage.allowed_hosts"])
+        self.assertEqual(render("https://cloud.${site.env.domain}", m), "https://cloud.example.lan")
+        self.assertEqual(render("${secrets.immich.database_password}", m), "immich_database_password")
+        self.assertNotIn("x", render("${secrets.pihole.web_password}", m))
+        compute = bind(self.desired, self.desired["site"]["hosts"][1])
+        self.assertEqual(compute["host.resources.gpu.gpu0"], "nvidia.com/gpu=all")
+        self.assertEqual(compute["host.resources.gpu.gpu0.visible"], "all")
+        self.assertEqual(
+            render(
+                "${host.resources.gpu.gpu0.resource}: ${host.resources.gpu.gpu0.count}",
+                compute,
+            ),
+            "nvidia.com/gpu: 1",
+        )
+        hidden = bind(self.desired, {**self.desired["site"]["hosts"][1], "resources": {"gpu": [{"id": "gpu0", "visible": False}]}})
+        self.assertEqual(hidden["host.resources.gpu.gpu0.visible"], "void")
+        storage = bind(self.desired, self.desired["site"]["hosts"][0])
+        self.assertEqual(storage["host.resources.gpu.gpu0.visible"], "all")
 
     def test_caddy_and_homepage(self) -> None:
         caddy = generate_caddyfile(self.desired)

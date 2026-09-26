@@ -1,7 +1,7 @@
 #!/bin/sh
 # Copy Caddy tls internal root to DATA_ROOT so app containers can trust
-# Authelia OIDC discovery at https://auth.${DOMAIN}.
-# https://auth.${DOMAIN}. Backgrounded from the caddy container; never
+# Authelia OIDC discovery at https://auth.${site.env.domain}.
+# https://auth.${site.env.domain}. Backgrounded from the caddy container; never
 # fail the proxy.
 dest="${CA_EXPORT_DIR:-/export-ca}"
 src=/data/caddy/pki/authorities/local/root.crt

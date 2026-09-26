@@ -2,7 +2,7 @@
 Description=transmute
 
 [Kube]
-Yaml=${COMPONENT_DIR}/pod.yaml
+Yaml=${component.dir}/pod.yaml
 Network=site.network
 PublishPort=3313:3313
 

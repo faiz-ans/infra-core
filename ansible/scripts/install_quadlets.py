@@ -2,7 +2,6 @@
 """Render catalog files for one host: resolve vars, strip K8s-only kinds."""
 from __future__ import annotations
 
-import json
 import shutil
 import sys
 from pathlib import Path
@@ -19,11 +18,8 @@ def main() -> int:
     desired = load_desired(Path(sys.argv[1]))
     host_name = sys.argv[2]
     dest = Path(sys.argv[3])
-    secrets = {}
-    if len(sys.argv) > 4 and Path(sys.argv[4]).is_file():
-        secrets = {"secrets": {i["key"]: i["value"] for i in json.loads(Path(sys.argv[4]).read_text())}}
     host = host_by_name(desired, host_name) or {}
-    mapping = bind(desired, host, secrets)
+    mapping = bind(desired, host)
     dest.mkdir(parents=True, exist_ok=True)
     components = ROOT / "components"
     for svc in all_services(desired):
@@ -36,7 +32,7 @@ def main() -> int:
         if out.exists():
             shutil.rmtree(out)
         shutil.copytree(src, out, ignore=shutil.ignore_patterns("MANIFEST.toml"))
-        mapping["COMPONENT_DIR"] = str(out)
+        mapping["component.dir"] = str(out)
         for path in out.rglob("*"):
             if not path.is_file():
                 continue

@@ -16,11 +16,11 @@ spec:
       mountPath: /root
   - name: hbbs
     image: docker.io/rustdesk/rustdesk-server:latest
-    args: ["hbbs", "-r", "${NAS_LAN_IP}:21117"]
+    args: ["hbbs", "-r", "${site.networking.ingress.host.ip}:21117"]
     volumeMounts:
     - name: data
       mountPath: /root
   volumes:
   - name: data
     hostPath:
-      path: "${DATA_ROOT}/system/rustdesk"
+      path: "${site.data.roots.appdata}/system/rustdesk"

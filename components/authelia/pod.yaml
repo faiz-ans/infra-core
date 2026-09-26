@@ -11,19 +11,29 @@ spec:
     image: docker.io/authelia/authelia:4
     env:
     - name: TZ
-      value: "${TZ}"
+      value: "${site.env.timezone}"
     - name: DOMAIN
-      value: "${DOMAIN}"
+      value: "${site.env.domain}"
     - name: SESSION_SECRET
-      value: "${AUTHELIA_SESSION_SECRET}"
+      valueFrom:
+        secretKeyRef:
+          name: ${secrets.authelia.session}
     - name: STORAGE_ENCRYPTION_KEY
-      value: "${AUTHELIA_STORAGE_ENCRYPTION_KEY}"
+      valueFrom:
+        secretKeyRef:
+          name: ${secrets.authelia.storage}
     - name: OIDC_HMAC_SECRET
-      value: "${AUTHELIA_OIDC_HMAC_SECRET}"
+      valueFrom:
+        secretKeyRef:
+          name: ${secrets.authelia.hmac}
     - name: AUTHELIA_SESSION_SECRET
-      value: "${AUTHELIA_SESSION_SECRET}"
+      valueFrom:
+        secretKeyRef:
+          name: ${secrets.authelia.session}
     - name: AUTHELIA_STORAGE_ENCRYPTION_KEY
-      value: "${AUTHELIA_STORAGE_ENCRYPTION_KEY}"
+      valueFrom:
+        secretKeyRef:
+          name: ${secrets.authelia.storage}
     - name: X_AUTHELIA_CONFIG_FILTERS
       value: template
     ports:
@@ -39,10 +49,10 @@ spec:
   volumes:
   - name: config
     hostPath:
-      path: "${COMPONENT_DIR}/configuration.yml"
+      path: "${component.dir}/configuration.yml"
   - name: userdb
     hostPath:
-      path: "${DATA_ROOT}/system/authelia"
+      path: "${site.data.roots.appdata}/system/authelia"
   - name: data
     persistentVolumeClaim:
       claimName: authelia-data

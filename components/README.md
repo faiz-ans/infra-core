@@ -11,7 +11,7 @@ components/<name>/
 
 `components/pack.yaml` is the official service pack (subdomains, ports, OIDC vs forward-auth, host-net vs site, rootful vs rootless). Comment-only engines in the example topology are vocabulary, not implementations.
 
-SET (`ansible/site.py set`) resolves `${site.*}`, `${host.*}`, `${secrets.*}` and the legacy `${DOMAIN}` / `${NAS_LAN_IP}` aliases on the runner, strips Kubernetes-only kinds (Ingress, Service, HPA), and installs into the system tree (rootful) or the workload-user tree (rootless).
+SET (`ansible/site.py set`) resolves `${site.*}`, `${host.*}`, and `${component.dir}` on the runner. `${secrets.*}` becomes the Podman secret name (`secrets.immich.database_password` → `immich_database_password`); kube-play `secretKeyRef` and Quadlet `Secret=` read the value at runtime. Kubernetes-only kinds (Ingress, Service, HPA) are stripped. Units install into the system tree (rootful) or the workload-user tree (rootless).
 
 Lessons encoded in the pack and generators:
 

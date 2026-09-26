@@ -12,13 +12,15 @@ spec:
     imagePullPolicy: Always
     env:
     - name: TZ
-      value: "${TZ}"
+      value: "${site.env.timezone}"
     - name: DOMAIN
-      value: "https://pw.${DOMAIN}"
+      value: "https://pw.${site.env.domain}"
     - name: ADMIN_TOKEN
-      value: "${VAULTWARDEN_ADMIN_TOKEN}"
+      valueFrom:
+        secretKeyRef:
+          name: ${secrets.vaultwarden.admin_token}
     - name: SIGNUPS_ALLOWED
-      value: "${SIGNUPS_ALLOWED}"
+      value: "${site.env.signups_allowed}"
     - name: WEBSOCKET_ENABLED
       value: "true"
     ports:
@@ -30,4 +32,4 @@ spec:
   volumes:
   - name: data
     hostPath:
-      path: ${DATA_ROOT}/system/vaultwarden
+      path: ${site.data.roots.appdata}/system/vaultwarden

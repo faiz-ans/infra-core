@@ -7,18 +7,18 @@ metadata:
 spec:
   restartPolicy: Always
   hostAliases:
-  - ip: "${NAS_LAN_IP}"
+  - ip: "${site.networking.ingress.host.ip}"
     hostnames:
-      - "auth.${DOMAIN}"
+      - "auth.${site.env.domain}"
   containers:
   - name: prometheus
     image: docker.io/prom/prometheus:latest
     command: ["/bin/sh", "-c", "sh /apply-config.sh && exec /bin/prometheus --config.file=/etc/prometheus/prometheus.yml --storage.tsdb.path=/prometheus"]
     env:
     - name: TZ
-      value: "${TZ}"
+      value: "${site.env.timezone}"
     - name: NAS_LAN_IP
-      value: "${NAS_LAN_IP}"
+      value: "${site.networking.ingress.host.ip}"
     ports:
     - containerPort: 9090
     volumeMounts:
@@ -34,23 +34,27 @@ spec:
     image: docker.io/grafana/grafana:latest
     env:
     - name: TZ
-      value: "${TZ}"
+      value: "${site.env.timezone}"
     - name: GF_SECURITY_ADMIN_PASSWORD
-      value: "${GRAFANA_ADMIN_PASSWORD}"
+      valueFrom:
+        secretKeyRef:
+          name: ${secrets.monitoring.grafana_admin_password}
     - name: GF_SERVER_ROOT_URL
-      value: "https://site.${DOMAIN}"
+      value: "https://site.${site.env.domain}"
     - name: GF_AUTH_GENERIC_OAUTH_ENABLED
       value: "true"
     - name: GF_AUTH_GENERIC_OAUTH_CLIENT_ID
       value: grafana
     - name: GF_AUTH_GENERIC_OAUTH_CLIENT_SECRET
-      value: "${OIDC_CLIENT_SECRET}"
+      valueFrom:
+        secretKeyRef:
+          name: ${secrets.authelia.oidc_client_secret}
     - name: GF_AUTH_GENERIC_OAUTH_AUTH_URL
-      value: "https://auth.${DOMAIN}/api/oidc/authorization"
+      value: "https://auth.${site.env.domain}/api/oidc/authorization"
     - name: GF_AUTH_GENERIC_OAUTH_TOKEN_URL
-      value: "https://auth.${DOMAIN}/api/oidc/token"
+      value: "https://auth.${site.env.domain}/api/oidc/token"
     - name: GF_AUTH_GENERIC_OAUTH_API_URL
-      value: "https://auth.${DOMAIN}/api/oidc/userinfo"
+      value: "https://auth.${site.env.domain}/api/oidc/userinfo"
     ports:
     - containerPort: 3000
     volumeMounts:
@@ -59,10 +63,10 @@ spec:
   volumes:
   - name: tmpl
     hostPath:
-      path: "${COMPONENT_DIR}/prometheus.yml.template"
+      path: "${component.dir}/prometheus.yml.template"
   - name: apply
     hostPath:
-      path: "${COMPONENT_DIR}/apply-config.sh"
+      path: "${component.dir}/apply-config.sh"
   - name: data
     persistentVolumeClaim:
       claimName: prometheus-data

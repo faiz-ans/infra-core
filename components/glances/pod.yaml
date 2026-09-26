@@ -12,7 +12,7 @@ spec:
     imagePullPolicy: Always
     env:
     - name: TZ
-      value: "${TZ}"
+      value: "${site.env.timezone}"
     - name: GLANCES_OPT
       value: "-w --disable-plugin docker"
     ports:
@@ -36,7 +36,7 @@ spec:
   volumes:
   - name: conf
     hostPath:
-      path: ${COMPONENT_DIR}/glances.conf
+      path: ${component.dir}/glances.conf
   - name: osrel
     hostPath:
       path: /etc/os-release
@@ -45,4 +45,4 @@ spec:
       path: /sys
   - name: data
     hostPath:
-      path: ${DATA_ROOT}
+      path: ${site.data.roots.appdata}

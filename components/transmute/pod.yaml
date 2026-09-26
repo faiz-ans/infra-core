@@ -7,35 +7,39 @@ metadata:
 spec:
   restartPolicy: Always
   hostAliases:
-  - ip: "${NAS_LAN_IP}"
+  - ip: "${site.networking.ingress.host.ip}"
     hostnames:
-      - "auth.${DOMAIN}"
+      - "auth.${site.env.domain}"
   containers:
   - name: transmute
     image: ghcr.io/transmute-app/transmute:latest
     command: ["/bin/bash", "/oidc-ca.sh"]
     env:
     - name: TZ
-      value: "${TZ}"
+      value: "${site.env.timezone}"
     - name: AUTH_SECRET_KEY
-      value: "${TRANSMUTE_AUTH_SECRET_KEY}"
+      valueFrom:
+        secretKeyRef:
+          name: ${secrets.transmute.auth_secret}
     - name: APP_URL
-      value: "https://convert.${DOMAIN}"
+      value: "https://convert.${site.env.domain}"
     - name: PORT
       value: "3313"
     - name: OIDC_ISSUER_URL
-      value: "https://auth.${DOMAIN}"
+      value: "https://auth.${site.env.domain}"
     - name: OIDC_CLIENT_ID
       value: transmute
     - name: OIDC_CLIENT_SECRET
-      value: "${OIDC_CLIENT_SECRET}"
+      valueFrom:
+        secretKeyRef:
+          name: ${secrets.authelia.oidc_client_secret}
     - name: NVIDIA_VISIBLE_DEVICES
-      value: all
+      value: "${host.resources.gpu.gpu0.visible}"
     ports:
     - containerPort: 3313
     resources:
       limits:
-        nvidia.com/gpu: 1
+        ${host.resources.gpu.gpu0.resource}: ${host.resources.gpu.gpu0.count}
     volumeMounts:
     - name: data
       mountPath: /app/data
@@ -51,7 +55,7 @@ spec:
       claimName: transmute-data
   - name: wrap
     hostPath:
-      path: "${COMPONENT_DIR}/entrypoint-oidc.sh"
+      path: "${component.dir}/entrypoint-oidc.sh"
   - name: site
     hostPath:
-      path: "${COMPONENT_DIR}/sitecustomize-oidc.py"
+      path: "${component.dir}/sitecustomize-oidc.py"

@@ -2,7 +2,7 @@
 Description=libretranslate
 
 [Kube]
-Yaml=${COMPONENT_DIR}/pod.yaml
+Yaml=${component.dir}/pod.yaml
 Network=site.network
 PublishPort=5000:5000
 

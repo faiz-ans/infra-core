@@ -6,9 +6,9 @@ metadata:
     app: jotty
 spec:
   hostAliases:
-  - ip: "${SITE_HOST_LOOPBACK}"
+  - ip: "${site.networking.loopback}"
     hostnames:
-      - "auth.${DOMAIN}"
+      - "auth.${site.env.domain}"
 
   restartPolicy: Always
   containers:
@@ -17,25 +17,27 @@ spec:
     imagePullPolicy: Always
     env:
     - name: TZ
-      value: "${TZ}"
+      value: "${site.env.timezone}"
     - name: PUID
-      value: "${PUID}"
+      value: "${host.roles.workload.uid}"
     - name: PGID
-      value: "${PGID}"
+      value: "${host.roles.workload.gid}"
     - name: NODE_ENV
       value: "production"
     - name: APP_URL
-      value: "https://notes.${DOMAIN}"
+      value: "https://notes.${site.env.domain}"
     - name: HTTPS
       value: "true"
     - name: AUTH_MODE
       value: "oidc"
     - name: OIDC_ISSUER
-      value: "https://auth.${DOMAIN}"
+      value: "https://auth.${site.env.domain}"
     - name: OIDC_CLIENT_ID
       value: "jotty"
     - name: OIDC_CLIENT_SECRET
-      value: "${OIDC_CLIENT_SECRET}"
+      valueFrom:
+        secretKeyRef:
+          name: ${secrets.authelia.oidc_client_secret}
     - name: SSO_FALLBACK_LOCAL
       value: "yes"
     - name: OIDC_ADMIN_GROUPS
@@ -61,10 +63,10 @@ spec:
   volumes:
   - name: data
     hostPath:
-      path: ${DATA_ROOT}/system/jotty/data
+      path: ${site.data.roots.appdata}/system/jotty/data
   - name: config
     hostPath:
-      path: ${DATA_ROOT}/system/jotty/config
+      path: ${site.data.roots.appdata}/system/jotty/config
   - name: cache
     hostPath:
-      path: ${DATA_ROOT}/system/jotty/cache
+      path: ${site.data.roots.appdata}/system/jotty/cache

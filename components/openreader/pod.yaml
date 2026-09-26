@@ -12,15 +12,17 @@ spec:
     imagePullPolicy: Always
     env:
     - name: TZ
-      value: "${TZ}"
+      value: "${site.env.timezone}"
     - name: BASE_URL
-      value: "https://read.${DOMAIN}"
+      value: "https://read.${site.env.domain}"
     - name: AUTH_SECRET
-      value: "${OPENREADER_AUTH_SECRET}"
+      valueFrom:
+        secretKeyRef:
+          name: ${secrets.openreader.auth_secret}
     - name: AUTH_TRUSTED_ORIGINS
-      value: "https://read.${DOMAIN},https://openreader.${DOMAIN},https://reader.${DOMAIN}"
+      value: "https://read.${site.env.domain},https://openreader.${site.env.domain},https://reader.${site.env.domain}"
     - name: ADMIN_EMAILS
-      value: "admin@${DOMAIN}"
+      value: "admin@${site.env.domain}"
     ports:
     - containerPort: 3003
     volumeMounts:

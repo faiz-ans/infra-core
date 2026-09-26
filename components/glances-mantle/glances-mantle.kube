@@ -2,7 +2,7 @@
 Description=glances-mantle
 
 [Kube]
-Yaml=${COMPONENT_DIR}/pod.yaml
+Yaml=${component.dir}/pod.yaml
 Network=site.network
 PublishPort=61208:61208
 

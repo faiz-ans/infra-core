@@ -7,15 +7,17 @@ metadata:
 spec:
   restartPolicy: Always
   hostAliases:
-  - ip: "${NAS_LAN_IP}"
+  - ip: "${site.networking.ingress.host.ip}"
     hostnames:
-      - "auth.${DOMAIN}"
+      - "auth.${site.env.domain}"
   containers:
   - name: database
     image: ghcr.io/immich-app/postgres:14-vectorchord0.4.3-pgvectors0.2.0
     env:
     - name: POSTGRES_PASSWORD
-      value: "${IMMICH_DB_PASSWORD}"
+      valueFrom:
+        secretKeyRef:
+          name: ${secrets.immich.database_password}
     - name: POSTGRES_USER
       value: immich
     - name: POSTGRES_DB
@@ -29,12 +31,12 @@ spec:
     image: ghcr.io/immich-app/immich-machine-learning:release-cuda
     env:
     - name: TZ
-      value: "${TZ}"
+      value: "${site.env.timezone}"
     - name: NVIDIA_VISIBLE_DEVICES
-      value: all
+      value: "${host.resources.gpu.gpu0.visible}"
     resources:
       limits:
-        nvidia.com/gpu: 1
+        ${host.resources.gpu.gpu0.resource}: ${host.resources.gpu.gpu0.count}
     volumeMounts:
     - name: ml
       mountPath: /cache
@@ -42,13 +44,15 @@ spec:
     image: ghcr.io/immich-app/immich-server:release
     env:
     - name: TZ
-      value: "${TZ}"
+      value: "${site.env.timezone}"
     - name: DB_HOSTNAME
       value: "127.0.0.1"
     - name: DB_USERNAME
       value: immich
     - name: DB_PASSWORD
-      value: "${IMMICH_DB_PASSWORD}"
+      valueFrom:
+        secretKeyRef:
+          name: ${secrets.immich.database_password}
     - name: DB_DATABASE_NAME
       value: immich
     - name: REDIS_HOSTNAME
@@ -76,7 +80,7 @@ spec:
       claimName: immich-upload
   - name: photos
     hostPath:
-      path: "${NFS_SHARED}/photos"
+      path: "${site.data.roots.groups}/all/photos"
   - name: users
     hostPath:
-      path: "${NFS_USERS}"
+      path: "${site.data.roots.users}"

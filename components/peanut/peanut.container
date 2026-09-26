@@ -11,20 +11,20 @@ ContainerName=peanut
 # (this Podman: "invalid network mode").
 Network=host
 UserNS=keep-id
-Environment=TZ=${TZ}
+Environment=TZ=${site.env.timezone}
 Environment=NUT_HOST=127.0.0.1
 Environment=NUT_PORT=3493
 Environment=USERNAME=peanut
-Environment=PASSWORD=${NUT_REMOTE_PASSWORD}
+Secret=${secrets.peanut.nut_remote_password},type=env,target=PASSWORD
 # WEB_HOST is copied to HOSTNAME. 127.0.0.1 makes the HTML renderer hang.
 # 0.0.0.0 is required. Do not set WEB_PORT=8080 (Caddy).
 Environment=WEB_HOST=0.0.0.0
 Environment=WEB_PORT=8092
 Environment=AUTH_DISABLED=true
 Environment=AUTH_TRUST_HOST=true
-Environment=AUTH_SECRET=${NUT_REMOTE_PASSWORD}
-Volume=${DATA_ROOT}/system/peanut:/config
-Volume=${COMPONENT_DIR}/settings.yml:/config/settings.yml:ro
+Secret=${secrets.peanut.nut_remote_password},type=env,target=AUTH_SECRET
+Volume=${site.data.roots.appdata}/system/peanut:/config
+Volume=${component.dir}/settings.yml:/config/settings.yml:ro
 
 [Service]
 Restart=on-failure

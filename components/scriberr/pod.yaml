@@ -12,7 +12,7 @@ spec:
     imagePullPolicy: Always
     env:
     - name: TZ
-      value: "${TZ}"
+      value: "${site.env.timezone}"
     - name: PUID
       value: "10001"
     - name: PGID
@@ -20,9 +20,9 @@ spec:
     - name: APP_ENV
       value: "production"
     - name: ALLOWED_ORIGINS
-      value: "https://voice.${DOMAIN},https://scribe.${DOMAIN},https://transcribe.${DOMAIN},https://scriberr.${DOMAIN}"
+      value: "https://voice.${site.env.domain},https://scribe.${site.env.domain},https://transcribe.${site.env.domain},https://scriberr.${site.env.domain}"
     - name: NVIDIA_VISIBLE_DEVICES
-      value: "all"
+      value: "${host.resources.gpu.gpu0.visible}"
     - name: NVIDIA_DRIVER_CAPABILITIES
       value: "compute,utility"
     ports:
@@ -34,7 +34,7 @@ spec:
       mountPath: /app/whisperx-env
     resources:
       limits:
-        nvidia.com/gpu: 1
+        ${host.resources.gpu.gpu0.resource}: ${host.resources.gpu.gpu0.count}
 
   volumes:
   - name: data

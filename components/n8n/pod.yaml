@@ -12,21 +12,23 @@ spec:
     imagePullPolicy: Always
     env:
     - name: TZ
-      value: "${TZ}"
+      value: "${site.env.timezone}"
     - name: GENERIC_TIMEZONE
-      value: "${TZ}"
+      value: "${site.env.timezone}"
     - name: N8N_HOST
-      value: "flow.${DOMAIN}"
+      value: "flow.${site.env.domain}"
     - name: N8N_PORT
       value: "5678"
     - name: N8N_PROTOCOL
       value: "https"
     - name: WEBHOOK_URL
-      value: "https://flow.${DOMAIN}/"
+      value: "https://flow.${site.env.domain}/"
     - name: N8N_EDITOR_BASE_URL
-      value: "https://flow.${DOMAIN}/"
+      value: "https://flow.${site.env.domain}/"
     - name: N8N_ENCRYPTION_KEY
-      value: "${N8N_ENCRYPTION_KEY}"
+      valueFrom:
+        secretKeyRef:
+          name: ${secrets.n8n.encryption_key}
     - name: N8N_PROXY_HOPS
       value: "1"
     - name: N8N_DIAGNOSTICS_ENABLED

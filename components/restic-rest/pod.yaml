@@ -12,7 +12,7 @@ spec:
     imagePullPolicy: Always
     env:
     - name: TZ
-      value: "${TZ}"
+      value: "${site.env.timezone}"
     - name: DATA_DIRECTORY
       value: "/data"
     - name: PASSWORD_FILE
@@ -28,4 +28,4 @@ spec:
   volumes:
   - name: data
     hostPath:
-      path: ${BACKUP_DRIVE}/restic
+      path: ${site.env.backup_drive}/restic

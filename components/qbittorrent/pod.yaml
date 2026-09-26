@@ -12,11 +12,11 @@ spec:
     imagePullPolicy: Always
     env:
     - name: TZ
-      value: "${TZ}"
+      value: "${site.env.timezone}"
     - name: PUID
-      value: "${PUID}"
+      value: "${host.roles.workload.uid}"
     - name: PGID
-      value: "${PGID}"
+      value: "${host.roles.workload.gid}"
     - name: WEBUI_PORT
       value: "8081"
     - name: TORRENTING_PORT
@@ -41,10 +41,10 @@ spec:
       claimName: qbittorrent-config
   - name: downloads
     hostPath:
-      path: ${NFS_SHARED}/downloads
+      path: ${site.data.roots.groups}/all/downloads
   - name: media
     hostPath:
-      path: ${NFS_SHARED}/media
+      path: ${site.data.roots.groups}/all/media
   - name: init
     hostPath:
-      path: ${COMPONENT_DIR}/custom-cont-init.d
+      path: ${component.dir}/custom-cont-init.d

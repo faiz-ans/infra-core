@@ -155,7 +155,24 @@
             },
             "ups": { "type": "object" },
             "pwm": { "type": "object" },
-            "gpu": { "type": "array" }
+            "gpu": {
+              "type": "array",
+              "items": {
+                "type": "object",
+                "properties": {
+                  "id": { "type": "string", "default": "gpu0" },
+                  "device": { "type": "string", "description": "CDI device (e.g. nvidia.com/gpu=all)" },
+                  "resource": { "type": "string", "description": "kube-play limits key (e.g. nvidia.com/gpu)" },
+                  "count": { "type": ["integer", "string"], "default": 1 },
+                  "visible": {
+                    "type": "boolean",
+                    "default": true,
+                    "description": "When true (default), NVIDIA_VISIBLE_DEVICES is all; when false, void"
+                  }
+                },
+                "additionalProperties": false
+              }
+            }
           },
           "additionalProperties": false
         },

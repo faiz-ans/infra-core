@@ -10,4 +10,4 @@ sops --encrypt --age "$AGE_RECIPIENT" examples/secrets.example.yaml > secrets.so
 python3 ansible/site.py set --secrets secrets.sops.yaml
 ```
 
-Catalog Quadlets still accept `${DOMAIN}`, `${DATA_ROOT}`, `${secrets.*}` after the resolver runs. Do not commit live IPs, domains, or secret values.
+Catalog units use `${site.*}`, `${host.*}`, and `${secrets.*}`. Secret placeholders resolve to Podman secret names; containers read them at runtime. Do not commit live IPs, domains, or secret values.

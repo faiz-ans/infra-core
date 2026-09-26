@@ -11,13 +11,15 @@ spec:
     image: docker.io/osixia/openldap:1.5.0
     env:
     - name: TZ
-      value: "${TZ}"
+      value: "${site.env.timezone}"
     - name: LDAP_ORGANISATION
       value: site
     - name: LDAP_DOMAIN
-      value: "${DOMAIN}"
+      value: "${site.env.domain}"
     - name: LDAP_ADMIN_PASSWORD
-      value: "${secrets.openldap.admin_password}"
+      valueFrom:
+        secretKeyRef:
+          name: ${secrets.openldap.admin_password}
     ports:
     - containerPort: 389
     volumeMounts:
@@ -28,7 +30,7 @@ spec:
   volumes:
   - name: data
     hostPath:
-      path: "${DATA_ROOT}/system/openldap/data"
+      path: "${site.data.roots.appdata}/system/openldap/data"
   - name: config
     hostPath:
-      path: "${DATA_ROOT}/system/openldap/config"
+      path: "${site.data.roots.appdata}/system/openldap/config"

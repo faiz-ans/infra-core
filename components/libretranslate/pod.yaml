@@ -12,7 +12,7 @@ spec:
     imagePullPolicy: Always
     env:
     - name: TZ
-      value: "${TZ}"
+      value: "${site.env.timezone}"
     ports:
     - containerPort: 5000
     volumeMounts:
