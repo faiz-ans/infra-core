@@ -5,6 +5,7 @@
   hosts: localhost
   connection: local
   gather_facts: false
+  become: false
   tasks:
     - name: Read plan JSON
       set_fact:
@@ -35,5 +36,6 @@
   hosts: localhost
   connection: local
   gather_facts: false
+  become: false
   roles:
     - observed_write

@@ -1,19 +1,80 @@
 ---
+# enabled + scale installs a loop: duty is the highest step any source demands.
 - name: This host
   set_fact:
     site_this_host: "{{ site_plan.hosts | selectattr('name', 'equalto', site_host_name) | list | first }}"
+
+- name: Stop PWM loop when disabled
+  systemd:
+    name: site-pwm
+    enabled: false
+    state: stopped
+  failed_when: false
+  when: not (site_this_host.resources.pwm.enabled | default(false))
 
 - name: Skip unless PWM enabled in desired
   meta: end_host
   when: not (site_this_host.resources.pwm.enabled | default(false))
 
-- name: Enable PWM sysfs if a path exists
-  command: "sh -c 'echo 1 > {{ site_this_host.resources.pwm.path }}'"
-  when: site_this_host.resources.pwm.path is defined
-  failed_when: false
+- name: Drive temperature module for disk sources
+  apt:
+    name: smartmontools
+    state: present
+  when: (site_this_host.resources.pwm.scale.sources.disks | default([])) | length > 0
 
-- name: Apply operator-written scale only
-  command: "sh -c 'echo {{ site_this_host.resources.pwm.scale }} > {{ site_this_host.resources.pwm.path }}'"
-  when:
-    - site_this_host.resources.pwm.scale is defined
-    - site_this_host.resources.pwm.path is defined
+- name: Load drivetemp
+  copy:
+    dest: /etc/modules-load.d/site-pwm.conf
+    content: |
+      drivetemp
+    mode: "0644"
+  when: (site_this_host.resources.pwm.scale.sources.disks | default([])) | length > 0
+
+- name: Modprobe drivetemp
+  command: modprobe drivetemp
+  changed_when: false
+  failed_when: false
+  when: (site_this_host.resources.pwm.scale.sources.disks | default([])) | length > 0
+
+- name: PWM config directory
+  file:
+    path: /etc/site
+    state: directory
+    mode: "0755"
+
+- name: Install PWM controller
+  copy:
+    src: "{{ playbook_dir }}/../lib/pwm.py"
+    dest: /usr/local/sbin/site-pwm
+    mode: "0755"
+
+- name: Install PWM unit
+  copy:
+    dest: /etc/systemd/system/site-pwm.service
+    mode: "0644"
+    content: |
+      [Unit]
+      Description=Site PWM fan (highest temperature step)
+      After=sysinit.target
+
+      [Service]
+      Type=simple
+      ExecStart=/usr/bin/python3 /usr/local/sbin/site-pwm
+      Restart=always
+      RestartSec=5
+
+      [Install]
+      WantedBy=multi-user.target
+
+- name: Write PWM scale
+  copy:
+    dest: /etc/site/pwm.json
+    mode: "0644"
+    content: "{{ {'path': site_this_host.resources.pwm.path, 'scale': site_this_host.resources.pwm.scale} | to_json }}\n"
+
+- name: Enable PWM loop
+  systemd:
+    name: site-pwm
+    enabled: true
+    state: restarted
+    daemon_reload: true

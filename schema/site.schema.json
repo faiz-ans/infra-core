@@ -37,7 +37,19 @@
           "type": "object",
           "properties": {
             "dns": { "type": "string" },
-            "ingress": { "type": "string" },
+            "ingress": {
+              "oneOf": [
+                { "type": "string" },
+                {
+                  "type": "object",
+                  "properties": {
+                    "engine": { "type": "string" },
+                    "generate-upstream": { "type": "boolean", "default": true }
+                  },
+                  "additionalProperties": false
+                }
+              ]
+            },
             "tunnel": {
               "type": "object",
               "properties": {
@@ -82,6 +94,14 @@
               "properties": {
                 "engine": { "type": "string", "enum": ["podman", "kubelet"] },
                 "monitor": { "type": "string" }
+              },
+              "additionalProperties": false
+            },
+            "dashboard": {
+              "type": "object",
+              "properties": {
+                "engine": { "type": "string" },
+                "generate-tiles": { "type": "boolean", "default": true }
               },
               "additionalProperties": false
             }
@@ -135,7 +155,23 @@
           },
           "additionalProperties": false
         },
-        "override": { "type": "object" },
+        "data": {
+          "type": "object",
+          "properties": {
+            "roots": {
+              "type": "object",
+              "additionalProperties": { "type": "string" },
+              "description": "Host-local roots (any name → absolute path). Each name is listed in a partition roots list, or in the disk roots list when the disk has no partitions. When that volume is a storage drive and the path is a site root the drive already mounts, SET shares that directory."
+            }
+          },
+          "additionalProperties": false
+        },
+        "identity": { "type": "object" },
+        "operations": { "type": "object" },
+        "env": {
+          "type": "object",
+          "additionalProperties": { "type": ["string", "number", "boolean"] }
+        },
         "resources": {
           "type": "object",
           "properties": {
@@ -145,30 +181,128 @@
                 "type": "object",
                 "required": ["id"],
                 "properties": {
-                  "id": { "type": "string" },
+                  "id": { "type": "string", "description": "Kernel name at census (sda), or an operator handle. When partitions is set, storage drives and host roots use a partition id. Otherwise they use this id." },
+                  "name": { "type": "string", "description": "lsblk MODEL, or the transport when MODEL is empty. On the disk only when it has no partitions." },
+                  "size": { "type": "string", "description": "lsblk size. On the disk only when it has no partitions." },
                   "internal": { "type": "boolean" },
-                  "uuid": { "type": "string" },
-                  "import": { "type": "object" }
+                  "uuid": { "type": "string", "description": "Filesystem UUID. On the disk only when it has no partitions. SET mounts by this uuid." },
+                  "roots": {
+                    "type": "array",
+                    "items": { "type": "string" },
+                    "description": "Host roots this disk owns when it has no partitions. A storage drive may list one only when its path is the site root that drive already mounts."
+                  },
+                  "partitions": {
+                    "type": "array",
+                    "description": "Data partitions. When present, these own host roots and storage drives. Boot and swap partitions are omitted.",
+                    "items": {
+                      "type": "object",
+                      "required": ["id"],
+                      "properties": {
+                        "id": { "type": "string" },
+                        "name": { "type": "string", "description": "Parent disk MODEL, or the partition kernel name when MODEL is empty." },
+                        "size": { "type": "string" },
+                        "uuid": { "type": "string" },
+                        "roots": {
+                          "type": "array",
+                          "items": { "type": "string" },
+                          "description": "Host roots this partition owns. A storage drive may list one only when its path is the site root that drive already mounts."
+                        },
+                        "import": { "type": "array" }
+                      },
+                      "additionalProperties": true
+                    }
+                  },
+                  "import": {
+                    "type": "array",
+                    "items": {
+                      "type": "object",
+                      "required": ["type", "from"],
+                      "properties": {
+                        "type": {
+                          "type": "string",
+                          "enum": [
+                            "appdata-root",
+                            "groups-root",
+                            "users-root",
+                            "appdata-home",
+                            "group-home",
+                            "user-home",
+                            "users-home",
+                            "groups-home",
+                            "other"
+                          ]
+                        },
+                        "from": { "type": "string" },
+                        "as": { "type": "string" },
+                        "to": { "type": "string" }
+                      },
+                      "additionalProperties": false
+                    }
+                  }
                 },
                 "additionalProperties": true
               }
             },
-            "ups": { "type": "object" },
-            "pwm": { "type": "object" },
+            "usb": {
+              "type": "array",
+              "items": {
+                "type": "object",
+                "required": ["id"],
+                "properties": {
+                  "id": { "type": "string", "description": "USB vendor:product (e.g. 0764:0501)" },
+                  "bus": { "type": "string" },
+                  "device": { "type": "string" },
+                  "name": { "type": "string" },
+                  "type": {
+                    "type": "string",
+                    "description": "Operator label. SET installs NUT when type is ups."
+                  }
+                },
+                "additionalProperties": false
+              }
+            },
+            "pwm": {
+              "type": "object",
+              "properties": {
+                "path": { "type": "string", "description": "hwmon pwm file from GET, e.g. /sys/class/hwmon/hwmon3/pwm1" },
+                "enabled": { "type": "boolean" },
+                "scale": {
+                  "type": "object",
+                  "required": ["steps", "sources"],
+                  "properties": {
+                    "min": { "type": "number" },
+                    "max": { "type": "number" },
+                    "steps": {
+                      "type": "array",
+                      "items": { "type": "number" },
+                      "minItems": 1,
+                      "description": "Fan duties. Each source lists this many temperature ceilings, lowest first."
+                    },
+                    "sources": {
+                      "type": "object",
+                      "properties": {
+                        "cpu": { "type": "array", "items": { "type": "number" } },
+                        "disks": { "type": "array", "description": "One entry per disk id, e.g. - sda: [40, 43, 46, 50, 55]" },
+                        "gpus": { "type": "array", "description": "One entry per gpu id, e.g. - gpu0: [65, 72, 78, 84, 90]" }
+                      },
+                      "additionalProperties": false
+                    }
+                  },
+                  "additionalProperties": false
+                }
+              },
+              "additionalProperties": false
+            },
             "gpu": {
               "type": "array",
               "items": {
                 "type": "object",
+                "required": ["id"],
                 "properties": {
-                  "id": { "type": "string", "default": "gpu0" },
-                  "device": { "type": "string", "description": "CDI device (e.g. nvidia.com/gpu=all)" },
-                  "resource": { "type": "string", "description": "kube-play limits key (e.g. nvidia.com/gpu)" },
-                  "count": { "type": ["integer", "string"], "default": 1 },
-                  "visible": {
-                    "type": "boolean",
-                    "default": true,
-                    "description": "When true (default), NVIDIA_VISIBLE_DEVICES is all; when false, void"
-                  }
+                  "id": { "type": "string", "description": "gpu<index> from nvidia-smi -L (e.g. gpu0)" },
+                  "name": { "type": "string", "description": "nvidia-smi -L name (e.g. NVIDIA GeForce RTX 2060)" },
+                  "uuid": { "type": "string", "description": "nvidia-smi -L UUID" },
+                  "resource": { "type": "string", "description": "kube-play limits key (e.g. nvidia.com/gpu)" }
                 },
                 "additionalProperties": false
               }
@@ -183,6 +317,7 @@
             "required": ["name"],
             "properties": {
               "name": { "type": "string" },
+              "sysadmin": { "type": "boolean", "description": "True when this host user can administer the machine (sudo). GET sets this from the live account." },
               "roles": { "type": "array", "items": { "type": "string" } },
               "ssh-keys": { "type": "array", "items": { "type": "string" } }
             },

@@ -11,6 +11,7 @@ sys.path.insert(0, str(ROOT / "ansible"))
 
 from lib.quadlet import strip_yaml_text  # noqa: E402
 from lib.resolve import bind, render  # noqa: E402
+from lib.secrets import SecretError, load_secrets  # noqa: E402
 from lib.topology import all_services, host_by_name, load_desired  # noqa: E402
 
 
@@ -18,6 +19,8 @@ def main() -> int:
     desired = load_desired(Path(sys.argv[1]))
     host_name = sys.argv[2]
     dest = Path(sys.argv[3])
+    secrets_path = Path(sys.argv[4]) if len(sys.argv) > 4 else None
+    secrets = load_secrets(secrets_path) if secrets_path and secrets_path.is_file() else None
     host = host_by_name(desired, host_name) or {}
     mapping = bind(desired, host)
     dest.mkdir(parents=True, exist_ok=True)
@@ -37,7 +40,17 @@ def main() -> int:
             if not path.is_file():
                 continue
             text = path.read_text(encoding="utf-8", errors="replace")
-            rendered = render(text, mapping)
+            try:
+                rendered = render(
+                    text,
+                    mapping,
+                    service=str(svc.get("key") or ""),
+                    host=host_name,
+                    secrets=secrets,
+                )
+            except SecretError as exc:
+                print(exc, file=sys.stderr)
+                return 1
             if path.suffix in {".yaml", ".yml"} and "kind:" in rendered:
                 rendered = strip_yaml_text(rendered)
             path.write_text(rendered, encoding="utf-8")

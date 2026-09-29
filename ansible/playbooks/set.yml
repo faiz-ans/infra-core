@@ -1,11 +1,13 @@
 ---
-# SET graph: disks → users → LDAP → drivers/PWM → Cockpit/Podman →
-# secrets → NFS → generated edge → Quadlets → OpenCloud binds.
+# SET graph: root-owner disks → other disks → import NFS → imports →
+# drop import NFS → users → LDAP → drivers/PWM → Cockpit/Podman →
+# secrets → inferred NFS → generated edge → Quadlets → OpenCloud binds.
 # Day 2 uses desired − observed delta when observed.yaml exists.
 - name: Load plan
   hosts: localhost
   connection: local
   gather_facts: false
+  become: false
   tasks:
     - name: Read plan JSON
       set_fact:
@@ -23,12 +25,47 @@
   roles:
     - os_guard
 
-- name: Disks, roots, imports
-  hosts: storage
+- name: Disks and roots on root-owning hosts
+  hosts: root_owners
   become: true
   roles:
     - storage
+
+- name: Disks on remaining hosts
+  hosts: all:!root_owners
+  become: true
+  roles:
+    - storage
+
+- name: Temporary import NFS exports on root owners
+  hosts: root_owners
+  become: true
+  roles:
+    - import_share
+  vars:
+    import_share_mode: export
+
+- name: Temporary import NFS mounts
+  hosts: all
+  become: true
+  roles:
+    - import_share
+  vars:
+    import_share_mode: mount
+
+- name: Import trees
+  hosts: all
+  become: true
+  roles:
     - import_trees
+
+- name: Drop temporary import NFS unless a service still needs it
+  hosts: all
+  become: true
+  roles:
+    - import_share
+  vars:
+    import_share_mode: drop
 
 - name: Host sysadmins and SSH
   hosts: all
@@ -66,6 +103,7 @@
   hosts: localhost
   connection: local
   gather_facts: false
+  become: false
   roles:
     - secrets_decrypt
 - name: Install Podman secrets
@@ -85,6 +123,7 @@
   hosts: localhost
   connection: local
   gather_facts: false
+  become: false
   roles:
     - edge_generate
 

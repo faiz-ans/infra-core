@@ -13,9 +13,9 @@ Environment=TZ=${site.env.timezone}
 Volume=${component.dir}/Caddyfile:/etc/caddy/Caddyfile:ro
 Volume=${component.dir}/entrypoint.sh:/entrypoint.sh:ro
 Volume=${component.dir}/export-ca.sh:/export-ca.sh:ro
-Volume=${site.data.roots.appdata}/system/caddy/data:/data
-Volume=${site.data.roots.appdata}/system/caddy/config:/config
-Volume=${site.data.roots.appdata}/system/authelia:/export-ca
+Volume=${site.data.roots.appdata}/caddy/data:/data
+Volume=${site.data.roots.appdata}/caddy/config:/config
+Volume=${site.data.roots.appdata}/authelia:/export-ca
 Entrypoint=/bin/sh
 Exec=/entrypoint.sh
 

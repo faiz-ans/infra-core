@@ -40,8 +40,8 @@ spec:
     hostPath:
       path: "${component.dir}/mosquitto"
   - name: config
-    persistentVolumeClaim:
-      claimName: frigate-config
+    hostPath:
+      path: "${host.data.roots.appdata}/frigate"
   - name: media
     hostPath:
       path: "${site.data.roots.groups}/all/cameras"

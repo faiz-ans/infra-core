@@ -16,14 +16,14 @@ spec:
     - name: GLANCES_OPT
       value: "-w --disable-plugin docker"
     - name: NVIDIA_VISIBLE_DEVICES
-      value: "${host.resources.gpu.gpu0.visible}"
+      value: "${host.resources.gpu.gpu0.uuid}"
     - name: NVIDIA_DRIVER_CAPABILITIES
       value: compute,utility
     ports:
     - containerPort: 61208
     resources:
       limits:
-        ${host.resources.gpu.gpu0.resource}: ${host.resources.gpu.gpu0.count}
+        ${host.resources.gpu.gpu0.resource}: 1
     volumeMounts:
     - name: conf
       mountPath: /etc/glances/glances.conf
@@ -49,4 +49,4 @@ spec:
       path: /sys
   - name: win
     hostPath:
-      path: /mnt/c
+      path: ${host.data.roots.windows}

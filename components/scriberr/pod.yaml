@@ -22,7 +22,7 @@ spec:
     - name: ALLOWED_ORIGINS
       value: "https://voice.${site.env.domain},https://scribe.${site.env.domain},https://transcribe.${site.env.domain},https://scriberr.${site.env.domain}"
     - name: NVIDIA_VISIBLE_DEVICES
-      value: "${host.resources.gpu.gpu0.visible}"
+      value: "${host.resources.gpu.gpu0.uuid}"
     - name: NVIDIA_DRIVER_CAPABILITIES
       value: "compute,utility"
     ports:
@@ -34,12 +34,12 @@ spec:
       mountPath: /app/whisperx-env
     resources:
       limits:
-        ${host.resources.gpu.gpu0.resource}: ${host.resources.gpu.gpu0.count}
+        ${host.resources.gpu.gpu0.resource}: 1
 
   volumes:
   - name: data
-    persistentVolumeClaim:
-      claimName: scriberr-data
+    hostPath:
+      path: ${host.data.roots.appdata}/scriberr/data
   - name: whisper
-    persistentVolumeClaim:
-      claimName: scriberr-whisperx
+    hostPath:
+      path: ${host.data.roots.appdata}/scriberr/whisperx

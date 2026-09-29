@@ -42,7 +42,7 @@ Constraints carried in: on-prem only; standalone scale (native NAS + Podman); cl
 
 | Task | When | Collects |
 |---|---|---|
-| A | Day 0 and Day 2 | hostname, mac, OS+version, timezone, locale, `lsblk`, `lspci` GPUs, `lsusb` UPS, PWM hwmon path, unix users uid>1000 (name/uid/gid) |
+| A | Day 0 and Day 2 | hostname, mac, OS+version, timezone, locale, `lsblk` (scaffold lists data partitions under a disk, or `name`/`size`/`uuid` on the disk when it has none; disks with no filesystem UUID are omitted), `lspci`/`nvidia-smi` NVIDIA GPUs on the site host (not Microsoft Basic Render; nvidia-smi may be off PATH under `/usr/lib`), `/sys/bus/usb` + `lsusb` plug-in USB peripherals (not root hubs, hub chips, or USB-ethernet), PWM hwmon path, unix users uid>1000 (name/uid/gid) |
 | B | Day 2 (and optional Day 1 verify) | `findmnt`, NFS/SMB exports, Cockpit/Podman present, deployed containers, LDAP joined + directory identifiers if LDAP is up |
 
 Day 0 input is the minimum needed to SSH: host IPs and admin usernames.
@@ -56,7 +56,7 @@ SET is one playbook, ordered:
 3. Host-local sysadmins and SSH keys; refuse `identity.ssh: key-only` if no sysadmin key is present
 4. Site users/groups on storage that owns `groups`/`users` (unix or SSSD)
 5. Site-level directory (OpenLDAP) if placed; join storage to LDAP
-6. Resource drivers (NVIDIA, NUT if UPS present — not PeaNUT)
+6. Resource drivers (NVIDIA, NUT if a USB device has `type: ups` — not PeaNUT)
 7. PWM enable; apply `scale` only if the operator wrote it
 8. Cockpit (every host if `operations.host.manager: cockpit`)
 9. Podman + `site` network + linger for workload user
@@ -77,11 +77,11 @@ Elevated keys (`networking.dns`, `identity.sso`, `data.access.web`, `operations.
 
 OpenLDAP has **no** implicit placement: `identity.ldap: openldap` without a workload entry is an error.
 
-A UPS resource enables NUT only. PeaNUT requires an explicit service entry.
+A USB device with `type: ups` enables NUT only. PeaNUT requires an explicit service entry. GET records plug-in USB peripherals only (not root hubs, hub chips, or USB-ethernet NICs); the operator labels the UPS.
 
 ### 6. Roots, SMB, inferred NFS
 
-Logical roots default to `/appdata`, `/groups`, `/users`. Each root is owned by exactly one storage drive on one host (`roles.storage.drives[].roots`).
+Logical roots default to `/appdata`, `/groups`, `/users`. Each root is owned by exactly one storage drive on one host (`roles.storage.drives[].roots`). A host root listed on that same volume may use the site root's absolute path; SET keeps the one bind. The name does not select the share, and `${host.data.roots.*}` resolves only from `hosts[].data.roots`.
 
 - People: SMB (and OpenCloud when `data.access.web: opencloud`) on user-homes and group-homes (`groups/<group>`, including `all`).
 - Apps: if `${site.data.roots.*}` resolves to a root **on another host**, SET creates an NFS export to **that consumer host IP** as the workload UID (`roles.workload.user`). Same host → local path, no export.
@@ -102,9 +102,7 @@ Removing a site user from desired SET **deletes the account** (unix and/or LDAP 
 
 ### 8. Imports
 
-`hosts[].resources.disks[].import` maps old trees onto new roots/homes. Success/failure is reported in observed. Operator deletes the block after success. SET is idempotent: a successful import is stamped and not re-copied. Files that the product now generates (Caddyfile, Authelia config) import as `*.old` beside the live generated file.
-
-This site’s remap: `/system` → `appdata`, `/shared` → `groups/all`, `/users` → `users`.
+`hosts[].resources.disks[].import` is a typed list. `from:` is relative to that disk’s systemd mount (`/` for `internal: true`, otherwise `/mnt/site/<id>`). Root types merge into `site.data.roots.*`; home types land under the matching root (`as:` / `to:` relocates). SET mounts each UUID once and bind-mounts sibling root dirs; it applies root-owning hosts first and uses a temporary NFS export of dest roots for cross-host imports. Success is stamped. Operator deletes the block after success. Generated files (Caddyfile, Authelia config) import as `*.old`.
 
 ### 9. Catalog templates and variables
 
@@ -114,8 +112,8 @@ Resolution at SET on the runner:
 
 - `${site.env.domain}`, `${site.data.roots.users}`, …
 - `${site.networking.ingress.host.ip}` → IP of the unique host that lists the ingress engine. Two placements → error.
-- `${host.resources.gpu.gpu0}` → the Quadlet’s host.
-- `${secrets.<ns>.<key>}` → SOPS (Age) on the runner; installed as Podman secrets; not written to a host `.env`.
+- `${host.resources.gpu.<id>.resource}` → kube-play limits key (`nvidia.com/gpu`); pods write the count literally (`${host.resources.gpu.gpu0.resource}: 1`). `id` is `gpu<index>` from `nvidia-smi -L`.
+- `${secrets.site.<service>.<name>}`, `${secrets.<service>.<name>}`, and `${secrets.<name>}` are one site secret. `${secrets.hosts.<hostname>.<service>.<name>}`, `${secrets.host.<service>.<name>}`, and `${secrets.host.<name>}` are one host secret. `host` is the instance's host. A bare secret name uses the service being rendered. The Podman name of a service's own secret is `<service>_<name>` with hyphens removed from the service (`pihole_web_password`). A unit that reads another service's host secret is `<unit>_<service>_<name>` (`homepage_pi-hole_web_password`). A unit that reads another host's secret also includes that host (`homepage_mantle_pi-hole_web_password`). SET installs site secrets on every workload host, a host's own secrets on that host, and these cross-references on the unit's host.
 
 Official pack (in-scope = current `components/` plus OpenLDAP, minus OMV) stores: default subdomains, ports, OIDC vs forward-auth, tile/monitor defaults, network mode, rootful vs rootless, and encoded lessons (Caddy keep-id + PKI chown; Authelia keep-id + oidc.pem chown; lan-bind PREROUTING plus OUTPUT `127.0.0.1:443→8443` and not OUTPUT `:53`; OpenCloud `PROXY_OIDC_ACCESS_TOKEN_VERIFY_METHOD=none`, autoprovision, `auth.` → pasta loopback `169.254.1.2`; Homepage `HOMEPAGE_ALLOWED_HOSTS` includes `:8443`, host scrapes via `169.254.1.2`, Pi-hole key = web password; PeaNUT host-net `:8092`, NUT `127.0.0.1`, no `AUTH_URL`; WireGuard MTU 1280; no space recreate if xattrs exist; `catatonit` / netavark helper path).
 
@@ -123,7 +121,7 @@ Comment-only engines in the example YAML are not implemented.
 
 ### 10. Secrets
 
-Age key lives on the operator machine only. Encrypted SOPS files may live beside local `site.yaml` (gitignored) or an optional encrypted vault the operator chooses. SET decrypts in memory and pushes Podman secrets. No `/etc/infra-core/site.env` on hosts.
+Age key lives on the operator machine only. Encrypted SOPS files may live beside local `site.yaml` (gitignored) or an optional encrypted vault the operator chooses. The file nests site secrets under `secrets.site` and per-host secrets under `secrets.hosts.<name>`. SET decrypts in memory and pushes Podman secrets. No `/etc/infra-core/site.env` on hosts.
 
 ### 11. Repo layout
 
@@ -142,7 +140,7 @@ observed.yaml      gitignored (GET)
 
 ### 12. OS and PWM
 
-SET uses Debian vs Ubuntu package names from gathered `os.name`. PWM: GET A records the hwmon path; SET enables PWM if `resources.pwm.enabled`; `scale` is operator-written after that and applied on a later SET.
+SET uses Debian vs Ubuntu package names from gathered `os.name`. PWM: GET A records the hwmon path. SET starts a fan loop only when `resources.pwm.enabled` is true and `scale` is set. `scale.steps` is the fan-duty list. Each of `sources.cpu`, `sources.disks.<id>`, and `sources.gpus.<id>` is a temperature-ceiling list of the same length. Duty is the highest step any reporting source demands (linear between ceilings, held 2 °C on the way down), clamped to `min`/`max`.
 
 ### Alternatives considered
 

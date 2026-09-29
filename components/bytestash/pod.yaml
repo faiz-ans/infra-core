@@ -61,4 +61,4 @@ spec:
   volumes:
   - name: data
     hostPath:
-      path: ${site.data.roots.appdata}/system/bytestash
+      path: ${site.data.roots.appdata}/bytestash

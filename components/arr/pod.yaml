@@ -66,14 +66,14 @@ spec:
       value: info
   volumes:
   - name: sonarr
-    persistentVolumeClaim:
-      claimName: sonarr-config
+    hostPath:
+      path: "${host.data.roots.appdata}/arr/sonarr"
   - name: radarr
-    persistentVolumeClaim:
-      claimName: radarr-config
+    hostPath:
+      path: "${host.data.roots.appdata}/arr/radarr"
   - name: prowlarr
-    persistentVolumeClaim:
-      claimName: prowlarr-config
+    hostPath:
+      path: "${host.data.roots.appdata}/arr/prowlarr"
   - name: media
     hostPath:
       path: "${site.data.roots.groups}/all/media"

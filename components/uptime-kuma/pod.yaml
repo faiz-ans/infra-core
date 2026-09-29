@@ -22,4 +22,4 @@ spec:
   volumes:
   - name: data
     hostPath:
-      path: ${site.data.roots.appdata}/system/uptime-kuma
+      path: ${site.data.roots.appdata}/uptime-kuma

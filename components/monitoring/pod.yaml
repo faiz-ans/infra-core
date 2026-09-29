@@ -68,8 +68,8 @@ spec:
     hostPath:
       path: "${component.dir}/apply-config.sh"
   - name: data
-    persistentVolumeClaim:
-      claimName: prometheus-data
+    hostPath:
+      path: "${host.data.roots.appdata}/monitoring/prometheus"
   - name: graf
-    persistentVolumeClaim:
-      claimName: grafana-data
+    hostPath:
+      path: "${host.data.roots.appdata}/monitoring/grafana"

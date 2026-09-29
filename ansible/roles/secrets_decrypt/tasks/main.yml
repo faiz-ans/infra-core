@@ -7,8 +7,9 @@
       - "{{ playbook_dir }}/../scripts/decrypt_secrets.py"
       - "{{ secrets_file }}"
       - "{{ site_repo }}/ansible/.tmp/secrets.json"
+      - "{{ desired_path }}"
   args:
     chdir: "{{ site_repo }}"
   register: site_secrets_dec
   changed_when: false
-  failed_when: false
+  failed_when: site_secrets_dec.rc != 0

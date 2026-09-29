@@ -1,5 +1,5 @@
 ---
-# NVIDIA when GPU listed. NUT when UPS present. PeaNUT is a listed service only.
+# NVIDIA when GPU listed. NUT when a USB device has type: ups. PeaNUT is a listed service only.
 - name: This host
   set_fact:
     site_this_host: "{{ site_plan.hosts | selectattr('name', 'equalto', site_host_name) | list | first }}"
@@ -12,10 +12,10 @@
   when: (site_this_host.resources.gpu | default([])) | length > 0
   failed_when: false
 
-- name: NUT when UPS resource is present (not PeaNUT)
+- name: NUT when a USB device is labeled UPS (not PeaNUT)
   apt:
     name:
       - nut-server
       - nut-client
     state: present
-  when: site_this_host.resources.ups is defined
+  when: (site_this_host.resources.usb | default([]) | selectattr('type', 'defined') | selectattr('type', 'equalto', 'ups') | list | length) > 0

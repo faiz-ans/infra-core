@@ -63,10 +63,10 @@ spec:
   volumes:
   - name: data
     hostPath:
-      path: ${site.data.roots.appdata}/system/jotty/data
+      path: ${site.data.roots.appdata}/jotty/data
   - name: config
     hostPath:
-      path: ${site.data.roots.appdata}/system/jotty/config
+      path: ${site.data.roots.appdata}/jotty/config
   - name: cache
     hostPath:
-      path: ${site.data.roots.appdata}/system/jotty/cache
+      path: ${site.data.roots.appdata}/jotty/cache

@@ -90,11 +90,11 @@ spec:
       readOnly: true
   volumes:
   - name: pg
-    persistentVolumeClaim:
-      claimName: adventurelog-postgres
+    hostPath:
+      path: "${host.data.roots.appdata}/adventurelog/postgres"
   - name: media
-    persistentVolumeClaim:
-      claimName: adventurelog-media
+    hostPath:
+      path: "${host.data.roots.appdata}/adventurelog/media"
   - name: wrap
     hostPath:
       path: "${component.dir}/entrypoint-oidc.sh"

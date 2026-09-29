@@ -17,7 +17,7 @@ Environment=INIT_HOST=${site.networking.tunnel.endpoint}
 Environment=INIT_PORT=51820
 Environment=INIT_DNS=${site.networking.ingress.host.ip}
 Environment=NAS_LAN_IP=${site.networking.ingress.host.ip}
-Volume=${site.data.roots.appdata}/system/wireguard:/etc/wireguard
+Volume=${site.data.roots.appdata}/wireguard:/etc/wireguard
 Volume=${component.dir}/entrypoint.sh:/entrypoint.sh:ro
 Volume=${component.dir}/seed-mtu.mjs:/seed-mtu.mjs:ro
 Entrypoint=/bin/sh

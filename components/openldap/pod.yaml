@@ -30,7 +30,7 @@ spec:
   volumes:
   - name: data
     hostPath:
-      path: "${site.data.roots.appdata}/system/openldap/data"
+      path: "${site.data.roots.appdata}/openldap/data"
   - name: config
     hostPath:
-      path: "${site.data.roots.appdata}/system/openldap/config"
+      path: "${site.data.roots.appdata}/openldap/config"

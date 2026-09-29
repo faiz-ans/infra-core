@@ -45,5 +45,5 @@ spec:
       readOnly: true
   volumes:
   - name: ca
-    persistentVolumeClaim:
-      claimName: collabora-ca
+    hostPath:
+      path: "${host.data.roots.appdata}/collabora/ca"

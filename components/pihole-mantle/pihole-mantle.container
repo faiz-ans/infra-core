@@ -13,7 +13,7 @@ Environment=FTLCONF_dns_port=15353
 Environment=FTLCONF_webserver_port=8083
 Environment=FTLCONF_dns_hosts=${site.networking.ingress.host.ip} ${site.networking.ingress.host.name}
 Environment=FTLCONF_misc_dnsmasq_lines=local-ttl=60;local=/${site.env.domain}/;address=/${site.env.domain}/${site.networking.ingress.host.ip};host-record=${site.networking.ingress.host.name},${site.networking.ingress.host.ip}
-Volume=pihole-mantle-config.volume:/etc/pihole
+Volume=${host.data.roots.appdata}/pihole-mantle:/etc/pihole
 AddCapability=NET_ADMIN
 
 [Service]

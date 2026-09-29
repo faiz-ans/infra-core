@@ -8,7 +8,7 @@ The catalog SHALL document site bring-up as: image or use existing Debian/Ubuntu
 - **THEN** the numbered steps are GET facts, edit desired topology, SET, and they are not instructed to export Docker named volumes or run a Komodo purge
 
 ### Requirement: This site may remount a populated data disk
-When a disk already has household data, desired topology SHALL mount it by UUID and MAY declare `import` to remap old trees (`system` → `appdata`, `shared` → `groups/all`, `users` → `users`). SET MUST NOT require wiping that disk. Authelia sqlite from a previous storage key MUST NOT be required.
+When a disk already has household data, desired topology SHALL mount it by UUID once and MAY declare a typed `import` list (`users-root` / `user-home`, `groups-root` / `group-home`, `appdata-root` / `appdata-home`) whose `from:` paths are relative to that disk mount. SET MUST NOT require wiping that disk. Authelia sqlite from a previous storage key MUST NOT be required.
 
 #### Scenario: Existing ext4 disk is imported not formatted
 - **WHEN** desired names a disk UUID that already has ext4 data and an `import` block

@@ -52,7 +52,7 @@ spec:
       path: "${component.dir}/configuration.yml"
   - name: userdb
     hostPath:
-      path: "${site.data.roots.appdata}/system/authelia"
+      path: "${site.data.roots.appdata}/authelia"
   - name: data
-    persistentVolumeClaim:
-      claimName: authelia-data
+    hostPath:
+      path: "${site.data.roots.appdata}/authelia/data"

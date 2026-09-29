@@ -12,7 +12,9 @@ site:
       web: opencloud
   networking:
     dns: pi-hole
-    ingress: caddy
+    ingress:
+      engine: caddy
+      generate-upstream: true
     tunnel:
       engine: none
       endpoint: vpn.example.lan
@@ -30,6 +32,9 @@ site:
     workload:
       engine: podman
       monitor: none
+    dashboard:
+      engine: homepage
+      generate-tiles: true
   env:
     domain: example.lan
     timezone: UTC
@@ -54,7 +59,36 @@ site:
       resources:
         disks:
           - id: data
+            name: ST4000NE001-2EN11C
+            size: 4T
             uuid: 00000000-0000-0000-0000-000000000001
+            # import:                         # from: is relative to this disk's mount
+            #   - type: users-root            # merge old tree into site.data.roots.users
+            #     from: /users
+            #   - type: user-home
+            #     from: /users/alice
+            #   - type: group-home            # as: relocates under groups-root
+            #     from: /shared
+            #     as: /all
+            #   - type: appdata-home
+            #     from: /system/caddy
+        # usb:
+        #   - id: "0764:0501"
+        #     name: Cyber Power System Inc.
+        #     type: ups                      # SET installs NUT; PeaNUT is a listed service
+        # pwm:
+        #   path: /sys/class/hwmon/hwmon0/pwm1
+        #   enabled: true
+        #   scale:                             # each source has one ceiling per step
+        #     min: 0
+        #     max: 124
+        #     steps: [50, 70, 90, 110, 124]
+        #     sources:
+        #       cpu: [60, 68, 75, 80, 85]
+        #       disks:
+        #         - data: [40, 43, 46, 50, 55]
+        #       gpus:
+        #         - gpu0: [65, 72, 78, 84, 90]
       users:
         - name: admin
           roles: [sysadmin]
@@ -81,13 +115,21 @@ site:
       os:
         name: ubuntu
         version: "24.04"
+      data:
+        roots:
+          appdata: /var/lib/site-appdata
       resources:
+        disks:
+          - id: local
+            name: mmc
+            size: 32G
+            internal: true
+            roots: [appdata]
         gpu:
           - id: gpu0
-            device: nvidia.com/gpu=all
+            name: NVIDIA GeForce RTX 2060
+            uuid: GPU-00000000-0000-0000-0000-000000000001
             resource: nvidia.com/gpu
-            count: 1
-            visible: true
       users:
         - name: admin
           roles: [sysadmin]

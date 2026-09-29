@@ -125,10 +125,10 @@ spec:
       path: "${component.dir}/radicale-config"
   - name: raddata
     hostPath:
-      path: "${site.data.roots.appdata}/system/opencloud/radicale"
+      path: "${site.data.roots.appdata}/opencloud/radicale"
   - name: occonfig
     hostPath:
-      path: "${site.data.roots.appdata}/system/opencloud/config"
+      path: "${site.data.roots.appdata}/opencloud/config"
   - name: csp
     hostPath:
       path: "${component.dir}/csp.yaml"
@@ -137,13 +137,13 @@ spec:
       path: "${component.dir}/proxy.yaml"
   - name: ocdata
     hostPath:
-      path: "${site.data.roots.appdata}/system/opencloud/data"
+      path: "${site.data.roots.appdata}/opencloud/data"
   - name: posix
     hostPath:
-      path: "${site.data.roots.appdata}/system/opencloud/posix"
+      path: "${site.data.roots.appdata}/opencloud/posix"
   - name: users
     hostPath:
       path: "${site.data.roots.users}"
   - name: projects
     hostPath:
-      path: "${site.data.roots.appdata}/system/opencloud/projects"
+      path: "${site.data.roots.appdata}/opencloud/projects"

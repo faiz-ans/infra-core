@@ -20,7 +20,7 @@ This repository still deploys one household: hardcoded host keys, `site.env`, `a
 
 ### New Capabilities
 
-- `site-topology`: Desired `site.yaml` schema (roots, access, identity, networking, operations, env, site users, hosts as a list, roles, resources, imports, overrides). Observed YAML is a separate GET artifact. Site-level vs instance placement rules.
+- `site-topology`: Desired `site.yaml` schema (roots, access, identity, networking, operations, env, site users, hosts as a list, roles, resources, imports, host identity/env/roots). Observed YAML is a separate GET artifact. Site-level vs instance placement rules.
 - `ansible-control`: Push-based GET (facts vs site-influenced state), SET (idempotent apply), inventory generation from topology, desired-vs-observed diff on Day 2. Runner lives on the operator machine. Supported host OS: Debian and Ubuntu.
 - `native-storage`: Native disk mount by UUID, root ownership, SMB for people, inferred NFS for cross-host services, create/move roots, import mapping, no OMV, no data-home deletion.
 - `site-identity`: OpenLDAP (optional SoT), Authelia SSO, unix/SMB accounts on storage that owns `groups`/`users`, user roles (sysadmin/sysuser/appadmin/appuser), host-local sysadmins, SSH key-only gating. Account delete does not delete homes.

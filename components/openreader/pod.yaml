@@ -31,5 +31,5 @@ spec:
 
   volumes:
   - name: docstore
-    persistentVolumeClaim:
-      claimName: openreader-docstore
+    hostPath:
+      path: ${host.data.roots.appdata}/openreader

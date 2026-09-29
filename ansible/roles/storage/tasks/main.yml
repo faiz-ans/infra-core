@@ -1,31 +1,23 @@
 ---
-# Mount by UUID. Create/move roots. Never format an existing ext4 filesystem.
-- name: Host storage drives
+# One UUID mount per disk. Sibling root dirs on that mount. Bind to site.data.roots.*.
+# Never format an existing ext4 filesystem.
+- name: Host disk mounts and root binds
   set_fact:
-    site_drives: >-
-      {{
-        (site_plan.hosts | selectattr('name', 'equalto', site_host_name) | list | first).roles.storage.drives
-        | default([])
-      }}
+    site_disk_mounts: "{{ site_plan.disk_mounts | default([]) | selectattr('host', 'equalto', site_host_name) | list }}"
+    site_root_binds: "{{ site_plan.root_binds | default([]) | selectattr('host', 'equalto', site_host_name) | list }}"
   when: site_plan is defined
 
-- name: Skip hosts without storage role
+- name: Skip hosts without disks or owned roots
   meta: end_host
-  when: site_drives | default([]) | length == 0
-
-- name: Look up disk UUID from desired
-  set_fact:
-    site_disk_map: "{{ site_disk_map | default({}) | combine({item.id: item}) }}"
-  loop: "{{ (site_plan.hosts | selectattr('name', 'equalto', site_host_name) | list | first).resources.disks | default([]) }}"
-  when: (site_plan.hosts | selectattr('name', 'equalto', site_host_name) | list | first).resources is defined
+  when: (site_disk_mounts | default([]) | length == 0) and (site_root_binds | default([]) | length == 0)
 
 - name: Probe existing filesystem before any format decision
-  command: blkid -s TYPE -o value /dev/disk/by-uuid/{{ site_disk_map[item.id].uuid }}
+  command: blkid -s TYPE -o value /dev/disk/by-uuid/{{ item.uuid }}
   register: site_fs
   changed_when: false
   failed_when: false
-  loop: "{{ site_drives }}"
-  when: site_disk_map[item.id].uuid is defined
+  loop: "{{ site_disk_mounts }}"
+  when: item.uuid | length > 0
 
 - name: Refuse to format existing ext4
   fail:
@@ -35,55 +27,93 @@
   loop_control:
     label: "{{ item.item.id | default('disk') }}"
 
-- name: Ensure systemd mount unit for each UUID
+- name: Disk mountpoints
+  file:
+    path: "{{ item.where }}"
+    state: directory
+    mode: "0755"
+  loop: "{{ site_disk_mounts }}"
+
+- name: Systemd unit for each disk UUID
   copy:
-    dest: "/etc/systemd/system/{{ site_plan.roots[item.1] | regex_replace('^/', '') | regex_replace('/', '-') }}.mount"
+    dest: "/etc/systemd/system/{{ item.unit }}"
     mode: "0644"
     content: |
       [Unit]
-      Description=site root {{ item.1 }}
+      Description=site disk {{ item.id }}
       After=local-fs-pre.target
       Before=local-fs.target
 
       [Mount]
-      What=/dev/disk/by-uuid/{{ site_disk_map[item.0.id].uuid }}
-      Where={{ site_plan.roots[item.1] }}
+      What=/dev/disk/by-uuid/{{ item.uuid }}
+      Where={{ item.where }}
       Type=ext4
       Options=defaults,nofail
 
       [Install]
       WantedBy=local-fs.target
-  loop: "{{ site_drives | subelements('roots') }}"
-  when: site_disk_map[item.0.id].uuid is defined
+  loop: "{{ site_disk_mounts }}"
 
-- name: Create root mountpoints
-  file:
-    path: "{{ site_plan.roots[item] }}"
-    state: directory
-    mode: "0755"
-  loop: "{{ site_plan.owners.keys() | list }}"
-  when: site_plan.owners[item].host == site_host_name
-
-- name: Enable mounts
+- name: Enable disk mounts
   systemd:
-    name: "{{ site_plan.roots[item] | regex_replace('^/', '') | regex_replace('/', '-') }}.mount"
+    name: "{{ item.unit }}"
     enabled: true
     state: started
     daemon_reload: true
-  loop: "{{ site_plan.owners.keys() | list }}"
-  when: site_plan.owners[item].host == site_host_name
+  loop: "{{ site_disk_mounts }}"
 
-- name: People layout (users + groups/all only)
+- name: Sibling root directories on the disk
   file:
-    path: "{{ item }}"
+    path: "{{ item.what }}"
     state: directory
     mode: "0755"
-  loop:
-    - "{{ site_plan.roots.users }}"
-    - "{{ site_plan.roots.groups }}"
-    - "{{ site_plan.roots.groups }}/all"
-    - "{{ site_plan.roots.appdata }}/system"
-  when: site_plan.owners.get((item.split('/')[1] if false else 'groups'), {}).host == site_host_name or true
+  loop: "{{ site_root_binds }}"
+
+- name: Site-root mountpoints
+  file:
+    path: "{{ item.where }}"
+    state: directory
+    mode: "0755"
+  loop: "{{ site_root_binds }}"
+  when: item.kind == 'bind'
+
+- name: Bind-mount sibling roots
+  copy:
+    dest: "/etc/systemd/system/{{ item.unit }}"
+    mode: "0644"
+    content: |
+      [Unit]
+      Description=site root {{ item.root }}
+      After=local-fs-pre.target {{ item.disk_unit }}
+      Before=local-fs.target
+      Requires={{ item.disk_unit }}
+
+      [Mount]
+      What={{ item.what }}
+      Where={{ item.where }}
+      Type=none
+      Options=bind
+
+      [Install]
+      WantedBy=local-fs.target
+  loop: "{{ site_root_binds }}"
+  when: item.kind == 'bind'
+
+- name: Enable bind mounts
+  systemd:
+    name: "{{ item.unit }}"
+    enabled: true
+    state: started
+    daemon_reload: true
+  loop: "{{ site_root_binds }}"
+  when: item.kind == 'bind'
+
+- name: Group all home on the groups owner
+  file:
+    path: "{{ site_plan.roots.groups }}/all"
+    state: directory
+    mode: "0755"
+  when: site_plan.owners.groups.host | default('') == site_host_name
 
 - name: Service-specific dirs only when planned
   file:

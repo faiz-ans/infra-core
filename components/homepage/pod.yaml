@@ -31,11 +31,11 @@ spec:
     - name: HOMEPAGE_VAR_PIHOLE_TOKEN
       valueFrom:
         secretKeyRef:
-          name: ${secrets.pihole.web_password}
+          name: ${secrets.host.pi-hole.web_password}
     - name: HOMEPAGE_VAR_PIHOLE_MANTLE_TOKEN
       valueFrom:
         secretKeyRef:
-          name: ${secrets.pihole_mantle.web_password}
+          name: ${secrets.host.mantle.pi-hole.web_password}
     - name: HOMEPAGE_VAR_JELLYFIN_KEY
       valueFrom:
         secretKeyRef:

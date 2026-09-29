@@ -17,20 +17,62 @@
       - "{{ desired_path }}"
       - "{{ site_host_name }}"
       - "{{ site_repo }}/ansible/.tmp/quadlets/{{ site_host_name }}"
+      - "{{ secrets_file }}"
   delegate_to: localhost
   become: false
 
-- name: Copy generated edge into Caddy/Authelia/Homepage trees
+- name: Overlay generated Caddyfile
   copy:
-    src: "{{ site_repo }}/ansible/.tmp/edge/"
-    dest: "{{ site_repo }}/ansible/.tmp/quadlets/{{ site_host_name }}/{{ item }}/"
+    src: "{{ site_repo }}/ansible/.tmp/edge/Caddyfile"
+    dest: "{{ site_repo }}/ansible/.tmp/quadlets/{{ site_host_name }}/caddy/Caddyfile"
+  delegate_to: localhost
+  become: false
+  when:
+    - site_plan.policy.generate_upstream | default(true)
+    - site_here | selectattr('key', 'equalto', 'caddy') | list | length > 0
+
+- name: Overlay generated Authelia
+  copy:
+    src: "{{ site_repo }}/ansible/.tmp/edge/{{ item }}"
+    dest: "{{ site_repo }}/ansible/.tmp/quadlets/{{ site_host_name }}/authelia/{{ item }}"
   delegate_to: localhost
   become: false
   loop:
-    - caddy
-    - authelia
-    - homepage
-  when: site_here | selectattr('key', 'equalto', item) | list | length > 0
+    - configuration.yml
+    - users.yml
+  when:
+    - site_plan.policy.generate_upstream | default(true)
+    - site_here | selectattr('key', 'equalto', 'authelia') | list | length > 0
+
+- name: Overlay generated Homepage tiles
+  copy:
+    src: "{{ site_repo }}/ansible/.tmp/edge/services.yaml"
+    dest: "{{ site_repo }}/ansible/.tmp/quadlets/{{ site_host_name }}/homepage/config/services.yaml"
+  delegate_to: localhost
+  become: false
+  when:
+    - site_plan.policy.generate_tiles | default(true)
+    - site_here | selectattr('key', 'equalto', 'homepage') | list | length > 0
+
+- name: Drop catalog Caddy/Authelia when operator owns them
+  file:
+    path: "{{ site_repo }}/ansible/.tmp/quadlets/{{ site_host_name }}/{{ item }}"
+    state: absent
+  delegate_to: localhost
+  become: false
+  loop:
+    - caddy/Caddyfile
+    - authelia/configuration.yml
+    - authelia/users.yml
+  when: not (site_plan.policy.generate_upstream | default(true))
+
+- name: Drop catalog Homepage tiles when operator owns them
+  file:
+    path: "{{ site_repo }}/ansible/.tmp/quadlets/{{ site_host_name }}/homepage/config/services.yaml"
+    state: absent
+  delegate_to: localhost
+  become: false
+  when: not (site_plan.policy.generate_tiles | default(true))
 
 - name: Rootless install dir
   file:
@@ -45,11 +87,58 @@
     state: directory
     mode: "0755"
 
+- name: Quadlet install base (rootless unless a service here is rootful)
+  set_fact:
+    site_quadlet_base: "/home/{{ site_wl_user }}/.config/containers/systemd"
+
+- name: Snapshot operator Caddy/Authelia before generated overwrite
+  include_tasks: snapshot_manual.yml
+  vars:
+    site_snap_stamp: "{{ site_quadlet_base }}/.generate-upstream"
+    site_snap_files:
+      - "{{ site_quadlet_base }}/caddy/Caddyfile"
+      - "{{ site_quadlet_base }}/authelia/configuration.yml"
+      - "{{ site_quadlet_base }}/authelia/users.yml"
+  when: site_plan.policy.generate_upstream | default(true)
+
+- name: Allow a new Caddy/Authelia snapshot after generation is turned off
+  file:
+    path: "{{ site_quadlet_base }}/.generate-upstream"
+    state: absent
+  when: not (site_plan.policy.generate_upstream | default(true))
+
+- name: Snapshot operator Homepage tiles before generated overwrite
+  include_tasks: snapshot_manual.yml
+  vars:
+    site_snap_stamp: "{{ site_quadlet_base }}/.generate-tiles"
+    site_snap_files:
+      - "{{ site_quadlet_base }}/homepage/config/services.yaml"
+      - "{{ site_quadlet_base }}/homepage/services.yaml"
+  when: site_plan.policy.generate_tiles | default(true)
+
+- name: Allow a new Homepage snapshot after generation is turned off
+  file:
+    path: "{{ site_quadlet_base }}/.generate-tiles"
+    state: absent
+  when: not (site_plan.policy.generate_tiles | default(true))
+
+- name: Rsync excludes for operator-owned generated files
+  set_fact:
+    site_rsync_excludes: >-
+      {{
+        ['--exclude=*.manual', '--exclude=.generate-upstream', '--exclude=.generate-tiles']
+        + (['--exclude=Caddyfile', '--exclude=configuration.yml', '--exclude=users.yml']
+          if not (site_plan.policy.generate_upstream | default(true)) else [])
+        + (['--exclude=services.yaml', '--exclude=config/services.yaml']
+          if not (site_plan.policy.generate_tiles | default(true)) else [])
+      }}
+
 - name: Sync each service tree
   synchronize:
     src: "{{ site_repo }}/ansible/.tmp/quadlets/{{ site_host_name }}/{{ item.name }}/"
     dest: "{{ '/etc/containers/systemd/' + item.name if item.privilege == 'rootful' else '/home/' + site_wl_user + '/.config/containers/systemd/' + item.name }}"
     delete: true
+    rsync_opts: "{{ site_rsync_excludes }}"
   loop: "{{ site_here }}"
   notify: reload systemd user
 

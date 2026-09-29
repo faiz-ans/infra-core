@@ -32,6 +32,13 @@ Desired topology SHALL declare `data.roots` `appdata`, `groups`, and `users` as 
 - **WHEN** host A’s storage drive owns `appdata` and host B’s drive owns `users` and `groups`
 - **THEN** the schema accepts the file and SET mounts each root on its owner
 
+### Requirement: Host-local roots use host names
+`hosts[].data.roots` MAY name any roots with absolute paths. A partition owns them via `partitions[].roots` when the disk has partitions; otherwise the disk owns them via `roots`. Every host root MUST be listed there. When that volume is a storage drive and the path equals a site root the drive already mounts, SET shares that directory and does not create a second bind. The host-root name does not select the share. Any other host root MUST NOT share that partition or disk with any host’s `roles.storage.drives`. Pods resolve `${host.data.roots.<name>}` from that map only. Host `identity`, `operations`, and `env` are siblings of `data` (not nested under `override`). Same-key host values replace the site setting for that host.
+
+#### Scenario: Local root is not a site root name
+- **WHEN** a host declares `data.roots.cache: /var/cache/site` owned by a non-storage disk
+- **THEN** the schema accepts the name `cache` and SET creates that path on the owning disk
+
 ### Requirement: Site users and host-local users
 `site.users` SHALL describe site people (homes, groups, SSO roles). `hosts[].users` SHALL describe local-only accounts. Valid roles are `sysadmin`, `sysuser`, `appadmin`, and `appuser`. At least one `sysadmin` MUST exist on each host.
 

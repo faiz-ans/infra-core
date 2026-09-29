@@ -33,10 +33,10 @@ spec:
     - name: TZ
       value: "${site.env.timezone}"
     - name: NVIDIA_VISIBLE_DEVICES
-      value: "${host.resources.gpu.gpu0.visible}"
+      value: "${host.resources.gpu.gpu0.uuid}"
     resources:
       limits:
-        ${host.resources.gpu.gpu0.resource}: ${host.resources.gpu.gpu0.count}
+        ${host.resources.gpu.gpu0.resource}: 1
     volumeMounts:
     - name: ml
       mountPath: /cache
@@ -70,14 +70,14 @@ spec:
       mountPath: /mnt/users
   volumes:
   - name: pg
-    persistentVolumeClaim:
-      claimName: immich-postgres
+    hostPath:
+      path: "${host.data.roots.appdata}/immich/postgres"
   - name: ml
-    persistentVolumeClaim:
-      claimName: immich-ml-cache
+    hostPath:
+      path: "${host.data.roots.appdata}/immich/ml-cache"
   - name: upload
-    persistentVolumeClaim:
-      claimName: immich-upload
+    hostPath:
+      path: "${host.data.roots.appdata}/immich/upload"
   - name: photos
     hostPath:
       path: "${site.data.roots.groups}/all/photos"

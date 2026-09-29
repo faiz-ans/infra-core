@@ -5,7 +5,7 @@
 
 - name: Local sysadmins
   set_fact:
-    site_sysadmins: "{{ site_this_host.users | default([]) | selectattr('roles', 'defined') | selectattr('roles', 'contains', 'sysadmin') | list }}"
+    site_sysadmins: "{{ (site_this_host.users | default([]) | selectattr('sysadmin', 'defined') | selectattr('sysadmin', 'equalto', true) | list) + (site_this_host.users | default([]) | selectattr('roles', 'defined') | selectattr('roles', 'contains', 'sysadmin') | list) }}"
 
 - name: Create sysadmin accounts
   user:
@@ -27,7 +27,7 @@
   fail:
     msg: "identity.ssh is key-only on {{ site_host_name }} but no sysadmin has ssh-keys"
   when:
-    - (site_this_host.override.identity.ssh | default(site_plan.policy.ssh)) == 'key-only'
+    - (site_this_host.identity.ssh | default(site_plan.policy.ssh)) == 'key-only'
     - site_sysadmins | selectattr('ssh-keys', 'defined') | selectattr('ssh-keys', 'ne', []) | list | length == 0
 
 - name: Key-only SSHD
@@ -36,4 +36,4 @@
     regexp: "^#?PasswordAuthentication"
     line: "PasswordAuthentication no"
   notify: reload ssh
-  when: (site_this_host.override.identity.ssh | default(site_plan.policy.ssh)) == 'key-only'
+  when: (site_this_host.identity.ssh | default(site_plan.policy.ssh)) == 'key-only'

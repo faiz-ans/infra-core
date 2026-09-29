@@ -1,6 +1,6 @@
 ## 1. Product skeleton
 
-- [x] 1.1 Add `schema/site.schema.json` for desired topology (list hosts, roots, identity, networking, operations, users, imports, overrides)
+- [x] 1.1 Add `schema/site.schema.json` for desired topology (list hosts, roots, identity, networking, operations, users, imports, host identity/env/roots)
 - [x] 1.2 Add `examples/site.example.yaml` with placeholders only (no live IPs, UUIDs, people, or this lab’s domain)
 - [x] 1.3 Gitignore local `site.yaml`, `observed.yaml`, Age private keys, and decrypted secret files
 - [x] 1.4 Add `ansible/` layout: `playbooks/get.yml`, `playbooks/set.yml`, `inventory/` generator, `roles/`
@@ -9,10 +9,11 @@
 ## 2. GET
 
 - [x] 2.1 Day 0 entry: IPs + admin usernames → SSH inventory
-- [x] 2.2 Task A: hostname, MAC, OS+version, timezone, locale, lsblk, GPUs, UPS, PWM path, uid>1000 users
+- [x] 2.2 Task A: hostname, MAC, OS+version, timezone, locale, lsblk, GPUs, USB, PWM path, uid>1000 users
 - [x] 2.3 Task B: findmnt, exports, Cockpit/Podman, containers, LDAP join + identifiers
 - [x] 2.4 Write `observed.yaml` only; optional print scaffold for a new desired file; never overwrite existing desired
 - [x] 2.5 Fail GET/SET with an explicit error on OS other than Debian or Ubuntu
+- [x] 2.6 Task A: NVIDIA from the site host (`nvidia-smi -L` → gpu<index>, name, uuid); never inspect `/mnt` or a hypervisor; GET does not install packages or prompt
 
 ## 3. Native storage and identity
 
@@ -29,12 +30,12 @@
 ## 4. Catalog templates and Quadlets
 
 - [x] 4.1 Official pack metadata (subdomains, ports, OIDC vs forward-auth, tile/monitor, network mode) for current `components/` plus OpenLDAP
-- [x] 4.2 Resolver for `${site.*}`, `${host.*}`, `${secrets.*}`; ingress host IP unique-or-error
+- [x] 4.2 Resolver for `${site.*}`, `${host.*}`, `${secrets.*}`; GPU id/name/uuid from nvidia-smi -L; resource key only (no count/visible/device); ingress host IP unique-or-error
 - [x] 4.3 SOPS/Age on the runner → Podman secrets; no host `site.env`
 - [x] 4.4 Strip Kubernetes-only kinds/fields from Pod YAML; keep kube-play Pod format
 - [x] 4.5 Generate Caddyfile, Authelia, Homepage from desired + pack
 - [x] 4.6 Encode lessons: keep-id/chown, lan-bind PREROUTING + OUTPUT `:443` (not `:53`), OpenCloud OIDC + loopback `auth.`, Homepage `:8443` + `169.254.1.2` scrapes, Pi-hole key = web password, PeaNUT host-net `:8092` / NUT localhost / no `AUTH_URL`, WG MTU 1280, no space recreate if xattrs exist
-- [x] 4.7 NUT when UPS present; PeaNUT only if listed; implicit Cockpit all hosts and Glances all workload hosts
+- [x] 4.7 NUT when a USB device has type ups; PeaNUT only if listed; implicit Cockpit all hosts and Glances all workload hosts
 - [x] 4.8 SET Quadlet install/remove into system vs workload-user trees; Debian vs Ubuntu packages
 
 ## 5. SET graph and Day 2

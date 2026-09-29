@@ -27,8 +27,8 @@ spec:
 
   volumes:
   - name: config
-    persistentVolumeClaim:
-      claimName: ha-config
+    hostPath:
+      path: ${host.data.roots.appdata}/homeassistant
   - name: ensure
     hostPath:
       path: ${component.dir}/ensure-http

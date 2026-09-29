@@ -58,4 +58,4 @@ spec:
   volumes:
   - name: data
     hostPath:
-      path: ${site.data.roots.appdata}/system/caddymanager
+      path: ${site.data.roots.appdata}/caddymanager

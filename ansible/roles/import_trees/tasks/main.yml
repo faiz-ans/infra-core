@@ -1,30 +1,45 @@
 ---
-# Remap import trees once. Stamp success. Generated files land as *.old.
+# Typed imports: roots merge into site roots; homes land under their root (as: relocates).
+# from: is relative to the source disk mount. Stamp success. Generated files land as *.old.
 - name: Host import blocks
   set_fact:
-    site_imports: "{{ site_plan.imports | selectattr('host', 'equalto', site_host_name) | list }}"
+    site_imports: "{{ site_plan.imports | default([]) | selectattr('host', 'equalto', site_host_name) | list }}"
   when: site_plan is defined
 
 - name: Skip when no imports
   meta: end_host
   when: site_imports | default([]) | length == 0
 
-- name: Stamp directory
+- name: Stamp directories
   file:
-    path: "{{ site_plan.roots.appdata }}/system/.import-stamps"
+    path: "{{ item.stamp | dirname }}"
     state: directory
     mode: "0755"
-
-- name: Copy import tree unless stamped
-  command:
-    cmd: >
-      rsync -a --ignore-existing
-      {{ item.from }}/
-      {{ item.to }}/
-    creates: "{{ site_plan.roots.appdata }}/system/.import-stamps/{{ item.from | regex_replace('[^A-Za-z0-9]+', '_') }}.ok"
-  register: site_import_rsync
   loop: "{{ site_imports }}"
-  when: not item.generated | default(false)
+  when: item.stamp | length > 0
+
+- name: Create dest homes and merge targets
+  file:
+    path: "{{ item.to }}"
+    state: directory
+    mode: "0755"
+  loop: "{{ site_imports }}"
+  when:
+    - not item.same_place | default(false)
+    - not item.generated | default(false)
+
+- name: Copy import tree unless stamped or already in place
+  command:
+    argv:
+      - rsync
+      - -a
+      - "{{ item.from }}/"
+      - "{{ item.to }}/"
+    creates: "{{ item.stamp }}"
+  loop: "{{ site_imports }}"
+  when:
+    - not item.same_place | default(false)
+    - not item.generated | default(false)
 
 - name: Import generated files as .old
   copy:
@@ -37,7 +52,7 @@
 
 - name: Stamp successful import
   copy:
-    dest: "{{ site_plan.roots.appdata }}/system/.import-stamps/{{ item.from | regex_replace('[^A-Za-z0-9]+', '_') }}.ok"
+    dest: "{{ item.stamp }}"
     content: "ok\n"
     mode: "0644"
   loop: "{{ site_imports }}"

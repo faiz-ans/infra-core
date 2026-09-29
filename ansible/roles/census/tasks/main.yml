@@ -4,6 +4,6 @@
   register: site_census_raw
   changed_when: false
 
-- name: Parse census
+- name: Stash census JSON
   set_fact:
-    site_census: "{{ site_census_raw.stdout | from_json }}"
+    site_census_json: "{{ site_census_raw.stdout | b64encode }}"

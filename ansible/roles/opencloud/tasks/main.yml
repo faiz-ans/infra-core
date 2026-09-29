@@ -14,11 +14,11 @@
     state: directory
     mode: "0750"
   loop:
-    - "{{ site_plan.roots.appdata }}/system/opencloud"
-    - "{{ site_plan.roots.appdata }}/system/opencloud/config"
-    - "{{ site_plan.roots.appdata }}/system/opencloud/data"
-    - "{{ site_plan.roots.appdata }}/system/opencloud/posix"
-    - "{{ site_plan.roots.appdata }}/system/opencloud/projects"
+    - "{{ site_plan.roots.appdata }}/opencloud"
+    - "{{ site_plan.roots.appdata }}/opencloud/config"
+    - "{{ site_plan.roots.appdata }}/opencloud/data"
+    - "{{ site_plan.roots.appdata }}/opencloud/posix"
+    - "{{ site_plan.roots.appdata }}/opencloud/projects"
 
 - name: Sticky/ACL on people trees so SMB and OpenCloud can share writers
   file:

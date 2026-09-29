@@ -1,14 +1,14 @@
 ## ADDED Requirements
 
 ### Requirement: Official service pack
-The catalog SHALL treat as officially integrated only the services already shipped under `components/` plus OpenLDAP, and MUST NOT implement comment-only engines (Traefik, Authentik, Nextcloud, and similar). Each official service SHALL declare default subdomains, ports, SSO mode (OIDC or forward-auth), tile and monitor defaults, and network mode. A UPS resource SHALL enable NUT only; PeaNUT SHALL deploy only when listed.
+The catalog SHALL treat as officially integrated only the services already shipped under `components/` plus OpenLDAP, and MUST NOT implement comment-only engines (Traefik, Authentik, Nextcloud, and similar). Each official service SHALL declare default subdomains, ports, SSO mode (OIDC or forward-auth), tile and monitor defaults, and network mode. A USB device with `type: ups` SHALL enable NUT only; PeaNUT SHALL deploy only when listed.
 
 #### Scenario: UPS without PeaNUT
-- **WHEN** a host has a UPS device and desired does not list PeaNUT
+- **WHEN** a host USB device has `type: ups` and desired does not list PeaNUT
 - **THEN** SET enables NUT and does not deploy a PeaNUT container
 
 ### Requirement: Topology variable resolution
-SET SHALL resolve `${site.*}`, `${host.*}`, and `${secrets.*}` in Quadlet and Pod YAML from desired topology and SOPS. `${site.data.roots.*}` SHALL become a local path or an inferred NFS mount per native-storage. `${site.networking.ingress.host.ip}` SHALL be the IP of the unique host that lists the ingress engine, or SET SHALL error if zero or more than one such host exists.
+SET SHALL resolve `${site.*}`, `${host.*}`, and `${secrets.*}` in Quadlet and Pod YAML from desired topology and SOPS. `${site.data.roots.*}` SHALL become a local path or an inferred NFS mount per native-storage. `${site.networking.ingress.host.ip}` SHALL be the IP of the unique host that lists the ingress engine, or SET SHALL error if zero or more than one such host exists. GPU ids SHALL come from `nvidia-smi -L` (`gpu0` for `GPU 0`). Desired GPU entries SHALL be `id`, `name`, `uuid`, and `resource` only. Pods SHALL write the kube-play limits count as a literal next to `${host.resources.gpu.<id>.resource}`. Desired GPU entries SHALL NOT include `count`, `visible`, or a CDI `device` field.
 
 #### Scenario: Two ingress instances
 - **WHEN** two hosts list Caddy and `networking.ingress` is `caddy`

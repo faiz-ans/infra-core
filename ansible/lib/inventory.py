@@ -4,19 +4,21 @@ from __future__ import annotations
 from pathlib import Path
 from typing import Any
 
-from .topology import hosts
+from .topology import host_user_is_sysadmin, hosts, root_owners
 
 
 def inventory_dict(desired: dict[str, Any]) -> dict[str, Any]:
     all_hosts: dict[str, Any] = {}
     storage: list[str] = []
     workload: list[str] = []
+    owners = {info["host"] for info in root_owners(desired).values() if info.get("host")}
+    root_owner_hosts: list[str] = []
     for h in hosts(desired):
         name = h.get("name")
         if not name:
             continue
         roles = h.get("roles") or {}
-        admin = next((u for u in (h.get("users") or []) if "sysadmin" in (u.get("roles") or [])), None)
+        admin = next((u for u in (h.get("users") or []) if host_user_is_sysadmin(u)), None)
         vars_ = {
             "ansible_host": h.get("ip"),
             "ansible_user": (admin or {}).get("name") or "root",
@@ -26,6 +28,9 @@ def inventory_dict(desired: dict[str, Any]) -> dict[str, Any]:
         if roles.get("storage"):
             storage.append(name)
             vars_["site_role_storage"] = True
+        if name in owners:
+            root_owner_hosts.append(name)
+            vars_["site_role_root_owner"] = True
         if roles.get("workload"):
             workload.append(name)
             vars_["site_role_workload"] = True
@@ -37,6 +42,7 @@ def inventory_dict(desired: dict[str, Any]) -> dict[str, Any]:
         "all": {
             "hosts": all_hosts,
             "children": {
+                "root_owners": {"hosts": {n: {} for n in root_owner_hosts}},
                 "storage": {"hosts": {n: {} for n in storage}},
                 "workload": {"hosts": {n: {} for n in workload}},
             },

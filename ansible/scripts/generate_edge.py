@@ -14,17 +14,20 @@ from lib.generate import (  # noqa: E402
     generate_caddyfile,
     generate_homepage_services,
 )
-from lib.topology import load_desired  # noqa: E402
+from lib.topology import load_desired, policy  # noqa: E402
 
 
 def main() -> int:
     desired = load_desired(Path(sys.argv[1]))
     dest = Path(sys.argv[2])
     dest.mkdir(parents=True, exist_ok=True)
-    (dest / "Caddyfile").write_text(generate_caddyfile(desired), encoding="utf-8")
-    (dest / "configuration.yml").write_text(generate_authelia(desired), encoding="utf-8")
-    (dest / "users.yml").write_text(generate_authelia_users(desired), encoding="utf-8")
-    (dest / "services.yaml").write_text(generate_homepage_services(desired), encoding="utf-8")
+    p = policy(desired)
+    if p["generate_upstream"]:
+        (dest / "Caddyfile").write_text(generate_caddyfile(desired), encoding="utf-8")
+        (dest / "configuration.yml").write_text(generate_authelia(desired), encoding="utf-8")
+        (dest / "users.yml").write_text(generate_authelia_users(desired), encoding="utf-8")
+    if p["generate_tiles"]:
+        (dest / "services.yaml").write_text(generate_homepage_services(desired), encoding="utf-8")
     return 0
 
 

@@ -40,7 +40,7 @@ spec:
       path: ${site.data.roots.appdata}
   - name: cache
     hostPath:
-      path: ${site.data.roots.appdata}/system/restic
+      path: ${site.data.roots.appdata}/restic
   - name: script
     hostPath:
       path: ${component.dir}/backup.sh

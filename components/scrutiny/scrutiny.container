@@ -12,8 +12,8 @@ Environment=TZ=${site.env.timezone}
 Environment=COLLECTOR_HOST_ID=${host.name}
 Environment=COLLECTOR_CRON_SCHEDULE=0 6 * * *
 Environment=COLLECTOR_RUN_STARTUP=true
-Volume=${site.data.roots.appdata}/system/scrutiny/config:/opt/scrutiny/config
-Volume=${site.data.roots.appdata}/system/scrutiny/influxdb:/opt/scrutiny/influxdb
+Volume=${site.data.roots.appdata}/scrutiny/config:/opt/scrutiny/config
+Volume=${site.data.roots.appdata}/scrutiny/influxdb:/opt/scrutiny/influxdb
 Volume=/run/udev:/run/udev:ro
 Volume=/dev:/dev
 PodmanArgs=--privileged

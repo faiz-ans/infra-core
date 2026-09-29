@@ -1,0 +1,71 @@
+---
+# Temporary NFS of dest roots so a non-owner host can import.
+# After import, drop the share unless a placed service still infers it.
+# import_share_mode: export | mount | drop
+- name: Import NFS client package
+  apt:
+    name: nfs-common
+    state: present
+  when: >
+    (import_share_mode == 'export' and (site_plan.import_nfs_exports | default([]) | selectattr('host', 'equalto', site_host_name) | list | length > 0))
+    or (import_share_mode == 'mount' and (site_plan.import_nfs_mounts | default([]) | selectattr('host', 'equalto', site_host_name) | list | length > 0))
+
+- name: NFS server on dest-root owners
+  apt:
+    name: nfs-kernel-server
+    state: present
+  when:
+    - import_share_mode == 'export'
+    - site_plan.import_nfs_exports | default([]) | selectattr('host', 'equalto', site_host_name) | list | length > 0
+
+- name: Temporary import exports
+  copy:
+    dest: /etc/exports.d/site-import.exports
+    mode: "0644"
+    content: |
+      {% for ex in site_plan.import_nfs_exports | default([]) if ex.host == site_host_name %}
+      {{ ex.path }} {{ ex.client_ip }}(rw,sync,no_subtree_check,all_squash,anonuid=1000,anongid=1000)
+      {% endfor %}
+  when:
+    - import_share_mode == 'export'
+    - site_plan.import_nfs_exports | default([]) | selectattr('host', 'equalto', site_host_name) | list | length > 0
+
+- name: Apply temporary import exports
+  command: exportfs -ra
+  when:
+    - import_share_mode == 'export'
+    - site_plan.import_nfs_exports | default([]) | selectattr('host', 'equalto', site_host_name) | list | length > 0
+
+- name: Mount dest roots on importers
+  mount:
+    path: "{{ item.path }}"
+    src: "{{ item.server_ip }}:{{ item.export }}"
+    fstype: nfs
+    opts: rw,nfsvers=4
+    state: mounted
+  loop: "{{ site_plan.import_nfs_mounts | default([]) }}"
+  when:
+    - import_share_mode == 'mount'
+    - item.host == site_host_name
+
+- name: Unmount temporary import NFS
+  mount:
+    path: "{{ item.path }}"
+    state: absent
+  loop: "{{ site_plan.import_nfs_mounts | default([]) }}"
+  when:
+    - import_share_mode == 'drop'
+    - item.host == site_host_name
+    - (site_plan.nfs_mounts | default([]) | selectattr('host', 'equalto', item.host) | selectattr('path', 'equalto', item.path) | list | length) == 0
+
+- name: Remove temporary import exports
+  file:
+    path: /etc/exports.d/site-import.exports
+    state: absent
+  when: import_share_mode == 'drop'
+
+- name: Reload exports after dropping import share
+  command: exportfs -ra
+  when:
+    - import_share_mode == 'drop'
+    - site_plan.import_nfs_exports | default([]) | selectattr('host', 'equalto', site_host_name) | list | length > 0

@@ -12,6 +12,8 @@ def domain_of(desired: dict[str, Any]) -> str:
 
 
 def generate_caddyfile(desired: dict[str, Any]) -> str:
+    if not policy(desired)["generate_upstream"]:
+        return ""
     domain = domain_of(desired)
     lines = [
         "{",
@@ -102,6 +104,8 @@ def generate_caddyfile(desired: dict[str, Any]) -> str:
 
 
 def generate_authelia(desired: dict[str, Any]) -> str:
+    if not policy(desired)["generate_upstream"]:
+        return ""
     domain = domain_of(desired)
     p = policy(desired)
     backend = "ldap" if p["ldap"] == "openldap" else "file"
@@ -173,6 +177,8 @@ def generate_authelia(desired: dict[str, Any]) -> str:
 
 def generate_authelia_users(desired: dict[str, Any]) -> str:
     """File-backend users.yml (passwords filled later / by secrets)."""
+    if not policy(desired)["generate_upstream"]:
+        return ""
     lines = ["users:"]
     for u in site_of(desired).get("users") or []:
         name = u.get("name")
@@ -192,6 +198,8 @@ def generate_authelia_users(desired: dict[str, Any]) -> str:
 
 
 def generate_homepage_services(desired: dict[str, Any]) -> str:
+    if not policy(desired)["generate_tiles"]:
+        return ""
     domain = domain_of(desired)
     lines = ["- Apps:", "    - Site:"]
     for s in all_services(desired):

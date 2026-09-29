@@ -1,0 +1,35 @@
+---
+# Copy live files to *.manual once per generation era (stamp). Distinct from import *.old.
+- name: Check generation stamp
+  stat:
+    path: "{{ site_snap_stamp }}"
+  register: site_snap_stamp_stat
+
+- name: Stat live files that generation will replace
+  stat:
+    path: "{{ item }}"
+  register: site_snap_live
+  loop: "{{ site_snap_files }}"
+  when: not site_snap_stamp_stat.stat.exists
+
+- name: Preserve operator files as .manual
+  copy:
+    src: "{{ item.item }}"
+    dest: "{{ item.item }}.manual"
+    remote_src: true
+    force: true
+    mode: preserve
+  loop: "{{ site_snap_live.results | default([]) }}"
+  when:
+    - not site_snap_stamp_stat.stat.exists
+    - item.stat.exists | default(false)
+    - item.stat.isreg | default(false)
+  loop_control:
+    label: "{{ item.item | default('') }}"
+
+- name: Stamp this generation era
+  copy:
+    dest: "{{ site_snap_stamp }}"
+    content: "generated\n"
+    mode: "0644"
+  when: not site_snap_stamp_stat.stat.exists

@@ -19,7 +19,7 @@ When `identity.ldap` is `openldap` and a workload host lists OpenLDAP, that dire
 - **THEN** SET creates `groups/family` and both users can access it over SMB
 
 ### Requirement: SSH key-only is gated
-When `identity.ssh` is `key-only` (site-wide or host override), SET MUST NOT disable password SSH until that host has at least one `sysadmin` with an `ssh-keys` entry applied.
+When `identity.ssh` is `key-only` (site-wide or host `identity.ssh`), SET MUST NOT disable password SSH until that host has at least one `sysadmin` with an `ssh-keys` entry applied.
 
 #### Scenario: Key-only without a key
 - **WHEN** desired sets `identity.ssh: key-only` and the only sysadmin has no `ssh-keys`

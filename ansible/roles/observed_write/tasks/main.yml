@@ -5,10 +5,11 @@
       {{
         observed_host_facts | default([]) + [
           {
-            'name': hostvars[item].site_host_name | default(item),
+            'name': hostvars[item].ansible_hostname | default(hostvars[item].site_host_name) | default(item),
             'ip': hostvars[item].site_host_ip | default(hostvars[item].ansible_host),
-            'census': hostvars[item].site_census | default({}),
-            'state': hostvars[item].site_state | default({})
+            'ssh_user': hostvars[item].ansible_user | default(''),
+            'census_b64': hostvars[item].site_census_json | default(''),
+            'state_b64': hostvars[item].site_state_json | default('')
           }
         ]
       }}

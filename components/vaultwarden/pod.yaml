@@ -32,4 +32,4 @@ spec:
   volumes:
   - name: data
     hostPath:
-      path: ${site.data.roots.appdata}/system/vaultwarden
+      path: ${site.data.roots.appdata}/vaultwarden

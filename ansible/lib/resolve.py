@@ -4,14 +4,15 @@ from __future__ import annotations
 import re
 from typing import Any
 
-from .topology import env, ingress_host, policy, root_owners, roots
+from .secrets import resolve_secret, split_secrets
+from .topology import env, host_roots, ingress_host, policy, root_owners, roots
 
 VAR = re.compile(r"\$\{([^}]+)\}")
 LOOPBACK = "169.254.1.2"
 
 
 def secret_name(path: str) -> str:
-    """secrets.immich.database_password → immich_database_password."""
+    """Name-only fallback when no secrets file is loaded. secrets.immich.database_password → immich_database_password."""
     key = path[8:] if path.startswith("secrets.") else path
     return key.replace(".", "_").replace("-", "_")
 
@@ -55,35 +56,44 @@ def bind(desired: dict[str, Any], host: dict[str, Any] | None, secrets: dict[str
     }
     for k, v in e.items():
         out[f"site.env.{k}"] = str(v)
-    gpus = list((host.get("resources") or {}).get("gpu") or [])
-    if not gpus:
-        gpus = [{"id": "gpu0"}]
-    for gpu in gpus:
-        gid = gpu.get("id") or "gpu0"
-        device = str(gpu.get("device") or "nvidia.com/gpu=all")
+    for gpu in list((host.get("resources") or {}).get("gpu") or []):
+        gid = str(gpu.get("id") or "").strip()
+        if not gid:
+            continue
         resource = str(gpu.get("resource") or "nvidia.com/gpu")
-        count = str(gpu.get("count") if gpu.get("count") is not None else 1)
-        raw_vis = gpu.get("visible", True)
-        if isinstance(raw_vis, str):
-            visible = raw_vis.strip().lower() not in ("false", "0", "no", "off")
-        else:
-            visible = bool(raw_vis)
-        out[f"host.resources.gpu.{gid}"] = device
-        out[f"host.resources.gpu.{gid}.device"] = device
+        name = str(gpu.get("name") or "")
+        uuid = str(gpu.get("uuid") or "")
+        out[f"host.resources.gpu.{gid}.id"] = gid
+        out[f"host.resources.gpu.{gid}.name"] = name
+        out[f"host.resources.gpu.{gid}.uuid"] = uuid
         out[f"host.resources.gpu.{gid}.resource"] = resource
-        out[f"host.resources.gpu.{gid}.count"] = count
-        out[f"host.resources.gpu.{gid}.visible"] = "all" if visible else "void"
     for root, owner in owners.items():
         out[f"site.data.roots.{root}.host"] = owner["host"]
         out[f"site.data.roots.{root}.ip"] = owner["host_ip"]
+    for name, path in host_roots(host).items():
+        out[f"host.data.roots.{name}"] = path
     return out
 
 
-def render(text: str, mapping: dict[str, str]) -> str:
+def render(
+    text: str,
+    mapping: dict[str, str],
+    *,
+    service: str = "",
+    host: str = "",
+    secrets: dict[str, Any] | None = None,
+) -> str:
+    site: dict[str, Any] = {}
+    hosts: dict[str, Any] = {}
+    if secrets is not None:
+        site, hosts = split_secrets(secrets)
+
     def repl(m: re.Match[str]) -> str:
         key = m.group(1)
         if key.startswith("secrets."):
-            return secret_name(key)
+            if secrets is None:
+                return secret_name(key)
+            return resolve_secret(key, service=service, host=host, site=site, hosts=hosts).podman_name
         if key in mapping:
             return mapping[key]
         return m.group(0)

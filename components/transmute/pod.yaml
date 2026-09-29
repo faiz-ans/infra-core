@@ -34,12 +34,12 @@ spec:
         secretKeyRef:
           name: ${secrets.authelia.oidc_client_secret}
     - name: NVIDIA_VISIBLE_DEVICES
-      value: "${host.resources.gpu.gpu0.visible}"
+      value: "${host.resources.gpu.gpu0.uuid}"
     ports:
     - containerPort: 3313
     resources:
       limits:
-        ${host.resources.gpu.gpu0.resource}: ${host.resources.gpu.gpu0.count}
+        ${host.resources.gpu.gpu0.resource}: 1
     volumeMounts:
     - name: data
       mountPath: /app/data
@@ -51,8 +51,8 @@ spec:
       readOnly: true
   volumes:
   - name: data
-    persistentVolumeClaim:
-      claimName: transmute-data
+    hostPath:
+      path: "${host.data.roots.appdata}/transmute"
   - name: wrap
     hostPath:
       path: "${component.dir}/entrypoint-oidc.sh"

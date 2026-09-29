@@ -4,6 +4,6 @@
   register: site_state_raw
   changed_when: false
 
-- name: Parse site state
+- name: Stash site-state JSON
   set_fact:
-    site_state: "{{ site_state_raw.stdout | from_json }}"
+    site_state_json: "{{ site_state_raw.stdout | b64encode }}"

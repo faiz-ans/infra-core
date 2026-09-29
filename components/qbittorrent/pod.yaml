@@ -37,8 +37,8 @@ spec:
 
   volumes:
   - name: config
-    persistentVolumeClaim:
-      claimName: qbittorrent-config
+    hostPath:
+      path: ${host.data.roots.appdata}/qbittorrent
   - name: downloads
     hostPath:
       path: ${site.data.roots.groups}/all/downloads

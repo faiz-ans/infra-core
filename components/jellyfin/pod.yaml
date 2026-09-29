@@ -18,7 +18,7 @@ spec:
     - name: PGID
       value: "${host.roles.workload.gid}"
     - name: NVIDIA_VISIBLE_DEVICES
-      value: "${host.resources.gpu.gpu0.visible}"
+      value: "${host.resources.gpu.gpu0.uuid}"
     - name: NVIDIA_DRIVER_CAPABILITIES
       value: "compute,video,utility"
     ports:
@@ -30,12 +30,12 @@ spec:
       mountPath: /data/media
     resources:
       limits:
-        ${host.resources.gpu.gpu0.resource}: ${host.resources.gpu.gpu0.count}
+        ${host.resources.gpu.gpu0.resource}: 1
 
   volumes:
   - name: config
-    persistentVolumeClaim:
-      claimName: jellyfin-config
+    hostPath:
+      path: ${host.data.roots.appdata}/jellyfin
   - name: media
     hostPath:
       path: ${site.data.roots.groups}/all/media
