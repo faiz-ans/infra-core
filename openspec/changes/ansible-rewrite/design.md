@@ -84,7 +84,7 @@ A USB device with `type: ups` enables NUT only. PeaNUT requires an explicit serv
 Logical roots default to `/appdata`, `/groups`, `/users`. Each root is owned by exactly one storage drive on one host (`roles.storage.drives[].roots`). A host root listed on that same volume may use the site root's absolute path; SET keeps the one bind. The name does not select the share, and `${host.data.roots.*}` resolves only from `hosts[].data.roots`.
 
 - People: SMB (and OpenCloud when `data.access.web: opencloud`) on user-homes and group-homes (`groups/<group>`, including `all`).
-- Apps: if `${site.data.roots.*}` resolves to a root **on another host**, SET creates an NFS export to **that consumer host IP** as the workload UID (`roles.workload.user`). Same host → local path, no export.
+- Apps: a placed instance that contains `${site.data.roots.<name>}` (`appdata`, `groups`, or `users`) on a host that does not own that root makes SET export it to that host's IP as the workload UID (`roles.workload.user`). `${host.data.roots.*}` does not. Same host → local path, no export.
 - Unused inferred exports are removed on Day 2 SET.
 - Service-specific dirs (`downloads`, `cameras`, …) are created only when an official service that needs them is desired.
 - NFS writers use the workload UID; SET applies ACL/sticky so SMB and OpenCloud can manage those files. OpenCloud posix-scan remains when OpenCloud is placed.
@@ -106,14 +106,16 @@ Removing a site user from desired SET **deletes the account** (unix and/or LDAP 
 
 ### 9. Catalog templates and variables
 
-Quadlets stay Pod YAML (plus existing `.container` / `.network` where already one process). Remove Ingress/Service/HPA and other kube-play-unused fields.
+Quadlets stay Pod YAML (plus existing `.container` / `.network` where already one process). Remove Ingress/Service/HPA and other kube-play-unused fields. An instance `pod:` block is a delta on that component's `pod.yaml`: scalars replace, and containers, env, volumeMounts, and volumes merge by name. No `pod:` block installs the catalog file unchanged.
 
 Resolution at SET on the runner:
 
 - `${site.env.domain}`, `${site.data.roots.users}`, …
+- `${host.env.<name>}` → the same key under `hosts[].env` for the instance's host.
+- `${site.hosts.<name>.<field>}` → that field on the named host (`ip`, `env.*`, `data.roots.*`, `resources.gpu.*`, `roles.workload.*`). `${host.*}` remains the instance's own host.
 - `${site.networking.ingress.host.ip}` → IP of the unique host that lists the ingress engine. Two placements → error.
 - `${host.resources.gpu.<id>.resource}` → kube-play limits key (`nvidia.com/gpu`); pods write the count literally (`${host.resources.gpu.gpu0.resource}: 1`). `id` is `gpu<index>` from `nvidia-smi -L`.
-- `${secrets.site.<service>.<name>}`, `${secrets.<service>.<name>}`, and `${secrets.<name>}` are one site secret. `${secrets.hosts.<hostname>.<service>.<name>}`, `${secrets.host.<service>.<name>}`, and `${secrets.host.<name>}` are one host secret. `host` is the instance's host. A bare secret name uses the service being rendered. The Podman name of a service's own secret is `<service>_<name>` with hyphens removed from the service (`pihole_web_password`). A unit that reads another service's host secret is `<unit>_<service>_<name>` (`homepage_pi-hole_web_password`). A unit that reads another host's secret also includes that host (`homepage_mantle_pi-hole_web_password`). SET installs site secrets on every workload host, a host's own secrets on that host, and these cross-references on the unit's host.
+- `${secrets.site.<service>.<name>}`, `${secrets.<service>.<name>}`, and `${secrets.<name>}` are one site secret. `${secrets.hosts.<hostname>.<service>.<name>}`, `${secrets.host.<service>.<name>}`, and `${secrets.host.<name>}` are one host secret. `host` is the instance's host. A bare secret name uses the service being rendered. The Podman name of a service's own secret is `<service>_<name>` (`pi-hole_web_password`). The service key is exact. A unit that reads another service's host secret is `<unit>_<service>_<name>` (`homepage_pi-hole_web_password`). A unit that reads another host's secret also includes that host (`homepage_mantle_pi-hole_web_password`). SET installs site secrets on every workload host, a host's own secrets on that host, and these cross-references on the unit's host.
 
 Official pack (in-scope = current `components/` plus OpenLDAP, minus OMV) stores: default subdomains, ports, OIDC vs forward-auth, tile/monitor defaults, network mode, rootful vs rootless, and encoded lessons (Caddy keep-id + PKI chown; Authelia keep-id + oidc.pem chown; lan-bind PREROUTING plus OUTPUT `127.0.0.1:443→8443` and not OUTPUT `:53`; OpenCloud `PROXY_OIDC_ACCESS_TOKEN_VERIFY_METHOD=none`, autoprovision, `auth.` → pasta loopback `169.254.1.2`; Homepage `HOMEPAGE_ALLOWED_HOSTS` includes `:8443`, host scrapes via `169.254.1.2`, Pi-hole key = web password; PeaNUT host-net `:8092`, NUT `127.0.0.1`, no `AUTH_URL`; WireGuard MTU 1280; no space recreate if xattrs exist; `catatonit` / netavark helper path).
 

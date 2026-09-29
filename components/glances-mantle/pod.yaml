@@ -49,4 +49,4 @@ spec:
       path: /sys
   - name: win
     hostPath:
-      path: ${host.data.roots.windows}
+      path: ${host.env.physical-disk}

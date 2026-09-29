@@ -18,12 +18,12 @@ Site, in the service's own unit: `secrets.site.authelia.session`,
 Host, in that service's unit: `secrets.hosts.<hostname>.pi-hole.web_password`,
 `secrets.host.pi-hole.web_password`, and `secrets.host.web_password` are the
 same secret. `host` is the instance's host. The service name is optional only
-when it is the service being rendered.
+when it is the service being rendered. The key is exact: `pi-hole` does not
+match `pihole`.
 
-`pi-hole` and `pihole` are the same service. The Podman secret name is
-`<service>_<secret>` with hyphens removed from the service (`pihole_web_password`).
+The Podman secret name is `<service>_<secret>` (`pi-hole_web_password`).
 Each host receives site secrets plus its own host secrets, so both hosts can
-have `pihole_web_password` with different values.
+have `pi-hole_web_password` with different values.
 """
 from __future__ import annotations
 
@@ -60,20 +60,11 @@ def load_secrets(path: Path) -> dict[str, Any]:
     return data
 
 
-def _norm_service(name: str) -> str:
-    return name.replace("-", "").replace("_", "").lower()
-
-
 def _index_services(raw: dict[str, Any], where: str) -> dict[str, dict[str, Any]]:
     indexed: dict[str, dict[str, Any]] = {}
-    owners: dict[str, str] = {}
     for key, val in raw.items():
         if not isinstance(val, dict):
             raise SecretError(f"{where}.{key} must be a mapping of secret names")
-        norm = _norm_service(str(key))
-        if norm in owners:
-            raise SecretError(f"{where} lists both {owners[norm]!r} and {key!r}")
-        owners[norm] = str(key)
         indexed[str(key)] = val
     return indexed
 
@@ -101,11 +92,10 @@ def split_secrets(data: dict[str, Any]) -> tuple[dict[str, dict[str, Any]], dict
 
 
 def _find_service(services: dict[str, dict[str, Any]], token: str) -> tuple[str, dict[str, Any]] | None:
-    want = _norm_service(token)
-    for key, body in services.items():
-        if _norm_service(key) == want:
-            return key, body
-    return None
+    body = services.get(token)
+    if body is None:
+        return None
+    return token, body
 
 
 def _leaf(body: dict[str, Any], parts: list[str]) -> str | None:
@@ -120,9 +110,8 @@ def _leaf(body: dict[str, Any], parts: list[str]) -> str | None:
 
 
 def podman_name(service_key: str, leaf: list[str]) -> str:
-    service = service_key.replace("-", "").replace("_", "")
     secret = "_".join(part.replace("-", "_") for part in leaf)
-    return f"{service}_{secret}"
+    return f"{service_key}_{secret}"
 
 
 def _reference_name(
@@ -133,8 +122,8 @@ def _reference_name(
     written_service: str,
     leaf: list[str],
 ) -> str:
-    """Own secret → pihole_web_password. Another service on this host → homepage_pi-hole_web_password. Another host → homepage_mantle_pi-hole_web_password."""
-    own_service = _norm_service(consumer or "") == _norm_service(source_key)
+    """Own secret → pi-hole_web_password. Another service on this host → homepage_pi-hole_web_password. Another host → homepage_mantle_pi-hole_web_password."""
+    own_service = (consumer or "") == source_key
     if not source_host or (own_service and source_host == instance_host):
         return podman_name(source_key, leaf)
     bits = [consumer or source_key]
@@ -292,7 +281,7 @@ def podman_catalog(data: dict[str, Any]) -> list[dict[str, str]]:
 def reference_installs(desired: dict[str, Any], data: dict[str, Any], components: Path) -> list[dict[str, str]]:
     """Secrets named for the unit that references them, installed on that unit's host.
 
-    A Pi-hole unit still installs pihole_web_password via podman_catalog. Homepage on Core
+    A Pi-hole unit still installs pi-hole_web_password via podman_catalog. Homepage on Core
     also installs homepage_pi-hole_web_password (Core's value) and
     homepage_mantle_pi-hole_web_password (Mantle's value).
     """

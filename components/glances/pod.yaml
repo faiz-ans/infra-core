@@ -45,4 +45,4 @@ spec:
       path: /sys
   - name: data
     hostPath:
-      path: ${site.data.roots.appdata}
+      path: ${host.data.roots.appdata}

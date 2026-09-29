@@ -214,7 +214,7 @@
             icon: pi-hole.svg
             description: DNS
             server: core
-            container: pihole
+            container: pi-hole
             widget:
                 type: pihole
                 url: http://{{HOMEPAGE_VAR_HOST_LOOPBACK}}:{{HOMEPAGE_VAR_PIHOLE_WEB_PORT}}

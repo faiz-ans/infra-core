@@ -19,15 +19,13 @@ spec:
     - name: HOMEPAGE_VAR_DOMAIN
       value: "${site.env.domain}"
     - name: HOMEPAGE_VAR_SURFACE_UPSTREAM
-      value: "${site.env.upstream}"
+      value: "${site.hosts.mantle.ip}"
     - name: HOMEPAGE_VAR_NAS_LAN_IP
       value: "${site.networking.ingress.host.ip}"
     - name: HOMEPAGE_VAR_HOST_LOOPBACK
       value: "${site.networking.loopback}"
     - name: HOMEPAGE_VAR_PIHOLE_WEB_PORT
       value: "8088"
-    - name: HOMEPAGE_VAR_SITE_NET_GATEWAY
-      value: "${site.env.site_net_gateway}"
     - name: HOMEPAGE_VAR_PIHOLE_TOKEN
       valueFrom:
         secretKeyRef:
@@ -36,46 +34,14 @@ spec:
       valueFrom:
         secretKeyRef:
           name: ${secrets.host.mantle.pi-hole.web_password}
-    - name: HOMEPAGE_VAR_JELLYFIN_KEY
-      valueFrom:
-        secretKeyRef:
-          name: ${secrets.homepage.jellyfin_key}
-    - name: HOMEPAGE_VAR_SONARR_KEY
-      valueFrom:
-        secretKeyRef:
-          name: ${secrets.homepage.sonarr_key}
-    - name: HOMEPAGE_VAR_RADARR_KEY
-      valueFrom:
-        secretKeyRef:
-          name: ${secrets.homepage.radarr_key}
-    - name: HOMEPAGE_VAR_PROWLARR_KEY
-      valueFrom:
-        secretKeyRef:
-          name: ${secrets.homepage.prowlarr_key}
-    - name: HOMEPAGE_VAR_QBIT_USERNAME
-      valueFrom:
-        secretKeyRef:
-          name: ${secrets.homepage.qbit_username}
-    - name: HOMEPAGE_VAR_QBIT_PASSWORD
-      valueFrom:
-        secretKeyRef:
-          name: ${secrets.homepage.qbit_password}
-    - name: HOMEPAGE_VAR_GRAFANA_KEY
-      valueFrom:
-        secretKeyRef:
-          name: ${secrets.homepage.grafana_key}
-    - name: HOMEPAGE_VAR_WGEASY_PASSWORD
-      valueFrom:
-        secretKeyRef:
-          name: ${secrets.homepage.wgeasy_password}
     - name: HOMEPAGE_VAR_TZ
       value: "${site.env.timezone}"
-    - name: HOMEPAGE_VAR_WEATHER_LATITUDE
-      value: "${site.env.weather_latitude}"
-    - name: HOMEPAGE_VAR_WEATHER_LONGITUDE
-      value: "${site.env.weather_longitude}"
+    - name: HOMEPAGE_VAR_LAT
+      value: "${site.env.latitude}"
+    - name: HOMEPAGE_VAR_LONG
+      value: "${site.env.longitude}"
     - name: HOMEPAGE_VAR_ROUTER_LAN_IP
-      value: "${site.env.router_ip}"
+      value: "${site.env.lan_ip}"
     ports:
     - containerPort: 3000
     volumeMounts:

@@ -9,6 +9,7 @@ from pathlib import Path
 ROOT = Path(__file__).resolve().parents[2]
 sys.path.insert(0, str(ROOT / "ansible"))
 
+from lib.pod import apply_pod_overlay  # noqa: E402
 from lib.quadlet import strip_yaml_text  # noqa: E402
 from lib.resolve import bind, render  # noqa: E402
 from lib.secrets import SecretError, load_secrets  # noqa: E402
@@ -35,6 +36,13 @@ def main() -> int:
         if out.exists():
             shutil.rmtree(out)
         shutil.copytree(src, out, ignore=shutil.ignore_patterns("MANIFEST.toml"))
+        overlay = (svc.get("raw") or {}).get("pod")
+        if overlay:
+            pod_file = out / "pod.yaml"
+            if not pod_file.is_file():
+                print(f"{svc['name']} pod overlay requires pod.yaml", file=sys.stderr)
+                return 1
+            apply_pod_overlay(pod_file, overlay)
         mapping["component.dir"] = str(out)
         for path in out.rglob("*"):
             if not path.is_file():

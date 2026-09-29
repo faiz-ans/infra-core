@@ -131,7 +131,7 @@ def listed_services(desired: dict[str, Any]) -> list[dict[str, Any]]:
                         "host_ip": h.get("ip"),
                         "key": key,
                         "name": name,
-                        "component": meta.get("component") or key.replace("-", ""),
+                        "component": meta.get("component") or key,
                         "sso": inst.get("sso") or meta.get("sso") or "forward-auth",
                         "tile": inst.get("tile", meta.get("tile", True)),
                         "network": meta.get("network") or "site",
@@ -371,20 +371,17 @@ def validate_placement(desired: dict[str, Any]) -> list[str]:
     for label, (engine, key) in engine_map.items():
         if engine in (None, "", "none"):
             continue
-        if engine != key.split("-")[0] and engine != key and engine != key.replace("-", ""):
-            # allow dns: pi-hole matching key pi-hole
-            pass
-        want = key if engine in (key, key.replace("-", ""), engine) else engine
-        aliases = {want, want.replace("_", "-"), "pi-hole" if want in ("pihole", "pi-hole") else want}
-        if label == "dns":
-            aliases.update({"pi-hole", "pihole"})
+        want = key if engine == key else engine
+        aliases = {want, want.replace("_", "-")}
         if label == "ldap":
             aliases.add("openldap")
         if not aliases.intersection(placed) and label != "host.manager":
             if label == "ldap" and p["ldap"] == "openldap" and "openldap" not in placed:
                 errors.append("identity.ldap is openldap but no workload lists openldap")
-            elif label == "dns" and p["dns"] in ("pi-hole", "pihole") and not {"pi-hole", "pihole"} & placed:
+            elif label == "dns" and p["dns"] == "pi-hole" and "pi-hole" not in placed:
                 errors.append("networking.dns is pi-hole but no workload lists pi-hole")
+            elif label == "dns" and p["dns"] != "pi-hole":
+                errors.append(f"networking.dns is {p['dns']} but the service name is pi-hole")
             elif label == "ingress" and p["ingress"] == "caddy" and "caddy" not in placed:
                 errors.append("networking.ingress is caddy but no workload lists caddy")
             elif label == "sso" and p["sso"] == "authelia" and "authelia" not in placed:

@@ -3,7 +3,7 @@
 [globals]
 # Optional overrides for this host only.
 
-[components.pihole]
+[components.pi-hole]
 PIHOLE_WEBPASSWORD = ""
 
 [components.authelia]

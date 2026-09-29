@@ -31,7 +31,7 @@ A host MAY declare `data.roots` as any name mapped to an absolute path (not limi
 - **THEN** SET fails because the host root is not owned
 
 ### Requirement: SMB for people, inferred NFS for apps
-`data.access.filesystem: smb` SHALL export user-homes and group-homes over Samba to site users. SET SHALL create an NFS export only when a placed service references a root owned on another host, granted to that consumer host IP as the workload user UID. Same-host references SHALL use a local path.
+`data.access.filesystem: smb` SHALL export user-homes and group-homes over Samba to site users. SET SHALL create an NFS export only when a placed service's unit or instance entry contains `${site.data.roots.<name>}` for `appdata`, `groups`, or `users` and that service's host does not own the root, granted to that consumer host IP as the workload user UID. `${host.data.roots.*}` SHALL NOT request an export. Same-host references SHALL use a local path.
 
 #### Scenario: Immich on another host needs users
 - **WHEN** Immich on host B references `${site.data.roots.users}` owned on host A
@@ -40,6 +40,10 @@ A host MAY declare `data.roots` as any name mapped to an absolute path (not limi
 #### Scenario: OpenCloud on the owner host
 - **WHEN** OpenCloud runs on the host that owns `users`
 - **THEN** SET does not create an NFS export for that reference
+
+#### Scenario: Host root is not an NFS request
+- **WHEN** a service on host B uses `${host.data.roots.appdata}` and its unit does not contain `${site.data.roots.appdata}`
+- **THEN** SET does not export appdata to B for that service
 
 ### Requirement: No home data deletion
 SET MUST NOT delete user-home or group-home directory trees when accounts are removed or services change. Creating and moving roots is allowed; wiping household files is not.

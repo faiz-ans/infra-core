@@ -219,7 +219,7 @@ def generate_homepage_services(desired: dict[str, Any]) -> str:
                 f"                url: http://{LOOPBACK}:8092",
                 "                key: ups",
             ]
-        if s["key"] in ("pi-hole", "pihole"):
+        if s["key"] == "pi-hole":
             lines += [
                 "            widget:",
                 "                type: pihole",

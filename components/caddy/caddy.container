@@ -8,7 +8,6 @@ ContainerName=caddy
 Network=host
 UserNS=keep-id
 Environment=DOMAIN=${site.env.domain}
-Environment=SURFACE_UPSTREAM=${site.env.upstream}
 Environment=TZ=${site.env.timezone}
 Volume=${component.dir}/Caddyfile:/etc/caddy/Caddyfile:ro
 Volume=${component.dir}/entrypoint.sh:/entrypoint.sh:ro

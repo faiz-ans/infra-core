@@ -170,7 +170,8 @@
         "operations": { "type": "object" },
         "env": {
           "type": "object",
-          "additionalProperties": { "type": ["string", "number", "boolean"] }
+          "additionalProperties": { "type": ["string", "number", "boolean"] },
+          "description": "Host variables. Pods resolve ${host.env.<name>} from this map. These are not disk roots."
         },
         "resources": {
           "type": "object",

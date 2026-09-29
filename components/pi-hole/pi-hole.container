@@ -1,19 +1,19 @@
 [Unit]
-Description=Pi-hole on mantle (rootless, host netns)
+Description=Pi-hole (rootless, host netns)
 After=network-online.target
 
 [Container]
 Image=docker.io/pihole/pihole:latest
-ContainerName=pihole-mantle
+ContainerName=pi-hole
 Network=host
 Environment=TZ=${site.env.timezone}
 Environment=FTLCONF_dns_listeningMode=ALL
-Secret=${secrets.pihole_mantle.web_password},type=env,target=FTLCONF_webserver_api_password
+Secret=${secrets.host.web_password},type=env,target=FTLCONF_webserver_api_password
 Environment=FTLCONF_dns_port=15353
-Environment=FTLCONF_webserver_port=8083
+Environment=FTLCONF_webserver_port=8088
 Environment=FTLCONF_dns_hosts=${site.networking.ingress.host.ip} ${site.networking.ingress.host.name}
 Environment=FTLCONF_misc_dnsmasq_lines=local-ttl=60;local=/${site.env.domain}/;address=/${site.env.domain}/${site.networking.ingress.host.ip};host-record=${site.networking.ingress.host.name},${site.networking.ingress.host.ip}
-Volume=${host.data.roots.appdata}/pihole-mantle:/etc/pihole
+Volume=${host.data.roots.appdata}/pi-hole:/etc/pihole
 AddCapability=NET_ADMIN
 
 [Service]

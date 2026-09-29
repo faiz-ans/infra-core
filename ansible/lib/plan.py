@@ -2,6 +2,8 @@
 from __future__ import annotations
 
 import posixpath
+import re
+from pathlib import Path
 from typing import Any
 
 from .topology import (
@@ -18,16 +20,8 @@ from .topology import (
     volume_host_roots,
 )
 
-# Services that consume people roots (users / groups) off-host → inferred NFS.
-PEOPLE_ROOT_KEYS = {
-    "opencloud",
-    "immich",
-    "jellyfin",
-    "arr",
-    "qbittorrent",
-    "frigate",
-    "seerr",
-}
+COMPONENTS = Path(__file__).resolve().parents[2] / "components"
+SITE_ROOT_VAR = re.compile(r"\$\{site\.data\.roots\.([A-Za-z0-9_-]+)\}")
 
 GENERATED_NAMES = {"Caddyfile", "configuration.yml", "configuration.yaml"}
 
@@ -59,8 +53,43 @@ def workload_user(desired: dict[str, Any], host_name: str) -> str:
     return ""
 
 
+def _strings(value: Any) -> list[str]:
+    if isinstance(value, str):
+        return [value]
+    if isinstance(value, dict):
+        out: list[str] = []
+        for item in value.values():
+            out.extend(_strings(item))
+        return out
+    if isinstance(value, list):
+        out = []
+        for item in value:
+            out.extend(_strings(item))
+        return out
+    return []
+
+
+def referenced_site_roots(service: dict[str, Any]) -> set[str]:
+    """Site roots named by ${site.data.roots.<name>} in this instance or its component files."""
+    found: set[str] = set()
+    for text in _strings(service.get("raw")):
+        found.update(SITE_ROOT_VAR.findall(text))
+    src = COMPONENTS / str(service.get("component") or service.get("key") or "")
+    if not src.is_dir():
+        return found
+    for path in src.rglob("*"):
+        if not path.is_file():
+            continue
+        try:
+            text = path.read_text(encoding="utf-8")
+        except (UnicodeDecodeError, OSError):
+            continue
+        found.update(SITE_ROOT_VAR.findall(text))
+    return found
+
+
 def inferred_nfs(desired: dict[str, Any]) -> dict[str, list[dict[str, str]]]:
-    """Export a root only when a placed service consumes it on another host."""
+    """Export a site root only when this instance names ${site.data.roots.<name>} and another host owns it."""
     owners = root_owners(desired)
     exports: list[dict[str, str]] = []
     mounts: list[dict[str, str]] = []
@@ -69,10 +98,7 @@ def inferred_nfs(desired: dict[str, Any]) -> dict[str, list[dict[str, str]]]:
     for s in all_services(desired):
         consumer = s.get("host") or ""
         consumer_ip = s.get("host_ip") or ""
-        consumed = ["appdata"]
-        if s.get("key") in PEOPLE_ROOT_KEYS:
-            consumed.extend(["groups", "users"])
-        for root in consumed:
+        for root in referenced_site_roots(s):
             owner = owners.get(root)
             if not owner or not owner.get("host"):
                 continue

@@ -43,7 +43,7 @@ services:
     keep_id: true
     publish: ["127.0.0.1:9200:9200"]
   pi-hole:
-    component: pihole
+    component: pi-hole
     network: host
     privilege: rootless
     sso: none

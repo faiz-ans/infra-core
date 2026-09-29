@@ -62,8 +62,19 @@ class TestExample(unittest.TestCase):
         self.assertEqual(m["site.networking.loopback"], LOOPBACK)
         self.assertIn(":8443", m["site.homepage.allowed_hosts"])
         self.assertEqual(render("https://cloud.${site.env.domain}", m), "https://cloud.example.lan")
+        mantle = self.desired["site"]["hosts"][1]
+        mantle["env"] = {"windows": "/mnt/host/c"}
+        bound = bind(self.desired, mantle)
+        self.assertEqual(bound["host.env.windows"], "/mnt/host/c")
+        self.assertEqual(render("${host.env.windows}", bound), "/mnt/host/c")
+        self.assertEqual(bound["site.hosts.compute.ip"], "10.0.0.11")
+        self.assertEqual(bound["site.hosts.compute.env.windows"], "/mnt/host/c")
+        core = bind(self.desired, self.desired["site"]["hosts"][0])
+        self.assertNotIn("host.env.windows", core)
+        self.assertEqual(render("${site.hosts.compute.ip}", core), "10.0.0.11")
+        self.assertEqual(core["site.hosts.compute.env.windows"], "/mnt/host/c")
         self.assertEqual(render("${secrets.immich.database_password}", m), "immich_database_password")
-        self.assertNotIn("x", render("${secrets.pihole.web_password}", m))
+        self.assertNotIn("x", render("${secrets.pi-hole.web_password}", m))
 
     def test_secret_shorthand_site_and_host(self) -> None:
         tree = {
@@ -88,16 +99,18 @@ class TestExample(unittest.TestCase):
             self.assertEqual(found.host, "")
         pihole = dict(service="pi-hole", host="core", site=site, hosts=hosts)
         for ref in (
-            "secrets.hosts.core.pihole.web_password",
+            "secrets.hosts.core.pi-hole.web_password",
             "secrets.host.pi-hole.web_password",
             "secrets.host.web_password",
         ):
             found = resolve_secret(ref, **pihole)
-            self.assertEqual(found.podman_name, "pihole_web_password")
+            self.assertEqual(found.podman_name, "pi-hole_web_password")
             self.assertEqual(found.value, "core-pw")
             self.assertEqual(found.host, "core")
+        with self.assertRaises(SecretError):
+            resolve_secret("secrets.hosts.core.pihole.web_password", **pihole)
         mantle = resolve_secret("secrets.host.web_password", service="pi-hole", host="mantle", site=site, hosts=hosts)
-        self.assertEqual(mantle.podman_name, "pihole_web_password")
+        self.assertEqual(mantle.podman_name, "pi-hole_web_password")
         self.assertEqual(mantle.value, "mantle-pw")
         borrowed = resolve_secret(
             "secrets.host.pi-hole.web_password",
@@ -136,12 +149,12 @@ class TestExample(unittest.TestCase):
             host="mantle",
             secrets=tree,
         )
-        self.assertEqual(rendered, "Secret=pihole_web_password")
+        self.assertEqual(rendered, "Secret=pi-hole_web_password")
         catalog = podman_catalog(tree)
         core_names = {item["name"]: item["value"] for item in catalog if item["host"] in ("", "core")}
         mantle_names = {item["name"]: item["value"] for item in catalog if item["host"] in ("", "mantle")}
-        self.assertEqual(core_names["pihole_web_password"], "core-pw")
-        self.assertEqual(mantle_names["pihole_web_password"], "mantle-pw")
+        self.assertEqual(core_names["pi-hole_web_password"], "core-pw")
+        self.assertEqual(mantle_names["pi-hole_web_password"], "mantle-pw")
         self.assertEqual(core_names["authelia_session"], "site-session")
         self.assertNotIn("mantle-pw", core_names.values())
         compute = bind(self.desired, self.desired["site"]["hosts"][1])
@@ -208,15 +221,74 @@ class TestExample(unittest.TestCase):
 
     def test_nfs_inferred_only_off_owner(self) -> None:
         nfs = inferred_nfs(self.desired)
-        # Implicit Glances on compute consumes appdata from storage; people roots stay local.
-        self.assertEqual({e["path"] for e in nfs["exports"]}, {"/appdata"})
-        self.assertNotIn("/users", {e["path"] for e in nfs["exports"]})
+        self.assertEqual(nfs["exports"], [])
         d = load_desired(EXAMPLE)
         d["site"]["hosts"][1]["roles"]["workload"]["services"]["immich"] = None
         nfs = inferred_nfs(d)
         paths = {e["path"] for e in nfs["exports"]}
-        self.assertIn("/users", paths)
+        self.assertEqual(paths, {"/groups", "/users"})
+        self.assertNotIn("/appdata", paths)
         self.assertTrue(all(e["client_ip"] == "10.0.0.11" for e in nfs["exports"]))
+
+    def test_glances_pod_overlay_keeps_baseline(self) -> None:
+        import yaml
+
+        from .pod import merge_pod
+        from .quadlet import strip_yaml_text
+
+        base = yaml.safe_load((ROOT / "components" / "glances" / "pod.yaml").read_text())
+        overlay = yaml.safe_load(
+            """
+pod:
+  spec:
+    containers:
+    - name: glances
+      image: docker.io/nicolargo/glances:ubuntu-latest-full
+      env:
+      - name: NVIDIA_VISIBLE_DEVICES
+        value: "${host.resources.gpu.gpu0.uuid}"
+      - name: NVIDIA_DRIVER_CAPABILITIES
+        value: compute,utility
+      resources:
+        limits:
+          ${host.resources.gpu.gpu0.resource}: 1
+      volumeMounts:
+      - name: win
+        mountPath: /mnt/windows
+        readOnly: true
+    volumes:
+    - name: win
+      hostPath:
+        path: /mnt/host/c
+"""
+        )["pod"]
+        merged = merge_pod(base, overlay)
+        container = merged["spec"]["containers"][0]
+        self.assertEqual(container["image"], "docker.io/nicolargo/glances:ubuntu-latest-full")
+        self.assertEqual(container["imagePullPolicy"], "Always")
+        env = {item["name"]: item["value"] for item in container["env"]}
+        self.assertEqual(env["TZ"], "${site.env.timezone}")
+        self.assertEqual(env["GLANCES_OPT"], "-w --disable-plugin docker")
+        self.assertEqual(
+            env["NVIDIA_VISIBLE_DEVICES"],
+            "${host.resources.gpu.gpu0.uuid}",
+        )
+        mounts = {item["name"] for item in container["volumeMounts"]}
+        self.assertEqual(mounts, {"conf", "osrel", "sys", "data", "win"})
+        vols = {item["name"]: item["hostPath"]["path"] for item in merged["spec"]["volumes"]}
+        self.assertEqual(vols["data"], "${host.data.roots.appdata}")
+        self.assertEqual(vols["win"], "/mnt/host/c")
+        self.assertEqual(container["resources"]["limits"]["${host.resources.gpu.gpu0.resource}"], 1)
+        host = self.desired["site"]["hosts"][1]
+        rendered = render(yaml.safe_dump(merged, sort_keys=False), bind(self.desired, host))
+        stripped = strip_yaml_text(rendered)
+        self.assertIn("docker.io/nicolargo/glances:ubuntu-latest-full", stripped)
+        self.assertIn("nvidia.com/gpu: 1", stripped)
+        self.assertIn("/var/lib/site-appdata", stripped)
+        self.assertIn("/mnt/host/c", stripped)
+        self.assertIn("/mnt/data", stripped)
+        untouched = merge_pod(base, None)
+        self.assertEqual(untouched["spec"]["containers"][0]["image"], "docker.io/nicolargo/glances:latest")
 
     def test_no_service_dir_without_qbit(self) -> None:
         plan = build_plan(self.desired)
