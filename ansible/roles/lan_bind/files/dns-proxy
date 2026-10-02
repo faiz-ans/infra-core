@@ -1,0 +1,28 @@
+#!/usr/bin/env bash
+# Forward LAN :53 to Pi-hole on :15353. Binds the host LAN IP (not 0.0.0.0: WSL
+# often reserves wildcard :53). Requires root; pair with Pi-hole on 15353.
+set -euo pipefail
+
+IP="${SITE_HOST_IP:-}"
+UP="${DNS_UPSTREAM_PORT:-15353}"
+if [[ -z "${IP}" ]]; then
+  echo "dns-proxy: SITE_HOST_IP unset"
+  exit 1
+fi
+
+PIDS=()
+cleanup() {
+  for pid in "${PIDS[@]}"; do
+    kill "${pid}" 2>/dev/null || true
+  done
+}
+trap cleanup EXIT INT TERM
+
+socat "UDP4-LISTEN:53,bind=${IP},reuseaddr,fork" "UDP4:127.0.0.1:${UP}" &
+PIDS+=("$!")
+socat "TCP4-LISTEN:53,bind=${IP},reuseaddr,fork" "TCP4:127.0.0.1:${UP}" &
+PIDS+=("$!")
+
+echo "dns-proxy: ${IP}:53 -> 127.0.0.1:${UP} (udp+tcp)"
+wait -n
+exit 1

@@ -13,9 +13,9 @@ spec:
     - name: TZ
       value: "${site.env.timezone}"
     - name: PUID
-      value: "${host.roles.workload.uid}"
+      value: "${host.operations.workload.uid}"
     - name: PGID
-      value: "${host.roles.workload.gid}"
+      value: "${host.operations.workload.gid}"
     ports:
     - containerPort: 8989
     volumeMounts:
@@ -31,9 +31,9 @@ spec:
     - name: TZ
       value: "${site.env.timezone}"
     - name: PUID
-      value: "${host.roles.workload.uid}"
+      value: "${host.operations.workload.uid}"
     - name: PGID
-      value: "${host.roles.workload.gid}"
+      value: "${host.operations.workload.gid}"
     ports:
     - containerPort: 7878
     volumeMounts:
@@ -49,9 +49,9 @@ spec:
     - name: TZ
       value: "${site.env.timezone}"
     - name: PUID
-      value: "${host.roles.workload.uid}"
+      value: "${host.operations.workload.uid}"
     - name: PGID
-      value: "${host.roles.workload.gid}"
+      value: "${host.operations.workload.gid}"
     ports:
     - containerPort: 9696
     volumeMounts:

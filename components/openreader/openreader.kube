@@ -3,7 +3,7 @@ Description=openreader
 
 [Kube]
 Yaml=${component.dir}/pod.yaml
-Network=site.network
+Network=site
 PublishPort=3003:3003
 
 [Service]

@@ -24,6 +24,7 @@ spec:
       valueFrom:
         secretKeyRef:
           name: ${secrets.linkding.superuser_password}
+          key: value
     - name: LD_CSRF_TRUSTED_ORIGINS
       value: "https://links.${site.env.domain},https://bookmarks.${site.env.domain},https://linkding.${site.env.domain},https://auth.${site.env.domain}"
     - name: LD_ENABLE_OIDC
@@ -34,6 +35,7 @@ spec:
       valueFrom:
         secretKeyRef:
           name: ${secrets.authelia.oidc_client_secret}
+          key: value
     - name: OIDC_OP_AUTHORIZATION_ENDPOINT
       value: "https://auth.${site.env.domain}/api/oidc/authorization"
     - name: OIDC_OP_TOKEN_ENDPOINT

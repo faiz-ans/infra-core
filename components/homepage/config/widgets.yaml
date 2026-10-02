@@ -41,4 +41,4 @@
     uptime: true
     disk:
       - /mnt/windows
-    label: surface
+    label: HTPC

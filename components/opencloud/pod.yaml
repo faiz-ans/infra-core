@@ -32,9 +32,9 @@ spec:
     - name: TZ
       value: "${site.env.timezone}"
     - name: PUID
-      value: "${host.roles.workload.uid}"
+      value: "${host.operations.workload.uid}"
     - name: PGID
-      value: "${host.roles.workload.gid}"
+      value: "${host.operations.workload.gid}"
     - name: PROXY_HTTP_ADDR
       value: "0.0.0.0:9200"
     - name: PROXY_TLS
@@ -47,6 +47,7 @@ spec:
       valueFrom:
         secretKeyRef:
           name: ${secrets.opencloud.admin_password}
+          key: value
     - name: OC_URL
       value: "https://cloud.${site.env.domain}"
     - name: OC_DOMAIN

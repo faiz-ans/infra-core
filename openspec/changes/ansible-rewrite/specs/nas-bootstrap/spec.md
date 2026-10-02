@@ -30,7 +30,7 @@
 
 ### Requirement: Install Podman, Cockpit, and Materia
 **Reason**: Materia is removed; Cockpit/Podman are SET from topology.
-**Migration**: `operations.host.manager` and `operations.workload.engine`.
+**Migration**: `hosts[].admin-gui` and `operations.workload.engine`.
 
 ### Requirement: Layer 0 does not install Materia
 **Reason**: Materia is removed entirely.

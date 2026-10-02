@@ -3,8 +3,8 @@ Description=openldap
 After=network-online.target
 
 [Kube]
-Yaml=pod.yaml
-Network=site.network
+Yaml=${component.dir}/pod.yaml
+Network=site
 
 [Service]
 Restart=on-failure

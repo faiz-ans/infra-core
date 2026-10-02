@@ -3,7 +3,7 @@ Description=seerr
 
 [Kube]
 Yaml=${component.dir}/pod.yaml
-Network=site.network
+Network=site
 PublishPort=5055:5055
 
 [Service]

@@ -31,8 +31,8 @@ Constraints carried in: on-prem only; standalone scale (native NAS + Podman); cl
 - **Desired:** operator-owned `site.yaml` (gitignored locally; `examples/site.example.yaml` in git).
 - **Observed:** GET writes `observed.yaml` (gitignored). GET never writes desired.
 - Day 0 GET (Task A only) can **print a scaffold** the operator copies into a new `site.yaml` (IPs + discovered hostname/mac/os/disks/users). That scaffold is a convenience, not a merge into an existing desired file.
-- Day 2 GET runs A+B and overwrites observed only. Diff is `desired − observed` (plus implicit Glances/Cockpit).
-- **Alternative:** one merged file. Rejected: GET would clobber `roles`, `import`, PWM `scale`, and `users`.
+- Day 2 GET runs A+B and overwrites observed only. Diff is `desired − observed`. Cockpit follows `hosts[].admin-gui`. Glances follows listed services.
+- **Alternative:** one merged file. Rejected: GET would clobber `operations`, `import`, PWM `scale`, and `users`.
 
 ### 2. Inventory is generated, hosts are a list
 
@@ -58,12 +58,12 @@ SET is one playbook, ordered:
 5. Site-level directory (OpenLDAP) if placed; join storage to LDAP
 6. Resource drivers (NVIDIA, NUT if a USB device has `type: ups` — not PeaNUT)
 7. PWM enable; apply `scale` only if the operator wrote it
-8. Cockpit (every host if `operations.host.manager: cockpit`)
+8. Cockpit on hosts with `admin-gui: true` (default false)
 9. Podman + `site` network + linger for workload user
 10. Secrets: decrypt on runner, `podman secret` on target
 11. Inferred NFS exports (owner host) and mounts (consumer host)
-12. Generate Caddy/Authelia/Homepage (and lan-bind) from topology + official pack
-13. Install/remove Quadlets for listed services (plus implicit Glances on workload hosts)
+12. Generate Caddy/Authelia (and lan-bind) from topology + official pack; install Homepage config from the catalog
+13. Install/remove Quadlets for listed services
 14. OpenCloud xattr/bind steps when OpenCloud is placed; do not recreate spaces if xattrs exist
 
 Remove means: stop unit, uninstall package/Quadlet, drop NFS export if unused. **Do not** `rm` homes or group directories.
@@ -72,8 +72,8 @@ Remove means: stop unit, uninstall package/Quadlet, drop NFS export if unused. *
 
 Elevated keys (`networking.dns`, `identity.sso`, `data.access.web`, `operations.storage.monitor`, `operations.workload.engine`, …) are policy. SET errors if the engine is not `none` and no workload lists that service — except:
 
-- `operations.host.manager: cockpit` → install Cockpit on **every** host (not a container).
-- `operations.host.monitor: glances` → deploy Glances on **every workload** host even if omitted from `services`. Next GET B may write it into observed.
+- `hosts[].admin-gui: true` → install Cockpit on that host only (not a container). Absent or false removes it.
+- Glances is a listed workload service. SET does not add it to hosts that omit it.
 
 OpenLDAP has **no** implicit placement: `identity.ldap: openldap` without a workload entry is an error.
 
@@ -81,10 +81,10 @@ A USB device with `type: ups` enables NUT only. PeaNUT requires an explicit serv
 
 ### 6. Roots, SMB, inferred NFS
 
-Logical roots default to `/appdata`, `/groups`, `/users`. Each root is owned by exactly one storage drive on one host (`roles.storage.drives[].roots`). A host root listed on that same volume may use the site root's absolute path; SET keeps the one bind. The name does not select the share, and `${host.data.roots.*}` resolves only from `hosts[].data.roots`.
+Logical roots default to `/appdata`, `/groups`, `/users`. Each root is owned by exactly one storage drive on one host (`operations.storage.drives[].roots`). A host root listed on that same volume may use the site root's absolute path; SET keeps the one bind. The name does not select the share, and `${host.data.roots.*}` resolves only from `hosts[].data.roots`.
 
 - People: SMB (and OpenCloud when `data.access.web: opencloud`) on user-homes and group-homes (`groups/<group>`, including `all`).
-- Apps: a placed instance that contains `${site.data.roots.<name>}` (`appdata`, `groups`, or `users`) on a host that does not own that root makes SET export it to that host's IP as the workload UID (`roles.workload.user`). `${host.data.roots.*}` does not. Same host → local path, no export.
+- Apps: a placed instance that contains `${site.data.roots.<name>}` (`appdata`, `groups`, or `users`) on a host that does not own that root makes SET export it to that host's IP as the workload UID (`operations.workload.user`). `${host.data.roots.*}` does not. Same host → local path, no export.
 - Unused inferred exports are removed on Day 2 SET.
 - Service-specific dirs (`downloads`, `cameras`, …) are created only when an official service that needs them is desired.
 - NFS writers use the workload UID; SET applies ACL/sticky so SMB and OpenCloud can manage those files. OpenCloud posix-scan remains when OpenCloud is placed.
@@ -112,7 +112,7 @@ Resolution at SET on the runner:
 
 - `${site.env.domain}`, `${site.data.roots.users}`, …
 - `${host.env.<name>}` → the same key under `hosts[].env` for the instance's host.
-- `${site.hosts.<name>.<field>}` → that field on the named host (`ip`, `env.*`, `data.roots.*`, `resources.gpu.*`, `roles.workload.*`). `${host.*}` remains the instance's own host.
+- `${site.hosts.<name>.<field>}` → that field on the named host (`ip`, `env.*`, `data.roots.*`, `resources.gpu.*`, `operations.workload.*`). `${host.*}` remains the instance's own host.
 - `${site.networking.ingress.host.ip}` → IP of the unique host that lists the ingress engine. Two placements → error.
 - `${host.resources.gpu.<id>.resource}` → kube-play limits key (`nvidia.com/gpu`); pods write the count literally (`${host.resources.gpu.gpu0.resource}: 1`). `id` is `gpu<index>` from `nvidia-smi -L`.
 - `${secrets.site.<service>.<name>}`, `${secrets.<service>.<name>}`, and `${secrets.<name>}` are one site secret. `${secrets.hosts.<hostname>.<service>.<name>}`, `${secrets.host.<service>.<name>}`, and `${secrets.host.<name>}` are one host secret. `host` is the instance's host. A bare secret name uses the service being rendered. The Podman name of a service's own secret is `<service>_<name>` (`pi-hole_web_password`). The service key is exact. A unit that reads another service's host secret is `<unit>_<service>_<name>` (`homepage_pi-hole_web_password`). A unit that reads another host's secret also includes that host (`homepage_mantle_pi-hole_web_password`). SET installs site secrets on every workload host, a host's own secrets on that host, and these cross-references on the unit's host.

@@ -20,6 +20,14 @@ spec:
       valueFrom:
         secretKeyRef:
           name: ${secrets.openldap.admin_password}
+          key: value
+    # Rootless idmapped mounts reject chown. Run slapd as the host user.
+    - name: DISABLE_CHOWN
+      value: "true"
+    - name: LDAP_OPENLDAP_UID
+      value: "0"
+    - name: LDAP_OPENLDAP_GID
+      value: "0"
     ports:
     - containerPort: 389
     volumeMounts:

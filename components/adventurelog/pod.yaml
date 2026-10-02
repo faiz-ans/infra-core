@@ -22,6 +22,7 @@ spec:
       valueFrom:
         secretKeyRef:
           name: ${secrets.adventurelog.postgres_password}
+          key: value
     volumeMounts:
     - name: pg
       mountPath: /var/lib/postgresql/data
@@ -46,6 +47,7 @@ spec:
       valueFrom:
         secretKeyRef:
           name: ${secrets.adventurelog.postgres_password}
+          key: value
     - name: PGHOST
       value: "127.0.0.1"
     - name: POSTGRES_DB
@@ -58,12 +60,14 @@ spec:
       valueFrom:
         secretKeyRef:
           name: ${secrets.adventurelog.admin_password}
+          key: value
     - name: DJANGO_ADMIN_EMAIL
       value: "admin@${site.env.domain}"
     - name: SECRET_KEY
       valueFrom:
         secretKeyRef:
           name: ${secrets.adventurelog.admin_password}
+          key: value
     - name: DISABLE_REGISTRATION
       value: "True"
     - name: DOMAIN
@@ -72,6 +76,7 @@ spec:
       valueFrom:
         secretKeyRef:
           name: ${secrets.authelia.oidc_client_secret}
+          key: value
     - name: PYTHONPATH
       value: /tmp/oidc-hooks
     ports:

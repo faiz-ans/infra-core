@@ -3,7 +3,7 @@ Description=collabora
 
 [Kube]
 Yaml=${component.dir}/pod.yaml
-Network=site.network
+Network=site
 PublishPort=9980:9980
 
 [Service]

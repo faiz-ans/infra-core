@@ -36,7 +36,7 @@ Generated Caddy, Authelia, OpenCloud, Homepage, PeaNUT, lan-bind, and WireGuard 
 - **THEN** from the OpenCloud container `https://auth.<domain>/.well-known/openid-configuration` succeeds (not connection-refused to the LAN IP on `:443`)
 
 ### Requirement: Generated edge and dashboard config
-When Caddy is the ingress engine and placed, SET SHALL generate the Caddyfile from placed services’ subdomains and official SSO mode. When Authelia is the SSO engine and placed, SET SHALL generate clients, claims, and access rules from the same list. When Homepage is placed, SET SHALL generate tiles from services with `tile` true (default true).
+When Caddy is the ingress engine and placed, SET SHALL generate the Caddyfile from placed services’ subdomains and official SSO mode. When Authelia is the SSO engine and placed, SET SHALL generate clients, claims, and access rules from the same list. When Homepage is placed, SET SHALL install `components/homepage/config/services.yaml` when that file is present, and the My First Group example when it is not. SET SHALL NOT generate tiles.
 
 #### Scenario: New official service gets a vhost
 - **WHEN** desired lists Jotty with primary subdomain `notes`

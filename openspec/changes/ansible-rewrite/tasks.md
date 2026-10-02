@@ -35,7 +35,7 @@
 - [x] 4.4 Strip Kubernetes-only kinds/fields from Pod YAML; keep kube-play Pod format
 - [x] 4.5 Generate Caddyfile, Authelia, Homepage from desired + pack
 - [x] 4.6 Encode lessons: keep-id/chown, lan-bind PREROUTING + OUTPUT `:443` (not `:53`), OpenCloud OIDC + loopback `auth.`, Homepage `:8443` + `169.254.1.2` scrapes, Pi-hole key = web password, PeaNUT host-net `:8092` / NUT localhost / no `AUTH_URL`, WG MTU 1280, no space recreate if xattrs exist
-- [x] 4.7 NUT when a USB device has type ups; PeaNUT only if listed; implicit Cockpit all hosts and Glances all workload hosts
+- [x] 4.7 NUT when a USB device has type ups; PeaNUT only if listed; Cockpit only where hosts[].admin-gui is true; Glances only where listed
 - [x] 4.8 SET Quadlet install/remove into system vs workload-user trees; Debian vs Ubuntu packages
 
 ## 5. SET graph and Day 2

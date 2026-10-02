@@ -3,7 +3,7 @@ Description=adventurelog
 
 [Kube]
 Yaml=${component.dir}/pod.yaml
-Network=site.network
+Network=site
 PublishPort=8015:80
 
 [Service]

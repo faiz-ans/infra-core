@@ -19,9 +19,9 @@ spec:
     - name: TZ
       value: "${site.env.timezone}"
     - name: PUID
-      value: "${host.roles.workload.uid}"
+      value: "${host.operations.workload.uid}"
     - name: PGID
-      value: "${host.roles.workload.gid}"
+      value: "${host.operations.workload.gid}"
     - name: NODE_ENV
       value: "production"
     - name: APP_URL
@@ -38,6 +38,7 @@ spec:
       valueFrom:
         secretKeyRef:
           name: ${secrets.authelia.oidc_client_secret}
+          key: value
     - name: SSO_FALLBACK_LOCAL
       value: "yes"
     - name: OIDC_ADMIN_GROUPS

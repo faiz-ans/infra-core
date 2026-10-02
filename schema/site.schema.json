@@ -73,14 +73,6 @@
         "operations": {
           "type": "object",
           "properties": {
-            "host": {
-              "type": "object",
-              "properties": {
-                "manager": { "type": "string" },
-                "monitor": { "type": "string" }
-              },
-              "additionalProperties": false
-            },
             "storage": {
               "type": "object",
               "properties": {
@@ -94,14 +86,6 @@
               "properties": {
                 "engine": { "type": "string", "enum": ["podman", "kubelet"] },
                 "monitor": { "type": "string" }
-              },
-              "additionalProperties": false
-            },
-            "dashboard": {
-              "type": "object",
-              "properties": {
-                "engine": { "type": "string" },
-                "generate-tiles": { "type": "boolean", "default": true }
               },
               "additionalProperties": false
             }
@@ -145,6 +129,11 @@
       "required": ["name"],
       "properties": {
         "name": { "type": "string" },
+        "admin-gui": {
+          "type": "boolean",
+          "default": false,
+          "description": "Install Cockpit on this host. Optional. A Cockpit on one host reaches the others over SSH."
+        },
         "mac": { "type": "string" },
         "ip": { "type": "string" },
         "os": {
@@ -167,7 +156,6 @@
           "additionalProperties": false
         },
         "identity": { "type": "object" },
-        "operations": { "type": "object" },
         "env": {
           "type": "object",
           "additionalProperties": { "type": ["string", "number", "boolean"] },
@@ -325,8 +313,9 @@
             "additionalProperties": false
           }
         },
-        "roles": {
+        "operations": {
           "type": "object",
+          "description": "This host's storage drives and workload. Site operations names the engines; this block places them.",
           "properties": {
             "storage": {
               "type": "object",

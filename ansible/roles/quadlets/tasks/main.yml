@@ -3,7 +3,23 @@
 - name: Services on this host
   set_fact:
     site_here: "{{ site_plan.services | selectattr('host', 'equalto', site_host_name) | list }}"
-    site_wl_user: "{{ (site_plan.hosts | selectattr('name', 'equalto', site_host_name) | list | first).roles.workload.user | default('') }}"
+    site_wl_user: "{{ (site_plan.hosts | selectattr('name', 'equalto', site_host_name) | list | first).operations.workload.user | default('') }}"
+    site_touch_names: >-
+      {{
+        ((site_delta.services.add | default([])) + (site_delta.services.change | default([])))
+        | selectattr('host', 'equalto', site_host_name)
+        | map(attribute='name')
+        | list
+      }}
+    site_remove: "{{ site_delta.services.remove | default([]) | selectattr('host', 'equalto', site_host_name) | list }}"
+
+- name: Services whose files this SET must sync
+  set_fact:
+    site_touch: >-
+      {{
+        site_here if (site_delta.sync_all | default(false) | bool)
+        else (site_here | selectattr('name', 'in', site_touch_names) | list)
+      }}
 
 - name: Skip non-workload
   meta: end_host
@@ -28,6 +44,7 @@
   delegate_to: localhost
   become: false
   when:
+    - site_delta.sections.edge | default(true) | bool
     - site_plan.policy.generate_upstream | default(true)
     - site_here | selectattr('key', 'equalto', 'caddy') | list | length > 0
 
@@ -41,38 +58,35 @@
     - configuration.yml
     - users.yml
   when:
+    - site_delta.sections.edge | default(true) | bool
     - site_plan.policy.generate_upstream | default(true)
     - site_here | selectattr('key', 'equalto', 'authelia') | list | length > 0
 
-- name: Overlay generated Homepage tiles
+- name: Operator Homepage services.yaml
+  stat:
+    path: "{{ site_repo }}/ansible/.tmp/quadlets/{{ site_host_name }}/homepage/config/services.yaml"
+  delegate_to: localhost
+  become: false
+  register: site_homepage_services
+  when: site_here | selectattr('key', 'equalto', 'homepage') | list | length > 0
+
+- name: Homepage example tiles when the operator did not provide services.yaml
   copy:
-    src: "{{ site_repo }}/ansible/.tmp/edge/services.yaml"
+    src: homepage-services.example.yaml
     dest: "{{ site_repo }}/ansible/.tmp/quadlets/{{ site_host_name }}/homepage/config/services.yaml"
   delegate_to: localhost
   become: false
   when:
-    - site_plan.policy.generate_tiles | default(true)
     - site_here | selectattr('key', 'equalto', 'homepage') | list | length > 0
+    - not (site_homepage_services.stat.exists | default(false))
 
-- name: Drop catalog Caddy/Authelia when operator owns them
+- name: Drop generated Authelia users when the operator owns upstream config
   file:
-    path: "{{ site_repo }}/ansible/.tmp/quadlets/{{ site_host_name }}/{{ item }}"
+    path: "{{ site_repo }}/ansible/.tmp/quadlets/{{ site_host_name }}/authelia/users.yml"
     state: absent
   delegate_to: localhost
   become: false
-  loop:
-    - caddy/Caddyfile
-    - authelia/configuration.yml
-    - authelia/users.yml
   when: not (site_plan.policy.generate_upstream | default(true))
-
-- name: Drop catalog Homepage tiles when operator owns them
-  file:
-    path: "{{ site_repo }}/ansible/.tmp/quadlets/{{ site_host_name }}/homepage/config/services.yaml"
-    state: absent
-  delegate_to: localhost
-  become: false
-  when: not (site_plan.policy.generate_tiles | default(true))
 
 - name: Rootless install dir
   file:
@@ -99,7 +113,9 @@
       - "{{ site_quadlet_base }}/caddy/Caddyfile"
       - "{{ site_quadlet_base }}/authelia/configuration.yml"
       - "{{ site_quadlet_base }}/authelia/users.yml"
-  when: site_plan.policy.generate_upstream | default(true)
+  when:
+    - site_plan.policy.generate_upstream | default(true)
+    - site_delta.sections.edge | default(true) | bool
 
 - name: Allow a new Caddy/Authelia snapshot after generation is turned off
   file:
@@ -107,30 +123,18 @@
     state: absent
   when: not (site_plan.policy.generate_upstream | default(true))
 
-- name: Snapshot operator Homepage tiles before generated overwrite
-  include_tasks: snapshot_manual.yml
-  vars:
-    site_snap_stamp: "{{ site_quadlet_base }}/.generate-tiles"
-    site_snap_files:
-      - "{{ site_quadlet_base }}/homepage/config/services.yaml"
-      - "{{ site_quadlet_base }}/homepage/services.yaml"
-  when: site_plan.policy.generate_tiles | default(true)
-
-- name: Allow a new Homepage snapshot after generation is turned off
+- name: Drop the retired Homepage tile-generation stamp
   file:
     path: "{{ site_quadlet_base }}/.generate-tiles"
     state: absent
-  when: not (site_plan.policy.generate_tiles | default(true))
 
 - name: Rsync excludes for operator-owned generated files
   set_fact:
     site_rsync_excludes: >-
       {{
-        ['--exclude=*.manual', '--exclude=.generate-upstream', '--exclude=.generate-tiles']
-        + (['--exclude=Caddyfile', '--exclude=configuration.yml', '--exclude=users.yml']
+        ['--checksum', '--exclude=*.manual', '--exclude=.generate-upstream']
+        + (['--exclude=users.yml']
           if not (site_plan.policy.generate_upstream | default(true)) else [])
-        + (['--exclude=services.yaml', '--exclude=config/services.yaml']
-          if not (site_plan.policy.generate_tiles | default(true)) else [])
       }}
 
 - name: Sync each service tree
@@ -139,12 +143,186 @@
     dest: "{{ '/etc/containers/systemd/' + item.name if item.privilege == 'rootful' else '/home/' + site_wl_user + '/.config/containers/systemd/' + item.name }}"
     delete: true
     rsync_opts: "{{ site_rsync_excludes }}"
-  loop: "{{ site_here }}"
-  notify: reload systemd user
+  loop: "{{ site_touch }}"
+  register: site_sync
+  when: site_touch | length > 0
 
-- name: Remove Quadlets no longer desired
+- name: Own rootless Quadlet files as the workload user
   file:
+    path: "/home/{{ site_wl_user }}/.config/containers/systemd/{{ item.name }}"
+    owner: "{{ site_wl_user }}"
+    recurse: true
+  loop: "{{ site_touch }}"
+  when:
+    - site_touch | length > 0
+    - item.privilege | default('rootless') != 'rootful'
+
+- name: Stat container volume paths
+  stat:
     path: "{{ item }}"
+  loop: "{{ lookup('file', site_repo + '/ansible/.tmp/quadlets/' + site_host_name + '/volume-dirs.txt').splitlines() }}"
+  register: site_vol_stat
+  when:
+    - item | length > 0
+    - site_delta.sync_all | default(false) | bool or (site_delta.services.add | default([]) | selectattr('host', 'equalto', site_host_name) | list | length > 0)
+
+- name: Create missing container volume directories
+  file:
+    path: "{{ item.item }}"
+    state: directory
+    owner: "{{ site_wl_user }}"
+    mode: "0755"
+  loop: "{{ site_vol_stat.results | default([]) }}"
+  when:
+    - not (item.skipped | default(false))
+    - not (item.stat.exists | default(true))
+
+- name: OpenSSL for the Authelia signing key
+  package:
+    name: openssl
+    state: present
+  when:
+    - site_here | selectattr('key', 'equalto', 'authelia') | list | length > 0
+    - site_delta.sync_all | default(false) | bool or (site_touch | selectattr('key', 'equalto', 'authelia') | list | length > 0)
+
+- name: Authelia userdb directory
+  file:
+    path: "{{ site_plan.roots.appdata }}/authelia"
+    state: directory
+    owner: "{{ site_wl_user }}"
+    mode: "0755"
+  when:
+    - site_here | selectattr('key', 'equalto', 'authelia') | list | length > 0
+    - site_delta.sync_all | default(false) | bool or (site_touch | selectattr('key', 'equalto', 'authelia') | list | length > 0)
+
+- name: Authelia OIDC signing key
+  command: openssl genpkey -algorithm RSA -pkeyopt rsa_keygen_bits:2048 -out {{ site_plan.roots.appdata }}/authelia/oidc.pem
+  args:
+    creates: "{{ site_plan.roots.appdata }}/authelia/oidc.pem"
+  when:
+    - site_here | selectattr('key', 'equalto', 'authelia') | list | length > 0
+    - site_delta.sync_all | default(false) | bool or (site_touch | selectattr('key', 'equalto', 'authelia') | list | length > 0)
+
+- name: Authelia OIDC signing key is readable by the workload user
+  file:
+    path: "{{ site_plan.roots.appdata }}/authelia/oidc.pem"
+    owner: "{{ site_wl_user }}"
+    mode: "0600"
+  when:
+    - site_here | selectattr('key', 'equalto', 'authelia') | list | length > 0
+    - site_delta.sync_all | default(false) | bool or (site_touch | selectattr('key', 'equalto', 'authelia') | list | length > 0)
+
+- name: Workload user id
+  command: id -u {{ site_wl_user }}
+  register: site_wl_uid
+  changed_when: false
+
+- name: Immich Postgres directory
+  set_fact:
+    site_immich_pg: "{{ ((site_plan.hosts | selectattr('name', 'equalto', site_host_name) | list | first).data.roots.appdata | default(site_plan.roots.appdata)) }}/immich/postgres"
+  when: site_here | selectattr('key', 'equalto', 'immich') | list | length > 0
+
+- name: Immich Postgres directory is grouped with the workload user
+  file:
+    path: "{{ site_immich_pg | default('/nonexistent', true) }}"
+    state: directory
+    owner: "{{ site_wl_user }}"
+    group: "{{ site_wl_user }}"
+    mode: "0700"
+  when:
+    - site_immich_pg is defined
+    - site_touch | selectattr('key', 'equalto', 'immich') | list | length > 0
+
+- name: Immich Postgres data is uid 999 inside the workload user namespace
+  become: true
+  become_user: "{{ site_wl_user }}"
+  environment:
+    XDG_RUNTIME_DIR: "/run/user/{{ site_wl_uid.stdout }}"
+  command: "podman unshare chown -R 999:999 {{ site_immich_pg | default('/nonexistent', true) }}"
+  when:
+    - site_immich_pg is defined
+    - site_touch | selectattr('key', 'equalto', 'immich') | list | length > 0
+
+- name: Reload user systemd when a Quadlet file changed
+  become: true
+  become_user: "{{ site_wl_user }}"
+  environment:
+    XDG_RUNTIME_DIR: "/run/user/{{ site_wl_uid.stdout }}"
+  command: systemctl --user daemon-reload
+  when: >-
+    site_sync.results | default([])
+    | selectattr('stdout_lines', 'defined')
+    | map(attribute='stdout_lines')
+    | flatten
+    | select('match', '^[<>c*]')
+    | list
+    | length > 0
+
+- name: Restart rootless Quadlets whose files changed
+  become: true
+  become_user: "{{ site_wl_user }}"
+  environment:
+    XDG_RUNTIME_DIR: "/run/user/{{ site_wl_uid.stdout }}"
+  args:
+    executable: /bin/bash
+  shell: |
+    set -euo pipefail
+    dir="/home/{{ site_wl_user }}/.config/containers/systemd/{{ (item.item | default({})).name }}"
+    find "$dir" -type f \( -name '*.container' -o -name '*.kube' -o -name '*.pod' -o -name '*.network' -o -name '*.volume' \) -print0 |
+      while IFS= read -r -d '' f; do
+        base=$(basename "$f")
+        systemctl --user restart "${base%.*}.service"
+      done
+  loop: "{{ site_sync.results | default([]) }}"
+  loop_control:
+    label: "{{ (item.item | default({})).name | default('') }}"
+  when:
+    - item.stdout_lines | default([]) | select('match', '^[<>c*]') | list | length > 0
+    - ((item.item | default({})).privilege | default('rootless')) != 'rootful'
+
+- name: Restart rootful Quadlets whose files changed
+  args:
+    executable: /bin/bash
+  shell: |
+    set -euo pipefail
+    dir="/etc/containers/systemd/{{ (item.item | default({})).name }}"
+    find "$dir" -type f \( -name '*.container' -o -name '*.kube' -o -name '*.pod' -o -name '*.network' -o -name '*.volume' \) -print0 |
+      while IFS= read -r -d '' f; do
+        base=$(basename "$f")
+        systemctl restart "${base%.*}.service"
+      done
+  loop: "{{ site_sync.results | default([]) }}"
+  loop_control:
+    label: "{{ (item.item | default({})).name | default('') }}"
+  when:
+    - item.stdout_lines | default([]) | select('match', '^[<>c*]') | list | length > 0
+    - ((item.item | default({})).privilege | default('rootless')) == 'rootful'
+
+- name: Stop removed rootless Quadlets
+  become: true
+  become_user: "{{ site_wl_user }}"
+  environment:
+    XDG_RUNTIME_DIR: "/run/user/{{ site_wl_uid.stdout }}"
+  args:
+    executable: /bin/bash
+  shell: |
+    set -euo pipefail
+    dir="/home/{{ site_wl_user }}/.config/containers/systemd/{{ item.name }}"
+    [ -d "$dir" ] || exit 0
+    find "$dir" -type f \( -name '*.container' -o -name '*.kube' -o -name '*.pod' -o -name '*.network' -o -name '*.volume' \) -print0 |
+      while IFS= read -r -d '' f; do
+        base=$(basename "$f")
+        systemctl --user disable --now "${base%.*}.service" || true
+      done
+  loop: "{{ site_remove }}"
+  changed_when: false
+  when:
+    - site_remove | length > 0
+    - (item.privilege | default('rootless')) != 'rootful'
+
+- name: Remove Quadlet directories no longer desired
+  file:
+    path: "{{ '/etc/containers/systemd/' + item.name if (item.privilege | default('rootless')) == 'rootful' else '/home/' + site_wl_user + '/.config/containers/systemd/' + item.name }}"
     state: absent
-  loop: "{{ (delta_json | default('{}') | from_json).services.remove | default([]) }}"
-  when: false
+  loop: "{{ site_remove }}"
+  when: site_remove | length > 0

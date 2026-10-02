@@ -3,7 +3,7 @@ Description=restic-rest
 
 [Kube]
 Yaml=${component.dir}/pod.yaml
-Network=site.network
+Network=site
 PublishPort=8000:8000
 
 [Service]

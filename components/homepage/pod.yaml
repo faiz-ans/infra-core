@@ -30,10 +30,12 @@ spec:
       valueFrom:
         secretKeyRef:
           name: ${secrets.host.pi-hole.web_password}
+          key: value
     - name: HOMEPAGE_VAR_PIHOLE_MANTLE_TOKEN
       valueFrom:
         secretKeyRef:
           name: ${secrets.host.mantle.pi-hole.web_password}
+          key: value
     - name: HOMEPAGE_VAR_TZ
       value: "${site.env.timezone}"
     - name: HOMEPAGE_VAR_LAT
@@ -61,4 +63,4 @@ spec:
       path: "${component.dir}/images"
   - name: podman
     hostPath:
-      path: "/run/user/${host.roles.workload.uid}/podman"
+      path: "/run/user/${host.operations.workload.uid}/podman"

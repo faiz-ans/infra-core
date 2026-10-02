@@ -13,7 +13,7 @@ ROOT = Path(__file__).resolve().parents[1]
 ANSIBLE = Path(__file__).resolve().parent
 sys.path.insert(0, str(ANSIBLE))
 
-from lib.diff import service_delta, user_delta  # noqa: E402
+from lib.diff import set_delta, user_delta  # noqa: E402
 from lib.inventory import write_bootstrap_inventory, write_inventory  # noqa: E402
 from lib.observed import scaffold_desired  # noqa: E402
 from lib.plan import build_plan  # noqa: E402
@@ -42,6 +42,13 @@ def _tmp(repo: Path) -> Path:
     return d
 
 
+def _secrets_path(repo: Path, given: str | None) -> Path:
+    path = Path(given) if given else repo / "secrets.yaml"
+    if not path.is_absolute():
+        path = repo / path
+    return path
+
+
 def _playbook(name: str) -> Path:
     return ANSIBLE / "playbooks" / name
 
@@ -58,6 +65,36 @@ def _dump_plan(repo: Path, desired: dict) -> Path:
     plan_path = _tmp(repo) / "plan.json"
     plan_path.write_text(json.dumps(build_plan(desired), indent=2), encoding="utf-8")
     return plan_path
+
+
+def _applied_path(repo: Path) -> Path:
+    return repo / "applied.json"
+
+
+def _dump_delta(repo: Path, desired: dict, observed_path: Path, secrets_path: Path, full: bool) -> Path:
+    """Write the Day 2 delta as a file. Inline -e JSON is split on spaces by Ansible."""
+    applied_path = _applied_path(repo)
+    applied = None
+    if applied_path.is_file() and not full:
+        applied = json.loads(applied_path.read_text(encoding="utf-8"))
+    upgrade = applied is None and observed_path.is_file() and not full
+    delta = set_delta(
+        desired,
+        applied if isinstance(applied, dict) else None,
+        secrets_path,
+        full=full or (applied is None and not observed_path.is_file()),
+        upgrade=upgrade,
+    )
+    if observed_path.is_file():
+        import yaml
+
+        observed = yaml.safe_load(observed_path.read_text()) or {}
+        delta["users"] = user_delta(desired, observed)
+    delta_path = _tmp(repo) / "delta.json"
+    delta_path.write_text(json.dumps(delta), encoding="utf-8")
+    touched = [name for name, run in delta["sections"].items() if run]
+    print("SET sections:", ", ".join(touched) if touched else "(none)", flush=True)
+    return delta_path
 
 
 def _parse_hosts(pairs: list[str]) -> list[tuple[str, str]]:
@@ -120,6 +157,10 @@ def cmd_set(args: argparse.Namespace) -> int:
         for e in errors:
             print(e, file=sys.stderr)
         return 2
+    secrets_path = _secrets_path(repo, args.secrets)
+    if not secrets_path.is_file():
+        print(f"missing secrets file: {secrets_path}", file=sys.stderr)
+        return 2
     write_inventory(desired, _inventory_path(repo))
     plan_path = _dump_plan(repo, desired)
     extra = [
@@ -130,19 +171,14 @@ def cmd_set(args: argparse.Namespace) -> int:
         "-e",
         f"observed_path={_observed_path(repo)}",
         "-e",
-        f"secrets_file={args.secrets or repo / 'secrets.yaml'}",
+        f"secrets_file={secrets_path}",
         "-e",
         f"plan_json={plan_path}",
+        "-e",
+        f"delta_path={_dump_delta(repo, desired, _observed_path(repo), secrets_path, args.full)}",
+        "-e",
+        f"applied_path={_applied_path(repo)}",
     ]
-    observed_path = _observed_path(repo)
-    if observed_path.is_file():
-        import yaml
-
-        observed = yaml.safe_load(observed_path.read_text()) or {}
-        extra += [
-            "-e",
-            f"delta_json={json.dumps({'services': service_delta(desired, observed), 'users': user_delta(desired, observed)})}",
-        ]
     if args.check:
         extra.append("--check")
     return _ansible_playbook(_playbook("set.yml"), _inventory_path(repo), extra)
@@ -174,11 +210,13 @@ def main() -> int:
     s = sub.add_parser("set", help="Apply desired site.yaml (delta vs observed when present)")
     s.add_argument("--secrets", default=None, help="Path to SOPS-encrypted secrets.yaml")
     s.add_argument("--check", action="store_true", help="Ansible check mode")
+    s.add_argument("--full", action="store_true", help="Apply every section, ignoring the Day 2 delta")
     s.set_defaults(func=cmd_set)
 
     a = sub.add_parser("apply", help="GET then SET")
     a.add_argument("--secrets", default=None)
     a.add_argument("--check", action="store_true")
+    a.add_argument("--full", action="store_true", help="Apply every section, ignoring the Day 2 delta")
     a.set_defaults(func=cmd_apply)
 
     args = p.parse_args()

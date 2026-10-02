@@ -19,6 +19,7 @@ spec:
       valueFrom:
         secretKeyRef:
           name: ${secrets.openreader.auth_secret}
+          key: value
     - name: AUTH_TRUSTED_ORIGINS
       value: "https://read.${site.env.domain},https://openreader.${site.env.domain},https://reader.${site.env.domain}"
     - name: ADMIN_EMAILS

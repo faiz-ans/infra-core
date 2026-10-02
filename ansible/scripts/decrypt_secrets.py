@@ -8,7 +8,7 @@ from pathlib import Path
 ROOT = Path(__file__).resolve().parents[2]
 sys.path.insert(0, str(ROOT / "ansible"))
 
-from lib.secrets import SecretError, load_secrets, podman_catalog, reference_installs  # noqa: E402
+from lib.secrets import SecretError, kube_secret_names, load_secrets, podman_catalog, reference_installs  # noqa: E402
 from lib.topology import load_desired  # noqa: E402
 
 
@@ -24,7 +24,11 @@ def main() -> int:
         data = load_secrets(src)
         items = podman_catalog(data)
         if desired_path and desired_path.is_file():
-            items.extend(reference_installs(load_desired(desired_path), data, ROOT / "components"))
+            desired = load_desired(desired_path)
+            items.extend(reference_installs(desired, data, ROOT / "components"))
+            kube = kube_secret_names(desired, data, ROOT / "components")
+            for item in items:
+                item["kube"] = item["name"] in kube
     except SecretError as exc:
         print(exc, file=sys.stderr)
         return 1

@@ -33,6 +33,7 @@ spec:
       valueFrom:
         secretKeyRef:
           name: ${secrets.caddymanager.jwt}
+          key: value
     - name: JWT_EXPIRATION
       value: "24h"
     ports:

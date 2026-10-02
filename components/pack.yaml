@@ -14,7 +14,6 @@ services:
     network: host
     privilege: rootless
     sso: none
-    tile: false
     ports: { http: 8080, https: 8443 }
     keep_id: true
   authelia:
@@ -22,8 +21,7 @@ services:
     network: site
     privilege: rootless
     sso: none
-    tile: true
-    subdomain: { primary: auth, aliases: [authelia] }
+    ports: { web: 9091 }
     keep_id: true
     publish: ["127.0.0.1:9091:9091"]
   openldap:
@@ -31,15 +29,13 @@ services:
     network: site
     privilege: rootless
     sso: none
-    tile: false
     publish: ["127.0.0.1:389:389"]
   opencloud:
     component: opencloud
     network: site
     privilege: rootless
     sso: oidc
-    tile: true
-    subdomain: { primary: cloud, aliases: [oc, opencloud] }
+    ports: { web: 9200 }
     keep_id: true
     publish: ["127.0.0.1:9200:9200"]
   pi-hole:
@@ -47,39 +43,30 @@ services:
     network: host
     privilege: rootless
     sso: none
-    tile: true
-    subdomain: { primary: dns, aliases: [pihole] }
     ports: { dns: 15353, web: 8088 }
   pi-hole-mantle:
     component: pihole-mantle
     network: host
     privilege: rootless
     sso: none
-    tile: true
-    subdomain: { primary: dns2, aliases: [pihole2] }
   glances:
     component: glances
     network: site
     privilege: rootless
     sso: forward-auth
-    tile: true
-    subdomain: { primary: host, aliases: [glances] }
-    implicit_workload: true
+    ports: { web: 61208 }
   homepage:
     component: homepage
     network: site
     privilege: rootless
     sso: none
-    tile: false
-    subdomain: { primary: dash, aliases: [homepage] }
+    ports: { web: 3000 }
     publish: ["127.0.0.1:3000:3000"]
   peanut:
     component: peanut
     network: host
     privilege: rootless
     sso: forward-auth
-    tile: true
-    subdomain: { primary: ups, aliases: [peanut] }
     ports: { web: 8092 }
     keep_id: true
   vaultwarden:
@@ -87,211 +74,180 @@ services:
     network: site
     privilege: rootless
     sso: admin-only
-    tile: true
-    subdomain: { primary: pass, aliases: [pw, vaultwarden] }
+    ports: { web: 8082 }
   jotty:
     component: jotty
     network: site
     privilege: rootless
     sso: oidc
-    tile: true
-    subdomain: { primary: notes, aliases: [jotty] }
+    ports: { web: 3002 }
   linkding:
     component: linkding
     network: site
     privilege: rootless
     sso: oidc
-    tile: true
-    subdomain: { primary: links, aliases: [bookmarks, linkding] }
+    ports: { web: 9093 }
   bytestash:
     component: bytestash
     network: site
     privilege: rootless
     sso: oidc
-    tile: true
-    subdomain: { primary: snip, aliases: [snippets, bytestash] }
+    ports: { web: 5000 }
   bentopdf:
     component: bentopdf
     network: site
     privilege: rootless
     sso: forward-auth
-    tile: true
-    subdomain: { primary: pdf, aliases: [bentopdf] }
+    ports: { web: 8084 }
   it-tools:
     component: it-tools
     network: site
     privilege: rootless
     sso: forward-auth
-    tile: true
-    subdomain: { primary: it, aliases: [it-tools] }
+    ports: { web: 8087 }
   libretranslate:
     component: libretranslate
     network: site
     privilege: rootless
     sso: forward-auth
-    tile: true
-    subdomain: { primary: translate, aliases: [libretranslate] }
+    ports: { web: 5000 }
   immich:
     component: immich
     network: site
     privilege: rootless
     sso: oidc
-    tile: true
-    subdomain: { primary: photos, aliases: [immich, gallery] }
+    ports: { web: 2283 }
   adventurelog:
     component: adventurelog
     network: site
     privilege: rootless
     sso: oidc
-    tile: true
-    subdomain: { primary: travel, aliases: [adventurelog] }
+    ports: { web: 8015 }
   transmute:
     component: transmute
     network: site
     privilege: rootless
     sso: oidc
-    tile: true
-    subdomain: { primary: convert, aliases: [transmute] }
+    ports: { web: 3313 }
   jellyfin:
     component: jellyfin
     network: site
     privilege: rootless
     sso: none
-    tile: true
-    subdomain: { primary: watch, aliases: [jellyfin] }
+    ports: { web: 8096 }
     dirs: [media]
   seerr:
     component: seerr
     network: site
     privilege: rootless
     sso: none
-    tile: true
-    subdomain: { primary: request, aliases: [seerr] }
+    ports: { web: 5055 }
   arr:
     component: arr
     network: site
     privilege: rootless
     sso: none
-    tile: true
   qbittorrent:
     component: qbittorrent
     network: site
     privilege: rootless
     sso: none
-    tile: true
-    subdomain: { primary: down, aliases: [qbittorrent] }
+    ports: { web: 8081 }
     dirs: [downloads]
   frigate:
     component: frigate
     network: site
     privilege: rootless
     sso: none
-    tile: true
-    subdomain: { primary: nvr, aliases: [cam, cams, frigate] }
+    ports: { web: 8971 }
     dirs: [cameras]
   homeassistant:
     component: homeassistant
     network: site
     privilege: rootless
     sso: none
-    tile: true
-    subdomain: { primary: auto, aliases: [homeassistant] }
+    ports: { web: 8123 }
   scrutiny:
     component: scrutiny
     network: host
     privilege: rootful
     sso: forward-auth
-    tile: true
-    subdomain: { primary: disks, aliases: [scrutiny] }
+    ports: { web: 8080 }
   uptime-kuma:
     component: uptime-kuma
     network: site
     privilege: rootless
     sso: none
-    tile: true
-    subdomain: { primary: up, aliases: [uptime] }
+    ports: { web: 3004 }
   rustdesk:
     component: rustdesk
     network: host
     privilege: rootless
     sso: none
-    tile: true
-    subdomain: { primary: desk, aliases: [rustdesk] }
   wireguard:
     component: wg-easy
     network: host
     privilege: rootless
     sso: none
-    tile: true
-    subdomain: { primary: vpn, aliases: [wg, wireguard] }
+    ports: { web: 51821 }
     mtu: 1280
   wireguard-data:
     component: wireguard-data
     network: host
     privilege: rootful
     sso: none
-    tile: false
     mtu: 1280
   collabora:
     component: collabora
     network: site
     privilege: rootless
     sso: none
-    tile: false
-    subdomain: { primary: office, aliases: [collabora] }
+    ports: { web: 9980 }
   restic:
     component: restic
     network: site
     privilege: rootless
     sso: none
-    tile: false
   restic-rest:
     component: restic-rest
     network: site
     privilege: rootless
     sso: none
-    tile: false
   n8n:
     component: n8n
     network: site
     privilege: rootless
     sso: none
-    tile: true
-    subdomain: { primary: flow, aliases: [n8n] }
+    ports: { web: 5678 }
   scriberr:
     component: scriberr
     network: site
     privilege: rootless
     sso: none
-    tile: true
-    subdomain: { primary: voice, aliases: [scriberr] }
+    ports: { web: 8085 }
   openreader:
     component: openreader
     network: site
     privilege: rootless
     sso: none
-    tile: true
-    subdomain: { primary: read, aliases: [openreader] }
+    ports: { web: 3003 }
   caddymanager:
     component: caddymanager
     network: site
     privilege: rootless
     sso: forward-auth
-    tile: true
-    subdomain: { primary: traffic, aliases: [caddymanager] }
+    ports: { web: 8086 }
   monitoring:
     component: monitoring
     network: site
     privilege: rootless
     sso: oidc
-    tile: true
-    subdomain: { primary: site, aliases: [grafana] }
+    ports: { web: 3000 }
   site-network:
     component: site-network
     network: site
     privilege: rootless
     sso: none
-    tile: false
     implicit_workload: true
 
 engines:
@@ -300,8 +256,6 @@ engines:
   sso: { authelia: authelia }
   ldap: { openldap: openldap }
   web: { opencloud: opencloud }
-  host.manager: { cockpit: host }
-  host.monitor: { glances: glances }
   storage.monitor: { scrutiny: scrutiny }
   workload.monitor: { uptime-kuma: uptime-kuma }
   tunnel: { wireguard: wireguard }

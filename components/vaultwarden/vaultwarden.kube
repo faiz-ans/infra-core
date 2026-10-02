@@ -3,7 +3,7 @@ Description=vaultwarden
 
 [Kube]
 Yaml=${component.dir}/pod.yaml
-Network=site.network
+Network=site
 PublishPort=127.0.0.1:8082:80
 
 [Service]

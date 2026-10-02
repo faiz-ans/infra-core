@@ -3,7 +3,7 @@ Description=immich
 
 [Kube]
 Yaml=${component.dir}/pod.yaml
-Network=site.network
+Network=site
 PublishPort=2283:2283
 
 [Service]

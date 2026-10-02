@@ -23,18 +23,12 @@ site:
     sso: authelia
     ssh: key-only
   operations:
-    host:
-      manager: cockpit
-      monitor: glances
     storage:
       engine: native
-      monitor: none
+      #monitor: scrutiny
     workload:
       engine: podman
-      monitor: none
-    dashboard:
-      engine: homepage
-      generate-tiles: true
+      #monitor: uptime-kuma
   env:
     domain: example.lan
     timezone: UTC
@@ -52,6 +46,7 @@ site:
       groups: [all]
   hosts:
     - name: storage
+      admin-gui: true
       ip: 10.0.0.10
       os:
         name: debian
@@ -93,7 +88,7 @@ site:
         - name: admin
           roles: [sysadmin]
           ssh-keys: ["ssh-ed25519 AAAAEXAMPLE replace-me"]
-      roles:
+      operations:
         storage:
           drives:
             - id: data
@@ -134,7 +129,7 @@ site:
         - name: admin
           roles: [sysadmin]
           ssh-keys: ["ssh-ed25519 AAAAEXAMPLE replace-me"]
-      roles:
+      operations:
         workload:
           user: admin
           services:

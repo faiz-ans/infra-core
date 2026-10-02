@@ -1,8 +1,9 @@
 ---
 # SET graph: root-owner disks → other disks → import NFS → imports →
 # drop import NFS → users → LDAP → drivers/PWM → Cockpit/Podman →
-# secrets → inferred NFS → generated edge → Quadlets → OpenCloud binds.
-# Day 2 uses desired − observed delta when observed.yaml exists.
+# secrets → inferred NFS → generated edge → OpenCloud dirs → Quadlets.
+# Day 2 runs a play only when that section's inputs differ from applied.json.
+# A Quadlet restarts only when its synced files changed.
 - name: Load plan
   hosts: localhost
   connection: local
@@ -12,9 +13,11 @@
     - name: Read plan JSON
       set_fact:
         site_plan: "{{ lookup('file', plan_json) | from_json }}"
+        site_delta: "{{ lookup('file', delta_path) | from_json }}"
     - name: Publish plan
       set_fact:
         site_plan: "{{ site_plan }}"
+        site_delta: "{{ site_delta }}"
       delegate_facts: true
       delegate_to: "{{ item }}"
       loop: "{{ groups['all'] }}"
@@ -27,121 +30,261 @@
 
 - name: Disks and roots on root-owning hosts
   hosts: root_owners
+  gather_facts: false
   become: true
-  roles:
-    - storage
+  tasks:
+    - name: Storage
+      include_role:
+        name: storage
+      when: site_delta.sections.storage | default(true) | bool
 
 - name: Disks on remaining hosts
   hosts: all:!root_owners
+  gather_facts: false
   become: true
-  roles:
-    - storage
+  tasks:
+    - name: Storage
+      include_role:
+        name: storage
+      when: site_delta.sections.storage | default(true) | bool
 
 - name: Temporary import NFS exports on root owners
   hosts: root_owners
+  gather_facts: false
   become: true
-  roles:
-    - import_share
-  vars:
-    import_share_mode: export
+  tasks:
+    - name: Temporary import NFS exports
+      include_role:
+        name: import_share
+      vars:
+        import_share_mode: export
+      when: site_delta.sections.imports | default(true) | bool
 
 - name: Temporary import NFS mounts
   hosts: all
+  gather_facts: false
   become: true
-  roles:
-    - import_share
-  vars:
-    import_share_mode: mount
+  tasks:
+    - name: Temporary import NFS mounts
+      include_role:
+        name: import_share
+      vars:
+        import_share_mode: mount
+      when: site_delta.sections.imports | default(true) | bool
 
 - name: Import trees
   hosts: all
+  gather_facts: false
   become: true
-  roles:
-    - import_trees
+  tasks:
+    - name: Import trees
+      include_role:
+        name: import_trees
+      when: site_delta.sections.imports | default(true) | bool
 
 - name: Drop temporary import NFS unless a service still needs it
   hosts: all
+  gather_facts: false
   become: true
-  roles:
-    - import_share
-  vars:
-    import_share_mode: drop
+  tasks:
+    - name: Drop temporary import NFS
+      include_role:
+        name: import_share
+      vars:
+        import_share_mode: drop
+      when: site_delta.sections.imports | default(true) | bool
 
 - name: Host sysadmins and SSH
   hosts: all
+  gather_facts: false
   become: true
-  roles:
-    - ssh_users
+  tasks:
+    - name: Host sysadmins and SSH
+      include_role:
+        name: ssh_users
+      when: site_delta.sections.ssh | default(true) | bool
 
 - name: Site users and groups
   hosts: storage
+  gather_facts: false
   become: true
-  roles:
-    - identity
+  tasks:
+    - name: Site users and groups
+      include_role:
+        name: identity
+      when: site_delta.sections.users | default(true) | bool
 
 - name: Site directory (if placed)
   hosts: workload
+  gather_facts: false
   become: true
-  roles:
-    - openldap
+  tasks:
+    - name: Site directory
+      include_role:
+        name: openldap
+      when: site_delta.sections.ldap | default(true) | bool
 
-- name: Drivers, NUT, PWM
+- name: Drivers and NUT
   hosts: all
+  gather_facts: false
   become: true
-  roles:
-    - drivers
-    - pwm
+  tasks:
+    - name: Drivers and NUT
+      include_role:
+        name: drivers
+      when: site_delta.sections.drivers | default(true) | bool
 
-- name: Cockpit and Podman
+- name: PWM
   hosts: all
+  gather_facts: false
   become: true
-  roles:
-    - cockpit
-    - podman
+  tasks:
+    - name: PWM
+      include_role:
+        name: pwm
+      when: site_delta.sections.pwm | default(true) | bool
 
-- name: Secrets on the runner then Podman secrets
+- name: Cockpit
+  hosts: all
+  gather_facts: false
+  become: true
+  tasks:
+    - name: Cockpit
+      include_role:
+        name: cockpit
+      when: site_delta.sections.admin_gui | default(true) | bool
+
+- name: Podman
+  hosts: all
+  gather_facts: false
+  become: true
+  tasks:
+    - name: Podman
+      include_role:
+        name: podman
+      when: site_delta.sections.podman | default(true) | bool
+
+- name: Secrets on the runner
   hosts: localhost
   connection: local
   gather_facts: false
   become: false
-  roles:
-    - secrets_decrypt
+  tasks:
+    - name: Decrypt secrets
+      include_role:
+        name: secrets_decrypt
+      when: site_delta.sections.secrets | default(true) | bool
+
 - name: Install Podman secrets
   hosts: workload
+  gather_facts: false
   become: true
-  roles:
-    - secrets
+  tasks:
+    - name: Install Podman secrets
+      include_role:
+        name: secrets
+      when: site_delta.sections.secrets | default(true) | bool
 
 - name: Inferred NFS then Samba
   hosts: all
+  gather_facts: false
   become: true
-  roles:
-    - nfs
-    - samba
+  tasks:
+    - name: Inferred NFS
+      include_role:
+        name: nfs
+      when: >-
+        site_delta.sections.nfs | default(true) | bool
+        or site_delta.sections.users | default(true) | bool
+    - name: Samba
+      include_role:
+        name: samba
+      when: >-
+        site_delta.sections.nfs | default(true) | bool
+        or site_delta.sections.users | default(true) | bool
 
-- name: Generate Caddy / Authelia / Homepage
+- name: Generate Caddy / Authelia
   hosts: localhost
   connection: local
   gather_facts: false
   become: false
-  roles:
-    - edge_generate
+  tasks:
+    - name: Generate Caddy / Authelia
+      include_role:
+        name: edge_generate
+      when: site_delta.sections.edge | default(true) | bool
 
-- name: Lan-bind and Quadlets
+- name: OpenCloud directories before the container mounts them
   hosts: workload
+  gather_facts: false
   become: true
-  roles:
-    - lan_bind
-    - quadlets
+  tasks:
+    - name: OpenCloud directories
+      include_role:
+        name: opencloud
+      when: site_delta.sections.opencloud | default(true) | bool
 
-- name: OpenCloud binds when placed
+- name: Lan-bind on ingress and Pi-hole hosts
   hosts: workload
+  gather_facts: false
   become: true
-  roles:
-    - opencloud
+  tasks:
+    - name: Lan-bind
+      include_role:
+        name: lan_bind
+      when: site_delta.sections.lan_bind | default(true) | bool
+
+- name: Quadlets
+  hosts: workload
+  gather_facts: false
+  become: true
+  tasks:
+    - name: Quadlets
+      include_role:
+        name: quadlets
+      when: >-
+        site_delta.sections.quadlets | default(true) | bool
+        or site_delta.sync_all | default(false) | bool
+
+- name: Refresh edge DNS plumbing after Pi-hole and Caddy listen
+  hosts: workload
+  gather_facts: false
+  become: true
+  tasks:
+    - name: Restart site-lan-bind when present
+      systemd:
+        name: site-lan-bind.service
+        state: restarted
+      failed_when: false
+      when: site_delta.sections.lan_bind | default(true) | bool
+    - name: Restart site-dns-proxy when present
+      systemd:
+        name: site-dns-proxy.service
+        state: restarted
+      failed_when: false
+      when:
+        - site_delta.sections.lan_bind | default(true) | bool
+        - not (site_is_wsl | default(false))
 
 - name: Static LAN IP (refuse if it would drop SSH)
   hosts: all
+  gather_facts: false
   become: true
-  roles:
-    - static_ip
+  tasks:
+    - name: Static LAN IP
+      include_role:
+        name: static_ip
+      when: site_delta.sections.static_ip | default(true) | bool
+
+- name: Record what this SET applied
+  hosts: localhost
+  connection: local
+  gather_facts: false
+  become: false
+  tasks:
+    - name: Write applied fingerprints
+      copy:
+        dest: "{{ applied_path }}"
+        mode: "0600"
+        content: "{{ site_delta.fingerprints | to_nice_json }}\n"
+      when: applied_path is defined and not ansible_check_mode | default(false)

@@ -5,7 +5,7 @@ After=network-online.target
 [Container]
 Image=ghcr.io/analogj/scrutiny:latest-omnibus
 ContainerName=scrutiny
-Network=site.network
+Network=site
 PublishPort=${site.networking.ingress.host.ip}:8080:8080
 PublishPort=127.0.0.1:8080:8080
 Environment=TZ=${site.env.timezone}

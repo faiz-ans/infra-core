@@ -4,17 +4,57 @@ from __future__ import annotations
 from typing import Any
 
 from .resolve import LOOPBACK
-from .topology import all_services, env, policy, site_of
+from .topology import all_services, env, hosts, ingress_host, policy, site_of
 
 
 def domain_of(desired: dict[str, Any]) -> str:
     return str(env(desired).get("domain") or "example.lan")
 
 
+def authelia_label(desired: dict[str, Any]) -> str:
+    """Host label of the placed Authelia service. site.yaml subdomain wins."""
+    for service in all_services(desired):
+        if service.get("key") == "authelia":
+            return str((service.get("subdomain") or {}).get("primary") or "authelia")
+    return "authelia"
+
+
+def web_port(service: dict[str, Any]) -> str | None:
+    """Host port Caddy should proxy to. Empty means this service has no web UI."""
+    port = (service.get("ports") or {}).get("web")
+    if port in (None, ""):
+        return None
+    return str(port)
+
+
+def admin_gui_host(desired: dict[str, Any]) -> dict[str, Any] | None:
+    """The host whose Cockpit Caddy should publish. The ingress host wins when it has one."""
+    ingress_name = (ingress_host(desired) or {}).get("name")
+    chosen: dict[str, Any] | None = None
+    for host in hosts(desired):
+        if not host.get("admin-gui"):
+            continue
+        if host.get("name") == ingress_name:
+            return host
+        if chosen is None:
+            chosen = host
+    return chosen
+
+
+def upstream_for(service: dict[str, Any], ingress_name: str | None) -> str:
+    """Loopback on the ingress host. Another host's address everywhere else."""
+    host = service.get("host")
+    ip = service.get("host_ip")
+    if host and ingress_name and host != ingress_name and ip:
+        return str(ip)
+    return "127.0.0.1"
+
+
 def generate_caddyfile(desired: dict[str, Any]) -> str:
     if not policy(desired)["generate_upstream"]:
         return ""
     domain = domain_of(desired)
+    ingress_name = (ingress_host(desired) or {}).get("name")
     lines = [
         "{",
         "	email off",
@@ -30,7 +70,7 @@ def generate_caddyfile(desired: dict[str, Any]) -> str:
         "",
         "(authelia_gate) {",
         "	forward_auth 127.0.0.1:9091 {",
-        f"		uri /api/authz/forward-auth?authelia_url=https://auth.{domain}/",
+        f"		uri /api/authz/forward-auth?authelia_url=https://{authelia_label(desired)}.{domain}/",
         "		copy_headers Remote-User Remote-Groups Remote-Name Remote-Email",
         "	}",
         "}",
@@ -42,45 +82,21 @@ def generate_caddyfile(desired: dict[str, Any]) -> str:
         primary = sub.get("primary")
         if not primary or primary in seen:
             continue
+        up_port = web_port(s)
+        if s["key"] == "caddy" or not up_port:
+            continue
         seen.add(primary)
         aliases = sub.get("aliases") or []
-        names = [f"https://{primary}.{domain}"] + [f"https://{a}.{domain}" for a in aliases]
-        if aliases:
-            for a in aliases:
-                lines += [
-                    f"https://{a}.{domain} {{",
-                    "	tls internal",
-                    f"	redir https://{primary}.{domain}{{uri}} permanent",
-                    "}",
-                    "",
-                ]
+        for a in aliases:
+            lines += [
+                f"https://{a}.{domain} {{",
+                "	tls internal",
+                f"	redir https://{primary}.{domain}{{uri}} permanent",
+                "}",
+                "",
+            ]
         sso = s.get("sso") or "none"
-        port = (s.get("ports") or {}).get("web") or (s.get("publish") or [""])
-        # publish like 127.0.0.1:9200:9200
-        upstream = "127.0.0.1"
-        up_port = None
-        if s.get("publish"):
-            parts = s["publish"][0].split(":")
-            if len(parts) >= 3:
-                up_port = parts[-1]
-            elif len(parts) == 2:
-                up_port = parts[-1]
-        if (s.get("ports") or {}).get("https"):
-            up_port = up_port or "8443"
-        if (s.get("ports") or {}).get("web"):
-            up_port = str(s["ports"]["web"])
-        if s["key"] == "caddy":
-            continue
-        if s["key"] == "authelia":
-            up_port = "9091"
-        if s["key"] == "opencloud":
-            up_port = "9200"
-        if s["key"] == "homepage":
-            up_port = "3000"
-        if s["key"] == "pi-hole":
-            up_port = str((s.get("ports") or {}).get("web") or 8088)
-        if not up_port:
-            continue
+        upstream = upstream_for(s, ingress_name)
         lines += [f"https://{primary}.{domain} {{", "	tls internal"]
         if sso == "forward-auth":
             lines.append("	import authelia_gate")
@@ -100,38 +116,103 @@ def generate_caddyfile(desired: dict[str, Any]) -> str:
             "}",
             "",
         ]
+    gui = admin_gui_host(desired)
+    if gui:
+        gui_upstream = "127.0.0.1"
+        if gui.get("name") != ingress_name and gui.get("ip"):
+            gui_upstream = str(gui.get("ip"))
+        lines += [
+            f"https://cockpit.{domain} {{",
+            "	tls internal",
+            f"	reverse_proxy https://{gui_upstream}:9090 {{",
+            f"		header_up Host cockpit.{domain}",
+            f"		header_up X-Forwarded-Host cockpit.{domain}",
+            "		header_up X-Forwarded-Proto https",
+            "		transport http {",
+            "			tls_insecure_skip_verify",
+            "		}",
+            "	}",
+            "}",
+            "",
+        ]
+    router = str(env(desired).get("lan_ip") or "").strip()
+    if router:
+        lines += [
+            f"https://wifi.{domain} {{",
+            "	tls internal",
+            f"	reverse_proxy https://{router} {{",
+            "		transport http {",
+            "			tls_insecure_skip_verify",
+            "		}",
+            f"		header_up Host {router}",
+            "	}",
+            "}",
+            "",
+        ]
     return "\n".join(lines)
+
+
+def ldap_base_dn(domain: str) -> str:
+    """osixia turns LDAP_DOMAIN home.lan into dc=home,dc=lan."""
+    labels = [part for part in domain.strip().split(".") if part]
+    return ",".join(f"dc={part}" for part in labels)
+
+
+def _authelia_env(name: str) -> str:
+    return "'{{ env \"" + name + "\" }}'"
+
+
+def inject_authelia_ldap_password(pod_text: str) -> str:
+    """Give the Authelia container the OpenLDAP admin password it templates."""
+    if "LDAP_ADMIN_PASSWORD" in pod_text:
+        return pod_text
+    block = (
+        "    - name: LDAP_ADMIN_PASSWORD\n"
+        "      valueFrom:\n"
+        "        secretKeyRef:\n"
+        "          name: ${secrets.openldap.admin_password}\n"
+        "          key: value\n"
+    )
+    needle = "    ports:\n"
+    if needle not in pod_text:
+        raise ValueError("authelia pod.yaml has no ports block for the LDAP password")
+    return pod_text.replace(needle, block + needle, 1)
 
 
 def generate_authelia(desired: dict[str, Any]) -> str:
     if not policy(desired)["generate_upstream"]:
         return ""
     domain = domain_of(desired)
-    p = policy(desired)
-    backend = "ldap" if p["ldap"] == "openldap" else "file"
-    if backend == "file":
+    if policy(desired)["ldap"] == "openldap":
+        base = ldap_base_dn(domain)
         auth = [
             "authentication_backend:",
-            "  file:",
-            "    path: /config/userdb/users.yml",
-            "    watch: true",
-        ]
-    else:
-        auth = [
-            "authentication_backend:",
+            "  password_reset:",
+            "    disable: true",
             "  ldap:",
             "    implementation: custom",
             "    address: ldap://openldap:389",
             "    timeout: 5s",
             "    start_tls: false",
-            "    base_dn: dc=site,dc=lan",
-            "    user: cn=admin,dc=site,dc=lan",
-            "    password: '{{ env \"LDAP_ADMIN_PASSWORD\" }}'",
+            f"    base_dn: {base}",
+            f"    user: cn=admin,{base}",
+            f"    password: {_authelia_env('LDAP_ADMIN_PASSWORD')}",
+            '    users_filter: "(&({username_attribute}={input})(objectClass=inetOrgPerson))"',
+            '    groups_filter: "(&(member={dn})(objectClass=groupOfNames))"',
             "    attributes:",
             "      username: uid",
             "      display_name: cn",
             "      mail: mail",
             "      group_name: cn",
+        ]
+    else:
+        auth = [
+            "authentication_backend:",
+            "  password_reset:",
+            "    disable: true",
+            "  file:",
+            "    path: /config/userdb/users.yml",
+            "    watch: true",
         ]
     clients: list[str] = []
     for s in all_services(desired):
@@ -159,12 +240,29 @@ def generate_authelia(desired: dict[str, Any]) -> str:
             "access_control:",
             "  default_policy: deny",
             "  rules:",
-            f"    - domain: 'auth.{domain}'",
+            f"    - domain: '{authelia_label(desired)}.{domain}'",
             "      policy: bypass",
+            f"    - domain: '*.{domain}'",
+            "      policy: one_factor",
             "session:",
-            f"  domain: {domain}",
+            f"  secret: {_authelia_env('SESSION_SECRET')}",
+            "  cookies:",
+            "    - name: authelia_session",
+            f"      domain: '{domain}'",
+            f"      authelia_url: 'https://{authelia_label(desired)}.{domain}'",
+            f"      default_redirection_url: 'https://dash.{domain}'",
+            "storage:",
+            f"  encryption_key: {_authelia_env('STORAGE_ENCRYPTION_KEY')}",
+            "  local:",
+            "    path: /data/db.sqlite3",
+            "notifier:",
+            "  filesystem:",
+            "    filename: /data/notification.txt",
             "identity_providers:",
             "  oidc:",
+            f"    hmac_secret: {_authelia_env('OIDC_HMAC_SECRET')}",
+            "    jwks:",
+            '      - key: {{ secret "/config/userdb/oidc.pem" | mindent 10 "|" | msquote }}',
             "    claims_policies:",
             "      opencloud:",
             "        id_token: [email, email_verified, preferred_username, name, groups]",
@@ -195,43 +293,3 @@ def generate_authelia_users(desired: dict[str, Any]) -> str:
             f"    groups: {groups}",
         ]
     return "\n".join(lines)
-
-
-def generate_homepage_services(desired: dict[str, Any]) -> str:
-    if not policy(desired)["generate_tiles"]:
-        return ""
-    domain = domain_of(desired)
-    lines = ["- Apps:", "    - Site:"]
-    for s in all_services(desired):
-        if not s.get("tile"):
-            continue
-        sub = (s.get("subdomain") or {}).get("primary")
-        if not sub:
-            continue
-        lines += [
-            f"        - {s['name']}:",
-            f"            href: https://{sub}.{domain}",
-        ]
-        if s["key"] == "peanut":
-            lines += [
-                "            widget:",
-                "                type: peanut",
-                f"                url: http://{LOOPBACK}:8092",
-                "                key: ups",
-            ]
-        if s["key"] == "pi-hole":
-            lines += [
-                "            widget:",
-                "                type: pihole",
-                f"                url: http://{LOOPBACK}:8088",
-                "                version: 6",
-                "                key: \"{{HOMEPAGE_VAR_PIHOLE_TOKEN}}\"",
-            ]
-        if s["key"] == "glances" and s.get("network") == "site":
-            lines += [
-                "            widget:",
-                "                type: glances",
-                "                url: http://glances:61208",
-                "                version: 4",
-            ]
-    return "\n".join(lines) + "\n"

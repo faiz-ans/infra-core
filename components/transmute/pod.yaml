@@ -21,6 +21,7 @@ spec:
       valueFrom:
         secretKeyRef:
           name: ${secrets.transmute.auth_secret}
+          key: value
     - name: APP_URL
       value: "https://convert.${site.env.domain}"
     - name: PORT
@@ -33,6 +34,7 @@ spec:
       valueFrom:
         secretKeyRef:
           name: ${secrets.authelia.oidc_client_secret}
+          key: value
     - name: NVIDIA_VISIBLE_DEVICES
       value: "${host.resources.gpu.gpu0.uuid}"
     ports:

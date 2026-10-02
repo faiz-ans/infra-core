@@ -111,16 +111,16 @@ https://vpn.{$DOMAIN} {
 # COCKPIT (Core; Cockpit's own login, not Authelia)
 #--------------------------------
 
-https://cockpit.{$DOMAIN} {
-	tls internal
-	redir https://box.{$DOMAIN}{uri} permanent
-}
-
 https://box.{$DOMAIN} {
 	tls internal
+	redir https://cockpit.{$DOMAIN}{uri} permanent
+}
+
+https://cockpit.{$DOMAIN} {
+	tls internal
 	reverse_proxy https://127.0.0.1:9090 {
-		header_up Host box.{$DOMAIN}
-		header_up X-Forwarded-Host box.{$DOMAIN}
+		header_up Host cockpit.{$DOMAIN}
+		header_up X-Forwarded-Host cockpit.{$DOMAIN}
 		header_up X-Forwarded-Proto https
 		transport http {
 			tls_insecure_skip_verify

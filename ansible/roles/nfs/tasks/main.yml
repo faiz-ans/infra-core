@@ -1,6 +1,8 @@
 ---
 # Inferred NFS: export only to consumer IPs as the workload UID. Same-host stays local.
 # Day 2 drops unused inferred exports (site-inferred.exports only).
+# insecure + noresvport: the client uses a high source port. Privileged-port
+# handshakes stay in SYN-RECV when the client is behind NAT or WSL.
 - name: NFS packages on owners and consumers
   apt:
     name:
@@ -13,13 +15,20 @@
     state: present
   when: site_plan.nfs_exports | selectattr('host', 'equalto', site_host_name) | list | length > 0
 
+- name: Export drop-in directory
+  file:
+    path: /etc/exports.d
+    state: directory
+    mode: "0755"
+  when: site_plan.nfs_exports | selectattr('host', 'equalto', site_host_name) | list | length > 0
+
 - name: Inferred exports file
   copy:
     dest: /etc/exports.d/site-inferred.exports
     mode: "0644"
     content: |
       {% for ex in site_plan.nfs_exports if ex.host == site_host_name %}
-      {{ ex.path }} {{ ex.client_ip }}(rw,sync,no_subtree_check,all_squash,anonuid=1000,anongid=1000)
+      {{ ex.path }} {{ ex.client_ip }}(rw,sync,no_subtree_check,insecure,all_squash,anonuid=1000,anongid=1000)
       {% endfor %}
   when: site_plan.nfs_exports | selectattr('host', 'equalto', site_host_name) | list | length > 0
   notify: reload nfs
@@ -31,12 +40,35 @@
   when: site_plan.nfs_exports | selectattr('host', 'equalto', site_host_name) | list | length == 0
   notify: reload nfs
 
+- name: Apply inferred exports before mounts
+  meta: flush_handlers
+
+- name: This host consumes NFS
+  set_fact:
+    site_nfs_here: "{{ site_plan.nfs_mounts | selectattr('host', 'equalto', site_host_name) | list }}"
+
+- name: Share the mount tree so later mounts enter the rootless session
+  command: mount --make-rshared /
+  when: site_nfs_here | length > 0
+
 - name: Mount inferred NFS on consumers
   mount:
     path: "{{ item.path }}"
     src: "{{ item.server_ip }}:{{ item.export }}"
     fstype: nfs
-    opts: rw,nfsvers=4
+    opts: rw,nfsvers=4,noresvport
     state: mounted
-  loop: "{{ site_plan.nfs_mounts }}"
-  when: item.host == site_host_name
+  loop: "{{ site_nfs_here }}"
+
+- name: Workload user id
+  command: >-
+    id -u {{ (site_plan.hosts | selectattr('name', 'equalto', site_host_name) | list | first).operations.workload.user }}
+  register: site_wl_uid
+  changed_when: false
+  when: site_nfs_here | length > 0
+
+- name: Restart the rootless session so it inherits the NFS mounts
+  systemd:
+    name: "user@{{ site_wl_uid.stdout }}"
+    state: restarted
+  when: site_nfs_here | length > 0

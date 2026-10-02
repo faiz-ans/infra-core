@@ -4,12 +4,17 @@ from __future__ import annotations
 import unittest
 from pathlib import Path
 
-from .diff import service_delta, user_delta
+from .diff import fingerprints, service_delta, set_delta, user_delta
 from .observed import merge_observed, scaffold_desired, scaffold_disks
-from .generate import generate_authelia, generate_caddyfile, generate_homepage_services
+from .generate import (
+    generate_authelia,
+    generate_caddyfile,
+    inject_authelia_ldap_password,
+    ldap_base_dn,
+)
 from .inventory import inventory_dict
 from .plan import build_plan, disk_mounts, import_blocks, import_nfs, inferred_nfs, root_binds
-from .quadlet import strip_yaml_text
+from .quadlet import read_utf8, strip_yaml_text
 from .resolve import LOOPBACK, bind, render
 from .secrets import SecretError, podman_catalog, resolve_secret, split_secrets
 from .topology import (
@@ -30,9 +35,9 @@ class TestExample(unittest.TestCase):
     def test_placement_ok(self) -> None:
         self.assertEqual(validate_placement(self.desired), [])
 
-    def test_implicit_glances_on_storage_host(self) -> None:
+    def test_glances_only_where_listed(self) -> None:
         keys = {(s["host"], s["key"]) for s in all_services(self.desired)}
-        self.assertIn(("storage", "glances"), keys)
+        self.assertNotIn(("storage", "glances"), keys)
         self.assertIn(("compute", "glances"), keys)
 
     def test_openldap_must_be_placed(self) -> None:
@@ -43,7 +48,7 @@ class TestExample(unittest.TestCase):
 
     def test_two_caddy_is_error(self) -> None:
         bad = load_desired(EXAMPLE)
-        bad["site"]["hosts"][1]["roles"]["workload"]["services"]["caddy"] = None
+        bad["site"]["hosts"][1]["operations"]["workload"]["services"]["caddy"] = None
         errs = validate_placement(bad)
         self.assertTrue(any("caddy" in e for e in errs))
 
@@ -185,45 +190,111 @@ class TestExample(unittest.TestCase):
 
     def test_caddy_and_homepage(self) -> None:
         caddy = generate_caddyfile(self.desired)
-        self.assertIn("auth.example.lan", caddy)
-        self.assertIn("cloud.example.lan", caddy)
-        home = generate_homepage_services(self.desired)
-        self.assertIn(LOOPBACK, home)
-        self.assertIn("HOMEPAGE_VAR_PIHOLE_TOKEN", home)
+        self.assertIn("https://authelia.example.lan", caddy)
+        self.assertIn("https://opencloud.example.lan", caddy)
+        self.assertIn("https://homepage.example.lan", caddy)
+        self.assertIn("https://dns.example.lan", caddy)
+        self.assertNotIn("https://auth.example.lan", caddy)
+        self.assertNotIn("https://cloud.example.lan", caddy)
+        self.assertIn("reverse_proxy 127.0.0.1:9091", caddy)
+        self.assertIn("reverse_proxy 10.0.0.11:61208", caddy)
+        self.assertNotIn("https://users.example.lan", caddy)
+        self.assertIn("https://glances.example.lan", caddy)
+        self.assertNotIn("https://host.example.lan", caddy)
+        self.assertNotIn("reverse_proxy 127.0.0.1:389", caddy)
+        cockpit = caddy.split("https://cockpit.example.lan {", 1)[1].split("\nhttps://", 1)[0]
+        self.assertIn("reverse_proxy https://127.0.0.1:9090", cockpit)
+        self.assertIn("tls_insecure_skip_verify", cockpit)
+        self.assertNotIn("authelia_gate", cockpit)
+
+    def test_cockpit_follows_admin_gui_host(self) -> None:
+        absent = load_desired(EXAMPLE)
+        absent["site"]["hosts"][0]["admin-gui"] = False
+        self.assertNotIn("cockpit.example.lan", generate_caddyfile(absent))
+        remote = load_desired(EXAMPLE)
+        remote["site"]["hosts"][0]["admin-gui"] = False
+        remote["site"]["hosts"][1]["admin-gui"] = True
+        self.assertIn("reverse_proxy https://10.0.0.11:9090", generate_caddyfile(remote))
+
+    def test_caddy_remote_web_and_router(self) -> None:
+        d = load_desired(EXAMPLE)
+        d["site"]["env"]["lan_ip"] = "192.0.2.1"
+        d["site"]["hosts"][0]["operations"]["workload"]["services"]["wireguard"] = None
+        d["site"]["hosts"][1]["operations"]["workload"]["services"]["immich"] = {
+            "name": "immich",
+            "subdomain": {"primary": "photos", "aliases": ["immich"]},
+        }
+        caddy = generate_caddyfile(d)
+        self.assertIn("https://wireguard.example.lan", caddy)
+        self.assertNotIn("https://vpn.example.lan", caddy)
+        self.assertIn("reverse_proxy 127.0.0.1:51821", caddy)
+        self.assertIn("https://photos.example.lan", caddy)
+        self.assertIn("reverse_proxy 10.0.0.11:2283", caddy)
+        self.assertIn("https://wifi.example.lan", caddy)
+        self.assertIn("tls_insecure_skip_verify", caddy)
+        self.assertIn("reverse_proxy https://192.0.2.1", caddy)
 
     def test_generate_flags_off(self) -> None:
         from .topology import policy
 
         d = load_desired(EXAMPLE)
         d["site"]["networking"]["ingress"] = {"engine": "caddy", "generate-upstream": False}
-        d["site"]["operations"]["dashboard"] = {"engine": "homepage", "generate-tiles": False}
         p = policy(d)
         self.assertEqual(p["ingress"], "caddy")
         self.assertFalse(p["generate_upstream"])
-        self.assertFalse(p["generate_tiles"])
         self.assertEqual(generate_caddyfile(d), "")
         self.assertEqual(generate_authelia(d), "")
-        self.assertEqual(generate_homepage_services(d), "")
         self.assertEqual(validate_placement(d), [])
+
+    def test_background_image_is_not_rewritten_as_text(self) -> None:
+        import tempfile
+
+        with tempfile.TemporaryDirectory() as tmp:
+            image = Path(tmp) / "background.png"
+            image.write_bytes(b"\xff\xd8\xff\xe0JFIF")
+            note = Path(tmp) / "settings.yaml"
+            note.write_text("title: Home\n", encoding="utf-8")
+            self.assertIsNone(read_utf8(image))
+            self.assertEqual(read_utf8(note), "title: Home\n")
+            self.assertEqual(image.read_bytes(), b"\xff\xd8\xff\xe0JFIF")
 
     def test_authelia_file_backend(self) -> None:
         cfg = generate_authelia(self.desired)
         self.assertIn("file:", cfg)
+        self.assertIn("password_reset:", cfg)
+        self.assertIn("policy: one_factor", cfg)
+        self.assertIn("domain: '*.example.lan'", cfg)
+        self.assertIn("db.sqlite3", cfg)
+        self.assertIn("oidc.pem", cfg)
         self.assertIn("claims_policies:", cfg)
         self.assertIn("opencloud", cfg)
+        self.assertNotIn("\n  domain:", cfg)
 
     def test_authelia_ldap_backend(self) -> None:
         d = load_desired(EXAMPLE)
         d["site"]["identity"]["ldap"] = "openldap"
-        d["site"]["hosts"][0]["roles"]["workload"]["services"]["openldap"] = None
+        d["site"]["hosts"][0]["operations"]["workload"]["services"]["openldap"] = None
         cfg = generate_authelia(d)
         self.assertIn("ldap:", cfg)
+        self.assertIn("users_filter:", cfg)
+        self.assertIn("groups_filter:", cfg)
+        self.assertIn(ldap_base_dn("example.lan"), cfg)
+        self.assertIn("LDAP_ADMIN_PASSWORD", cfg)
+        self.assertNotIn("dc=site,dc=lan", cfg)
+        self.assertIn("password_reset:", cfg)
+
+    def test_authelia_ldap_password_env(self) -> None:
+        pod = "    env: []\n    ports:\n    - containerPort: 9091\n"
+        out = inject_authelia_ldap_password(pod)
+        self.assertIn("${secrets.openldap.admin_password}", out)
+        self.assertEqual(out.count("LDAP_ADMIN_PASSWORD"), 1)
+        self.assertEqual(inject_authelia_ldap_password(out), out)
 
     def test_nfs_inferred_only_off_owner(self) -> None:
         nfs = inferred_nfs(self.desired)
         self.assertEqual(nfs["exports"], [])
         d = load_desired(EXAMPLE)
-        d["site"]["hosts"][1]["roles"]["workload"]["services"]["immich"] = None
+        d["site"]["hosts"][1]["operations"]["workload"]["services"]["immich"] = None
         nfs = inferred_nfs(d)
         paths = {e["path"] for e in nfs["exports"]}
         self.assertEqual(paths, {"/groups", "/users"})
@@ -412,7 +483,7 @@ pod:
                 ],
             }
         ]
-        d["site"]["hosts"][0]["roles"]["storage"]["drives"][0]["id"] = "sda1"
+        d["site"]["hosts"][0]["operations"]["storage"]["drives"][0]["id"] = "sda1"
         mounts = disk_mounts(d)
         self.assertEqual(len(mounts), 1)
         self.assertEqual(mounts[0]["where"], "/mnt/site/sda1")
@@ -451,7 +522,7 @@ pod:
             {"type": "appdata-home", "from": "/system/vaultwarden"},
             {"type": "appdata-home", "from": "/system/bytestash"},
         ]
-        d["site"]["hosts"][0]["roles"]["storage"]["drives"][0]["id"] = "ironwolf"
+        d["site"]["hosts"][0]["operations"]["storage"]["drives"][0]["id"] = "ironwolf"
         blocks = {b["from_rel"]: b for b in import_blocks(d)}
         self.assertEqual(blocks["/users/faiz"]["from"], "/mnt/site/ironwolf/users/faiz")
         self.assertEqual(blocks["/users/faiz"]["to"], "/users/faiz")
@@ -521,6 +592,53 @@ pod:
         ud = user_delta(self.desired, observed)
         self.assertIn("bob", ud["add"])
         self.assertEqual(ud["remove"], [])
+
+    def test_day2_unchanged_set_touches_nothing(self) -> None:
+        applied = fingerprints(self.desired)
+        delta = set_delta(self.desired, applied)
+        self.assertFalse(delta["full"])
+        self.assertFalse(delta["sync_all"])
+        self.assertFalse(any(delta["sections"].values()))
+        self.assertEqual(delta["services"]["change"], [])
+        self.assertEqual(delta["services"]["add"], [])
+
+    def test_day2_homepage_edit_restarts_only_that_service(self) -> None:
+        applied = fingerprints(self.desired)
+        applied["services"]["storage/homepage"]["hash"] = "stale"
+        delta = set_delta(self.desired, applied)
+        names = {item["name"] for item in delta["services"]["change"]}
+        self.assertEqual(names, {"homepage"})
+        self.assertTrue(delta["sections"]["quadlets"])
+        self.assertFalse(delta["sections"]["storage"])
+        self.assertFalse(delta["sections"]["edge"])
+        self.assertFalse(delta["sections"]["nfs"])
+        self.assertFalse(delta["sections"]["secrets"])
+        self.assertFalse(delta["sections"]["admin_gui"])
+
+    def test_day2_new_web_service_updates_edge_only(self) -> None:
+        applied = fingerprints(self.desired)
+        current = load_desired(EXAMPLE)
+        current["site"]["hosts"][0]["operations"]["workload"]["services"]["jotty"] = None
+        delta = set_delta(current, applied)
+        added = {item["name"] for item in delta["services"]["add"]}
+        changed = {item["key"] for item in delta["services"]["change"]}
+        self.assertIn("jotty", added)
+        self.assertIn("caddy", changed)
+        self.assertTrue(delta["sections"]["edge"])
+        self.assertTrue(delta["sections"]["quadlets"])
+        self.assertFalse(delta["sections"]["storage"])
+        self.assertFalse(delta["sections"]["podman"])
+        self.assertFalse(delta["sections"]["drivers"])
+
+    def test_day2_without_stamp_skips_host_prep(self) -> None:
+        delta = set_delta(self.desired, None, upgrade=True)
+        self.assertFalse(delta["full"])
+        self.assertTrue(delta["sync_all"])
+        self.assertTrue(delta["sections"]["quadlets"])
+        self.assertTrue(delta["sections"]["edge"])
+        self.assertFalse(delta["sections"]["storage"])
+        self.assertFalse(delta["sections"]["secrets"])
+        self.assertFalse(delta["sections"]["podman"])
 
     def test_strip_k8s_kinds(self) -> None:
         text = "\n---\n".join(

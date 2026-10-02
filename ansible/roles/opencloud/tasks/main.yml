@@ -8,17 +8,55 @@
   meta: end_host
   when: site_oc | length == 0
 
+- name: Workload user
+  set_fact:
+    site_wl_user: "{{ (site_plan.hosts | selectattr('name', 'equalto', site_host_name) | list | first).operations.workload.user | default('') }}"
+
 - name: OpenCloud host dirs
   file:
     path: "{{ item }}"
     state: directory
+    owner: "{{ site_wl_user }}"
     mode: "0750"
   loop:
     - "{{ site_plan.roots.appdata }}/opencloud"
-    - "{{ site_plan.roots.appdata }}/opencloud/config"
     - "{{ site_plan.roots.appdata }}/opencloud/data"
-    - "{{ site_plan.roots.appdata }}/opencloud/posix"
     - "{{ site_plan.roots.appdata }}/opencloud/projects"
+    - "{{ site_plan.roots.appdata }}/opencloud/radicale"
+
+- name: OpenCloud config dir is traversable so nested file mounts can be created
+  file:
+    path: "{{ site_plan.roots.appdata }}/opencloud/config"
+    state: directory
+    owner: "{{ site_wl_user }}"
+    mode: "0755"
+
+- name: OpenCloud nested file mount points
+  file:
+    path: "{{ item }}"
+    state: touch
+    owner: "{{ site_wl_user }}"
+    mode: "0644"
+  loop:
+    - "{{ site_plan.roots.appdata }}/opencloud/config/csp.yaml"
+    - "{{ site_plan.roots.appdata }}/opencloud/config/proxy.yaml"
+
+- name: OpenCloud posix parent is traversable by the runtime that creates nested mounts
+  file:
+    path: "{{ site_plan.roots.appdata }}/opencloud/posix"
+    state: directory
+    owner: "{{ site_wl_user }}"
+    mode: "0755"
+
+- name: OpenCloud nested mount points inside posix
+  file:
+    path: "{{ item }}"
+    state: directory
+    owner: "{{ site_wl_user }}"
+    mode: "0755"
+  loop:
+    - "{{ site_plan.roots.appdata }}/opencloud/posix/users"
+    - "{{ site_plan.roots.appdata }}/opencloud/posix/projects"
 
 - name: Sticky/ACL on people trees so SMB and OpenCloud can share writers
   file:

@@ -3,8 +3,9 @@ Description=glances
 
 [Kube]
 Yaml=${component.dir}/pod.yaml
-Network=site.network
+Network=site
 PublishPort=127.0.0.1:61208:61208
+PublishPort=${host.ip}:61208:61208
 
 [Service]
 Restart=on-failure

@@ -3,7 +3,7 @@ Description=caddymanager
 
 [Kube]
 Yaml=${component.dir}/pod.yaml
-Network=site.network
+Network=site
 PublishPort=127.0.0.1:8086:80
 
 [Service]

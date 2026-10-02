@@ -24,6 +24,7 @@ spec:
       valueFrom:
         secretKeyRef:
           name: ${secrets.bytestash.jwt}
+          key: value
     - name: TOKEN_EXPIRY
       value: "24h"
     - name: ALLOW_NEW_ACCOUNTS
@@ -48,6 +49,7 @@ spec:
       valueFrom:
         secretKeyRef:
           name: ${secrets.authelia.oidc_client_secret}
+          key: value
     - name: OIDC_SCOPES
       value: "openid profile email"
     - name: NODE_TLS_REJECT_UNAUTHORIZED

@@ -5,7 +5,7 @@
 
 - name: Workload user
   set_fact:
-    site_wl_user: "{{ site_this_host.roles.workload.user | default('') }}"
+    site_wl_user: "{{ site_this_host.operations.workload.user | default('') }}"
 
 - name: Skip hosts without workload
   meta: end_host
@@ -22,6 +22,19 @@
 
 - name: Linger for workload user
   command: "loginctl enable-linger {{ site_wl_user }}"
+  changed_when: false
+
+- name: Workload user id
+  command: "id -u {{ site_wl_user }}"
+  register: site_wl_uid
+  changed_when: false
+
+- name: User Podman API socket for Homepage status
+  become: true
+  become_user: "{{ site_wl_user }}"
+  environment:
+    XDG_RUNTIME_DIR: "/run/user/{{ site_wl_uid.stdout }}"
+  command: systemctl --user enable --now podman.socket
   changed_when: false
 
 - name: Site network (rootless)

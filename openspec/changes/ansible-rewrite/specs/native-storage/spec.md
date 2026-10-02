@@ -1,7 +1,7 @@
 ## ADDED Requirements
 
 ### Requirement: Native mounts replace OpenMediaVault
-SET SHALL mount each storage volume by UUID once (internal volumes stay at `/`; others at `/mnt/site/<id>`, where id is the partition id or the disk id when the disk has no partitions) using OS-native tooling (systemd mount or equivalent). The three data roots SHALL be sibling directories on that disk mount and bind-mounted to `site.data.roots.*`. SET MUST NOT mount the same UUID at `/appdata`, `/groups`, and `/users`. The catalog MUST NOT install or configure OpenMediaVault. When `operations.host.manager` is Cockpit, Cockpit SHALL remain able to show those mounts.
+SET SHALL mount each storage volume by UUID once (internal volumes stay at `/`; others at `/mnt/site/<id>`, where id is the partition id or the disk id when the disk has no partitions) using OS-native tooling (systemd mount or equivalent). The three data roots SHALL be sibling directories on that disk mount and bind-mounted to `site.data.roots.*`. SET MUST NOT mount the same UUID at `/appdata`, `/groups`, and `/users`. The catalog MUST NOT install or configure OpenMediaVault. When a host has `admin-gui: true`, Cockpit on that host SHALL remain able to show those mounts.
 
 #### Scenario: No OMV package
 - **WHEN** SET completes on a storage host
@@ -12,14 +12,14 @@ SET SHALL mount each storage volume by UUID once (internal volumes stay at `/`; 
 - **THEN** that UUID is mounted once and `/appdata`, `/groups`, and `/users` are bind mounts of sibling directories on that disk
 
 ### Requirement: Host-local roots are owned by a disk
-A host MAY declare `data.roots` as any name mapped to an absolute path (not limited to `appdata`, `groups`, or `users`). When a disk has `partitions`, a partition owns those names via `partitions[].roots` and is what `roles.storage.drives[].id` references. When a disk has no partitions, the disk itself owns them via `roots` and is what a storage drive references. SET SHALL create each host root on that volume (internal: mkdir the declared path; otherwise sibling dirs on the volume mount, bind-mounted to the declared paths). Pods SHALL resolve `${host.data.roots.<name>}` from `hosts[].data.roots` only. Every host root, including one that shares a site directory, MUST be listed on its disk or partition. When that volume is a storage drive and the host-root path equals a site root that drive already mounts, SET SHALL share that directory and SHALL NOT create a second directory or bind. The host-root name is not what selects the share. Any other host root MUST NOT be owned by a volume that is a storage drive. SET SHALL error if a host root is unowned, owned twice, or listed on a storage drive with a different path.
+A host MAY declare `data.roots` as any name mapped to an absolute path (not limited to `appdata`, `groups`, or `users`). When a disk has `partitions`, a partition owns those names via `partitions[].roots` and is what `operations.storage.drives[].id` references. When a disk has no partitions, the disk itself owns them via `roots` and is what a storage drive references. SET SHALL create each host root on that volume (internal: mkdir the declared path; otherwise sibling dirs on the volume mount, bind-mounted to the declared paths). Pods SHALL resolve `${host.data.roots.<name>}` from `hosts[].data.roots` only. Every host root, including one that shares a site directory, MUST be listed on its disk or partition. When that volume is a storage drive and the host-root path equals a site root that drive already mounts, SET SHALL share that directory and SHALL NOT create a second directory or bind. The host-root name is not what selects the share. Any other host root MUST NOT be owned by a volume that is a storage drive. SET SHALL error if a host root is unowned, owned twice, or listed on a storage drive with a different path.
 
 #### Scenario: Workload disk owns a local appdata path
 - **WHEN** a host sets `data.roots.appdata: /var/lib/site-appdata` and a non-storage disk (or its partition) lists `roots: [appdata]`
 - **THEN** SET creates that path on that volume and `${host.data.roots.appdata}` resolves to `/var/lib/site-appdata`
 
 #### Scenario: Storage drive cannot own host roots
-- **WHEN** a partition or disk id is listed in any host’s `roles.storage.drives` and that same volume also has `roots` whose path is not the site root that drive already mounts
+- **WHEN** a partition or disk id is listed in any host’s `operations.storage.drives` and that same volume also has `roots` whose path is not the site root that drive already mounts
 - **THEN** SET fails with an error and does not apply
 
 #### Scenario: Host appdata shares the site appdata path

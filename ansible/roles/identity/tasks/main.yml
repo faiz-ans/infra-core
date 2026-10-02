@@ -44,8 +44,8 @@
     name: "{{ item }}"
     state: absent
     remove: false
-  loop: "{{ (delta_json | default('{}') | from_json).users.remove | default([]) }}"
-  when: site_plan.ldap != 'openldap' and delta_json is defined
+  loop: "{{ site_delta.users.remove | default([]) }}"
+  when: site_plan.ldap != 'openldap'
 
 - name: Join SSSD when LDAP is the SoT
   include_tasks: sssd.yml

@@ -29,6 +29,7 @@ spec:
       valueFrom:
         secretKeyRef:
           name: ${secrets.n8n.encryption_key}
+          key: value
     - name: N8N_PROXY_HOPS
       value: "1"
     - name: N8N_DIAGNOSTICS_ENABLED

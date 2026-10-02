@@ -1,6 +1,7 @@
 """Strip Kubernetes-only fields; keep kube-play Pod YAML."""
 from __future__ import annotations
 
+from pathlib import Path
 from typing import Any
 
 import yaml
@@ -51,6 +52,14 @@ def strip_yaml_text(text: str) -> str:
     if not kept:
         return ""
     return yaml.safe_dump_all(kept, sort_keys=False)
+
+
+def read_utf8(path: Path) -> str | None:
+    """Text for ${} substitution. None leaves a binary file (a background image) unchanged."""
+    try:
+        return path.read_text(encoding="utf-8")
+    except UnicodeDecodeError:
+        return None
 
 
 def privilege_tree(privilege: str) -> str:

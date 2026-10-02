@@ -1,19 +1,55 @@
 ---
-# Implicit: every host when operations.host.manager is cockpit.
-- name: Skip unless Cockpit is the host manager
-  meta: end_host
-  when: not site_plan.cockpit | default(false)
+# Cockpit is a host package. hosts[].admin-gui defaults to false.
+- name: This host
+  set_fact:
+    site_this_host: "{{ site_plan.hosts | selectattr('name', 'equalto', site_host_name) | list | first }}"
 
-- name: Cockpit packages
+- name: Install Cockpit
   apt:
     name:
       - cockpit
       - cockpit-podman
       - cockpit-networkmanager
     state: present
+  when: site_this_host['admin-gui'] | default(false) | bool
+
+- name: Cockpit accepts its public name
+  copy:
+    dest: /etc/cockpit/cockpit.conf
+    mode: "0644"
+    content: |
+      [WebService]
+      Origins = https://cockpit.{{ site_plan.domain }} wss://cockpit.{{ site_plan.domain }}
+      ProtocolHeader = X-Forwarded-Proto
+  when: site_this_host['admin-gui'] | default(false) | bool
+  notify: restart cockpit
 
 - name: Enable Cockpit
   service:
     name: cockpit.socket
     enabled: true
     state: started
+  when: site_this_host['admin-gui'] | default(false) | bool
+
+- name: Remove Cockpit public-name config
+  file:
+    path: /etc/cockpit/cockpit.conf
+    state: absent
+  when: not (site_this_host['admin-gui'] | default(false) | bool)
+
+- name: Stop Cockpit
+  service:
+    name: cockpit.socket
+    enabled: false
+    state: stopped
+  failed_when: false
+  when: not (site_this_host['admin-gui'] | default(false) | bool)
+
+- name: Remove Cockpit
+  apt:
+    name:
+      - cockpit
+      - cockpit-podman
+      - cockpit-networkmanager
+    state: absent
+  when: not (site_this_host['admin-gui'] | default(false) | bool)

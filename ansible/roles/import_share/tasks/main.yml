@@ -18,13 +18,22 @@
     - import_share_mode == 'export'
     - site_plan.import_nfs_exports | default([]) | selectattr('host', 'equalto', site_host_name) | list | length > 0
 
+- name: Export drop-in directory
+  file:
+    path: /etc/exports.d
+    state: directory
+    mode: "0755"
+  when:
+    - import_share_mode == 'export'
+    - site_plan.import_nfs_exports | default([]) | selectattr('host', 'equalto', site_host_name) | list | length > 0
+
 - name: Temporary import exports
   copy:
     dest: /etc/exports.d/site-import.exports
     mode: "0644"
     content: |
       {% for ex in site_plan.import_nfs_exports | default([]) if ex.host == site_host_name %}
-      {{ ex.path }} {{ ex.client_ip }}(rw,sync,no_subtree_check,all_squash,anonuid=1000,anongid=1000)
+      {{ ex.path }} {{ ex.client_ip }}(rw,sync,no_subtree_check,insecure,all_squash,anonuid=1000,anongid=1000)
       {% endfor %}
   when:
     - import_share_mode == 'export'
@@ -41,7 +50,7 @@
     path: "{{ item.path }}"
     src: "{{ item.server_ip }}:{{ item.export }}"
     fstype: nfs
-    opts: rw,nfsvers=4
+    opts: rw,nfsvers=4,noresvport
     state: mounted
   loop: "{{ site_plan.import_nfs_mounts | default([]) }}"
   when:

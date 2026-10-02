@@ -1,41 +1,142 @@
 ---
-# Only on the unique ingress host (Caddy).
-- name: Ingress services on this host
+# Ingress host: PREROUTING 53/80/443 + OUTPUT 443 for OpenCloud OIDC hairpin.
+# Pi-hole-only host:
+#   - bare metal: Linux socat on the LAN IP :53 -> Pi-hole :15353
+#   - WSL: do not bind :53 here. Operator flow is windows/wsl-pihole.md.
+- name: Edge and DNS services on this host
   set_fact:
     site_caddy_here: "{{ site_plan.services | selectattr('host', 'equalto', site_host_name) | selectattr('key', 'equalto', 'caddy') | list }}"
+    site_pihole_here: "{{ site_plan.services | selectattr('host', 'equalto', site_host_name) | selectattr('key', 'equalto', 'pi-hole') | list }}"
 
-- name: Skip non-ingress hosts
+- name: Skip hosts without Caddy or Pi-hole
   meta: end_host
-  when: site_caddy_here | length == 0
+  when: site_caddy_here | length == 0 and site_pihole_here | length == 0
 
-- name: Install lan-bind
+- name: lan-bind mode
+  set_fact:
+    site_lan_bind_mode: "{{ 'ingress' if site_caddy_here | length > 0 else 'dns' }}"
+
+- name: Detect WSL
+  command: grep -qiE 'microsoft|wsl' /proc/version
+  register: site_wsl_grep
+  changed_when: false
+  failed_when: false
+
+- name: WSL flag
+  set_fact:
+    site_is_wsl: "{{ site_wsl_grep.rc == 0 }}"
+
+- name: Ingress lan-bind script
   copy:
     src: lan-bind
     dest: /usr/local/sbin/site-lan-bind
     mode: "0755"
+  when: site_lan_bind_mode == 'ingress'
 
-- name: lan-bind service
+- name: Ingress lan-bind service
   copy:
     dest: /etc/systemd/system/site-lan-bind.service
     mode: "0644"
     content: |
       [Unit]
-      Description=site lan-bind (PREROUTING 53/80/443 + OUTPUT 443)
+      Description=site lan-bind (ingress)
       After=network-online.target
 
       [Service]
       Type=oneshot
+      Environment=SITE_LAN_BIND_MODE=ingress
       Environment=SITE_INGRESS_IP={{ site_host_ip }}
       ExecStart=/usr/local/sbin/site-lan-bind
       RemainAfterExit=yes
 
       [Install]
       WantedBy=multi-user.target
+  when: site_lan_bind_mode == 'ingress'
 
-- name: Enable lan-bind when high ports listen
+- name: Enable ingress lan-bind
   systemd:
     name: site-lan-bind.service
     enabled: true
     state: started
     daemon_reload: true
   failed_when: false
+  when: site_lan_bind_mode == 'ingress'
+
+- name: Disable ingress lan-bind on Pi-hole-only hosts
+  systemd:
+    name: site-lan-bind.service
+    enabled: false
+    state: stopped
+  failed_when: false
+  when: site_lan_bind_mode == 'dns'
+
+# --- Pi-hole-only, bare metal: Linux :53 proxy ---
+- name: socat for Pi-hole DNS proxy
+  package:
+    name: socat
+    state: present
+  when:
+    - site_lan_bind_mode == 'dns'
+    - not site_is_wsl
+
+- name: Pi-hole DNS proxy script
+  copy:
+    src: dns-proxy
+    dest: /usr/local/sbin/site-dns-proxy
+    mode: "0755"
+  when:
+    - site_lan_bind_mode == 'dns'
+    - not site_is_wsl
+
+- name: Pi-hole DNS proxy service
+  copy:
+    dest: /etc/systemd/system/site-dns-proxy.service
+    mode: "0644"
+    content: |
+      [Unit]
+      Description=site DNS proxy (LAN :53 to Pi-hole :15353)
+      After=network-online.target
+
+      [Service]
+      Type=simple
+      Environment=SITE_HOST_IP={{ site_host_ip }}
+      Environment=DNS_UPSTREAM_PORT=15353
+      ExecStart=/usr/local/sbin/site-dns-proxy
+      Restart=on-failure
+      RestartSec=3
+
+      [Install]
+      WantedBy=multi-user.target
+  when:
+    - site_lan_bind_mode == 'dns'
+    - not site_is_wsl
+
+- name: Enable Pi-hole DNS proxy
+  systemd:
+    name: site-dns-proxy.service
+    enabled: true
+    state: started
+    daemon_reload: true
+  failed_when: false
+  when:
+    - site_lan_bind_mode == 'dns'
+    - not site_is_wsl
+
+# WSL never receives LAN :53. The operator runs Windows dnsproxy; see windows/wsl-pihole.md.
+- name: Stop Linux DNS proxy on WSL
+  systemd:
+    name: site-dns-proxy.service
+    enabled: false
+    state: stopped
+  failed_when: false
+  when:
+    - site_lan_bind_mode == 'dns'
+    - site_is_wsl
+
+- name: Disable Linux DNS proxy on ingress host
+  systemd:
+    name: site-dns-proxy.service
+    enabled: false
+    state: stopped
+  failed_when: false
+  when: site_lan_bind_mode == 'ingress'

@@ -18,22 +18,27 @@ spec:
       valueFrom:
         secretKeyRef:
           name: ${secrets.authelia.session}
+          key: value
     - name: STORAGE_ENCRYPTION_KEY
       valueFrom:
         secretKeyRef:
           name: ${secrets.authelia.storage}
+          key: value
     - name: OIDC_HMAC_SECRET
       valueFrom:
         secretKeyRef:
           name: ${secrets.authelia.hmac}
+          key: value
     - name: AUTHELIA_SESSION_SECRET
       valueFrom:
         secretKeyRef:
           name: ${secrets.authelia.session}
+          key: value
     - name: AUTHELIA_STORAGE_ENCRYPTION_KEY
       valueFrom:
         secretKeyRef:
           name: ${secrets.authelia.storage}
+          key: value
     - name: X_AUTHELIA_CONFIG_FILTERS
       value: template
     ports:

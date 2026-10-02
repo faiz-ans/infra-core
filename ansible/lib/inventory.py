@@ -17,7 +17,7 @@ def inventory_dict(desired: dict[str, Any]) -> dict[str, Any]:
         name = h.get("name")
         if not name:
             continue
-        roles = h.get("roles") or {}
+        ops = h.get("operations") or {}
         admin = next((u for u in (h.get("users") or []) if host_user_is_sysadmin(u)), None)
         vars_ = {
             "ansible_host": h.get("ip"),
@@ -25,16 +25,16 @@ def inventory_dict(desired: dict[str, Any]) -> dict[str, Any]:
             "site_host_name": name,
             "site_host_ip": h.get("ip"),
         }
-        if roles.get("storage"):
+        if ops.get("storage"):
             storage.append(name)
             vars_["site_role_storage"] = True
         if name in owners:
             root_owner_hosts.append(name)
             vars_["site_role_root_owner"] = True
-        if roles.get("workload"):
+        if ops.get("workload"):
             workload.append(name)
             vars_["site_role_workload"] = True
-            wl = roles["workload"] if isinstance(roles["workload"], dict) else {}
+            wl = ops["workload"] if isinstance(ops["workload"], dict) else {}
             if wl.get("user"):
                 vars_["site_workload_user"] = wl["user"]
         all_hosts[name] = vars_

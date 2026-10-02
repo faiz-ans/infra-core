@@ -5,12 +5,12 @@ This repository still deploys one household: hardcoded host keys, `site.env`, `a
 ## What Changes
 
 - **BREAKING:** Scrap the personal-site bootstrap (`core.sh`, `apply.sh`, `/etc/infra-core/site.env`, `MANIFEST.toml` host keys, Materia pull). The live repo MUST contain no household hostnames, IPs, user lists, or disk UUIDs. A local `site.yaml` is gitignored; git ships a schema and an empty/sample topology.
-- **BREAKING:** Remove OpenMediaVault. NAS is OS-native mounts, Samba, and NFS. Cockpit is the UI when selected as host manager.
+- **BREAKING:** Remove OpenMediaVault. NAS is OS-native mounts, Samba, and NFS. Cockpit is the admin GUI when `hosts[].admin-gui` is true.
 - Add OpenLDAP as an officially integrated site-level directory (must still be placed on a workload node).
 - Sites are declared in `site.yaml`. Ansible on the operator’s machine generates inventory and runs **GET** / **SET**. Day 0 is GET facts. Day 1 is SET from desired topology. Day 2 diffs **desired** (`site.yaml`) against **observed** (GET output) and SET applies only the delta.
 - Two host roles (storage, workload). Standalone scale only (native NAS + Podman). Cluster (Ceph / Kubernetes) is out of scope.
 - Three logical data roots: `appdata`, `groups` (including `/all`), `users`. People use SMB (and OpenCloud when selected). Services use NFS only when the consumer is not on the owning host; the engine infers those exports.
-- Site-level service keys (`networking.dns`, `identity.sso`, …) are policy, not deploy—except Cockpit on every host and Glances on every workload host. Elevated services must also appear under a workload node or SET errors.
+- Site-level service keys (`networking.dns`, `identity.sso`, …) are policy, not deploy. Elevated services must also appear under a workload node or SET errors. Cockpit and Glances are explicit per host.
 - Official services are those already in `components/` plus OpenLDAP, minus OMV. Comment-only engines (Traefik, Authentik, Nextcloud, …) stay vocabulary. Forks/PRs may add integrations.
 - Quadlet/pod YAML stays kube-play **Pod** format. Strip Kubernetes-only kinds and fields Podman does not need. `${site.*}`, `${host.*}`, and `${secrets.*}` resolve from topology and SOPS. Secrets are Age/SOPS on the runner and Podman secrets at runtime.
 - SET never deletes user or group home data; it may delete accounts (unix/LDAP/SSO) only. Import blocks stay until the operator removes them after success; Caddy/Authelia imports land as `*.old`.
@@ -20,7 +20,7 @@ This repository still deploys one household: hardcoded host keys, `site.env`, `a
 
 ### New Capabilities
 
-- `site-topology`: Desired `site.yaml` schema (roots, access, identity, networking, operations, env, site users, hosts as a list, roles, resources, imports, host identity/env/roots). Observed YAML is a separate GET artifact. Site-level vs instance placement rules.
+- `site-topology`: Desired `site.yaml` schema (roots, access, identity, networking, operations, env, site users, hosts as a list, operations, resources, imports, host identity/env/roots). Observed YAML is a separate GET artifact. Site-level vs instance placement rules.
 - `ansible-control`: Push-based GET (facts vs site-influenced state), SET (idempotent apply), inventory generation from topology, desired-vs-observed diff on Day 2. Runner lives on the operator machine. Supported host OS: Debian and Ubuntu.
 - `native-storage`: Native disk mount by UUID, root ownership, SMB for people, inferred NFS for cross-host services, create/move roots, import mapping, no OMV, no data-home deletion.
 - `site-identity`: OpenLDAP (optional SoT), Authelia SSO, unix/SMB accounts on storage that owns `groups`/`users`, user roles (sysadmin/sysuser/appadmin/appuser), host-local sysadmins, SSH key-only gating. Account delete does not delete homes.

@@ -19,12 +19,12 @@ def secret_name(path: str) -> str:
 
 def _publish_host(out: dict[str, str], prefix: str, host: dict[str, Any]) -> None:
     """Publish one host's fields. prefix is `host.` or `site.hosts.<name>.`."""
-    wl = ((host.get("roles") or {}).get("workload") or {})
+    wl = ((host.get("operations") or {}).get("workload") or {})
     out[f"{prefix}name"] = str(host.get("name") or "")
     out[f"{prefix}ip"] = str(host.get("ip") or "")
-    out[f"{prefix}roles.workload.user"] = str(wl.get("user") or "")
-    out[f"{prefix}roles.workload.uid"] = str(wl.get("uid") or "1000")
-    out[f"{prefix}roles.workload.gid"] = str(wl.get("gid") or "1000")
+    out[f"{prefix}operations.workload.user"] = str(wl.get("user") or "")
+    out[f"{prefix}operations.workload.uid"] = str(wl.get("uid") or "1000")
+    out[f"{prefix}operations.workload.gid"] = str(wl.get("gid") or "1000")
     for k, v in (host.get("env") or {}).items():
         out[f"{prefix}env.{k}"] = str(v)
     for gpu in list((host.get("resources") or {}).get("gpu") or []):

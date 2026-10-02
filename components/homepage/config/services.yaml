@@ -27,6 +27,8 @@
             href: https://voice.{{HOMEPAGE_VAR_DOMAIN}}
             icon: scriberr.svg
             description: Transcription
+            server: core
+            container: scriberr-scriberr
         - ByteStash:
             id: bytestash
             href: https://snip.{{HOMEPAGE_VAR_DOMAIN}}
@@ -47,31 +49,42 @@
             id: immich
             href: https://photos.{{HOMEPAGE_VAR_DOMAIN}}
             icon: immich.svg
-            description: Photos    
+            description: Photos
+            siteMonitor: http://{{HOMEPAGE_VAR_SURFACE_UPSTREAM}}:2283/
         - Jellyfin:
             id: jellyfin
             href: https://watch.{{HOMEPAGE_VAR_DOMAIN}}
             icon: jellyfin.svg
             description: Watch Movies & TV
+            server: core
+            container: jellyfin-jellyfin
         - Seerr:
             href: https://request.{{HOMEPAGE_VAR_DOMAIN}}
             icon: seerr.svg
             description: Request Movies & TV
+            server: core
+            container: seerr-seerr
         - Adventure Log:
             id: adventurelog
             href: https://travel.{{HOMEPAGE_VAR_DOMAIN}}
             icon: adventure-log.svg
             description: Travel Logs
+            server: core
+            container: adventurelog-adventurelog
         - Home Assistant:
             id: homeassistant
             href: https://auto.{{HOMEPAGE_VAR_DOMAIN}}
             icon: home-assistant.svg
             description: Home Automation
+            server: core
+            container: homeassistant-homeassistant
         - Frigate:
             id: frigate
             href: https://nvr.{{HOMEPAGE_VAR_DOMAIN}}
             icon: https://cdn.jsdelivr.net/gh/homarr-labs/dashboard-icons/png/moonfire-nvr.png
             description: Home NVR
+            server: core
+            container: frigate-frigate
 
     - Utilities:
         - Transmute:
@@ -79,6 +92,8 @@
             href: https://convert.{{HOMEPAGE_VAR_DOMAIN}}
             icon: https://cdn.jsdelivr.net/gh/selfhst/icons/svg/transmute.svg
             description: File Convert
+            server: core
+            container: transmute-transmute
         - BentoPDF:
             id: bentopdf
             href: https://pdf.{{HOMEPAGE_VAR_DOMAIN}}
@@ -91,16 +106,22 @@
             href: https://translate.{{HOMEPAGE_VAR_DOMAIN}}
             icon: https://cdn.jsdelivr.net/gh/selfhst/icons/svg/libretranslate.svg
             description: Translate
+            server: core
+            container: libretranslate-libretranslate
         - OpenReader:
             id: openreader
             href: https://read.{{HOMEPAGE_VAR_DOMAIN}}
             icon: https://cdn.jsdelivr.net/gh/selfhst/icons@main/webp/openreader.webp
             description: Text-to-Speech
+            server: core
+            container: openreader-openreader
         - n8n:
             id: n8n
             href: https://flow.{{HOMEPAGE_VAR_DOMAIN}}
             icon: n8n.svg
             description: Workflow Automation
+            server: core
+            container: n8n-n8n
         - IT Tools:
             id: it-tools
             href: https://it.{{HOMEPAGE_VAR_DOMAIN}}
@@ -167,6 +188,8 @@
             href: https://disks.{{HOMEPAGE_VAR_DOMAIN}}
             icon: scrutiny.svg
             description: Disk Monitor
+            server: core
+            container: scrutiny
             widget:
                 type: scrutiny
                 url: http://scrutiny:8080
@@ -185,22 +208,22 @@
             href: https://metrics.{{HOMEPAGE_VAR_DOMAIN}}
             icon: prometheus.svg
             description: Metrics
+            server: core
+            container: monitoring-prometheus
         - Grafana:
             href: https://site.{{HOMEPAGE_VAR_DOMAIN}}
             icon: grafana.svg
             description: Site Monitor
+            server: core
+            container: monitoring-grafana
 
     - Platform:
         - Cockpit:
-            href: https://box.{{HOMEPAGE_VAR_DOMAIN}}
-            siteMonitor: http://{{HOMEPAGE_VAR_HOST_LOOPBACK}}:9090/ping
+            href: https://cockpit.{{HOMEPAGE_VAR_DOMAIN}}
+            # Cleartext /ping 301s onto Cockpit's certificate. Homepage follows that and reports 500.
+            siteMonitor: https://{{HOMEPAGE_VAR_HOST_LOOPBACK}}:9090/ping
             icon: cockpit.svg
             description: Hosts and units 
-        - OpenMediaVault:
-            href: https://nas.{{HOMEPAGE_VAR_DOMAIN}}
-            siteMonitor: http://{{HOMEPAGE_VAR_HOST_LOOPBACK}}:81
-            icon: openmediavault.svg
-            description: Storage
         - Authelia:
             href: https://auth.{{HOMEPAGE_VAR_DOMAIN}}
             icon: authelia.svg
@@ -237,8 +260,7 @@
             href: https://vpn.{{HOMEPAGE_VAR_DOMAIN}}
             icon: wireguard.svg
             description: VPN
-            server: core
-            container: wg-easy
+            siteMonitor: http://{{HOMEPAGE_VAR_HOST_LOOPBACK}}:51821/
         - RustDesk:
             href: https://desk.{{HOMEPAGE_VAR_DOMAIN}}
             icon: rustdesk.png
@@ -260,16 +282,24 @@
         - qBittorrent:
             href: https://down.{{HOMEPAGE_VAR_DOMAIN}}
             icon: qbittorrent.svg
-            description: Downloads      
+            description: Downloads
+            server: core
+            container: qbittorrent-qbittorrent
         - Prowlarr:
             href: https://prowlarr.{{HOMEPAGE_VAR_DOMAIN}}
             icon: prowlarr.svg
-            description: Indices      
+            description: Indices
+            server: core
+            container: arr-prowlarr
         - Radarr:
             href: https://radarr.{{HOMEPAGE_VAR_DOMAIN}}
             icon: radarr.svg
             description: Movie Requests
+            server: core
+            container: arr-radarr
         - Sonarr:
             href: https://sonarr.{{HOMEPAGE_VAR_DOMAIN}}
             icon: sonarr.svg
             description: TV Show Requests
+            server: core
+            container: arr-sonarr

@@ -1,6 +1,5 @@
 #!/usr/bin/env bash
-# Host nft/iptables: preserve source IPs. Pi-hole and Caddy bind high ports.
-# PREROUTING :53/:80/:443. OUTPUT :443 for 127.0.0.1 and the ingress LAN IP.
+# Ingress host: PREROUTING :53/:80/:443 + OUTPUT :443 for loopback and ingress LAN IP.
 # Never OUTPUT :53 — that loops host FallbackDNS back to Pi-hole.
 set -u
 

@@ -14,7 +14,7 @@ Day 2   python3 ansible/site.py apply   # GET A+B → observed.yaml, then SET de
 
 ## What SET does
 
-Two host roles: **storage** (native mounts, Samba for people, inferred NFS for apps) and **workload** (Podman Quadlets). Official services live under `components/` plus OpenLDAP. OpenMediaVault is not used. Cockpit is optional on every host. Windows/HTPC under `windows/` is not driven by GET/SET.
+Two host roles: **storage** (native mounts, Samba for people, inferred NFS for apps) and **workload** (Podman Quadlets). Official services live under `components/` plus OpenLDAP. OpenMediaVault is not used. Cockpit is a host package on hosts with `admin-gui: true` (default false). Homepage and Glances are ordinary listed services. Windows/HTPC under `windows/` is not driven by GET/SET.
 
 SET may delete accounts. It never deletes user or group home data.
 

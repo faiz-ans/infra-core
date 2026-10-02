@@ -8,6 +8,7 @@ attributes/*.age
 # Local site (desired + observed). Never commit a household topology.
 /site.yaml
 /observed.yaml
+/applied.json
 /secrets.yaml
 /secrets.sops.yaml
 /*.age

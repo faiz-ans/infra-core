@@ -19,6 +19,7 @@ spec:
       valueFrom:
         secretKeyRef:
           name: ${secrets.restic.password}
+          key: value
     - name: RESTIC_CACHE_DIR
       value: "/cache"
     - name: UPTIME_KUMA_PUSH_URL

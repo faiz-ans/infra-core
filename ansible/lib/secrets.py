@@ -278,6 +278,31 @@ def podman_catalog(data: dict[str, Any]) -> list[dict[str, str]]:
     return items
 
 
+_KUBE_REF = re.compile(r"secretKeyRef:\s*\n\s*name:\s*\$\{(secrets\.[^}]+)\}", re.M)
+
+
+def kube_secret_names(desired: dict[str, Any], data: dict[str, Any], components: Path) -> set[str]:
+    """Podman names that kube play reads. Those secrets must be Kubernetes Secret documents."""
+    from .topology import all_services
+
+    site, hosts = split_secrets(data)
+    names: set[str] = set()
+    for svc in all_services(desired):
+        host = str(svc.get("host") or "")
+        service = str(svc.get("key") or "")
+        comp = components / str(svc.get("component") or service)
+        if not host or not comp.is_dir():
+            continue
+        for path in comp.rglob("*"):
+            if not path.is_file() or path.name == "MANIFEST.toml":
+                continue
+            text = path.read_text(encoding="utf-8", errors="replace")
+            for match in _KUBE_REF.finditer(text):
+                resolved = resolve_secret(match.group(1), service=service, host=host, site=site, hosts=hosts)
+                names.add(resolved.podman_name)
+    return names
+
+
 def reference_installs(desired: dict[str, Any], data: dict[str, Any], components: Path) -> list[dict[str, str]]:
     """Secrets named for the unit that references them, installed on that unit's host.
 

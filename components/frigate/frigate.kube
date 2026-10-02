@@ -3,7 +3,7 @@ Description=frigate
 
 [Kube]
 Yaml=${component.dir}/pod.yaml
-Network=site.network
+Network=site
 PublishPort=8971:8971
 PublishPort=8554:8554
 PublishPort=8555:8555

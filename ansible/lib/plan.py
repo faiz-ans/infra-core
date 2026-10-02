@@ -48,7 +48,7 @@ HOME_IMPORT_TYPES = {
 def workload_user(desired: dict[str, Any], host_name: str) -> str:
     for h in hosts(desired):
         if h.get("name") == host_name:
-            wl = (h.get("roles") or {}).get("workload") or {}
+            wl = (h.get("operations") or {}).get("workload") or {}
             return str(wl.get("user") or "")
     return ""
 
@@ -172,7 +172,7 @@ def _host_disks(host: dict[str, Any]) -> list[dict[str, Any]]:
 
 
 def _host_drives(host: dict[str, Any]) -> list[dict[str, Any]]:
-    return list((((host.get("roles") or {}).get("storage") or {}).get("drives") or []))
+    return list((((host.get("operations") or {}).get("storage") or {}).get("drives") or []))
 
 
 def _disk_by_id(host: dict[str, Any], disk_id: str) -> dict[str, Any]:
@@ -489,8 +489,7 @@ def build_plan(desired: dict[str, Any]) -> dict[str, Any]:
         "users": site_of(desired).get("users") or [],
         "groups": site_groups(desired),
         "hosts": hosts(desired),
-        "cockpit": p["host_manager"] == "cockpit",
-        "glances_implicit": p["host_monitor"] == "glances",
+        "domain": str((site_of(desired).get("env") or {}).get("domain") or ""),
         "ldap": p["ldap"],
         "sso_backend": "ldap" if p["ldap"] == "openldap" else "file",
     }

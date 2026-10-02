@@ -12,7 +12,6 @@ from lib.generate import (  # noqa: E402
     generate_authelia,
     generate_authelia_users,
     generate_caddyfile,
-    generate_homepage_services,
 )
 from lib.topology import load_desired, policy  # noqa: E402
 
@@ -26,8 +25,6 @@ def main() -> int:
         (dest / "Caddyfile").write_text(generate_caddyfile(desired), encoding="utf-8")
         (dest / "configuration.yml").write_text(generate_authelia(desired), encoding="utf-8")
         (dest / "users.yml").write_text(generate_authelia_users(desired), encoding="utf-8")
-    if p["generate_tiles"]:
-        (dest / "services.yaml").write_text(generate_homepage_services(desired), encoding="utf-8")
     return 0
 
 

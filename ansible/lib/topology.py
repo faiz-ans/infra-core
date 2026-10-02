@@ -86,7 +86,6 @@ def policy(desired: dict[str, Any]) -> dict[str, Any]:
     access = data.get("access") or {}
     tunnel = net.get("tunnel") or {}
     ingress = net.get("ingress")
-    dashboard = ops.get("dashboard") or {}
     return {
         "dns": net.get("dns") or "none",
         "ingress": _engine_name(ingress),
@@ -96,10 +95,6 @@ def policy(desired: dict[str, Any]) -> dict[str, Any]:
         "ldap": ident.get("ldap") or "none",
         "sso": ident.get("sso") or "none",
         "ssh": str(ident.get("ssh") or "false"),
-        "host_manager": (ops.get("host") or {}).get("manager") or "none",
-        "host_monitor": (ops.get("host") or {}).get("monitor") or "none",
-        "dashboard": _engine_name(dashboard) if dashboard else "none",
-        "generate_tiles": _flag(dashboard, "generate-tiles", True),
         "storage_engine": (ops.get("storage") or {}).get("engine") or "native",
         "storage_monitor": (ops.get("storage") or {}).get("monitor") or "none",
         "workload_engine": (ops.get("workload") or {}).get("engine") or "podman",
@@ -109,12 +104,20 @@ def policy(desired: dict[str, Any]) -> dict[str, Any]:
     }
 
 
+def service_subdomain(key: str, custom: Any) -> dict[str, Any]:
+    """The service name is the host label. A site.yaml subdomain replaces it."""
+    custom = custom if isinstance(custom, dict) else {}
+    primary = str(custom.get("primary") or key)
+    aliases = [str(alias) for alias in (custom.get("aliases") or [])]
+    return {"primary": primary, "aliases": aliases}
+
+
 def listed_services(desired: dict[str, Any]) -> list[dict[str, Any]]:
-    """Flatten hosts[].roles.workload.services into instance records."""
+    """Flatten hosts[].operations.workload.services into instance records."""
     pack = load_pack().get("services") or {}
     out: list[dict[str, Any]] = []
     for h in hosts(desired):
-        wl = ((h.get("roles") or {}).get("workload") or {})
+        wl = ((h.get("operations") or {}).get("workload") or {})
         services = wl.get("services") or {}
         for key, val in services.items():
             instances = val if isinstance(val, list) else [val or {}]
@@ -124,7 +127,6 @@ def listed_services(desired: dict[str, Any]) -> list[dict[str, Any]]:
                 inst = inst or {}
                 name = inst.get("name") or key
                 meta = copy.deepcopy(pack.get(key) or pack.get(name) or {})
-                sub = inst.get("subdomain") or meta.get("subdomain") or {}
                 out.append(
                     {
                         "host": h.get("name"),
@@ -133,10 +135,9 @@ def listed_services(desired: dict[str, Any]) -> list[dict[str, Any]]:
                         "name": name,
                         "component": meta.get("component") or key,
                         "sso": inst.get("sso") or meta.get("sso") or "forward-auth",
-                        "tile": inst.get("tile", meta.get("tile", True)),
                         "network": meta.get("network") or "site",
                         "privilege": meta.get("privilege") or "rootless",
-                        "subdomain": sub,
+                        "subdomain": service_subdomain(key, inst.get("subdomain")),
                         "keep_id": bool(meta.get("keep_id")),
                         "dirs": list(meta.get("dirs") or []),
                         "publish": list(meta.get("publish") or []),
@@ -147,41 +148,8 @@ def listed_services(desired: dict[str, Any]) -> list[dict[str, Any]]:
     return out
 
 
-def implicit_services(desired: dict[str, Any]) -> list[dict[str, Any]]:
-    """Cockpit is a host package. Glances is implicit on every workload host."""
-    p = policy(desired)
-    have = {(s["host"], s["key"]) for s in listed_services(desired)}
-    extra: list[dict[str, Any]] = []
-    if p["host_monitor"] == "glances":
-        for h in hosts(desired):
-            if not (h.get("roles") or {}).get("workload"):
-                continue
-            if (h.get("name"), "glances") in have:
-                continue
-            extra.append(
-                {
-                    "host": h.get("name"),
-                    "host_ip": h.get("ip"),
-                    "key": "glances",
-                    "name": "glances",
-                    "component": "glances",
-                    "sso": "forward-auth",
-                    "tile": True,
-                    "network": "site",
-                    "privilege": "rootless",
-                    "subdomain": {"primary": "host", "aliases": ["glances"]},
-                    "keep_id": False,
-                    "dirs": [],
-                    "publish": [],
-                    "ports": {},
-                    "raw": {"implicit": True},
-                }
-            )
-    return extra
-
-
 def all_services(desired: dict[str, Any]) -> list[dict[str, Any]]:
-    return listed_services(desired) + implicit_services(desired)
+    return listed_services(desired)
 
 
 def root_owners(desired: dict[str, Any]) -> dict[str, dict[str, str]]:
@@ -189,7 +157,7 @@ def root_owners(desired: dict[str, Any]) -> dict[str, dict[str, str]]:
     r = roots(desired)
     owners: dict[str, dict[str, str]] = {}
     for h in hosts(desired):
-        storage = ((h.get("roles") or {}).get("storage") or {})
+        storage = ((h.get("operations") or {}).get("storage") or {})
         for drive in storage.get("drives") or []:
             for root in drive.get("roots") or []:
                 owners[root] = {
@@ -204,7 +172,7 @@ def root_owners(desired: dict[str, Any]) -> dict[str, dict[str, str]]:
 def storage_hosts(desired: dict[str, Any]) -> list[str]:
     names = []
     for h in hosts(desired):
-        if (h.get("roles") or {}).get("storage"):
+        if (h.get("operations") or {}).get("storage"):
             names.append(h.get("name"))
     return names
 
@@ -241,7 +209,7 @@ def site_roots_mounted_on(desired: dict[str, Any], host: dict[str, Any]) -> dict
     """Site root name → path, for roots this host's storage drives mount."""
     declared = roots(desired)
     mounted: dict[str, str] = {}
-    for drive in (((host.get("roles") or {}).get("storage") or {}).get("drives") or []):
+    for drive in (((host.get("operations") or {}).get("storage") or {}).get("drives") or []):
         for root in drive.get("roots") or []:
             if root in declared:
                 mounted[str(root)] = posixpath.normpath(str(declared[root]))
@@ -255,7 +223,7 @@ def shared_host_roots(desired: dict[str, Any], host: dict[str, Any]) -> set[str]
     """
     declared = roots(desired)
     drive_paths: dict[str, set[str]] = {}
-    for drive in (((host.get("roles") or {}).get("storage") or {}).get("drives") or []):
+    for drive in (((host.get("operations") or {}).get("storage") or {}).get("drives") or []):
         ident = str(drive.get("id") or "")
         paths: set[str] = set()
         for root in drive.get("roots") or []:
@@ -307,7 +275,7 @@ def validate_local_roots(desired: dict[str, Any]) -> list[str]:
     errors: list[str] = []
     storage_ids: set[str] = set()
     for h in hosts(desired):
-        for drive in (((h.get("roles") or {}).get("storage") or {}).get("drives") or []):
+        for drive in (((h.get("operations") or {}).get("storage") or {}).get("drives") or []):
             ident = drive.get("id")
             if ident:
                 storage_ids.add(str(ident))
@@ -375,7 +343,7 @@ def validate_placement(desired: dict[str, Any]) -> list[str]:
         aliases = {want, want.replace("_", "-")}
         if label == "ldap":
             aliases.add("openldap")
-        if not aliases.intersection(placed) and label != "host.manager":
+        if not aliases.intersection(placed):
             if label == "ldap" and p["ldap"] == "openldap" and "openldap" not in placed:
                 errors.append("identity.ldap is openldap but no workload lists openldap")
             elif label == "dns" and p["dns"] == "pi-hole" and "pi-hole" not in placed:
@@ -394,8 +362,6 @@ def validate_placement(desired: dict[str, Any]) -> list[str]:
                 errors.append("operations.workload.monitor is uptime-kuma but no workload lists uptime-kuma")
             elif label == "tunnel" and p["tunnel"] == "wireguard" and not {"wireguard", "wireguard-data"} & placed:
                 errors.append("networking.tunnel.engine is wireguard but no workload lists wireguard")
-    if p["dashboard"] == "homepage" and "homepage" not in placed:
-        errors.append("operations.dashboard.engine is homepage but no workload lists homepage")
     ingress_hosts = [s["host"] for s in all_services(desired) if s["key"] == "caddy"]
     if p["ingress"] == "caddy" and len(set(ingress_hosts)) > 1:
         errors.append("networking.ingress is caddy but more than one host lists caddy")

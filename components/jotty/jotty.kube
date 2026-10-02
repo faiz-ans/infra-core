@@ -3,7 +3,7 @@ Description=jotty
 
 [Kube]
 Yaml=${component.dir}/pod.yaml
-Network=site.network
+Network=site
 PublishPort=127.0.0.1:3002:3000
 
 [Service]

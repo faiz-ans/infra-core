@@ -3,7 +3,7 @@ Description=qbittorrent
 
 [Kube]
 Yaml=${component.dir}/pod.yaml
-Network=site.network
+Network=site
 PublishPort=8081:8081
 PublishPort=6881:6881
 PublishPort=6881:6881/udp

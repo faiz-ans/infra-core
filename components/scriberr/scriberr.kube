@@ -3,7 +3,7 @@ Description=scriberr
 
 [Kube]
 Yaml=${component.dir}/pod.yaml
-Network=site.network
+Network=site
 PublishPort=8085:8080
 
 [Service]
