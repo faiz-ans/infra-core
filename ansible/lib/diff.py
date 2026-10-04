@@ -280,7 +280,17 @@ def fingerprints(desired: dict[str, Any], secrets_path: Path | None = None) -> d
             }
         ),
         "pwm": _digest([{"name": h.get("name"), "pwm": (h.get("resources") or {}).get("pwm")} for h in hosts(desired)]),
-        "admin_gui": _digest({"domain": e.get("domain"), "hosts": admin}),
+        "admin_gui": _digest(
+            {
+                "domain": e.get("domain"),
+                "hosts": admin,
+                # Role changes must reinstall Cockpit. Debian 13's package cannot
+                # start or stop Quadlets; the role installs one that can.
+                "role": _file_hash(
+                    Path(__file__).resolve().parents[1] / "roles" / "cockpit" / "tasks" / "main.yml"
+                ),
+            }
+        ),
         "podman": _digest(
             {
                 "engine": p["workload_engine"],

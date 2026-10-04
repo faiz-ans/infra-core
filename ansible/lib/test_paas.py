@@ -865,6 +865,18 @@ container:
         self.assertFalse(delta["sections"]["nfs"])
         self.assertFalse(delta["sections"]["admin_gui"])
 
+    def test_cockpit_role_change_reruns_admin_gui(self) -> None:
+        applied = fingerprints(self.desired)
+        role = ROOT / "ansible" / "roles" / "cockpit" / "tasks" / "main.yml"
+        original = role.read_bytes()
+        try:
+            role.write_bytes(original + b"\n")
+            delta = set_delta(self.desired, applied)
+            self.assertTrue(delta["sections"]["admin_gui"])
+            self.assertFalse(delta["sections"]["storage"])
+        finally:
+            role.write_bytes(original)
+
     def test_collabora_placement_rerenders_opencloud(self) -> None:
         applied = fingerprints(self.desired)
         current = load_desired(EXAMPLE)

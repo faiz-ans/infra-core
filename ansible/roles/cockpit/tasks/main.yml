@@ -1,5 +1,9 @@
 ---
 # Cockpit is a host package. hosts[].admin-gui defaults to disabled.
+# Workloads are Quadlets. Debian 13 and Ubuntu 24.04 ship a Cockpit Podman
+# that lists them and offers Commit, and withholds start, stop, and restart.
+# Backports (cockpit-podman >= 116) sends those actions through systemd,
+# including systemctl --user for the workload user.
 - name: This host
   set_fact:
     site_this_host: "{{ site_plan.hosts | selectattr('name', 'equalto', site_host_name) | list | first }}"
@@ -12,14 +16,71 @@
   set_fact:
     site_admin_gui_labels: "{{ ([site_admin_gui.primary] + (site_admin_gui.aliases | default([]))) | unique | list }}"
 
+- name: Backports with Quadlet start, stop, and restart
+  set_fact:
+    site_cockpit_backports:
+      Debian:
+        trixie:
+          uri: http://deb.debian.org/debian
+          components: main
+          key: /usr/share/keyrings/debian-archive-keyring.gpg
+      Ubuntu:
+        noble:
+          uri: http://archive.ubuntu.com/ubuntu
+          components: universe
+          key: /usr/share/keyrings/ubuntu-archive-keyring.gpg
+
+- name: This release's Cockpit Podman backports
+  set_fact:
+    site_cockpit_bpo: "{{ ((site_cockpit_backports[ansible_distribution] | default({}))[ansible_distribution_release] | default({})) }}"
+
+- name: Drop the Cockpit backports source when this host does not use it
+  file:
+    path: /etc/apt/sources.list.d/site-cockpit-backports.sources
+    state: absent
+  when: not ((site_admin_gui.enabled | bool) and (site_cockpit_bpo.uri is defined))
+
+- name: Cockpit Podman backports source
+  copy:
+    dest: /etc/apt/sources.list.d/site-cockpit-backports.sources
+    mode: "0644"
+    content: |
+      Types: deb
+      URIs: {{ site_cockpit_bpo.uri }}
+      Suites: {{ ansible_distribution_release }}-backports
+      Components: {{ site_cockpit_bpo.components }}
+      Signed-By: {{ site_cockpit_bpo.key }}
+  when:
+    - site_admin_gui.enabled | bool
+    - site_cockpit_bpo.uri is defined
+
 - name: Install Cockpit
   apt:
     name:
       - cockpit
-      - cockpit-podman
+      - cockpit-storaged
       - cockpit-networkmanager
     state: present
+    install_recommends: false
   when: site_admin_gui.enabled | bool
+
+- name: Install distro Cockpit Podman
+  apt:
+    name: cockpit-podman
+    state: present
+  when:
+    - site_admin_gui.enabled | bool
+    - site_cockpit_bpo.uri is not defined
+
+- name: Install Cockpit Podman that can start and stop Quadlets
+  apt:
+    name: cockpit-podman
+    state: latest
+    default_release: "{{ ansible_distribution_release }}-backports"
+    update_cache: true
+  when:
+    - site_admin_gui.enabled | bool
+    - site_cockpit_bpo.uri is defined
 
 - name: Cockpit accepts its public names
   copy:
@@ -59,6 +120,7 @@
     name:
       - cockpit
       - cockpit-podman
+      - cockpit-storaged
       - cockpit-networkmanager
     state: absent
   when: not (site_admin_gui.enabled | bool)
