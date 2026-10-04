@@ -4,10 +4,11 @@ Description=radicale
 [Container]
 Image=docker.io/opencloudeu/radicale:latest
 ContainerName=radicale
-# No PublishPort. OpenCloud forwards CalDAV here only while this service is placed.
 Network=site
+UserNS=keep-id
+User=${host.operations.workload.uid}:${host.operations.workload.gid}
 Volume=${component.dir}/config:/etc/radicale/config:ro
-Volume=${site.data.roots.appdata}/opencloud/radicale:/var/lib/radicale
+Volume=${host.appdata}/radicale:/var/lib/radicale
 
 [Service]
 Restart=on-failure

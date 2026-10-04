@@ -19,6 +19,7 @@
       set_fact:
         site_plan: "{{ site_plan }}"
         site_delta: "{{ site_delta }}"
+        site_set_finished: false
       delegate_facts: true
       delegate_to: "{{ item }}"
       loop: "{{ groups['all'] }}"
@@ -332,6 +333,15 @@
         name: static_ip
       when: site_delta.sections.static_ip | default(true) | bool
 
+- name: Remember which hosts finished SET
+  hosts: all
+  gather_facts: false
+  become: false
+  tasks:
+    - name: This host finished SET
+      set_fact:
+        site_set_finished: true
+
 - name: Record what this SET applied
   hosts: localhost
   connection: local
@@ -343,4 +353,7 @@
         dest: "{{ applied_path }}"
         mode: "0600"
         content: "{{ site_delta.fingerprints | to_nice_json }}\n"
-      when: applied_path is defined and not ansible_check_mode | default(false)
+      when:
+        - applied_path is defined
+        - not ansible_check_mode | default(false)
+        - (groups['all'] | map('extract', hostvars, 'site_set_finished') | select('truthy') | list | length) == (groups['all'] | length)

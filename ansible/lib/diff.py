@@ -7,7 +7,7 @@ from pathlib import Path
 from typing import Any
 
 from .plan import COMPONENTS, import_blocks, import_nfs, inferred_nfs, site_groups
-from .topology import admin_gui, all_services, env, hosts, policy, roots, site_of
+from .topology import admin_gui, all_services, env, hosts, ingress_host, policy, roots, site_of
 
 # Host prep stays put on a Day 2 run that has no stamp yet. Service files still sync.
 UPGRADE_SECTIONS = ("quadlets", "edge", "nfs", "lan_bind", "admin_gui")
@@ -221,6 +221,7 @@ def fingerprints(desired: dict[str, Any], secrets_path: Path | None = None) -> d
         }
         if s.get("key") in ("opencloud", "collabora", "radicale"):
             body["integration"] = integration_peers
+            body["ingress"] = (ingress_host(desired) or {}).get("name")
         if _svc_id(s) in raw_secret_services:
             body["secret_encoding"] = "raw"
         rec["hash"] = _digest(body)
@@ -241,6 +242,11 @@ def fingerprints(desired: dict[str, Any], secrets_path: Path | None = None) -> d
                     }
                     for h in hosts(desired)
                 ],
+                # Role changes must rewrite mounts. Cockpit ignores a systemd
+                # unit and warns unless the same UUID mount is in fstab.
+                "role": _file_hash(
+                    Path(__file__).resolve().parents[1] / "roles" / "storage" / "tasks" / "main.yml"
+                ),
             }
         ),
         "imports": _digest({"blocks": import_blocks(desired), "nfs": import_nfs(desired)}),
@@ -261,6 +267,15 @@ def fingerprints(desired: dict[str, Any], secrets_path: Path | None = None) -> d
                 "filesystem": p["filesystem"],
                 "web": p["web"],
                 "directory": "posix-v13",
+                # Role changes must disable the nss/pam sockets. They fail while
+                # services = nss, pam already starts those responders.
+                "roles": [
+                    _file_hash(Path(__file__).resolve().parents[1] / rel)
+                    for rel in (
+                        "roles/identity/tasks/sssd.yml",
+                        "roles/directory/tasks/access.yml",
+                    )
+                ],
             }
         ),
         "ldap": _digest({"ldap": p["ldap"], "placed": [i for i, rec in services.items() if rec["key"] == "openldap"]}),
@@ -279,7 +294,17 @@ def fingerprints(desired: dict[str, Any], secrets_path: Path | None = None) -> d
                 ],
             }
         ),
-        "pwm": _digest([{"name": h.get("name"), "pwm": (h.get("resources") or {}).get("pwm")} for h in hosts(desired)]),
+        "pwm": _digest(
+            {
+                "hosts": [
+                    {"name": h.get("name"), "pwm": (h.get("resources") or {}).get("pwm")} for h in hosts(desired)
+                ],
+                # The loop lives in the tree. A controller change has to reinstall it
+                # even when the scale in site.yaml is unchanged.
+                "controller": _file_hash(Path(__file__).resolve().parent / "pwm.py"),
+                "role": _file_hash(Path(__file__).resolve().parents[1] / "roles" / "pwm" / "tasks" / "main.yml"),
+            }
+        ),
         "admin_gui": _digest(
             {
                 "domain": e.get("domain"),

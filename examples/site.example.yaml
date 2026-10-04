@@ -101,8 +101,6 @@ site:
           services:
             caddy:
             authelia:
-            # radicale and collabora are separate services. OpenCloud links to
-            # each one only while that service is listed.
             opencloud:
             pi-hole:
               - name: pi-hole

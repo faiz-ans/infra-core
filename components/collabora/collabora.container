@@ -8,13 +8,10 @@ Network=site
 PublishPort=9980:9980
 AddCapability=MKNOD
 AddCapability=SYS_ADMIN
+PodmanArgs=--security-opt=seccomp=unconfined
 Environment=TZ=${site.env.timezone}
 Environment=DONT_GEN_SSL_CERT=YES
-Environment=extra_params=--o:ssl.enable=false --o:ssl.ssl_termination=true --o:welcome.enable=false
-Volume=${host.data.roots.appdata}/collabora/ca:/ca
-Volume=${component.dir}/entrypoint.sh:/entrypoint.sh:ro
-Entrypoint=/bin/sh
-Exec=/entrypoint.sh
+Environment=extra_params="--o:ssl.enable=false --o:ssl.termination=true --o:ssl.ssl_verification=false --o:welcome.enable=false"
 
 [Service]
 Restart=on-failure

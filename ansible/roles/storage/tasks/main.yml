@@ -54,6 +54,20 @@
       WantedBy=local-fs.target
   loop: "{{ site_disk_mounts }}"
 
+# Cockpit reads UDisks Block.Configuration, which is fstab only. A systemd
+# mount unit still mounts on boot, but Storage warns that the filesystem
+# "will not be mounted after the next boot." The unit above stays the mount
+# systemd uses; this line is the same UUID and path so that warning clears.
+- name: Record disk UUID mounts in fstab
+  ansible.builtin.blockinfile:
+    path: /etc/fstab
+    marker: "# {mark} site-disks"
+    block: |-
+      {% for item in site_disk_mounts if item.uuid | length > 0 -%}
+      UUID={{ item.uuid }} {{ item.where }} ext4 defaults,nofail 0 2
+      {% endfor %}
+    mode: "0644"
+
 - name: Enable disk mounts
   systemd:
     name: "{{ item.unit }}"

@@ -73,6 +73,8 @@ def bind(desired: dict[str, Any], host: dict[str, Any] | None, secrets: dict[str
     for k, v in e.items():
         out[f"site.env.{k}"] = str(v)
     _publish_host(out, "host.", host)
+    # Service state follows the host. A storage host with no local root uses the site appdata it mounts.
+    out["host.appdata"] = host_roots(host).get("appdata") or r["appdata"]
     for other in hosts(desired):
         name = str(other.get("name") or "")
         if name:

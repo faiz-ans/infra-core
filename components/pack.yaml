@@ -42,7 +42,8 @@ services:
     component: radicale
     network: site
     privilege: rootless
-    sso: none
+    sso: forward-auth
+    ports: { web: 5232 }
   pi-hole:
     component: pi-hole
     network: host

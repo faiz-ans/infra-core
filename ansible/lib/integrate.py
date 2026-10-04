@@ -6,6 +6,7 @@ from pathlib import Path
 from typing import Any
 
 from .generate import authelia_label, domain_of
+from .resolve import LOOPBACK
 from .topology import all_services, ingress_host
 
 
@@ -30,12 +31,43 @@ def _insert_before_service(text: str, lines: list[str]) -> str:
     return text.replace(marker, "\n" + block + marker, 1)
 
 
+def _env_line(name: str, value: str) -> str:
+    # Quadlet splits an unquoted Environment value on spaces.
+    if re.search(r"[\s\"]", value):
+        escaped = value.replace("\\", "\\\\").replace('"', '\\"')
+        return f'Environment={name}="{escaped}"'
+    return f"Environment={name}={value}"
+
+
 def _replace_env(text: str, name: str, value: str) -> str:
-    line = f"Environment={name}={value}"
+    line = _env_line(name, value)
     pattern = re.compile(rf"^Environment={re.escape(name)}=.*$", re.M)
     if pattern.search(text):
         return pattern.sub(line, text, count=1)
     return _insert_before_service(text, [line])
+
+
+def _replace_addhost(text: str, prefix: str, host: str, ip: str) -> str:
+    line = f"AddHost={host}:{ip}"
+    pattern = re.compile(rf"^AddHost={re.escape(prefix)}\S*$", re.M)
+    if pattern.search(text):
+        return pattern.sub(line, text, count=1)
+    if line in text.splitlines():
+        return text
+    return _insert_before_service(text, [line])
+
+
+def _reach_ip(desired: dict[str, Any], service: dict[str, Any]) -> str:
+    """Address this container uses for public HTTPS.
+
+    A container on the ingress host cannot hairpin to that host's LAN :443.
+    Pasta exposes the host loopback as 169.254.1.2, and lan-bind redirects it
+    to Caddy. Any other host reaches the ingress LAN address directly.
+    """
+    ingress = ingress_host(desired) or {}
+    if service.get("host") and ingress.get("name") and service.get("host") == ingress.get("name"):
+        return LOOPBACK
+    return str(ingress.get("ip") or "")
 
 
 def _unit(directory: Path) -> Path:
@@ -45,25 +77,46 @@ def _unit(directory: Path) -> Path:
     return found[0]
 
 
+_COLLABORA_PARAMS = (
+    "--o:ssl.enable=false --o:ssl.termination=true "
+    "--o:ssl.ssl_verification=false --o:welcome.enable=false"
+)
+
+
 def _opencloud(directory: Path, desired: dict[str, Any], service: dict[str, Any]) -> None:
     unit = _unit(directory)
     text = unit.read_text(encoding="utf-8")
-    ingress_ip = str((ingress_host(desired) or {}).get("ip") or "")
-    lines: list[str] = []
+    ingress = ingress_host(desired) or {}
+    remote = bool(service.get("host") and ingress.get("name") and service.get("host") != ingress.get("name"))
     collaborators = _placed(desired, "collabora")
-    if collaborators and ingress_ip:
-        office = _host_label(collaborators[0], desired)
+    if collaborators or remote:
+        reach = _reach_ip(desired, service)
         cloud = _host_label(service, desired)
-        lines += [
-            f"AddHost={office}:{ingress_ip}",
-            f"Environment=COLLABORA_DOMAIN={office}",
-            f"Environment=COLLABORATION_APP_ADDR=https://{office}",
-            f"Environment=COLLABORATION_WOPI_SRC=https://{cloud}",
-            "Environment=COLLABORATION_APP_PROOF_DISABLE=true",
-            "Environment=OC_ADD_RUN_SERVICES=collaboration",
-        ]
-    if lines:
-        text = _insert_before_service(text, lines)
+        auth = f"{authelia_label(desired)}.{domain_of(desired)}"
+        if reach:
+            text = _replace_env(text, "OC_URL", f"https://{cloud}")
+            text = _replace_env(text, "OC_DOMAIN", cloud)
+            text = _replace_env(text, "IDP_DOMAIN", auth)
+            text = _replace_env(text, "OC_OIDC_ISSUER", f"https://{auth}")
+            text = _replace_addhost(text, "cloud.", cloud, reach)
+            text = _replace_addhost(text, "auth.", auth, reach)
+        if collaborators and reach:
+            office = _host_label(collaborators[0], desired)
+            text = _insert_before_service(
+                text,
+                [
+                    f"AddHost={office}:{reach}",
+                    f"Environment=COLLABORA_DOMAIN={office}",
+                    f"Environment=COLLABORATION_APP_ADDR=https://{office}",
+                    f"Environment=COLLABORATION_WOPI_SRC=https://{cloud}",
+                    "Environment=COLLABORATION_APP_PROOF_DISABLE=true",
+                    "Environment=COLLABORATION_APP_INSECURE=true",
+                    "Environment=COLLABORATION_CS3API_DATAGATEWAY_INSECURE=true",
+                    "Environment=OC_ADD_RUN_SERVICES=collaboration",
+                ],
+            )
+    if remote and "PublishPort=${host.ip}:9200:9200" not in text:
+        text = _insert_before_service(text, ["PublishPort=${host.ip}:9200:9200"])
     unit.write_text(text, encoding="utf-8")
 
     proxy = directory / "proxy.yaml"
@@ -83,44 +136,47 @@ def _opencloud(directory: Path, desired: dict[str, Any], service: dict[str, Any]
 
 
 def _collabora(directory: Path, desired: dict[str, Any], service: dict[str, Any]) -> None:
-    clouds = _placed(desired, "opencloud")
-    if not clouds:
-        return
-    ingress_ip = str((ingress_host(desired) or {}).get("ip") or "")
-    if not ingress_ip:
-        return
-    cloud = _host_label(clouds[0], desired)
-    auth = f"{authelia_label(desired)}.{domain_of(desired)}"
     unit = _unit(directory)
     text = unit.read_text(encoding="utf-8")
-    text = _replace_env(
-        text,
-        "extra_params",
-        "--o:ssl.enable=false --o:ssl.ssl_termination=true "
-        f"--o:welcome.enable=false --o:net.frame_ancestors={cloud}",
-    )
-    text = _insert_before_service(
-        text,
-        [
-            f"AddHost={cloud}:{ingress_ip}",
-            f"AddHost={auth}:{ingress_ip}",
-            "Environment=SSL_CERT_FILE=/ca/ca-bundle.crt",
-            f"Environment=CADDY_CA_URL=https://{auth}/pki/local-root.crt",
-            f"Environment=aliasgroup1=https://{cloud}",
-        ],
-    )
+    params = _COLLABORA_PARAMS
+    lines: list[str] = []
+    clouds = _placed(desired, "opencloud")
+    if clouds:
+        cloud = _host_label(clouds[0], desired)
+        reach = _reach_ip(desired, service)
+        params += f" --o:net.frame_ancestors={cloud} --o:net.lok_allow.host[14]={cloud}"
+        if reach:
+            auth = f"{authelia_label(desired)}.{domain_of(desired)}"
+            lines = [
+                f"AddHost={cloud}:{reach}",
+                f"AddHost={auth}:{reach}",
+                f"Environment=aliasgroup1=https://{cloud}",
+            ]
+    text = _replace_env(text, "extra_params", params)
+    if lines:
+        text = _insert_before_service(text, lines)
     unit.write_text(text, encoding="utf-8")
 
 
+def _radicale_needs_lan(desired: dict[str, Any], service: dict[str, Any]) -> bool:
+    """Caddy or OpenCloud on another host must connect to this host's address."""
+    ingress = ingress_host(desired) or {}
+    if ingress.get("name") and service.get("host") != ingress.get("name"):
+        return True
+    return any(peer.get("host") != service.get("host") for peer in _placed(desired, "opencloud"))
+
+
 def _radicale(directory: Path, desired: dict[str, Any], service: dict[str, Any]) -> None:
-    clouds = _placed(desired, "opencloud")
-    if not clouds or clouds[0].get("host") == service.get("host"):
-        return
     unit = _unit(directory)
     text = unit.read_text(encoding="utf-8")
-    if "PublishPort=" in text:
-        return
-    unit.write_text(_insert_before_service(text, ["PublishPort=5232:5232"]), encoding="utf-8")
+    lines: list[str] = []
+    if "PublishPort=127.0.0.1:5232:5232" not in text:
+        lines.append("PublishPort=127.0.0.1:5232:5232")
+    if _radicale_needs_lan(desired, service) and "PublishPort=${host.ip}:5232:5232" not in text:
+        lines.append("PublishPort=${host.ip}:5232:5232")
+    if lines:
+        text = _insert_before_service(text, lines)
+    unit.write_text(text, encoding="utf-8")
 
 
 def _grafana(directory: Path, desired: dict[str, Any], service: dict[str, Any]) -> None:

@@ -72,12 +72,18 @@
     - site_admin_gui.enabled | bool
     - site_cockpit_bpo.uri is not defined
 
+- name: Read the Cockpit backports source
+  apt:
+    update_cache: true
+  when:
+    - site_admin_gui.enabled | bool
+    - site_cockpit_bpo.uri is defined
+
 - name: Install Cockpit Podman that can start and stop Quadlets
   apt:
     name: cockpit-podman
     state: latest
     default_release: "{{ ansible_distribution_release }}-backports"
-    update_cache: true
   when:
     - site_admin_gui.enabled | bool
     - site_cockpit_bpo.uri is defined

@@ -22,7 +22,6 @@
     - "{{ site_plan.roots.appdata }}/opencloud"
     - "{{ site_plan.roots.appdata }}/opencloud/data"
     - "{{ site_plan.roots.appdata }}/opencloud/projects"
-    - "{{ site_plan.roots.appdata }}/opencloud/radicale"
 
 - name: OpenCloud config dir is traversable so nested file mounts can be created
   file:

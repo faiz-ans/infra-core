@@ -31,3 +31,20 @@
     group: root
     mode: "0600"
   no_log: true
+
+# services = nss, pam starts those responders inside sssd.service.
+# The package also enables the sockets; they refuse to start while listed there.
+- name: Do not socket-activate responders SSSD already runs
+  systemd:
+    name: "{{ item }}"
+    state: stopped
+    enabled: false
+  loop:
+    - sssd-nss.socket
+    - sssd-pam.socket
+
+- name: Clear the failed socket result Cockpit still shows
+  command: systemctl reset-failed sssd-nss.socket sssd-pam.socket
+  register: site_sssd_reset
+  changed_when: false
+  failed_when: site_sssd_reset.rc != 0 and 'not loaded' not in (site_sssd_reset.stderr | default(''))

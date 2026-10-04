@@ -116,12 +116,13 @@ Mirrored networking does not deliver a LAN TCP port into WSL unless a Hyper-V fi
 | Glances | 61208 |
 | Immich | 2283 |
 | Pi-hole web | 8088 |
+| Collabora | 9980 |
 
 Elevated PowerShell. Use the same `VMCreatorId` as the existing WSL rules (`Get-NetFirewallHyperVRule`). If New-NetFirewallHyperVRule says the file already exists, enable that rule instead of creating it.
 
 ```powershell
 $wsl = (Get-NetFirewallHyperVRule | Select-Object -First 1 -ExpandProperty VMCreatorId)
-foreach ($port in 61208, 2283, 8088) {
+foreach ($port in 61208, 2283, 8088, 9980) {
   $name = "WSL-TCP-$port"
   if (Get-NetFirewallHyperVRule -Name $name -ErrorAction SilentlyContinue) {
     Enable-NetFirewallHyperVRule -Name $name

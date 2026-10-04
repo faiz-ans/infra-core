@@ -194,6 +194,8 @@ class TestExample(unittest.TestCase):
         storage = bind(self.desired, self.desired["site"]["hosts"][0])
         self.assertNotIn("host.resources.gpu.gpu0.id", storage)
         self.assertEqual(compute["host.data.roots.appdata"], "/var/lib/site-appdata")
+        self.assertEqual(compute["host.appdata"], "/var/lib/site-appdata")
+        self.assertEqual(storage["host.appdata"], "/appdata")
         self.assertEqual(
             render("${host.data.roots.appdata}/caddy", compute),
             "/var/lib/site-appdata/caddy",
@@ -203,6 +205,8 @@ class TestExample(unittest.TestCase):
     def test_caddy_and_homepage(self) -> None:
         caddy = generate_caddyfile(self.desired)
         self.assertIn("https://authelia.example.lan", caddy)
+        self.assertIn("handle /pki/local-root.crt", caddy)
+        self.assertIn("root * /data/caddy/pki/authorities/local", caddy)
         self.assertIn("https://opencloud.example.lan", caddy)
         self.assertIn("https://homepage.example.lan", caddy)
         self.assertIn("https://dns.example.lan", caddy)
@@ -865,6 +869,18 @@ container:
         self.assertFalse(delta["sections"]["nfs"])
         self.assertFalse(delta["sections"]["admin_gui"])
 
+    def test_storage_role_change_reruns_storage(self) -> None:
+        applied = fingerprints(self.desired)
+        role = ROOT / "ansible" / "roles" / "storage" / "tasks" / "main.yml"
+        original = role.read_bytes()
+        try:
+            role.write_bytes(original + b"\n")
+            delta = set_delta(self.desired, applied)
+            self.assertTrue(delta["sections"]["storage"])
+            self.assertFalse(delta["sections"]["admin_gui"])
+        finally:
+            role.write_bytes(original)
+
     def test_cockpit_role_change_reruns_admin_gui(self) -> None:
         applied = fingerprints(self.desired)
         role = ROOT / "ansible" / "roles" / "cockpit" / "tasks" / "main.yml"
@@ -917,11 +933,26 @@ container:
         office = render_at(both, "collabora")
         self.assertIn("Environment=aliasgroup1=https://opencloud.example.lan", office)
         self.assertIn("frame_ancestors=opencloud.example.lan", office)
-        self.assertIn("Environment=CADDY_CA_URL=https://authelia.example.lan/pki/local-root.crt", office)
+        self.assertIn("lok_allow.host[14]=opencloud.example.lan", office)
+        self.assertIn("ssl.termination=true", office)
+        self.assertNotIn("ssl.ssl_termination", office)
+        self.assertIn("ssl.ssl_verification=false", office)
+        self.assertNotIn("CADDY_CA_URL", office)
+        self.assertNotIn("Entrypoint=", office)
+        self.assertIn("AddHost=opencloud.example.lan:169.254.1.2", office)
+        self.assertIn('Environment=extra_params="--o:ssl.enable=false', office)
+        self.assertIn("Environment=OC_URL=https://opencloud.example.lan", cloud)
+        self.assertIn("Environment=IDP_DOMAIN=authelia.example.lan", cloud)
+        self.assertIn("AddHost=authelia.example.lan:169.254.1.2", cloud)
+        self.assertIn("AddHost=office.example.lan:169.254.1.2", cloud)
+        self.assertNotIn("AddHost=office.example.lan:10.0.0.10", cloud)
         solo = load_desired(EXAMPLE)
         del solo["site"]["hosts"][0]["operations"]["workload"]["services"]["opencloud"]
         solo["site"]["hosts"][0]["operations"]["workload"]["services"]["collabora"] = None
-        self.assertNotIn("aliasgroup1", render_at(solo, "collabora"))
+        solo_office = render_at(solo, "collabora")
+        self.assertNotIn("aliasgroup1", solo_office)
+        self.assertIn("ssl.enable=false", solo_office)
+        self.assertNotIn("frame_ancestors", solo_office)
 
         out = Path(tempfile.mkdtemp()) / "opencloud"
         shutil.copytree(ROOT / "components" / "opencloud", out)
@@ -930,19 +961,66 @@ container:
         routed = (out / "proxy.yaml").read_text(encoding="utf-8")
         self.assertIn("backend: http://radicale:5232", routed)
         self.assertFalse((out / "radicale-policy.yaml").exists())
+        same_rad = render_at(both, "radicale")
+        self.assertIn("PublishPort=127.0.0.1:5232:5232", same_rad)
+        self.assertNotIn("PublishPort=${host.ip}:5232:5232", same_rad)
 
         split = load_desired(EXAMPLE)
         split["site"]["hosts"][1]["operations"]["workload"]["services"]["radicale"] = None
+        split["site"]["hosts"][1]["operations"]["workload"]["services"]["collabora"] = {
+            "subdomain": {"primary": "office"}
+        }
         remote = Path(tempfile.mkdtemp()) / "opencloud"
         shutil.copytree(ROOT / "components" / "opencloud", remote)
         cloud_svc = next(item for item in all_services(split) if item["key"] == "opencloud")
         apply_placed_integrations(remote, split, cloud_svc)
+        remote_unit = (remote / "opencloud.container").read_text(encoding="utf-8")
         self.assertIn("backend: http://10.0.0.11:5232", (remote / "proxy.yaml").read_text(encoding="utf-8"))
+        self.assertIn("AddHost=office.example.lan:169.254.1.2", remote_unit)
         rad = Path(tempfile.mkdtemp()) / "radicale"
         shutil.copytree(ROOT / "components" / "radicale", rad)
         rad_svc = next(item for item in all_services(split) if item["key"] == "radicale")
         apply_placed_integrations(rad, split, rad_svc)
-        self.assertIn("PublishPort=5232:5232", (rad / "radicale.container").read_text(encoding="utf-8"))
+        rad_text = (rad / "radicale.container").read_text(encoding="utf-8")
+        self.assertIn("PublishPort=127.0.0.1:5232:5232", rad_text)
+        self.assertIn("PublishPort=${host.ip}:5232:5232", rad_text)
+        far_office = render_at(split, "collabora")
+        self.assertIn("AddHost=opencloud.example.lan:10.0.0.10", far_office)
+        self.assertNotIn("169.254.1.2", far_office)
+
+        moved = load_desired(EXAMPLE)
+        del moved["site"]["hosts"][0]["operations"]["workload"]["services"]["opencloud"]
+        moved["site"]["hosts"][1]["operations"]["workload"]["services"]["opencloud"] = {
+            "subdomain": {"primary": "cloud"}
+        }
+        moved["site"]["hosts"][0]["operations"]["workload"]["services"]["collabora"] = {
+            "subdomain": {"primary": "office"}
+        }
+        moved["site"]["hosts"][0]["operations"]["workload"]["services"]["authelia"] = {
+            "subdomain": {"primary": "auth"}
+        }
+        near_office = render_at(moved, "collabora")
+        self.assertIn("AddHost=cloud.example.lan:169.254.1.2", near_office)
+        self.assertIn("AddHost=auth.example.lan:169.254.1.2", near_office)
+        self.assertIn("aliasgroup1=https://cloud.example.lan", near_office)
+        far_cloud = render_at(moved, "opencloud")
+        self.assertIn("Environment=OC_URL=https://cloud.example.lan", far_cloud)
+        self.assertIn("Environment=IDP_DOMAIN=auth.example.lan", far_cloud)
+        self.assertIn("AddHost=auth.example.lan:10.0.0.10", far_cloud)
+        self.assertIn("AddHost=office.example.lan:10.0.0.10", far_cloud)
+        self.assertIn("Environment=COLLABORATION_WOPI_SRC=https://cloud.example.lan", far_cloud)
+        self.assertIn("PublishPort=${host.ip}:9200:9200", far_cloud)
+
+        caddy = generate_caddyfile(both)
+        self.assertIn("https://radicale.example.lan", caddy)
+        self.assertIn("import authelia_gate", caddy.split("https://radicale.example.lan {", 1)[1])
+        self.assertIn("header_up X-Remote-User {http.request.header.Remote-User}", caddy)
+        self.assertIn("reverse_proxy 127.0.0.1:5232", caddy)
+        self.assertIn("reverse_proxy 127.0.0.1:9980", caddy)
+        self.assertIn("read_timeout 3600s", caddy.split("https://office.example.lan {", 1)[1])
+        remote_caddy = generate_caddyfile(split)
+        self.assertIn("reverse_proxy 10.0.0.11:5232", remote_caddy)
+        self.assertIn("reverse_proxy 10.0.0.11:9980", remote_caddy)
 
     def test_day2_new_web_service_updates_edge_only(self) -> None:
         applied = fingerprints(self.desired)
@@ -1424,6 +1502,49 @@ container:
         self.assertEqual(target_pwm({"cpu": 61, "disks.sda": 30}, scale), 52)
         self.assertEqual(hold_pwm(67, 70, {"cpu": 67}, {"steps": steps, "sources": {"cpu": cpu}}), 70)
         self.assertEqual(hold_pwm(50, 70, {"cpu": 50}, {"steps": steps, "sources": {"cpu": cpu}}), 50)
+
+    def test_pwm_kernel_trips_move_above_idle(self) -> None:
+        import tempfile
+
+        from .pwm import park_kernel_curve
+
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            thermal = root / "thermal"
+            zone = thermal / "thermal_zone0"
+            other = thermal / "thermal_zone1"
+            cdev = thermal / "cooling_device0"
+            cdev.mkdir(parents=True)
+            (cdev / "type").write_text("pwm-fan\n")
+            zone.mkdir()
+            other.mkdir()
+            (zone / "cdev0").symlink_to(cdev, target_is_directory=True)
+            (zone / "cdev0_trip_point").write_text("1\n")
+            (zone / "trip_point_0_temp").write_text("110000\n")
+            (zone / "trip_point_0_type").write_text("critical\n")
+            (zone / "trip_point_1_temp").write_text("50000\n")
+            (zone / "trip_point_1_type").write_text("active\n")
+            (zone / "trip_point_2_temp").write_text("60000\n")
+            (zone / "trip_point_2_type").write_text("active\n")
+            (other / "trip_point_0_temp").write_text("50000\n")
+            (other / "trip_point_0_type").write_text("active\n")
+            hwmon = root / "hwmon3"
+            hwmon.mkdir()
+            (hwmon / "name").write_text("pwmfan\n")
+            pwm = hwmon / "pwm1"
+            pwm.write_text("0\n")
+
+            self.assertTrue(park_kernel_curve(thermal, pwm))
+            self.assertEqual((zone / "trip_point_0_temp").read_text().strip(), "110000")
+            self.assertEqual((zone / "trip_point_1_temp").read_text().strip(), "105000")
+            self.assertEqual((zone / "trip_point_2_temp").read_text().strip(), "105000")
+            self.assertEqual((other / "trip_point_0_temp").read_text().strip(), "50000")
+            self.assertFalse(park_kernel_curve(thermal, pwm))
+
+            (hwmon / "name").write_text("drivetemp\n")
+            (zone / "trip_point_1_temp").write_text("50000\n")
+            self.assertFalse(park_kernel_curve(thermal, pwm))
+            self.assertEqual((zone / "trip_point_1_temp").read_text().strip(), "50000")
 
     def test_pwm_scale_ceilings_must_match_steps(self) -> None:
         d = load_desired(EXAMPLE)

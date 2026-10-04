@@ -6,6 +6,7 @@ from __future__ import annotations
 
 import glob
 import json
+import re
 import shutil
 import subprocess
 import time
@@ -14,7 +15,10 @@ from typing import Any
 
 INTERVAL_S = 15
 HYSTERESIS_C = 2.0
+KERNEL_TRIP_GAP_MC = 5000
+KERNEL_POLL_S = 2
 CONFIG_PATH = Path("/etc/site/pwm.json")
+_CDEV_NAME = re.compile(r"cdev\d+$")
 
 
 def pwm_for_temp(temp_c: float, ceilings: list[float], steps: list[float]) -> int:
@@ -274,6 +278,75 @@ def apply_duty(path: Path, duty: int) -> None:
     path.write_text(f"{int(duty)}\n", encoding="utf-8")
 
 
+def _hwmon_name(pwm_path: Path) -> str:
+    try:
+        return (pwm_path.parent / "name").read_text(encoding="utf-8").strip()
+    except OSError:
+        return ""
+
+
+def _zone_drives_pwm_fan(zone: Path) -> bool:
+    for cdev in zone.glob("cdev*"):
+        if not _CDEV_NAME.fullmatch(cdev.name):
+            continue
+        try:
+            if cdev.is_dir() and (cdev / "type").read_text(encoding="utf-8").strip() == "pwm-fan":
+                return True
+        except OSError:
+            continue
+    return False
+
+
+def park_kernel_curve(thermal_root: Path, pwm_path: Path) -> bool:
+    """Move this pwm-fan's kernel trips to just under critical.
+
+    step_wise and this loop share one PWM. The kernel writes its cooling
+    level on each trip change, and level 0 is duty 0. The first active trip
+    sits on the idle CPU temperature, so the fan stops and the next start
+    is the spin-up. Active and passive trips are raised to just under the
+    zone's critical trip. Critical is left where it is. Returns whether a
+    trip was moved; the caller then waits one kernel poll and writes the
+    scale duty, because that poll parks the fan at 0 once.
+    """
+    if _hwmon_name(pwm_path) not in {"pwmfan", "pwm-fan"}:
+        return False
+    if not thermal_root.is_dir():
+        return False
+    moved = False
+    for zone in sorted(thermal_root.glob("thermal_zone*")):
+        if _zone_drives_pwm_fan(zone):
+            moved = _raise_governed_trips(zone) or moved
+    return moved
+
+
+def _raise_governed_trips(zone: Path) -> bool:
+    critical: list[int] = []
+    governed: list[tuple[Path, int]] = []
+    for temp_path in sorted(zone.glob("trip_point_*_temp")):
+        type_path = zone / temp_path.name.replace("_temp", "_type")
+        try:
+            kind = type_path.read_text(encoding="utf-8").strip()
+            temp = int(temp_path.read_text(encoding="utf-8").strip())
+        except (OSError, ValueError):
+            continue
+        if kind == "critical":
+            critical.append(temp)
+        elif kind in {"active", "passive"}:
+            governed.append((temp_path, temp))
+    if not governed:
+        return False
+    ceiling = (min(critical) - KERNEL_TRIP_GAP_MC) if critical else 105000
+    if ceiling < 1000:
+        return False
+    moved = False
+    for path, temp in governed:
+        if temp >= ceiling:
+            continue
+        path.write_text(f"{ceiling}\n", encoding="utf-8")
+        moved = True
+    return moved
+
+
 def main() -> int:
     if not CONFIG_PATH.is_file():
         print(f"site-pwm: missing {CONFIG_PATH}", flush=True)
@@ -289,12 +362,17 @@ def main() -> int:
             continue
         temps = read_temps(scale)
         duty = hold_pwm(target_pwm(temps, scale), last, temps, scale)
-        if duty != last:
-            try:
-                apply_duty(path, duty)
-            except OSError as exc:
-                print(f"site-pwm: write {path} failed: {exc}", flush=True)
-            else:
+        try:
+            # Write every pass. The kernel overwrites this pin when a trip
+            # changes, and the scale duty often stays put, so a write-on-change
+            # loop leaves the fan parked at 0.
+            if park_kernel_curve(Path("/sys/class/thermal"), path):
+                time.sleep(KERNEL_POLL_S)
+            apply_duty(path, duty)
+        except OSError as exc:
+            print(f"site-pwm: write {path} failed: {exc}", flush=True)
+        else:
+            if duty != last:
                 parts = " ".join(f"{k}={v:.0f}C" for k, v in sorted(temps.items()))
                 print(f"site-pwm: {parts} pwm={duty}", flush=True)
             last = duty

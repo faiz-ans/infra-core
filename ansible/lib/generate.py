@@ -101,6 +101,14 @@ def generate_caddyfile(desired: dict[str, Any]) -> str:
         lines += [f"https://{primary}.{domain} {{", "	tls internal"]
         if sso == "forward-auth":
             lines.append("	import authelia_gate")
+        if s["key"] == "authelia":
+            lines += [
+                "	handle /pki/local-root.crt {",
+                "		rewrite * /root.crt",
+                "		root * /data/caddy/pki/authorities/local",
+                "		file_server",
+                "	}",
+            ]
         if sso == "admin-only":
             lines += [
                 "	handle /admin* {",
@@ -108,15 +116,28 @@ def generate_caddyfile(desired: dict[str, Any]) -> str:
                 f"		reverse_proxy {upstream}:{up_port}",
                 "	}",
             ]
-        lines += [
+        proxy = [
             f"	reverse_proxy {upstream}:{up_port} {{",
             f"		header_up Host {primary}.{domain}",
             f"		header_up X-Forwarded-Host {primary}.{domain}",
             "		header_up X-Forwarded-Proto https",
-            "	}",
-            "}",
-            "",
         ]
+        if s["key"] == "radicale":
+            proxy += [
+                "		header_up -X-Remote-User",
+                "		header_up X-Remote-User {http.request.header.Remote-User}",
+            ]
+        if s["key"] == "collabora":
+            proxy += [
+                "		flush_interval -1",
+                "		transport http {",
+                "			read_timeout 3600s",
+                "			write_timeout 3600s",
+                "		}",
+            ]
+        proxy.append("	}")
+        lines += proxy
+        lines += ["}", ""]
     gui = admin_gui_host(desired)
     if gui:
         gui_cfg = admin_gui(gui.get("admin-gui"))

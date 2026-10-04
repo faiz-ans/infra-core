@@ -1,18 +1,12 @@
 ---
-description: Fix GET/SET in the repo; SSH may investigate but must not change the server
-alwaysApply: true
+description: Resolve issues in GET/SET, not on the live server; Use SSH for investigation only
+alwaysApply: false
 ---
-
 # Fix the product, not the server
 
-This is a product. A broken site is fixed by changing GET/SET, then the operator re-runs it. Do not change the server to make the symptom go away.
+This is a product. Issues are resolved by changing GET/SET, and the operator re-running them. Do not change the server to make the symptom go away.
 
-- SSH is allowed to investigate: read logs, query state, confirm what GET/SET did.
-- Do not implement the fix over SSH. No edits to host files, units, containers, directories, users, or packages, and no restarts that change how the site behaves.
-- Put the fix in the GET/SET tool (playbooks, roles, generators, catalog inputs those tools render). The next GET or SET the operator runs should produce the corrected state.
-- An explicit instruction to change the server overrides this. "Fix it" does not.
-
-```
-❌ BAD: SSH in, chown the directory, and restart the unit so the site works now.
-✅ GOOD: Change the role so the next SET creates the directory and sets ownership. Tell the operator to re-run SET.
-```
+- SSH is investigation-only: Read logs, query state, confirm what GET/SET did.
+- Never apply fixes over SSH: Do not modify host files, units, containers, directories, users, packages, or runtime state.
+- Fix the source: Update playbooks, roles, generators, or catalog inputs so the next GET/SET produces the correct state.
+- Exception: Only an explicit user instruction authorizes direct server modifications. "Fix it" is not sufficient.
