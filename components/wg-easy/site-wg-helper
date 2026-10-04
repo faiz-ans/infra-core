@@ -1,0 +1,523 @@
+#!/usr/bin/env python3
+"""Root helper for the rootless wg-easy UI.
+
+The UI connects with a structured operation. This process creates wg0,
+applies peers, and installs one fixed NAT rule. It does not run shell
+hooks from the UI config and it does not accept iptables text.
+"""
+from __future__ import annotations
+
+import base64
+import ipaddress
+import json
+import os
+import re
+import signal
+import socket
+import struct
+import subprocess
+import sys
+import tempfile
+
+MAX_FRAME = 2_000_000
+IFACE = re.compile(r"^[A-Za-z0-9_][A-Za-z0-9_-]{0,14}$")
+DEV = re.compile(r"^[A-Za-z0-9_.:-]{1,15}$")
+OPS = {"show", "up", "down", "sync"}
+DROP_KEYS = {"preup", "postup", "predown", "postdown", "dns", "table", "saveconfig", "fwmark"}
+INTERFACE_KEYS = {"address", "listenport", "privatekey", "mtu"}
+PEER_KEYS = {"publickey", "presharedkey", "allowedips", "persistentkeepalive"}
+PATH = "/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin"
+MASQ = re.compile(
+    r"^-A POSTROUTING -s (\S+) -o ([A-Za-z0-9_.:-]{1,15}) -j MASQUERADE$"
+)
+
+
+class Reject(Exception):
+    def __init__(self, message: str, code: int = 1) -> None:
+        super().__init__(message)
+        self.code = code
+
+
+def b64encode(data: bytes) -> str:
+    return base64.b64encode(data).decode("ascii")
+
+
+def response(code: int, stdout: bytes, stderr: bytes) -> dict[str, object]:
+    return {"code": code, "stdout": b64encode(stdout), "stderr": b64encode(stderr)}
+
+
+def helper_env() -> dict[str, str]:
+    env = os.environ.copy()
+    env["PATH"] = PATH
+    return env
+
+
+def tool(name: str, bins: dict[str, str] | None) -> str:
+    if bins and name in bins:
+        return bins[name]
+    if name == "iptables":
+        nft = "/usr/sbin/iptables-nft"
+        if os.path.isfile(nft) and os.access(nft, os.X_OK):
+            return nft
+    for directory in PATH.split(":"):
+        candidate = os.path.join(directory, name)
+        if os.path.isfile(candidate) and os.access(candidate, os.X_OK):
+            return candidate
+    raise Reject(f"{name} is not installed")
+
+
+def iface_name(value: object) -> str:
+    if not isinstance(value, str) or not IFACE.match(value):
+        raise Reject("rejected interface")
+    return value
+
+
+def parse_key(value: str) -> str:
+    try:
+        raw = base64.b64decode(value, validate=True)
+    except Exception as exc:
+        raise Reject("rejected key") from exc
+    if len(raw) != 32:
+        raise Reject("rejected key")
+    return value
+
+
+def parse_cidrs(value: str) -> str:
+    parts = [part.strip() for part in value.split(",") if part.strip()]
+    if not parts or len(parts) > 32:
+        raise Reject("rejected allowed ips")
+    nets: list[str] = []
+    for part in parts:
+        try:
+            nets.append(str(ipaddress.ip_network(part, strict=False)))
+        except ValueError as exc:
+            raise Reject("rejected allowed ips") from exc
+    return ", ".join(nets)
+
+
+def parse_config(text: str) -> dict[str, object]:
+    if len(text) > 256_000:
+        raise Reject("config is too large")
+    section = ""
+    iface: dict[str, str] = {}
+    peers: list[dict[str, str]] = []
+    peer: dict[str, str] | None = None
+    for raw in text.splitlines():
+        line = raw.split("#", 1)[0].strip()
+        if not line:
+            continue
+        if line.startswith("[") and line.endswith("]"):
+            name = line[1:-1].strip().lower()
+            if name == "interface":
+                section = "interface"
+                peer = None
+            elif name == "peer":
+                section = "peer"
+                peer = {}
+                peers.append(peer)
+            else:
+                raise Reject("rejected section")
+            continue
+        if "=" not in line:
+            raise Reject("rejected line")
+        key, value = line.split("=", 1)
+        key = key.strip()
+        value = value.strip()
+        low = key.lower()
+        if section == "interface":
+            if low in DROP_KEYS:
+                continue
+            if low not in INTERFACE_KEYS:
+                raise Reject("rejected interface field")
+            iface[low] = value
+        elif section == "peer" and peer is not None:
+            if low not in PEER_KEYS:
+                raise Reject("rejected peer field")
+            peer[low] = value
+        else:
+            raise Reject("rejected line")
+    parsed: dict[str, object] = {"peers": []}
+    if "privatekey" in iface:
+        parsed["private"] = parse_key(iface["privatekey"])
+    if "listenport" in iface:
+        port = int(iface["listenport"]) if iface["listenport"].isdigit() else 0
+        if not 1 <= port <= 65535:
+            raise Reject("rejected port")
+        parsed["port"] = port
+    if "mtu" in iface:
+        mtu = int(iface["mtu"]) if iface["mtu"].isdigit() else 0
+        parsed["mtu"] = 1280 if mtu == 1420 or not 1280 <= mtu <= 1500 else mtu
+    else:
+        parsed["mtu"] = 1280
+    if "address" in iface:
+        try:
+            host = ipaddress.ip_interface(iface["address"])
+        except ValueError as exc:
+            raise Reject("rejected address") from exc
+        if not isinstance(host.ip, ipaddress.IPv4Address):
+            raise Reject("rejected address")
+        parsed["address"] = str(host)
+        parsed["cidr"] = str(host.network)
+    out_peers: list[dict[str, str]] = []
+    for item in peers:
+        if "publickey" not in item:
+            raise Reject("rejected peer")
+        row = {"public": parse_key(item["publickey"])}
+        if "presharedkey" in item and item["presharedkey"]:
+            row["preshared"] = parse_key(item["presharedkey"])
+        if "allowedips" in item and item["allowedips"]:
+            row["allowed"] = parse_cidrs(item["allowedips"])
+        if "persistentkeepalive" in item and item["persistentkeepalive"]:
+            keep = item["persistentkeepalive"]
+            if not keep.isdigit() or not 0 <= int(keep) <= 65535:
+                raise Reject("rejected keepalive")
+            row["keepalive"] = str(int(keep))
+        out_peers.append(row)
+    parsed["peers"] = out_peers
+    return parsed
+
+
+def render_setconf(parsed: dict[str, object]) -> str:
+    if "private" not in parsed or "port" not in parsed:
+        raise Reject("rejected interface")
+    lines = [
+        "[Interface]",
+        f"PrivateKey = {parsed['private']}",
+        f"ListenPort = {parsed['port']}",
+        "",
+    ]
+    for peer in parsed["peers"]:
+        lines.append("[Peer]")
+        lines.append(f"PublicKey = {peer['public']}")
+        if "preshared" in peer:
+            lines.append(f"PresharedKey = {peer['preshared']}")
+        if "allowed" in peer:
+            lines.append(f"AllowedIPs = {peer['allowed']}")
+        if "keepalive" in peer:
+            lines.append(f"PersistentKeepalive = {peer['keepalive']}")
+        lines.append("")
+    return "\n".join(lines)
+
+
+def read_conf(conf_dir: str, iface: str) -> str:
+    root = os.path.realpath(conf_dir)
+    path = os.path.realpath(os.path.join(root, iface + ".conf"))
+    if os.path.dirname(path) != root:
+        raise Reject("rejected config path")
+    try:
+        with open(path, encoding="utf-8") as handle:
+            return handle.read()
+    except OSError as exc:
+        raise Reject("config is missing") from exc
+
+
+def egress_from_route(text: str) -> str:
+    # `ip route get 1.1.1.1` is the uplink the Docker-era NAT used.
+    for line in text.splitlines():
+        dev = re.search(r"\bdev\s+(\S+)", line)
+        if not dev:
+            continue
+        name = dev.group(1)
+        if DEV.match(name) and name != "lo" and not name.startswith("wg"):
+            return name
+    raise Reject("no egress device")
+
+
+def loose_rp_filter(iface: str, root: str = "/proc/sys/net/ipv4/conf") -> None:
+    path = os.path.join(root, iface, "rp_filter")
+    try:
+        fd = os.open(path, os.O_WRONLY)
+    except OSError:
+        return
+    try:
+        os.write(fd, b"2\n")
+    finally:
+        os.close(fd)
+
+
+def _drop_rule(runner, iptables: str, rule: list[str]) -> None:
+    for _ in range(8):
+        code, _out, _err = _run(runner, [iptables, "-D", *rule])
+        if code != 0:
+            return
+
+
+def run_argv(argv: list[str], stdin: bytes, timeout: int = 20) -> tuple[int, bytes, bytes]:
+    proc = subprocess.Popen(
+        argv,
+        stdin=subprocess.PIPE,
+        stdout=subprocess.PIPE,
+        stderr=subprocess.PIPE,
+        env=helper_env(),
+        start_new_session=True,
+    )
+    try:
+        out, err = proc.communicate(stdin, timeout=timeout)
+    except subprocess.TimeoutExpired:
+        os.killpg(proc.pid, signal.SIGKILL)
+        proc.communicate()
+        return 124, b"", b"timeout\n"
+    return proc.returncode or 0, out, err
+
+
+def _run(runner, argv: list[str], stdin: bytes = b"") -> tuple[int, bytes, bytes]:
+    return runner(argv, stdin)
+
+
+def _must(runner, argv: list[str]) -> bytes:
+    code, out, err = _run(runner, argv)
+    if code != 0:
+        raise Reject(err.decode("utf-8", "replace") or f"exit {code}")
+    return out
+
+
+def mss_specs(iface: str, mtu: int) -> tuple[list[str], list[str]]:
+    mss = str(mtu - 40)
+    flags = ["-p", "tcp", "--tcp-flags", "SYN,RST", "SYN", "-j", "TCPMSS", "--set-mss", mss]
+    return (
+        ["FORWARD", "-o", iface, *flags],
+        ["FORWARD", "-i", iface, *flags],
+    )
+
+
+def nat_sync(runner, iptables: str, cidr: str, egress: str, iface: str, port: int, mtu: int) -> None:
+    listed = _must(runner, [iptables, "-t", "nat", "-S", "POSTROUTING"])
+    for line in listed.decode("utf-8", "replace").splitlines():
+        match = MASQ.match(line.strip())
+        if not match or match.group(1) != cidr:
+            continue
+        _run(
+            runner,
+            [iptables, "-t", "nat", "-D", "POSTROUTING", "-s", cidr, "-o", match.group(2), "-j", "MASQUERADE"],
+        )
+    _must(
+        runner,
+        [iptables, "-t", "nat", "-A", "POSTROUTING", "-s", cidr, "-o", egress, "-j", "MASQUERADE"],
+    )
+    listen = ["INPUT", "-p", "udp", "-m", "udp", "--dport", str(port), "-j", "ACCEPT"]
+    code, _out, _err = _run(runner, [iptables, "-C", *listen])
+    if code != 0:
+        _must(runner, [iptables, "-A", *listen])
+    # Insert, do not append. A later DROP (Docker did this) never reaches an -A rule,
+    # so forwarded internet dies while traffic to this host still works.
+    for rule in (
+        ["FORWARD", "-i", iface, "-j", "ACCEPT"],
+        ["FORWARD", "-o", iface, "-j", "ACCEPT"],
+    ):
+        _drop_rule(runner, iptables, rule)
+        _must(runner, [iptables, "-I", rule[0], "1", *rule[1:]])
+    # wg0 is 1280. A client SYN that leaves via eth1 advertises a 1500-byte MSS,
+    # and the internet reply is then dropped on transmit into the tunnel.
+    for spec in mss_specs(iface, mtu):
+        code, _out, _err = _run(runner, [iptables, "-t", "mangle", "-C", *spec])
+        if code != 0:
+            _must(runner, [iptables, "-t", "mangle", "-A", *spec])
+
+
+def nat_clear(runner, iptables: str, cidr: str, iface: str, port: int, mtu: int) -> None:
+    listed = _must(runner, [iptables, "-t", "nat", "-S", "POSTROUTING"])
+    for line in listed.decode("utf-8", "replace").splitlines():
+        match = MASQ.match(line.strip())
+        if not match or match.group(1) != cidr:
+            continue
+        _run(
+            runner,
+            [iptables, "-t", "nat", "-D", "POSTROUTING", "-s", cidr, "-o", match.group(2), "-j", "MASQUERADE"],
+        )
+    for rule in (
+        ["INPUT", "-p", "udp", "-m", "udp", "--dport", str(port), "-j", "ACCEPT"],
+        ["FORWARD", "-i", iface, "-j", "ACCEPT"],
+        ["FORWARD", "-o", iface, "-j", "ACCEPT"],
+    ):
+        _run(runner, [iptables, "-D", *rule])
+    for spec in mss_specs(iface, mtu):
+        _run(runner, [iptables, "-t", "mangle", "-D", *spec])
+
+
+def apply_up(parsed: dict[str, object], iface: str, runner, bins: dict[str, str] | None) -> None:
+    if "address" not in parsed or "cidr" not in parsed:
+        raise Reject("rejected address")
+    ip = tool("ip", bins)
+    wg = tool("wg", bins)
+    iptables = tool("iptables", bins)
+    route = _must(runner, [ip, "-4", "route", "get", "1.1.1.1"])
+    egress = egress_from_route(route.decode("utf-8", "replace"))
+    body = render_setconf(parsed)
+    fd, path = tempfile.mkstemp(prefix="wg-helper-", dir="/tmp")
+    try:
+        os.write(fd, body.encode())
+        os.close(fd)
+        fd = -1
+        os.chmod(path, 0o600)
+        shown, _out, _err = _run(runner, [ip, "link", "show", "dev", iface])
+        if shown == 0:
+            _must(runner, [ip, "link", "del", "dev", iface])
+        _must(runner, [ip, "link", "add", "dev", iface, "type", "wireguard"])
+        _must(runner, [wg, "setconf", iface, path])
+        _must(runner, [ip, "addr", "replace", str(parsed["address"]), "dev", iface])
+        _must(runner, [ip, "link", "set", "dev", iface, "mtu", str(parsed["mtu"]), "up"])
+        loose_rp_filter(iface)
+        nat_sync(runner, iptables, str(parsed["cidr"]), egress, iface, int(parsed["port"]), int(parsed["mtu"]))
+    finally:
+        if fd >= 0:
+            os.close(fd)
+        try:
+            os.unlink(path)
+        except OSError:
+            pass
+
+
+def apply_down(parsed: dict[str, object], iface: str, runner, bins: dict[str, str] | None) -> None:
+    ip = tool("ip", bins)
+    iptables = tool("iptables", bins)
+    if "cidr" in parsed and "port" in parsed:
+        nat_clear(runner, iptables, str(parsed["cidr"]), iface, int(parsed["port"]), int(parsed["mtu"]))
+    _run(runner, [ip, "link", "del", "dev", iface])
+
+
+def apply_sync(parsed: dict[str, object], iface: str, runner, bins: dict[str, str] | None) -> None:
+    wg = tool("wg", bins)
+    body = render_setconf(parsed)
+    fd, path = tempfile.mkstemp(prefix="wg-helper-", dir="/tmp")
+    try:
+        os.write(fd, body.encode())
+        os.close(fd)
+        fd = -1
+        os.chmod(path, 0o600)
+        _must(runner, [wg, "syncconf", iface, path])
+    finally:
+        if fd >= 0:
+            os.close(fd)
+        try:
+            os.unlink(path)
+        except OSError:
+            pass
+
+
+def evaluate(
+    message: dict,
+    conf_dir: str,
+    runner=run_argv,
+    bins: dict[str, str] | None = None,
+) -> dict[str, object]:
+    try:
+        if not isinstance(message, dict) or set(message) - {"op", "iface", "config"}:
+            raise Reject("rejected message", 127)
+        op = message.get("op")
+        if op not in OPS:
+            raise Reject("rejected operation", 127)
+        iface = iface_name(message.get("iface"))
+        if op == "show":
+            if "config" in message:
+                raise Reject("rejected message", 127)
+            out = _must(runner, [tool("wg", bins), "show", iface, "dump"])
+            return response(0, out, b"")
+        if op == "sync":
+            if not isinstance(message.get("config"), str):
+                raise Reject("rejected config")
+            apply_sync(parse_config(message["config"]), iface, runner, bins)
+            return response(0, b"", b"")
+        if "config" in message:
+            raise Reject("rejected message", 127)
+        parsed = parse_config(read_conf(conf_dir, iface))
+        if op == "up":
+            apply_up(parsed, iface, runner, bins)
+        else:
+            apply_down(parsed, iface, runner, bins)
+        return response(0, b"", b"")
+    except Reject as exc:
+        return response(exc.code, b"", exc.args[0].encode())
+
+
+def read_exact(conn: socket.socket, count: int) -> bytes:
+    buf = b""
+    while len(buf) < count:
+        chunk = conn.recv(count - len(buf))
+        if not chunk:
+            raise EOFError
+        buf += chunk
+    return buf
+
+
+def read_frame(conn: socket.socket) -> bytes:
+    raw = read_exact(conn, 4)
+    (size,) = struct.unpack(">I", raw)
+    if size > MAX_FRAME:
+        raise Reject("frame is too large")
+    return read_exact(conn, size)
+
+
+def write_frame(conn: socket.socket, payload: dict[str, object]) -> None:
+    body = json.dumps(payload).encode()
+    conn.sendall(struct.pack(">I", len(body)) + body)
+
+
+def peer_uid(conn: socket.socket) -> int:
+    cred = conn.getsockopt(socket.SOL_SOCKET, 17, struct.calcsize("3i"))
+    _pid, uid, _gid = struct.unpack("3i", cred)
+    return uid
+
+
+def handle_client(conn: socket.socket, peer: int, allowed_uid: int, conf_dir: str) -> None:
+    try:
+        if peer not in {0, allowed_uid}:
+            write_frame(conn, response(126, b"", b"rejected\n"))
+            print(f"site-wg-helper: rejected uid {peer}", file=sys.stderr, flush=True)
+            return
+        message = json.loads(read_frame(conn))
+        if not isinstance(message, dict):
+            raise Reject("rejected message", 127)
+        result = evaluate(message, conf_dir)
+        print(
+            f"site-wg-helper: {message.get('op')} {message.get('iface')} -> {result['code']}",
+            file=sys.stderr,
+            flush=True,
+        )
+        write_frame(conn, result)
+    except Exception as exc:
+        try:
+            write_frame(conn, response(1, b"", str(exc).encode()))
+        except Exception:
+            pass
+    finally:
+        conn.close()
+
+
+def serve(path: str, allowed_uid: int, conf_dir: str) -> None:
+    if os.path.exists(path):
+        os.unlink(path)
+    server = socket.socket(socket.AF_UNIX, socket.SOCK_STREAM)
+    server.bind(path)
+    os.chmod(path, 0o666)
+    server.listen(16)
+    print(f"site-wg-helper: listening on {path} for uid {allowed_uid}", file=sys.stderr, flush=True)
+    while True:
+        conn, _addr = server.accept()
+        try:
+            uid = peer_uid(conn)
+        except OSError:
+            conn.close()
+            continue
+        handle_client(conn, uid, allowed_uid, conf_dir)
+
+
+def main() -> int:
+    path = os.environ.get("WG_HELPER_SOCK") or ""
+    conf_dir = os.environ.get("WG_HELPER_CONF") or ""
+    allowed = os.environ.get("WG_HELPER_UID") or ""
+    if not path or not conf_dir or not allowed.isdigit():
+        print("site-wg-helper: WG_HELPER_SOCK, WG_HELPER_CONF, and WG_HELPER_UID are required", file=sys.stderr)
+        return 1
+    if not os.path.isdir(conf_dir):
+        print(f"site-wg-helper: {conf_dir} is not a directory", file=sys.stderr)
+        return 1
+    try:
+        serve(path, int(allowed), conf_dir)
+    finally:
+        if os.path.exists(path):
+            os.unlink(path)
+    return 0
+
+
+if __name__ == "__main__":
+    sys.exit(main())

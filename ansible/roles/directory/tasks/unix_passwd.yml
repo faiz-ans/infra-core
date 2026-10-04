@@ -1,0 +1,35 @@
+---
+# Disjoint unix accounts. LDAP users authenticate through SSSD instead.
+- name: Render unix passwords
+  command:
+    argv:
+      - python3
+      - "{{ playbook_dir }}/../scripts/render_directory.py"
+      - "{{ desired_path }}"
+      - "{{ secrets_file }}"
+      - "{{ site_repo }}/ansible/.tmp/directory"
+      - "{{ site_host_name }}"
+      - --accounts-only
+  delegate_to: localhost
+  become: false
+  changed_when: false
+
+- name: Read account passwords
+  set_fact:
+    site_accounts: "{{ lookup('file', site_repo + '/ansible/.tmp/directory/' + site_host_name + '/accounts.json') | from_json }}"
+  no_log: true
+
+- name: Unix password matches the site password
+  shell: chpasswd
+  args:
+    stdin: "{{ item.name }}:{{ item.password }}\n"
+  loop: "{{ site_accounts.users }}"
+  no_log: true
+  changed_when: true
+
+- name: Remove rendered passwords
+  file:
+    path: "{{ site_repo }}/ansible/.tmp/directory/{{ site_host_name }}/accounts.json"
+    state: absent
+  delegate_to: localhost
+  become: false

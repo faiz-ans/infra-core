@@ -2,6 +2,7 @@
 from __future__ import annotations
 
 import copy
+import re
 from pathlib import Path
 from typing import Any
 
@@ -46,6 +47,67 @@ def _merge_named(base_items: list[Any], overlay_items: list[Any]) -> list[Any]:
         if isinstance(copied, dict) and copied.get("name"):
             index[str(copied["name"])] = copied
     return result
+
+
+_CONTAINER_KEYS = {
+    "image",
+    "pull",
+    "environment",
+    "volume",
+    "addDevice",
+    "podmanArgs",
+    "publishPort",
+    "secret",
+}
+
+
+def apply_container_overlay(text: str, overlay: dict[str, Any] | None) -> str:
+    """Merge a site.yaml container: delta into one Quadlet .container unit."""
+    if not overlay:
+        return text
+    unknown = set(overlay) - _CONTAINER_KEYS
+    if unknown:
+        raise ValueError(f"unknown container overlay keys: {', '.join(sorted(unknown))}")
+    if overlay.get("image"):
+        text = re.sub(r"^Image=.*$", f"Image={overlay['image']}", text, count=1, flags=re.M)
+    if overlay.get("pull"):
+        text = _upsert_line(text, "Pull=", f"Pull={overlay['pull']}")
+    environment = overlay.get("environment") or {}
+    if not isinstance(environment, dict):
+        raise ValueError("container.environment must be a mapping")
+    for name, value in environment.items():
+        text = _upsert_line(text, f"Environment={name}=", f"Environment={name}={value}")
+    for volume in overlay.get("volume") or []:
+        text = _ensure_line(text, f"Volume={volume}")
+    for device in overlay.get("addDevice") or []:
+        text = _ensure_line(text, f"AddDevice={device}")
+    for arg in overlay.get("podmanArgs") or []:
+        text = _ensure_line(text, f"PodmanArgs={arg}")
+    for port in overlay.get("publishPort") or []:
+        text = _ensure_line(text, f"PublishPort={port}")
+    for secret in overlay.get("secret") or []:
+        text = _ensure_line(text, f"Secret={secret}")
+    return text
+
+
+def _ensure_line(text: str, line: str) -> str:
+    if line in text.splitlines():
+        return text
+    return _insert_before_service(text, line)
+
+
+def _upsert_line(text: str, prefix: str, line: str) -> str:
+    pattern = re.compile(rf"^.*{re.escape(prefix)}.*$", re.M)
+    if pattern.search(text):
+        return pattern.sub(line, text, count=1)
+    return _insert_before_service(text, line)
+
+
+def _insert_before_service(text: str, line: str) -> str:
+    marker = "\n[Service]\n"
+    if marker not in text:
+        return text.rstrip() + "\n" + line + "\n"
+    return text.replace(marker, "\n" + line + marker, 1)
 
 
 def apply_pod_overlay(path: Path, overlay: dict[str, Any]) -> None:

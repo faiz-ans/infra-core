@@ -25,7 +25,7 @@
             "access": {
               "type": "object",
               "properties": {
-                "filesystem": { "type": "string", "enum": ["smb"] },
+                "filesystem": { "type": "string", "enum": ["none", "smb"] },
                 "web": { "type": "string", "enum": ["none", "opencloud", "nextcloud"] }
               },
               "additionalProperties": false
@@ -130,9 +130,34 @@
       "properties": {
         "name": { "type": "string" },
         "admin-gui": {
-          "type": "boolean",
+          "oneOf": [
+            {
+              "type": "boolean",
+              "description": "Install Cockpit with host label cockpit.<domain>."
+            },
+            {
+              "type": "object",
+              "required": ["enabled"],
+              "additionalProperties": false,
+              "properties": {
+                "enabled": {
+                  "type": "boolean",
+                  "description": "Install Cockpit on this host."
+                },
+                "primary": {
+                  "type": "string",
+                  "description": "Public host label (default cockpit). With generate-upstream, Caddy serves https://<primary>.<domain>."
+                },
+                "aliases": {
+                  "type": "array",
+                  "items": { "type": "string" },
+                  "description": "Extra host labels that redirect to primary."
+                }
+              }
+            }
+          ],
           "default": false,
-          "description": "Install Cockpit on this host. Optional. A Cockpit on one host reaches the others over SSH."
+          "description": "Host Cockpit admin GUI. Boolean true uses cockpit.<domain>. Object form sets primary/aliases for auto-generated upstream."
         },
         "mac": { "type": "string" },
         "ip": { "type": "string" },
@@ -342,7 +367,20 @@
               "type": "object",
               "properties": {
                 "user": { "type": "string" },
-                "services": { "type": "object" }
+                "services": {
+                  "type": "object",
+                  "description": "Component key to one instance, a list of instances, or null for a single default instance.",
+                  "additionalProperties": {
+                    "oneOf": [
+                      { "type": "null" },
+                      { "$ref": "#/$defs/serviceInstance" },
+                      {
+                        "type": "array",
+                        "items": { "$ref": "#/$defs/serviceInstance" }
+                      }
+                    ]
+                  }
+                }
               },
               "additionalProperties": false
             }
@@ -351,6 +389,43 @@
         }
       },
       "additionalProperties": false
+    }
+  },
+  "$defs": {
+    "serviceInstance": {
+      "type": "object",
+      "properties": {
+        "name": { "type": "string" },
+        "subdomain": {
+          "type": "object",
+          "properties": {
+            "enabled": { "type": "boolean" },
+            "primary": { "type": "string" },
+            "aliases": { "type": "array", "items": { "type": "string" } }
+          },
+          "additionalProperties": false
+        },
+        "pod": {
+          "type": "object",
+          "description": "Delta merged into the component pod.yaml. Named lists merge by name."
+        },
+        "container": {
+          "type": "object",
+          "description": "Delta merged into the component .container. Catalog lines stay; these replace or append.",
+          "properties": {
+            "image": { "type": "string" },
+            "pull": { "type": "string", "enum": ["always", "missing", "never", "newer"] },
+            "environment": { "type": "object", "additionalProperties": { "type": "string" } },
+            "volume": { "type": "array", "items": { "type": "string" }, "description": "Quadlet Volume= values, host:container[:ro]" },
+            "addDevice": { "type": "array", "items": { "type": "string" }, "description": "Quadlet AddDevice= values, same form as podman --device" },
+            "podmanArgs": { "type": "array", "items": { "type": "string" } },
+            "publishPort": { "type": "array", "items": { "type": "string" } },
+            "secret": { "type": "array", "items": { "type": "string" } }
+          },
+          "additionalProperties": false
+        }
+      },
+      "additionalProperties": true
     }
   }
 }

@@ -1,0 +1,16 @@
+[Unit]
+Description=it-tools
+
+[Container]
+Image=ghcr.io/corentinth/it-tools:latest
+ContainerName=it-tools
+Network=site
+PublishPort=127.0.0.1:8087:80
+Pull=always
+Environment=TZ=${site.env.timezone}
+
+[Service]
+Restart=on-failure
+
+[Install]
+WantedBy=default.target

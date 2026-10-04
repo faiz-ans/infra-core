@@ -112,6 +112,20 @@ def service_subdomain(key: str, custom: Any) -> dict[str, Any]:
     return {"primary": primary, "aliases": aliases}
 
 
+def admin_gui(value: Any) -> dict[str, Any]:
+    """Normalize hosts[].admin-gui. Boolean true keeps the cockpit host label."""
+    if value is True:
+        return {"enabled": True, "primary": "cockpit", "aliases": []}
+    if isinstance(value, dict):
+        enabled = value.get("enabled")
+        return {
+            "enabled": bool(enabled if enabled is not None else True),
+            "primary": str(value.get("primary") or "cockpit"),
+            "aliases": [str(alias) for alias in (value.get("aliases") or [])],
+        }
+    return {"enabled": False, "primary": "cockpit", "aliases": []}
+
+
 def listed_services(desired: dict[str, Any]) -> list[dict[str, Any]]:
     """Flatten hosts[].operations.workload.services into instance records."""
     pack = load_pack().get("services") or {}

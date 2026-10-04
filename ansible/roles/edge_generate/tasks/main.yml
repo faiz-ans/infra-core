@@ -6,3 +6,4 @@
       - "{{ playbook_dir }}/../scripts/generate_edge.py"
       - "{{ desired_path }}"
       - "{{ site_repo }}/ansible/.tmp/edge"
+      - "{{ secrets_file }}"

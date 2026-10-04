@@ -14,7 +14,6 @@ Environment=FTLCONF_webserver_port=8088
 Environment=FTLCONF_dns_hosts=${site.networking.ingress.host.ip} ${site.networking.ingress.host.name}
 Environment=FTLCONF_misc_dnsmasq_lines=local-ttl=60;local=/${site.env.domain}/;address=/${site.env.domain}/${site.networking.ingress.host.ip};host-record=${site.networking.ingress.host.name},${site.networking.ingress.host.ip}
 Volume=${host.data.roots.appdata}/pi-hole:/etc/pihole
-AddCapability=NET_ADMIN
 
 [Service]
 Restart=on-failure

@@ -350,6 +350,47 @@ def reference_installs(desired: dict[str, Any], data: dict[str, Any], components
     return items
 
 
+def mark_root_hosts(
+    desired: dict[str, Any],
+    data: dict[str, Any],
+    components: Path,
+    items: list[dict[str, Any]],
+) -> None:
+    """A rootful unit reads Podman secrets from root's store, not the workload user's."""
+    from .topology import all_services
+
+    site, host_secrets = split_secrets(data)
+    by_slot = {(item.get("host") or "", item["name"]): item for item in items}
+    for item in items:
+        item.setdefault("root_hosts", [])
+    for svc in all_services(desired):
+        if (svc.get("privilege") or "rootless") != "rootful":
+            continue
+        host = str(svc.get("host") or "")
+        service = str(svc.get("key") or "")
+        comp = components / str(svc.get("component") or service)
+        if not host or not comp.is_dir():
+            continue
+        for path in comp.rglob("*"):
+            if not path.is_file() or path.name == "MANIFEST.toml":
+                continue
+            try:
+                text = path.read_text(encoding="utf-8")
+            except UnicodeDecodeError:
+                continue
+            for match in re.finditer(r"\$\{(secrets\.[^}]+)\}", text):
+                resolved = resolve_secret(
+                    match.group(1), service=service, host=host, site=site, hosts=host_secrets
+                )
+                for slot in (("", resolved.podman_name), (host, resolved.podman_name)):
+                    item = by_slot.get(slot)
+                    if item is None:
+                        continue
+                    hosts = item.setdefault("root_hosts", [])
+                    if host not in hosts:
+                        hosts.append(host)
+
+
 def _catalog_has(items: list[dict[str, str]], install_host: str, name: str, value: str) -> bool:
     for item in items:
         if item["name"] != name or item["host"] not in ("", install_host):

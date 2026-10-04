@@ -1,7 +1,7 @@
 ## MODIFIED Requirements
 
 ### Requirement: Single Caddy on Core
-When `networking.ingress` is `caddy` and exactly one workload host lists Caddy, that instance SHALL run rootless in the host network namespace on unprivileged ports (for example 8080/8443). A privileged host redirect SHALL map LAN and tunnel `:80`/`:443` to those ports without hiding client source IPs. Caddy SHALL terminate the site domain and reverse-proxy placed services. Caddy MUST NOT be rootful. OpenMediaVault nginx MUST NOT be present.
+When `networking.ingress` is `caddy` and exactly one workload host lists Caddy, that instance SHALL run rootless in the host network namespace on unprivileged ports (for example 8080/8443). A privileged host redirect SHALL map `:80`/`:443` to those ports only when the destination is an address of this host, without hiding client source IPs. Packets forwarded to any other destination MUST NOT be redirected. Caddy SHALL terminate the site domain and reverse-proxy placed services. Caddy MUST NOT be rootful. OpenMediaVault nginx MUST NOT be present.
 
 #### Scenario: Caddy is rootless and sees the client
 - **WHEN** a LAN client opens HTTPS on `:443` after lan-bind
@@ -15,14 +15,18 @@ When desired lists more than one Pi-hole, each SHALL run rootless host-net on an
 - **THEN** both answer `*.<domain>` as the ingress host IP
 
 ### Requirement: WireGuard data plane rootful; client UI rootless
-When `networking.tunnel.engine` is `wireguard` and placed, the data plane SHALL be rootful and the UI rootless. Factory MTU 1420 SHALL be replaced with 1280 before peers are issued. The client endpoint SHALL be the desired tunnel endpoint hostname.
+When `networking.tunnel.engine` is `wireguard` and placed, the data plane SHALL be a root helper that accepts structured `show`, `up`, `down`, and `sync` operations. It SHALL build `wg0` and its NAT rules itself and MUST NOT execute UI-supplied iptables text or config hooks. Key generation SHALL stay in the UI. The wg-easy UI SHALL stay rootless in the host network namespace. SET SHALL persist `net.ipv4.ip_forward=1` on that host. Factory MTU 1420 SHALL be replaced with 1280 on the interface, the client default, and existing factory clients before peers are issued. A peer's packets to a destination that is not this host SHALL be forwarded and NATed. Placing WireGuard SHALL re-apply the host port redirects. The client endpoint SHALL be the desired tunnel endpoint hostname.
 
 #### Scenario: Remote client
 - **WHEN** a peer is connected to the site WireGuard service
 - **THEN** that peer can resolve and use `*.<domain>` through Caddy
 
+#### Scenario: Clients page can read the interface
+- **WHEN** an operator opens the clients page
+- **THEN** the rootless UI hands `wg show` to the root helper, which reads the host `wg0`
+
 ### Requirement: Lan-bind only after Pi-hole and Caddy listen
-SET SHALL install lan-bind on the ingress host disabled, then enable it only after the official high ports listen. Redirects SHALL include PREROUTING for LAN/tunnel and OUTPUT `:443` to Caddy’s high port for `127.0.0.1` and the host LAN IP so `site` containers can fetch `https://auth.<domain>`. SET MUST NOT OUTPUT-redirect `:53`.
+SET SHALL install lan-bind on the ingress host disabled, then enable it only after the official high ports listen. PREROUTING redirects SHALL match only a destination address of this host, for clients on the LAN or on the tunnel. OUTPUT `:443` SHALL redirect `127.0.0.1` and the host LAN IP to Caddy’s high port so `site` containers can fetch `https://auth.<domain>`. SET MUST NOT OUTPUT-redirect `:53`.
 
 #### Scenario: Enable after listeners
 - **WHEN** Pi-hole and Caddy high ports listen

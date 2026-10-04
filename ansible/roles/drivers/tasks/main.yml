@@ -4,13 +4,60 @@
   set_fact:
     site_this_host: "{{ site_plan.hosts | selectattr('name', 'equalto', site_host_name) | list | first }}"
 
-- name: NVIDIA packages when a GPU is declared
-  apt:
-    name:
-      - nvidia-container-toolkit
-    state: present
+- name: NVIDIA CDI when a GPU is declared
   when: (site_this_host.resources.gpu | default([])) | length > 0
-  failed_when: false
+  block:
+    - name: Packages for the NVIDIA apt source
+      apt:
+        name:
+          - curl
+          - gnupg
+        state: present
+
+    - name: NVIDIA container toolkit signing key
+      shell: |
+        set -euo pipefail
+        tmp=$(mktemp)
+        curl -fsSL https://nvidia.github.io/libnvidia-container/gpgkey | gpg --batch --dearmor > "$tmp"
+        install -m 0644 "$tmp" /usr/share/keyrings/nvidia-container-toolkit-keyring.gpg
+        rm -f "$tmp"
+      args:
+        executable: /bin/bash
+      changed_when: false
+
+    - name: NVIDIA container toolkit apt source
+      copy:
+        dest: /etc/apt/sources.list.d/nvidia-container-toolkit.list
+        mode: "0644"
+        content: |
+          deb [signed-by=/usr/share/keyrings/nvidia-container-toolkit-keyring.gpg] https://nvidia.github.io/libnvidia-container/stable/deb/$(ARCH) /
+
+    - name: NVIDIA container toolkit
+      apt:
+        name: nvidia-container-toolkit
+        state: present
+        update_cache: true
+
+    - name: CDI spec directory
+      file:
+        path: /etc/cdi
+        state: directory
+        mode: "0755"
+
+    - name: Generate NVIDIA CDI spec
+      command: nvidia-ctk cdi generate --output=/etc/cdi/nvidia.yaml
+      changed_when: true
+
+    - name: CDI spec is readable by rootless Podman
+      file:
+        path: /etc/cdi/nvidia.yaml
+        mode: "0644"
+
+    - name: CDI spec resolves nvidia.com/gpu=all
+      command: nvidia-ctk cdi list
+      register: site_cdi
+      changed_when: false
+      failed_when: "'nvidia.com/gpu=all' not in site_cdi.stdout"
 
 - name: NUT when a USB device is labeled UPS (not PeaNUT)
   apt:

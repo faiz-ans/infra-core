@@ -112,13 +112,11 @@
   file:
     path: "{{ site_plan.roots.groups }}/all"
     state: directory
-    mode: "0755"
   when: site_plan.owners.groups.host | default('') == site_host_name
 
 - name: Service-specific dirs only when planned
   file:
     path: "{{ item.path }}"
     state: directory
-    mode: "2775"
   loop: "{{ site_plan.service_dirs }}"
   when: item.host == site_host_name

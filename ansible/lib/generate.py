@@ -3,8 +3,9 @@ from __future__ import annotations
 
 from typing import Any
 
+from .directory import authelia_password_hash, file_backend_needs_passwords, ldap_base_dn, sso_groups
 from .resolve import LOOPBACK
-from .topology import all_services, env, hosts, ingress_host, policy, site_of
+from .topology import admin_gui, all_services, env, hosts, ingress_host, policy, site_of
 
 
 def domain_of(desired: dict[str, Any]) -> str:
@@ -32,7 +33,7 @@ def admin_gui_host(desired: dict[str, Any]) -> dict[str, Any] | None:
     ingress_name = (ingress_host(desired) or {}).get("name")
     chosen: dict[str, Any] | None = None
     for host in hosts(desired):
-        if not host.get("admin-gui"):
+        if not admin_gui(host.get("admin-gui"))["enabled"]:
             continue
         if host.get("name") == ingress_name:
             return host
@@ -118,23 +119,38 @@ def generate_caddyfile(desired: dict[str, Any]) -> str:
         ]
     gui = admin_gui_host(desired)
     if gui:
+        gui_cfg = admin_gui(gui.get("admin-gui"))
+        primary = gui_cfg["primary"]
         gui_upstream = "127.0.0.1"
         if gui.get("name") != ingress_name and gui.get("ip"):
             gui_upstream = str(gui.get("ip"))
-        lines += [
-            f"https://cockpit.{domain} {{",
-            "	tls internal",
-            f"	reverse_proxy https://{gui_upstream}:9090 {{",
-            f"		header_up Host cockpit.{domain}",
-            f"		header_up X-Forwarded-Host cockpit.{domain}",
-            "		header_up X-Forwarded-Proto https",
-            "		transport http {",
-            "			tls_insecure_skip_verify",
-            "		}",
-            "	}",
-            "}",
-            "",
-        ]
+        for alias in gui_cfg["aliases"]:
+            if not alias or alias == primary or alias in seen:
+                continue
+            seen.add(alias)
+            lines += [
+                f"https://{alias}.{domain} {{",
+                "	tls internal",
+                f"	redir https://{primary}.{domain}{{uri}} permanent",
+                "}",
+                "",
+            ]
+        if primary not in seen:
+            seen.add(primary)
+            lines += [
+                f"https://{primary}.{domain} {{",
+                "	tls internal",
+                f"	reverse_proxy https://{gui_upstream}:9090 {{",
+                f"		header_up Host {primary}.{domain}",
+                f"		header_up X-Forwarded-Host {primary}.{domain}",
+                "		header_up X-Forwarded-Proto https",
+                "		transport http {",
+                "			tls_insecure_skip_verify",
+                "		}",
+                "	}",
+                "}",
+                "",
+            ]
     router = str(env(desired).get("lan_ip") or "").strip()
     if router:
         lines += [
@@ -152,34 +168,23 @@ def generate_caddyfile(desired: dict[str, Any]) -> str:
     return "\n".join(lines)
 
 
-def ldap_base_dn(domain: str) -> str:
-    """osixia turns LDAP_DOMAIN home.lan into dc=home,dc=lan."""
-    labels = [part for part in domain.strip().split(".") if part]
-    return ",".join(f"dc={part}" for part in labels)
-
-
 def _authelia_env(name: str) -> str:
     return "'{{ env \"" + name + "\" }}'"
 
 
-def inject_authelia_ldap_password(pod_text: str) -> str:
+def inject_authelia_ldap_password(text: str) -> str:
     """Give the Authelia container the OpenLDAP admin password it templates."""
-    if "LDAP_ADMIN_PASSWORD" in pod_text:
-        return pod_text
-    block = (
-        "    - name: LDAP_ADMIN_PASSWORD\n"
-        "      valueFrom:\n"
-        "        secretKeyRef:\n"
-        "          name: ${secrets.openldap.admin_password}\n"
-        "          key: value\n"
-    )
-    needle = "    ports:\n"
-    if needle not in pod_text:
-        raise ValueError("authelia pod.yaml has no ports block for the LDAP password")
-    return pod_text.replace(needle, block + needle, 1)
+    if "LDAP_ADMIN_PASSWORD" in text:
+        return text
+    line = "Secret=${secrets.openldap.admin_password},type=env,target=LDAP_ADMIN_PASSWORD\n"
+    marker = "\n[Service]\n"
+    if marker not in text:
+        raise ValueError("authelia container unit has no [Service] section for the LDAP password")
+    return text.replace(marker, "\n" + line + marker, 1)
 
 
 def generate_authelia(desired: dict[str, Any]) -> str:
+    """OIDC clients are public. SET only creates oidc.pem, not client_secret_digest."""
     if not policy(desired)["generate_upstream"]:
         return ""
     domain = domain_of(desired)
@@ -215,21 +220,23 @@ def generate_authelia(desired: dict[str, Any]) -> str:
             "    watch: true",
         ]
     clients: list[str] = []
-    for s in all_services(desired):
-        if s.get("sso") != "oidc":
+    for service in all_services(desired):
+        if service.get("sso") != "oidc":
             continue
-        sub = (s.get("subdomain") or {}).get("primary") or s["name"]
+        if service["key"] == "opencloud":
+            sub = (service.get("subdomain") or {}).get("primary") or "cloud"
+            clients += _opencloud_clients(f"{sub}.{domain}")
+            continue
+        sub = (service.get("subdomain") or {}).get("primary") or service["name"]
         clients += [
-            f"      - client_id: {s['key']}",
-            f"        client_name: {s['name']}",
+            f"      - client_id: {service['key']}",
+            f"        client_name: {service['name']}",
             "        public: true",
             "        authorization_policy: one_factor",
             "        scopes: [openid, groups, profile, email]",
             f"        redirect_uris: ['https://{sub}.{domain}/', 'https://{sub}.{domain}/oidc-callback.html']",
             "        token_endpoint_auth_method: none",
         ]
-        if s["key"] == "opencloud":
-            clients.append("        claims_policy: opencloud")
     if not clients:
         clients = ["      []"]
     return "\n".join(
@@ -263,6 +270,15 @@ def generate_authelia(desired: dict[str, Any]) -> str:
             f"    hmac_secret: {_authelia_env('OIDC_HMAC_SECRET')}",
             "    jwks:",
             '      - key: {{ secret "/config/userdb/oidc.pem" | mindent 10 "|" | msquote }}',
+            "    cors:",
+            "      endpoints: [authorization, token, revocation, introspection, userinfo]",
+            "      allowed_origins_from_client_redirect_uris: true",
+            "    authorization_policies:",
+            "      users:",
+            "        default_policy: deny",
+            "        rules:",
+            "          - policy: one_factor",
+            "            subject: 'group:users'",
             "    claims_policies:",
             "      opencloud:",
             "        id_token: [email, email_verified, preferred_username, name, groups]",
@@ -273,23 +289,92 @@ def generate_authelia(desired: dict[str, Any]) -> str:
     )
 
 
-def generate_authelia_users(desired: dict[str, Any]) -> str:
-    """File-backend users.yml (passwords filled later / by secrets)."""
+def _opencloud_clients(host: str) -> list[str]:
+    """Public clients. The web app hangs without silent-redirect, implicit consent, and CORS."""
+    web = [
+        "      - client_id: opencloud",
+        "        client_name: OpenCloud",
+        "        public: true",
+        "        authorization_policy: users",
+        "        consent_mode: implicit",
+        "        claims_policy: opencloud",
+        "        require_pkce: true",
+        "        pkce_challenge_method: S256",
+        "        scopes: [openid, groups, profile, email]",
+        "        redirect_uris:",
+        f"          - 'https://{host}/'",
+        f"          - 'https://{host}/oidc-callback.html'",
+        f"          - 'https://{host}/oidc-silent-redirect.html'",
+        "        response_types: [code]",
+        "        grant_types: [authorization_code]",
+        "        access_token_signed_response_alg: RS256",
+        "        userinfo_signed_response_alg: none",
+        "        token_endpoint_auth_method: none",
+        "        requested_audience_mode: implicit",
+        "        audience: [opencloud]",
+    ]
+    apps = [
+        ("opencloud-android", "OpenCloud Android", ["oc://android.opencloud.eu"]),
+        ("opencloud-ios", "OpenCloud iOS", ["oc://ios.opencloud.eu", "oc.ios://ios.opencloud.eu"]),
+        ("opencloud-desktop", "OpenCloud Desktop", ["http://127.0.0.1", "http://localhost"]),
+    ]
+    lines = list(web)
+    for client_id, name, redirects in apps:
+        lines += [
+            f"      - client_id: {client_id}",
+            f"        client_name: {name}",
+            "        public: true",
+            "        authorization_policy: users",
+            "        consent_mode: pre-configured",
+            "        pre_configured_consent_duration: 1y",
+            "        require_pkce: true",
+            "        pkce_challenge_method: S256",
+            "        scopes: [openid, offline_access, groups, profile, email]",
+            "        redirect_uris:",
+            *[f"          - '{uri}'" for uri in redirects],
+            "        response_types: [code]",
+            "        grant_types: [authorization_code, refresh_token]",
+            "        access_token_signed_response_alg: RS256",
+            "        userinfo_signed_response_alg: none",
+            "        token_endpoint_auth_method: none",
+            "        requested_audience_mode: implicit",
+            f"        audience: [{client_id}]",
+        ]
+    return lines
+
+
+def generate_authelia_users(desired: dict[str, Any], passwords: dict[str, str] | None = None) -> str:
+    """File-backend users.yml. Disjoint SSO uses secrets.site.users.<name>.password."""
     if not policy(desired)["generate_upstream"]:
         return ""
+    passwords = passwords or {}
+    require = file_backend_needs_passwords(desired)
     lines = ["users:"]
+    missing = []
     for u in site_of(desired).get("users") or []:
-        name = u.get("name")
-        roles = u.get("roles") or []
-        groups = ["users"]
-        if "appadmin" in roles:
-            groups.append("admins")
-        groups.extend(u.get("groups") or [])
+        name = str(u.get("name") or "")
+        groups = sso_groups(u)
+        password = passwords.get(name) or ""
+        if require and not password:
+            missing.append(name)
+            hashed = "*"
+        elif password:
+            hashed = authelia_password_hash(password)
+        else:
+            hashed = "*"
         lines += [
             f"  {name}:",
             f"    displayname: {u.get('displayname') or name}",
             f"    email: {u.get('email') or name + '@' + domain_of(desired)}",
-            "    password: '{{ secrets_user_hash }}'",
+            f"    password: '{hashed}'",
             f"    groups: {groups}",
         ]
+    if missing:
+        from .secrets import SecretError
+
+        listed = ", ".join(missing)
+        raise SecretError(
+            "site users need secrets.site.users.<name>.password "
+            f"(missing: {listed})"
+        )
     return "\n".join(lines)

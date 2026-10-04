@@ -1,0 +1,130 @@
+---
+- name: OpenLDAP on this host
+  set_fact:
+    site_hosts_ldap: >-
+      {{
+        site_plan.services
+        | selectattr('host', 'equalto', site_host_name)
+        | selectattr('key', 'equalto', 'openldap')
+        | list
+        | length > 0
+      }}
+
+- name: Skip hosts that do not run the directory
+  meta: end_host
+  when: not (site_hosts_ldap | bool)
+
+- name: Workload user
+  set_fact:
+    site_wl_user: "{{ (site_plan.hosts | selectattr('name', 'equalto', site_host_name) | list | first).operations.workload.user | default('') }}"
+
+- name: Workload user is required to reach the directory
+  fail:
+    msg: "OpenLDAP on {{ site_host_name }} needs operations.workload.user"
+  when: site_wl_user | length == 0
+
+- name: Render directory LDIF
+  command:
+    argv:
+      - python3
+      - "{{ playbook_dir }}/../scripts/render_directory.py"
+      - "{{ desired_path }}"
+      - "{{ secrets_file }}"
+      - "{{ site_repo }}/ansible/.tmp/directory"
+      - "{{ site_host_name }}"
+  delegate_to: localhost
+  become: false
+  changed_when: false
+
+- name: Wait for slapd
+  wait_for:
+    host: 127.0.0.1
+    port: "{{ site_plan.ldap_port }}"
+    timeout: 90
+
+- name: Workload uid
+  command: id -u {{ site_wl_user }}
+  register: site_wl_uid
+  changed_when: false
+
+- name: Stage directory
+  file:
+    path: /run/site-directory
+    state: directory
+    owner: "{{ site_wl_user }}"
+    group: "{{ site_wl_user }}"
+    mode: "0700"
+
+- name: Stage LDIF
+  copy:
+    src: "{{ site_repo }}/ansible/.tmp/directory/{{ item }}"
+    dest: "/run/site-directory/{{ item }}"
+    owner: "{{ site_wl_user }}"
+    group: "{{ site_wl_user }}"
+    mode: "0600"
+  loop:
+    - add.ldif
+    - modify.ldif
+  no_log: true
+
+- name: Add directory objects
+  become_user: "{{ site_wl_user }}"
+  environment:
+    XDG_RUNTIME_DIR: "/run/user/{{ site_wl_uid.stdout }}"
+  shell: |
+    set +e
+    out=$(podman exec -i openldap sh -c 'ldapmodify -c -x -H ldap://127.0.0.1 -D "cn=admin,{{ site_plan.ldap_base }}" -w "$LDAP_ADMIN_PASSWORD"' < /run/site-directory/add.ldif 2>&1)
+    rc=$?
+    printf '%s\n' "$out"
+    if [ "$rc" -eq 0 ]; then
+      exit 0
+    fi
+    filtered=$(printf '%s\n' "$out" | grep -E 'ldap_' | grep -v 'Already exists' || true)
+    if [ -z "$filtered" ]; then
+      exit 0
+    fi
+    exit "$rc"
+  register: site_ldap_add
+  changed_when: true
+  failed_when: false
+  retries: 5
+  delay: 3
+  until: site_ldap_add.rc == 0
+
+- name: Directory add failed
+  fail:
+    msg: "{{ (site_ldap_add.stdout | default('')) or (site_ldap_add.stderr | default('')) or 'ldapmodify add failed' }}"
+  when: site_ldap_add.rc != 0
+
+- name: Update directory accounts
+  become_user: "{{ site_wl_user }}"
+  environment:
+    XDG_RUNTIME_DIR: "/run/user/{{ site_wl_uid.stdout }}"
+  shell: >-
+    podman exec -i openldap
+    sh -c 'ldapmodify -c -x -H ldap://127.0.0.1 -D "cn=admin,{{ site_plan.ldap_base }}" -w "$LDAP_ADMIN_PASSWORD"'
+    < /run/site-directory/modify.ldif
+  register: site_ldap_modify
+  changed_when: true
+  failed_when: false
+  no_log: true
+
+- name: Directory update failed
+  fail:
+    msg: "OpenLDAP rejected the account update. Passwords were omitted from this error."
+  when: site_ldap_modify.rc != 0
+
+- name: Remove staged LDIF
+  file:
+    path: /run/site-directory
+    state: absent
+
+- name: Remove rendered LDIF
+  file:
+    path: "{{ site_repo }}/ansible/.tmp/directory/{{ item }}"
+    state: absent
+  delegate_to: localhost
+  become: false
+  loop:
+    - add.ldif
+    - modify.ldif

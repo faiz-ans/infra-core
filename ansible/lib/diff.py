@@ -7,7 +7,7 @@ from pathlib import Path
 from typing import Any
 
 from .plan import COMPONENTS, import_blocks, import_nfs, inferred_nfs, site_groups
-from .topology import all_services, env, hosts, policy, roots, site_of
+from .topology import admin_gui, all_services, env, hosts, policy, roots, site_of
 
 # Host prep stays put on a Day 2 run that has no stamp yet. Service files still sync.
 UPGRADE_SECTIONS = ("quadlets", "edge", "nfs", "lan_bind", "admin_gui")
@@ -42,6 +42,25 @@ def user_delta(desired: dict[str, Any], observed: dict[str, Any]) -> dict[str, l
 
 def host_names(desired: dict[str, Any]) -> list[str]:
     return [h.get("name") for h in hosts(desired) if h.get("name")]
+
+
+def _user_password_digest(secrets_path: Path | None) -> str:
+    """Changes when a site user's password changes. The digest is not reversible."""
+    if secrets_path is None or not secrets_path.is_file():
+        return ""
+    try:
+        from .secrets import load_secrets, split_secrets
+
+        site, _hosts = split_secrets(load_secrets(secrets_path))
+    except Exception:
+        return ""
+    users = site.get("users") or {}
+    rows = []
+    for name in sorted(users):
+        body = users[name]
+        if isinstance(body, dict):
+            rows.append([name, str(body.get("password") or "")])
+    return _digest(rows)
 
 
 def _digest(payload: Any) -> str:
@@ -116,14 +135,73 @@ def _edge_services(desired: dict[str, Any]) -> list[dict[str, Any]]:
     return sorted(rows, key=lambda row: (row["host"] or "", row["name"] or ""))
 
 
+def _secret_forms(desired: dict[str, Any], secrets_path: Path | None) -> tuple[list[str], set[str]]:
+    """Kube-document secret names, and services that inject a secret as raw env.
+
+    A Quadlet Secret= line reads the Podman secret bytes. A secretKeyRef reads
+    data.value inside a Kubernetes Secret document. After a unit stops using
+    secretKeyRef, the stored document has to be rewritten and the unit restarted.
+    """
+    if secrets_path is None or not Path(secrets_path).is_file():
+        return [], set()
+    import re
+
+    from .secrets import SecretError, kube_secret_names, load_secrets, resolve_secret, split_secrets
+
+    try:
+        data = load_secrets(Path(secrets_path))
+        kube = kube_secret_names(desired, data, COMPONENTS)
+        site, host_secrets = split_secrets(data)
+    except SecretError:
+        return [], set()
+    raw: set[str] = set()
+    ref = re.compile(r"\$\{(secrets\.[^}]+)\}")
+    for svc in all_services(desired):
+        comp = COMPONENTS / str(svc.get("component") or svc.get("key") or "")
+        if not comp.is_dir():
+            continue
+        names: set[str] = set()
+        for path in comp.rglob("*"):
+            if not path.is_file() or path.name == "MANIFEST.toml":
+                continue
+            text = path.read_text(encoding="utf-8", errors="replace")
+            for match in ref.finditer(text):
+                try:
+                    resolved = resolve_secret(
+                        match.group(1),
+                        service=str(svc.get("key") or ""),
+                        host=str(svc.get("host") or ""),
+                        site=site,
+                        hosts=host_secrets,
+                    )
+                except SecretError:
+                    continue
+                names.add(resolved.podman_name)
+        if names and any(name not in kube for name in names):
+            raw.add(_svc_id(svc))
+    return sorted(kube), raw
+
+
 def fingerprints(desired: dict[str, Any], secrets_path: Path | None = None) -> dict[str, Any]:
     """Stable hashes of each SET section and each placed service."""
     p = policy(desired)
     e = env(desired)
     context = _render_context(desired)
+    placed = all_services(desired)
+    kube_secrets, raw_secret_services = _secret_forms(desired, secrets_path)
+    integration_keys = ("authelia", "opencloud", "collabora", "radicale")
+    integration_peers = [
+        {
+            "key": item.get("key"),
+            "host": item.get("host"),
+            "subdomain": (item.get("subdomain") or {}).get("primary"),
+        }
+        for item in placed
+        if item.get("key") in integration_keys
+    ]
     trees: dict[str, str] = {}
     services: dict[str, dict[str, Any]] = {}
-    for s in all_services(desired):
+    for s in placed:
         component = str(s.get("component") or s.get("key") or "")
         if component not in trees:
             trees[component] = _tree_hash(COMPONENTS / component)
@@ -133,18 +211,23 @@ def fingerprints(desired: dict[str, Any], secrets_path: Path | None = None) -> d
             "key": s.get("key") or "",
             "privilege": s.get("privilege") or "rootless",
         }
-        rec["hash"] = _digest(
-            {
-                "component": trees[component],
-                "raw": s.get("raw") or {},
-                "context": context,
-                "subdomain": s.get("subdomain"),
-                "ports": s.get("ports"),
-                "sso": s.get("sso"),
-            }
-        )
+        body: dict[str, Any] = {
+            "component": trees[component],
+            "raw": s.get("raw") or {},
+            "context": context,
+            "subdomain": s.get("subdomain"),
+            "ports": s.get("ports"),
+            "sso": s.get("sso"),
+        }
+        if s.get("key") in ("opencloud", "collabora", "radicale"):
+            body["integration"] = integration_peers
+        if _svc_id(s) in raw_secret_services:
+            body["secret_encoding"] = "raw"
+        rec["hash"] = _digest(body)
         services[_svc_id(s)] = rec
-    admin = [(h.get("name"), bool(h.get("admin-gui")), h.get("ip")) for h in hosts(desired)]
+    admin = [
+        (h.get("name"), admin_gui(h.get("admin-gui")), h.get("ip")) for h in hosts(desired)
+    ]
     sections = {
         "storage": _digest(
             {
@@ -170,17 +253,31 @@ def fingerprints(desired: dict[str, Any], secrets_path: Path | None = None) -> d
                 ],
             }
         ),
-        "users": _digest({"users": site_of(desired).get("users") or [], "groups": site_groups(desired)}),
+        "users": _digest(
+            {
+                "users": site_of(desired).get("users") or [],
+                "groups": site_groups(desired),
+                "ldap": p["ldap"],
+                "filesystem": p["filesystem"],
+                "web": p["web"],
+                "directory": "posix-v13",
+            }
+        ),
         "ldap": _digest({"ldap": p["ldap"], "placed": [i for i, rec in services.items() if rec["key"] == "openldap"]}),
         "drivers": _digest(
-            [
-                {
-                    "name": h.get("name"),
-                    "gpu": (h.get("resources") or {}).get("gpu"),
-                    "usb": (h.get("resources") or {}).get("usb"),
-                }
-                for h in hosts(desired)
-            ]
+            {
+                # Epoch for CDI generation. Bumping this reinstalls the toolkit spec
+                # on hosts that already list a GPU.
+                "cdi": "nvidia-spec",
+                "hosts": [
+                    {
+                        "name": h.get("name"),
+                        "gpu": (h.get("resources") or {}).get("gpu"),
+                        "usb": (h.get("resources") or {}).get("usb"),
+                    }
+                    for h in hosts(desired)
+                ],
+            }
         ),
         "pwm": _digest([{"name": h.get("name"), "pwm": (h.get("resources") or {}).get("pwm")} for h in hosts(desired)]),
         "admin_gui": _digest({"domain": e.get("domain"), "hosts": admin}),
@@ -196,7 +293,17 @@ def fingerprints(desired: dict[str, Any], secrets_path: Path | None = None) -> d
                 ],
             }
         ),
-        "secrets": _file_hash(secrets_path),
+        "secrets": _digest(
+            {
+                "file": _file_hash(secrets_path),
+                "rootful": sorted(
+                    f"{rec['host']}/{rec['key']}"
+                    for rec in services.values()
+                    if rec.get("privilege") == "rootful"
+                ),
+                "kube": kube_secrets,
+            }
+        ),
         "nfs": _digest(inferred_nfs(desired)),
         "edge": _digest(
             {
@@ -206,10 +313,21 @@ def fingerprints(desired: dict[str, Any], secrets_path: Path | None = None) -> d
                 "lan_ip": e.get("lan_ip"),
                 "admin_gui": admin,
                 "services": _edge_services(desired),
+                "ldap": p["ldap"],
+                "sso": p["sso"],
+                "user_passwords": _user_password_digest(secrets_path),
+                # Epoch for generated Caddy/Authelia. A unit sync copies the catalog
+                # tree; bumping this reinstalls the generated files over it.
+                "authelia": "generated-unit",
             }
         ),
         "opencloud": _digest([rec for rec in services.values() if rec["key"] == "opencloud"]),
-        "lan_bind": _digest([rec for rec in services.values() if rec["key"] in ("caddy", "pi-hole")]),
+        "lan_bind": _digest(
+            {
+                "services": [rec for rec in services.values() if rec["key"] in ("caddy", "pi-hole")],
+                "script": _file_hash(Path(__file__).resolve().parents[1] / "roles" / "lan_bind" / "files" / "lan-bind"),
+            }
+        ),
         "static_ip": _digest([(h.get("name"), h.get("ip")) for h in hosts(desired)]),
         "quadlets": _digest(sorted(services)),
     }
@@ -265,12 +383,14 @@ def set_delta(
         for i in sorted(new_ids & old_ids)
         if (old_services.get(i) or {}).get("hash") != fps["services"][i].get("hash")
     ]
+    if any(rec.get("key") in ("caddy", "authelia") for rec in add + change):
+        sections["edge"] = True
     if sections["edge"]:
         present = {rec["host"] + "/" + rec["name"] for rec in change + add}
         for rec in fps["services"].values():
             if rec["key"] in ("caddy", "authelia") and f"{rec['host']}/{rec['name']}" not in present:
                 change.append(rec)
-    bind_keys = ("caddy", "pi-hole")
+    bind_keys = ("caddy", "pi-hole", "wireguard")
     if sections["edge"] or any(rec.get("key") in bind_keys for rec in add + change + remove):
         sections["lan_bind"] = True
     sections["quadlets"] = bool(add or change or remove)

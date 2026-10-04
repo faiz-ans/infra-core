@@ -27,7 +27,8 @@
       workgroup = SITE
       server role = standalone server
       map to guest = never
-      unix extensions = yes
+      obey pam restrictions = no
+      unix extensions = no
       ea support = yes
       vfs objects = fruit streams_xattr
       fruit:metadata = stream
@@ -38,6 +39,12 @@
       read only = no
       valid users = @all
       inherit acls = yes
+      smb3 unix extensions = no
+      force group = root
+      create mask = 0660
+      directory mask = 0770
+      force create mode = 0660
+      force directory mode = 2770
 
       [groups]
       path = {{ site_plan.roots.groups }}
@@ -45,13 +52,11 @@
       read only = no
       valid users = @all
       inherit acls = yes
-
-      [all]
-      path = {{ site_plan.roots.groups }}/all
-      browseable = yes
-      read only = no
-      valid users = @all
-      inherit acls = yes
+      smb3 unix extensions = no
+      create mask = 0660
+      directory mask = 2770
+      force create mode = 0660
+      force directory mode = 2770
   notify: restart smbd
 
 - name: Enable smbd
@@ -59,3 +64,11 @@
     name: smbd
     enabled: true
     state: started
+
+- name: Disjoint SMB passwords
+  include_role:
+    name: directory
+    tasks_from: smb_local.yml
+  when:
+    - site_plan.ldap != 'openldap'
+    - (site_delta.sections.users | default(true) | bool) or (site_delta.sections.secrets | default(false) | bool)

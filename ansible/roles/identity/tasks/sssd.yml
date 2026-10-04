@@ -1,4 +1,5 @@
 ---
+# Packages and config only. SSSD starts after the directory has accounts.
 - name: SSSD packages
   apt:
     name:
@@ -8,20 +9,25 @@
       - libpam-sss
     state: present
 
-- name: SSSD config
-  copy:
-    dest: /etc/sssd/sssd.conf
-    mode: "0600"
-    content: |
-      [sssd]
-      services = nss, pam
-      domains = site
+- name: Render SSSD config
+  command:
+    argv:
+      - python3
+      - "{{ playbook_dir }}/../scripts/render_directory.py"
+      - "{{ desired_path }}"
+      - "{{ secrets_file }}"
+      - "{{ site_repo }}/ansible/.tmp/directory"
+      - "{{ site_host_name }}"
+      - --sssd-only
+  delegate_to: localhost
+  become: false
+  changed_when: false
 
-      [domain/site]
-      id_provider = ldap
-      auth_provider = ldap
-      ldap_uri = ldap://{{ (site_plan.services | selectattr('key', 'equalto', 'openldap') | list | first).host_ip | default('127.0.0.1') }}
-      ldap_search_base = dc=site,dc=lan
-      ldap_id_use_start_tls = false
-      cache_credentials = true
-  notify: restart sssd
+- name: Install SSSD config
+  copy:
+    src: "{{ site_repo }}/ansible/.tmp/directory/{{ site_host_name }}/sssd.conf"
+    dest: /etc/sssd/sssd.conf
+    owner: root
+    group: root
+    mode: "0600"
+  no_log: true

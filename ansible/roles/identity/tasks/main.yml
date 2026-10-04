@@ -1,6 +1,7 @@
 ---
-# Unix or OpenLDAP+SSSD on storage that owns groups/users.
-# Account delete does not remove homes or group directories.
+# Unix accounts when LDAP is not the source of truth.
+# OpenLDAP accounts are created after the directory unit is up.
+# Homes are created when filesystem or web access is on. They are never deleted.
 - name: Owns people roots?
   set_fact:
     site_owns_people: >-
@@ -13,31 +14,59 @@
   meta: end_host
   when: not site_owns_people
 
-- name: Group homes (never deleted later)
+- name: Group homes
   file:
     path: "{{ site_plan.roots.groups }}/{{ item }}"
     state: directory
-    mode: "2775"
   loop: "{{ site_plan.groups }}"
+  when: site_plan.people_homes | bool
+
+- name: User homes
+  file:
+    path: "{{ site_plan.roots.users }}/{{ item.name }}"
+    state: directory
+  loop: "{{ site_plan.users }}"
+  when: site_plan.people_homes | bool
 
 - name: Unix groups
   group:
     name: "{{ item }}"
     state: present
   loop: "{{ site_plan.groups }}"
-  when: site_plan.ldap != 'openldap'
+  when:
+    - site_plan.ldap != 'openldap'
+    - site_plan.policy.filesystem == 'smb'
 
-- name: Site unix users (homes stay if later removed)
+- name: Site unix users
   user:
     name: "{{ item.name }}"
-    groups: "{{ (item.groups | default(['all'])) | join(',') }}"
+    groups: "{{ ((item.groups | default([])) | union(['all'])) | join(',') }}"
     append: true
-    create_home: true
+    create_home: "{{ site_plan.people_homes | bool }}"
     home: "{{ site_plan.roots.users }}/{{ item.name }}"
     shell: /usr/sbin/nologin
     remove: false
   loop: "{{ site_plan.users }}"
-  when: site_plan.ldap != 'openldap'
+  when:
+    - site_plan.ldap != 'openldap'
+    - site_plan.policy.filesystem == 'smb'
+
+- name: User home layout
+  include_role:
+    name: directory
+    tasks_from: homes.yml
+  when:
+    - site_plan.people_homes | bool
+    - site_plan.ldap != 'openldap'
+    - site_plan.policy.filesystem == 'smb'
+
+- name: Unix passwords
+  include_role:
+    name: directory
+    tasks_from: unix_passwd.yml
+  when:
+    - site_plan.ldap != 'openldap'
+    - site_plan.policy.filesystem == 'smb'
 
 - name: Delete accounts that left desired (homes stay)
   user:
@@ -47,6 +76,6 @@
   loop: "{{ site_delta.users.remove | default([]) }}"
   when: site_plan.ldap != 'openldap'
 
-- name: Join SSSD when LDAP is the SoT
+- name: Install SSSD config for the directory
   include_tasks: sssd.yml
   when: site_plan.ldap == 'openldap'

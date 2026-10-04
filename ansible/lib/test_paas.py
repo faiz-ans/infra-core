@@ -4,10 +4,20 @@ from __future__ import annotations
 import unittest
 from pathlib import Path
 
+from .directory import (
+    authelia_password_hash,
+    build_ldif,
+    file_backend_needs_passwords,
+    people_homes,
+    render_sssd,
+    require_user_passwords,
+    sso_groups,
+)
 from .diff import fingerprints, service_delta, set_delta, user_delta
 from .observed import merge_observed, scaffold_desired, scaffold_disks
 from .generate import (
     generate_authelia,
+    generate_authelia_users,
     generate_caddyfile,
     inject_authelia_ldap_password,
     ldap_base_dn,
@@ -16,11 +26,13 @@ from .inventory import inventory_dict
 from .plan import build_plan, disk_mounts, import_blocks, import_nfs, inferred_nfs, root_binds
 from .quadlet import read_utf8, strip_yaml_text
 from .resolve import LOOPBACK, bind, render
-from .secrets import SecretError, podman_catalog, resolve_secret, split_secrets
+from .secrets import SecretError, mark_root_hosts, podman_catalog, resolve_secret, split_secrets
 from .topology import (
+    admin_gui,
     all_services,
     key_only_ready,
     load_desired,
+    load_pack,
     validate_placement,
 )
 
@@ -64,7 +76,7 @@ class TestExample(unittest.TestCase):
         self.assertNotIn("NAS_LAN_IP", m)
         self.assertEqual(m["site.env.domain"], "example.lan")
         self.assertEqual(m["site.networking.ingress.host.ip"], "10.0.0.10")
-        self.assertEqual(m["site.networking.loopback"], LOOPBACK)
+        self.assertEqual(m["host-loopback-mapped-ip"], LOOPBACK)
         self.assertIn(":8443", m["site.homepage.allowed_hosts"])
         self.assertEqual(render("https://cloud.${site.env.domain}", m), "https://cloud.example.lan")
         mantle = self.desired["site"]["hosts"][1]
@@ -202,19 +214,94 @@ class TestExample(unittest.TestCase):
         self.assertIn("https://glances.example.lan", caddy)
         self.assertNotIn("https://host.example.lan", caddy)
         self.assertNotIn("reverse_proxy 127.0.0.1:389", caddy)
-        cockpit = caddy.split("https://cockpit.example.lan {", 1)[1].split("\nhttps://", 1)[0]
+        self.assertIn("https://cockpit.example.lan {", caddy)
+        self.assertIn("redir https://sys.example.lan{uri} permanent", caddy)
+        cockpit = caddy.split("https://sys.example.lan {", 1)[1].split("\nhttps://", 1)[0]
         self.assertIn("reverse_proxy https://127.0.0.1:9090", cockpit)
+        self.assertIn("header_up Host sys.example.lan", cockpit)
         self.assertIn("tls_insecure_skip_verify", cockpit)
         self.assertNotIn("authelia_gate", cockpit)
 
     def test_cockpit_follows_admin_gui_host(self) -> None:
         absent = load_desired(EXAMPLE)
         absent["site"]["hosts"][0]["admin-gui"] = False
+        self.assertNotIn("sys.example.lan", generate_caddyfile(absent))
         self.assertNotIn("cockpit.example.lan", generate_caddyfile(absent))
         remote = load_desired(EXAMPLE)
         remote["site"]["hosts"][0]["admin-gui"] = False
         remote["site"]["hosts"][1]["admin-gui"] = True
-        self.assertIn("reverse_proxy https://10.0.0.11:9090", generate_caddyfile(remote))
+        caddy = generate_caddyfile(remote)
+        self.assertIn("https://cockpit.example.lan {", caddy)
+        self.assertIn("reverse_proxy https://10.0.0.11:9090", caddy)
+        self.assertNotIn("sys.example.lan", caddy)
+
+    def test_admin_gui_normalize(self) -> None:
+        self.assertEqual(
+            admin_gui(True),
+            {"enabled": True, "primary": "cockpit", "aliases": []},
+        )
+        self.assertEqual(
+            admin_gui({"enabled": True, "primary": "sys", "aliases": ["cockpit"]}),
+            {"enabled": True, "primary": "sys", "aliases": ["cockpit"]},
+        )
+        self.assertFalse(admin_gui({"enabled": False, "primary": "sys"})["enabled"])
+        self.assertFalse(admin_gui(False)["enabled"])
+        plan = build_plan(self.desired)
+        self.assertEqual(
+            plan["hosts"][0]["admin-gui"],
+            {"enabled": True, "primary": "sys", "aliases": ["cockpit"]},
+        )
+
+    def test_wireguard_ui_stays_rootless(self) -> None:
+        self.assertEqual(load_pack()["services"]["wireguard"]["privilege"], "rootless")
+        unit = (ROOT / "components" / "wg-easy" / "wg-easy.container").read_text(encoding="utf-8")
+        entry = (ROOT / "components" / "wg-easy" / "entrypoint.sh").read_text(encoding="utf-8")
+        self.assertIn("Network=host", unit)
+        self.assertNotIn("AddCapability", unit)
+        self.assertIn("/opt/wg-handoff", unit)
+        self.assertIn("/opt/wg-handoff/bin", entry)
+        for name in ("wg", "wg-quick", "iptables"):
+            link = ROOT / "components" / "wg-easy" / "handoff" / "bin" / name
+            self.assertTrue(link.is_symlink(), name)
+            self.assertTrue(link.exists(), name)
+        desired = {
+            "site": {
+                "hosts": [
+                    {
+                        "name": "core",
+                        "operations": {"workload": {"services": {"wireguard": None}}},
+                    }
+                ]
+            }
+        }
+        items = podman_catalog({"site": {"wireguard": {"ui_password": "pw"}}})
+        mark_root_hosts(desired, {"site": {"wireguard": {"ui_password": "pw"}}}, ROOT / "components", items)
+        secret = next(item for item in items if item["name"] == "wireguard_ui_password")
+        self.assertEqual(secret["root_hosts"], [])
+
+    def test_tunnel_port_redirects_stay_on_this_host(self) -> None:
+        script = (ROOT / "ansible" / "roles" / "lan_bind" / "files" / "lan-bind").read_text(encoding="utf-8")
+        redirects = [
+            line.strip()
+            for line in script.splitlines()
+            if "PREROUTING" in line and "REDIRECT" in line
+        ]
+        self.assertGreaterEqual(len(redirects), 3)
+        for line in redirects:
+            self.assertIn("--dst-type LOCAL", line)
+        seed = (ROOT / "components" / "wg-easy" / "seed-mtu.mjs").read_text(encoding="utf-8")
+        self.assertIn("UPDATE clients_table SET mtu = 1280", seed)
+        self.assertIn("UPDATE user_configs_table SET default_mtu = 1280", seed)
+
+    def test_enabling_wireguard_reapplies_lan_bind(self) -> None:
+        applied = fingerprints(self.desired)
+        current = load_desired(EXAMPLE)
+        current["site"]["hosts"][0]["operations"]["workload"]["services"]["wireguard"] = None
+        delta = set_delta(current, applied)
+        added = {item["key"] for item in delta["services"]["add"]}
+        self.assertIn("wireguard", added)
+        self.assertTrue(delta["sections"]["lan_bind"])
+        self.assertTrue(delta["sections"]["quadlets"])
 
     def test_caddy_remote_web_and_router(self) -> None:
         d = load_desired(EXAMPLE)
@@ -261,14 +348,19 @@ class TestExample(unittest.TestCase):
     def test_authelia_file_backend(self) -> None:
         cfg = generate_authelia(self.desired)
         self.assertIn("file:", cfg)
+        self.assertIn("/config/userdb/users.yml", cfg)
         self.assertIn("password_reset:", cfg)
         self.assertIn("policy: one_factor", cfg)
-        self.assertIn("domain: '*.example.lan'", cfg)
         self.assertIn("db.sqlite3", cfg)
         self.assertIn("oidc.pem", cfg)
         self.assertIn("claims_policies:", cfg)
-        self.assertIn("opencloud", cfg)
-        self.assertNotIn("\n  domain:", cfg)
+        self.assertIn("client_id: opencloud", cfg)
+        self.assertIn("oidc-silent-redirect.html", cfg)
+        self.assertIn("consent_mode: implicit", cfg)
+        self.assertIn("allowed_origins_from_client_redirect_uris: true", cfg)
+        self.assertIn('secret "/config/userdb/oidc.pem"', cfg)
+        self.assertNotIn("client_secret_digest", cfg)
+        self.assertNotIn("address: ldap://openldap:389", cfg)
 
     def test_authelia_ldap_backend(self) -> None:
         d = load_desired(EXAMPLE)
@@ -278,15 +370,155 @@ class TestExample(unittest.TestCase):
         self.assertIn("ldap:", cfg)
         self.assertIn("users_filter:", cfg)
         self.assertIn("groups_filter:", cfg)
+        self.assertIn("objectClass=groupOfNames", cfg)
         self.assertIn(ldap_base_dn("example.lan"), cfg)
         self.assertIn("LDAP_ADMIN_PASSWORD", cfg)
         self.assertNotIn("dc=site,dc=lan", cfg)
         self.assertIn("password_reset:", cfg)
+        self.assertIn("client_id: opencloud", cfg)
+        self.assertIn("oidc-silent-redirect.html", cfg)
+        self.assertIn("consent_mode: implicit", cfg)
+        self.assertIn('secret "/config/userdb/oidc.pem"', cfg)
+        self.assertNotIn("client_secret_digest", cfg)
+        self.assertNotIn("path: /config/userdb/users.yml", cfg)
+
+    def test_people_homes_follow_access(self) -> None:
+        self.assertTrue(people_homes("smb", "none"))
+        self.assertTrue(people_homes("none", "opencloud"))
+        self.assertFalse(people_homes("none", "none"))
+        self.assertTrue(build_plan(self.desired)["people_homes"])
+        d = load_desired(EXAMPLE)
+        d["site"]["data"]["access"]["filesystem"] = "none"
+        d["site"]["data"]["access"]["web"] = "none"
+        self.assertFalse(build_plan(d)["people_homes"])
+
+    def test_directory_accounts_for_faiz_and_diana(self) -> None:
+        desired = {
+            "site": {
+                "env": {"domain": "home.lan"},
+                "data": {
+                    "roots": {"users": "/users", "groups": "/groups"},
+                    "access": {"filesystem": "smb", "web": "opencloud"},
+                },
+                "identity": {"ldap": "openldap", "sso": "authelia"},
+                "users": [
+                    {
+                        "name": "faiz",
+                        "roles": ["sysuser", "appadmin"],
+                        "displayname": "Faiz",
+                        "email": "faiz@home.lan",
+                    },
+                    {
+                        "name": "diana",
+                        "roles": ["sysuser", "appuser"],
+                        "displayname": "Diana",
+                        "email": "diana@home.lan",
+                    },
+                ],
+                "hosts": [
+                    {
+                        "name": "core",
+                        "ip": "192.168.1.110",
+                        "operations": {"workload": {"services": {"openldap": None}}},
+                    },
+                    {"name": "mantle", "ip": "192.168.1.111", "operations": {"workload": {"services": {}}}},
+                ],
+            }
+        }
+        self.assertEqual(sso_groups(desired["site"]["users"][0]), ["users", "admins"])
+        self.assertEqual(sso_groups(desired["site"]["users"][1]), ["users"])
+        add, modify = build_ldif(desired, {"faiz": "pw-faiz", "diana": "pw-diana"})
+        self.assertIn("uid=faiz,ou=users,dc=home,dc=lan", add)
+        self.assertIn("uid=diana,ou=users,dc=home,dc=lan", add)
+        self.assertIn("homeDirectory: /users/faiz", add)
+        self.assertIn("homeDirectory: /users/diana", add)
+        self.assertNotIn("userPassword", add)
+        self.assertIn("userPassword: {SSHA}", modify)
+        self.assertNotIn("pw-faiz", add + modify)
+        self.assertNotIn("pw-diana", add + modify)
+        admins = add.split("dn: cn=admins,ou=roles,dc=home,dc=lan", 1)[1].split("\n\n", 1)[0]
+        self.assertIn("member: uid=faiz,ou=users,dc=home,dc=lan", admins)
+        self.assertNotIn("diana", admins)
+        users = add.split("dn: cn=users,ou=roles,dc=home,dc=lan", 1)[1].split("\n\n", 1)[0]
+        self.assertIn("member: uid=faiz,ou=users,dc=home,dc=lan", users)
+        self.assertIn("member: uid=diana,ou=users,dc=home,dc=lan", users)
+        everyone = add.split("dn: cn=all,ou=groups,dc=home,dc=lan", 1)[1].split("\n\n", 1)[0]
+        self.assertIn("memberUid: faiz", everyone)
+        self.assertIn("memberUid: diana", everyone)
+        self.assertIn("gidNumber: 20000", everyone)
+        faiz = add.split("dn: uid=faiz,ou=users,dc=home,dc=lan", 1)[1].split("\n\n", 1)[0]
+        self.assertIn("uidNumber: 20002", faiz)
+        self.assertIn("gidNumber: 20000", faiz)
+        core = render_sssd(desired, "core", "admin-pw")
+        self.assertIn("ldap://127.0.0.1:1389", core)
+        self.assertIn("ldap_search_base = dc=home,dc=lan", core)
+        self.assertIn("ldap_user_search_base = ou=users,dc=home,dc=lan", core)
+        self.assertIn("ldap_group_search_base = ou=groups,dc=home,dc=lan", core)
+        self.assertIn("ldap_id_mapping = false", core)
+        self.assertIn("ldap_default_bind_dn = cn=admin,dc=home,dc=lan", core)
+        self.assertIn("ldap_default_authtok = admin-pw", core)
+        self.assertNotIn("dc=site,dc=lan", core)
+        remote = render_sssd(desired, "mantle", "admin-pw")
+        self.assertIn("ldap://192.168.1.110:1389", remote)
+        with self.assertRaises(SecretError):
+            require_user_passwords(
+                {"secrets": {"site": {"users": {"faiz": {"password": "x"}}}}},
+                desired["site"]["users"],
+            )
+
+    def test_disjoint_sso_uses_the_site_password(self) -> None:
+        import subprocess
+
+        self.assertTrue(file_backend_needs_passwords(self.desired))
+        hashed = authelia_password_hash("alice-secret")
+        self.assertTrue(hashed.startswith("$6$"))
+        salt = hashed.split("$")[2]
+        check = subprocess.run(
+            ["openssl", "passwd", "-6", "-stdin", "-salt", salt],
+            input=b"alice-secret",
+            capture_output=True,
+            check=True,
+        )
+        self.assertEqual(check.stdout.decode().strip(), hashed)
+        with self.assertRaises(SecretError):
+            generate_authelia_users(self.desired)
+        users = generate_authelia_users(self.desired, {"alice": "alice-secret", "bob": "bob-secret"})
+        self.assertNotIn("alice-secret", users)
+        self.assertNotIn("bob-secret", users)
+        self.assertIn("$6$", users)
+        self.assertIn("admins", users)
+        ldap = load_desired(EXAMPLE)
+        ldap["site"]["identity"]["ldap"] = "openldap"
+        ldap["site"]["hosts"][0]["operations"]["workload"]["services"]["openldap"] = None
+        self.assertFalse(file_backend_needs_passwords(ldap))
+        unused = generate_authelia_users(ldap)
+        self.assertIn("password: '*'", unused)
+        self.assertNotIn("$6$", unused)
+
+    def test_password_change_redeploys_edge(self) -> None:
+        import tempfile
+
+        left = Path(tempfile.mkdtemp()) / "secrets.yaml"
+        right = Path(tempfile.mkdtemp()) / "secrets.yaml"
+        text = "secrets:\n  site:\n    users:\n      alice:\n        password: {pw}\n"
+        left.write_text(text.format(pw="one"), encoding="utf-8")
+        right.write_text(text.format(pw="two"), encoding="utf-8")
+        self.assertNotEqual(
+            fingerprints(self.desired, left)["sections"]["edge"],
+            fingerprints(self.desired, right)["sections"]["edge"],
+        )
+        self.assertEqual(
+            fingerprints(self.desired, left)["sections"]["users"],
+            fingerprints(self.desired, right)["sections"]["users"],
+        )
 
     def test_authelia_ldap_password_env(self) -> None:
-        pod = "    env: []\n    ports:\n    - containerPort: 9091\n"
-        out = inject_authelia_ldap_password(pod)
-        self.assertIn("${secrets.openldap.admin_password}", out)
+        unit = "[Container]\nEnvironment=TZ=UTC\n\n[Service]\nRestart=on-failure\n"
+        out = inject_authelia_ldap_password(unit)
+        self.assertIn(
+            "Secret=${secrets.openldap.admin_password},type=env,target=LDAP_ADMIN_PASSWORD",
+            out,
+        )
         self.assertEqual(out.count("LDAP_ADMIN_PASSWORD"), 1)
         self.assertEqual(inject_authelia_ldap_password(out), out)
 
@@ -304,62 +536,62 @@ class TestExample(unittest.TestCase):
     def test_glances_pod_overlay_keeps_baseline(self) -> None:
         import yaml
 
-        from .pod import merge_pod
-        from .quadlet import strip_yaml_text
+        from .pod import apply_container_overlay
 
-        base = yaml.safe_load((ROOT / "components" / "glances" / "pod.yaml").read_text())
+        base = (ROOT / "components" / "glances" / "glances.container").read_text(encoding="utf-8")
         overlay = yaml.safe_load(
             """
-pod:
-  spec:
-    containers:
-    - name: glances
-      image: docker.io/nicolargo/glances:ubuntu-latest-full
-      env:
-      - name: NVIDIA_VISIBLE_DEVICES
-        value: "${host.resources.gpu.gpu0.uuid}"
-      - name: NVIDIA_DRIVER_CAPABILITIES
-        value: compute,utility
-      resources:
-        limits:
-          ${host.resources.gpu.gpu0.resource}: 1
-      volumeMounts:
-      - name: win
-        mountPath: /mnt/windows
-        readOnly: true
-    volumes:
-    - name: win
-      hostPath:
-        path: /mnt/host/c
+container:
+  image: docker.io/nicolargo/glances:ubuntu-latest-full
+  environment:
+    NVIDIA_VISIBLE_DEVICES: "${host.resources.gpu.gpu0.uuid}"
+    NVIDIA_DRIVER_CAPABILITIES: compute,utility
+  addDevice:
+    - "${host.resources.gpu.gpu0.resource}=all"
+  volume:
+    - /mnt/host/c:/mnt/windows:ro
 """
-        )["pod"]
-        merged = merge_pod(base, overlay)
-        container = merged["spec"]["containers"][0]
-        self.assertEqual(container["image"], "docker.io/nicolargo/glances:ubuntu-latest-full")
-        self.assertEqual(container["imagePullPolicy"], "Always")
-        env = {item["name"]: item["value"] for item in container["env"]}
-        self.assertEqual(env["TZ"], "${site.env.timezone}")
-        self.assertEqual(env["GLANCES_OPT"], "-w --disable-plugin docker")
-        self.assertEqual(
-            env["NVIDIA_VISIBLE_DEVICES"],
-            "${host.resources.gpu.gpu0.uuid}",
+        )["container"]
+        merged = apply_container_overlay(base, overlay)
+        self.assertIn("Image=docker.io/nicolargo/glances:ubuntu-latest-full", merged)
+        self.assertIn("Pull=always", merged)
+        self.assertIn("Environment=TZ=${site.env.timezone}", merged)
+        self.assertIn('Environment=GLANCES_OPT="-w --disable-plugin docker"', merged)
+        self.assertIn(
+            "Environment=NVIDIA_VISIBLE_DEVICES=${host.resources.gpu.gpu0.uuid}",
+            merged,
         )
-        mounts = {item["name"] for item in container["volumeMounts"]}
-        self.assertEqual(mounts, {"conf", "osrel", "sys", "data", "win"})
-        vols = {item["name"]: item["hostPath"]["path"] for item in merged["spec"]["volumes"]}
-        self.assertEqual(vols["data"], "${host.data.roots.appdata}")
-        self.assertEqual(vols["win"], "/mnt/host/c")
-        self.assertEqual(container["resources"]["limits"]["${host.resources.gpu.gpu0.resource}"], 1)
+        self.assertIn("Environment=NVIDIA_DRIVER_CAPABILITIES=compute,utility", merged)
+        self.assertIn("Volume=${host.data.roots.appdata}:/mnt/data:ro", merged)
+        self.assertIn("Volume=/mnt/host/c:/mnt/windows:ro", merged)
+        self.assertIn("AddDevice=${host.resources.gpu.gpu0.resource}=all", merged)
         host = self.desired["site"]["hosts"][1]
-        rendered = render(yaml.safe_dump(merged, sort_keys=False), bind(self.desired, host))
-        stripped = strip_yaml_text(rendered)
-        self.assertIn("docker.io/nicolargo/glances:ubuntu-latest-full", stripped)
-        self.assertIn("nvidia.com/gpu: 1", stripped)
-        self.assertIn("/var/lib/site-appdata", stripped)
-        self.assertIn("/mnt/host/c", stripped)
-        self.assertIn("/mnt/data", stripped)
-        untouched = merge_pod(base, None)
-        self.assertEqual(untouched["spec"]["containers"][0]["image"], "docker.io/nicolargo/glances:latest")
+        rendered = render(merged, bind(self.desired, host))
+        self.assertIn("docker.io/nicolargo/glances:ubuntu-latest-full", rendered)
+        self.assertIn("AddDevice=nvidia.com/gpu=all", rendered)
+        self.assertIn("/var/lib/site-appdata", rendered)
+        self.assertIn("/mnt/host/c", rendered)
+        self.assertIn("/mnt/data", rendered)
+        untouched = apply_container_overlay(base, None)
+        self.assertIn("Image=docker.io/nicolargo/glances:latest", untouched)
+
+    def test_gpu_units_request_a_cdi_device(self) -> None:
+        import yaml
+
+        compute = bind(self.desired, self.desired["site"]["hosts"][1])
+        immich = render((ROOT / "components" / "immich" / "pod.yaml").read_text(encoding="utf-8"), compute)
+        pod = yaml.safe_load(immich)
+        ml = next(c for c in pod["spec"]["containers"] if c["name"] == "immich-machine-learning")
+        self.assertEqual(ml["resources"]["limits"]["nvidia.com/gpu=all"], 1)
+        for name in ("jellyfin", "scriberr", "transmute"):
+            unit = (ROOT / "components" / name / f"{name}.container").read_text(encoding="utf-8")
+            self.assertIn("AddDevice=${host.resources.gpu.gpu0.resource}=all", unit)
+            rendered = render(unit, compute)
+            self.assertIn("AddDevice=nvidia.com/gpu=all", rendered)
+
+    def test_opencloud_oidc_scope_stays_one_value(self) -> None:
+        unit = (ROOT / "components" / "opencloud" / "opencloud.container").read_text(encoding="utf-8")
+        self.assertIn('Environment=WEB_OIDC_SCOPE="openid groups profile email"', unit)
 
     def test_no_service_dir_without_qbit(self) -> None:
         plan = build_plan(self.desired)
@@ -611,9 +843,94 @@ pod:
         self.assertTrue(delta["sections"]["quadlets"])
         self.assertFalse(delta["sections"]["storage"])
         self.assertFalse(delta["sections"]["edge"])
+
+    def test_authelia_unit_change_regenerates_edge(self) -> None:
+        applied = fingerprints(self.desired)
+        applied["services"]["storage/authelia"]["hash"] = "stale"
+        delta = set_delta(self.desired, applied)
+        names = {item["name"] for item in delta["services"]["change"]}
+        self.assertIn("authelia", names)
+        self.assertIn("caddy", names)
+        self.assertTrue(delta["sections"]["edge"])
+
+    def test_raw_env_secrets_restart_their_units(self) -> None:
+        secrets = ROOT / "examples" / "secrets.example.yaml"
+        applied = fingerprints(self.desired)
+        delta = set_delta(self.desired, applied, secrets)
+        names = {item["name"] for item in delta["services"]["change"]}
+        self.assertIn("authelia", names)
+        self.assertIn("homepage", names)
+        self.assertNotIn("glances", names)
+        self.assertTrue(delta["sections"]["secrets"])
         self.assertFalse(delta["sections"]["nfs"])
-        self.assertFalse(delta["sections"]["secrets"])
         self.assertFalse(delta["sections"]["admin_gui"])
+
+    def test_collabora_placement_rerenders_opencloud(self) -> None:
+        applied = fingerprints(self.desired)
+        current = load_desired(EXAMPLE)
+        current["site"]["hosts"][0]["operations"]["workload"]["services"]["collabora"] = None
+        delta = set_delta(current, applied)
+        added = {item["key"] for item in delta["services"]["add"]}
+        changed = {item["key"] for item in delta["services"]["change"]}
+        self.assertIn("collabora", added)
+        self.assertIn("opencloud", changed)
+
+    def test_opencloud_integrations_follow_placement(self) -> None:
+        import shutil
+        import tempfile
+
+        from .integrate import apply_placed_integrations
+
+        def render_at(desired: dict, key: str) -> str:
+            service = next(item for item in all_services(desired) if item["key"] == key)
+            out = Path(tempfile.mkdtemp()) / service["name"]
+            shutil.copytree(ROOT / "components" / service["component"], out)
+            apply_placed_integrations(out, desired, service)
+            return (out / f"{key}.container").read_text(encoding="utf-8")
+
+        alone = render_at(self.desired, "opencloud")
+        self.assertNotIn("COLLABORA_DOMAIN", alone)
+        self.assertNotIn("OC_ADD_RUN_SERVICES", alone)
+        proxy = (ROOT / "components" / "opencloud" / "proxy.yaml").read_text(encoding="utf-8")
+        self.assertNotIn("caldav", proxy)
+
+        both = load_desired(EXAMPLE)
+        services = both["site"]["hosts"][0]["operations"]["workload"]["services"]
+        services["collabora"] = {"subdomain": {"primary": "office"}}
+        services["radicale"] = None
+        cloud = render_at(both, "opencloud")
+        self.assertIn("Environment=COLLABORA_DOMAIN=office.example.lan", cloud)
+        self.assertIn("Environment=OC_ADD_RUN_SERVICES=collaboration", cloud)
+        self.assertNotIn("COLLABORA_DOMAIN", render_at(self.desired, "opencloud"))
+        office = render_at(both, "collabora")
+        self.assertIn("Environment=aliasgroup1=https://opencloud.example.lan", office)
+        self.assertIn("frame_ancestors=opencloud.example.lan", office)
+        self.assertIn("Environment=CADDY_CA_URL=https://authelia.example.lan/pki/local-root.crt", office)
+        solo = load_desired(EXAMPLE)
+        del solo["site"]["hosts"][0]["operations"]["workload"]["services"]["opencloud"]
+        solo["site"]["hosts"][0]["operations"]["workload"]["services"]["collabora"] = None
+        self.assertNotIn("aliasgroup1", render_at(solo, "collabora"))
+
+        out = Path(tempfile.mkdtemp()) / "opencloud"
+        shutil.copytree(ROOT / "components" / "opencloud", out)
+        service = next(item for item in all_services(both) if item["key"] == "opencloud")
+        apply_placed_integrations(out, both, service)
+        routed = (out / "proxy.yaml").read_text(encoding="utf-8")
+        self.assertIn("backend: http://radicale:5232", routed)
+        self.assertFalse((out / "radicale-policy.yaml").exists())
+
+        split = load_desired(EXAMPLE)
+        split["site"]["hosts"][1]["operations"]["workload"]["services"]["radicale"] = None
+        remote = Path(tempfile.mkdtemp()) / "opencloud"
+        shutil.copytree(ROOT / "components" / "opencloud", remote)
+        cloud_svc = next(item for item in all_services(split) if item["key"] == "opencloud")
+        apply_placed_integrations(remote, split, cloud_svc)
+        self.assertIn("backend: http://10.0.0.11:5232", (remote / "proxy.yaml").read_text(encoding="utf-8"))
+        rad = Path(tempfile.mkdtemp()) / "radicale"
+        shutil.copytree(ROOT / "components" / "radicale", rad)
+        rad_svc = next(item for item in all_services(split) if item["key"] == "radicale")
+        apply_placed_integrations(rad, split, rad_svc)
+        self.assertIn("PublishPort=5232:5232", (rad / "radicale.container").read_text(encoding="utf-8"))
 
     def test_day2_new_web_service_updates_edge_only(self) -> None:
         applied = fingerprints(self.desired)
@@ -1119,6 +1436,419 @@ pod:
             "disks": [{"data": [40, 43, 46, 50, 55]}],
         }
         self.assertFalse(any("pwm scale" in e for e in validate_placement(d)))
+
+
+class TestOpenCloudSpaces(unittest.TestCase):
+    def test_personal_home_replaces_files_space_once(self) -> None:
+        import tempfile
+
+        from .opencloud_spaces import _set_xattr, apply_spaces, read_xattrs
+
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            users = root / "users"
+            groups = root / "groups"
+            home = users / "faiz"
+            files = home / "files"
+            photos = home / "photos"
+            shared = groups / "all"
+            for path in (files, photos, shared):
+                path.mkdir(parents=True)
+            _set_xattr(files, "user.oc.id", b"42c0c762-7a1e-4bf4-851f-7fa334f93bac")
+            _set_xattr(files, "user.oc.space.id", b"42c0c762-7a1e-4bf4-851f-7fa334f93bac")
+            _set_xattr(files, "user.oc.space.type", b"personal")
+            _set_xattr(files, "user.oc.space.alias", b"personal/faiz")
+            _set_xattr(files, "user.oc.name", b"files")
+            _set_xattr(photos, "user.oc.id", b"5b480a4e-82cc-4e9b-8015-eb0bd711fa9c")
+            _set_xattr(photos, "user.oc.space.id", b"5b480a4e-82cc-4e9b-8015-eb0bd711fa9c")
+            _set_xattr(photos, "user.oc.space.type", b"project")
+            _set_xattr(photos, "user.oc.grant.u:old", b"stale")
+            blob = root / "idm"
+            blob.write_bytes(b"uid=faiz,ou=users,o=libregraph-idm openCloudUUID b251124a-1a13-4ef0-ab80-faf45d54dd45")
+            spec = {
+                "users_root": str(users),
+                "groups_root": str(groups),
+                "idm": str(blob),
+                "idp": "https://auth.example.lan",
+                "users": [{"name": "faiz", "displayname": "Faiz"}],
+                "groups": ["all"],
+            }
+            scans = apply_spaces(spec)
+            self.assertEqual(scans, ["/posix/users/faiz", "/posix/groups/all"])
+            home_attrs = read_xattrs(home)
+            self.assertEqual(home_attrs["user.oc.space.type"], b"personal")
+            self.assertEqual(home_attrs["user.oc.space.alias"], b"personal/faiz")
+            self.assertEqual(home_attrs["user.oc.owner.id"], home_attrs["user.oc.id"])
+            self.assertEqual(home_attrs["user.oc.owner.type"], b"spaceowner")
+            self.assertIn("user.oc.grant.u:b251124a-1a13-4ef0-ab80-faf45d54dd45", home_attrs)
+            files_attrs = read_xattrs(files)
+            self.assertNotIn("user.oc.space.type", files_attrs)
+            self.assertEqual(files_attrs["user.oc.id"], b"42c0c762-7a1e-4bf4-851f-7fa334f93bac")
+            self.assertEqual(files_attrs["user.oc.parentid"], home_attrs["user.oc.id"])
+            self.assertNotIn("user.oc.space.type", read_xattrs(photos))
+            self.assertNotIn("user.oc.grant.u:old", read_xattrs(photos))
+            group_attrs = read_xattrs(shared)
+            self.assertEqual(group_attrs["user.oc.space.type"], b"project")
+            self.assertEqual(group_attrs["user.oc.space.alias"], b"project/all")
+            self.assertIn("user.oc.grant.u:b251124a-1a13-4ef0-ab80-faf45d54dd45", group_attrs)
+            self.assertEqual(apply_spaces(spec), [])
+
+    def test_user_id_ignores_group_membership_records(self) -> None:
+        from .opencloud_spaces import oc_uuid
+
+        blob = (
+            b"uid=faiz,ou=users,o=libregraph-idm\x00displayName\x00openCloudUUID\x00"
+            b"$b251124a-1a13-4ef0-ab80-faf45d54dd45"
+            b"\x00#cn=users,ou=groups,o=libregraph-idm\x00openCloudUUID\x00"
+            b"$b5318a1a-50af-4cb6-90b6-dddfd7b3e469"
+            b"\x00uid=faiz,ou=users,o=libregraph-idm\x00$cn=admins,ou=groups\x00openCloudUUID\x00"
+            b"$c97ace90-fc46-4340-b4d8-9f18bc60ca92"
+        )
+        self.assertEqual(oc_uuid(blob, "faiz"), "b251124a-1a13-4ef0-ab80-faf45d54dd45")
+        self.assertIsNone(oc_uuid(blob, "diana"))
+
+    def test_wrong_owner_is_relinked_and_indexed_once(self) -> None:
+        import tempfile
+
+        from .opencloud_spaces import _set_xattr, apply_spaces, read_xattrs
+
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            home = root / "users" / "faiz"
+            shared = root / "groups" / "all"
+            home.mkdir(parents=True)
+            shared.mkdir(parents=True)
+            space = b"6d4c951b-cf47-4064-9f0f-4ee94b6e318e"
+            _set_xattr(home, "user.oc.id", space)
+            _set_xattr(home, "user.oc.space.id", space)
+            _set_xattr(home, "user.oc.space.type", b"personal")
+            _set_xattr(home, "user.oc.space.alias", b"personal/faiz")
+            _set_xattr(home, "user.oc.owner.id", b"c97ace90-fc46-4340-b4d8-9f18bc60ca92")
+            _set_xattr(home, "user.oc.owner.type", b"primary")
+            group = b"1b01aa68-994f-4c43-8f46-cee6a31f3100"
+            _set_xattr(shared, "user.oc.id", group)
+            _set_xattr(shared, "user.oc.space.id", group)
+            _set_xattr(shared, "user.oc.space.type", b"project")
+            _set_xattr(shared, "user.oc.space.alias", b"project/all")
+            _set_xattr(shared, "user.oc.grant.u:c97ace90-fc46-4340-b4d8-9f18bc60ca92", b"stale")
+            blob = root / "idm"
+            blob.write_bytes(
+                b"uid=faiz,ou=users,o=libregraph-idm\x00openCloudUUID\x00"
+                b"b251124a-1a13-4ef0-ab80-faf45d54dd45"
+                b"\x00cn=admins,ou=groups\x00openCloudUUID\x00"
+                b"c97ace90-fc46-4340-b4d8-9f18bc60ca92"
+                b"\x00uid=faiz,ou=users,o=libregraph-idm"
+            )
+            spec = {
+                "users_root": str(root / "users"),
+                "groups_root": str(root / "groups"),
+                "idm": str(blob),
+                "idp": "https://auth.example.lan",
+                "users": [{"name": "faiz", "displayname": "Faiz"}],
+                "groups": ["all"],
+            }
+            self.assertEqual(apply_spaces(spec), [])
+            self.assertEqual(read_xattrs(home)["user.oc.owner.id"], space)
+            self.assertEqual(read_xattrs(home)["user.oc.owner.type"], b"spaceowner")
+            self.assertEqual(read_xattrs(home)["user.oc.id"], space)
+            group_attrs = read_xattrs(shared)
+            self.assertEqual(group_attrs["user.oc.id"], group)
+            self.assertIn("user.oc.grant.u:b251124a-1a13-4ef0-ab80-faf45d54dd45", group_attrs)
+            self.assertNotIn("user.oc.grant.u:c97ace90-fc46-4340-b4d8-9f18bc60ca92", group_attrs)
+            self.assertEqual(apply_spaces(spec), [])
+
+    def test_space_index_lists_personal_and_group_once(self) -> None:
+        import tempfile
+
+        from .opencloud_spaces import _load_index, apply_spaces
+
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            (root / "users" / "faiz").mkdir(parents=True)
+            (root / "groups" / "all").mkdir(parents=True)
+            blob = root / "idm"
+            blob.write_bytes(
+                b"uid=faiz,ou=users,o=libregraph-idm\x00openCloudUUID\x00"
+                b"b251124a-1a13-4ef0-ab80-faf45d54dd45"
+            )
+            spec = {
+                "users_root": str(root / "users"),
+                "groups_root": str(root / "groups"),
+                "indexes": str(root / "indexes"),
+                "idm": str(blob),
+                "idp": "https://auth.example.lan",
+                "users": [{"name": "faiz", "displayname": "Faiz"}],
+                "groups": ["all"],
+            }
+            self.assertEqual(apply_spaces(spec), ["/posix/users/faiz", "/posix/groups/all"])
+            user_index = _load_index(root / "indexes" / "by-user-id" / "b251124a-1a13-4ef0-ab80-faf45d54dd45.mpk")
+            personal = next(iter(user_index))
+            self.assertEqual(user_index[personal], personal)
+            self.assertEqual(len(user_index), 2)
+            self.assertEqual(_load_index(root / "indexes" / "by-type" / "personal.mpk"), {personal: personal})
+            project = next(space for space in user_index if space != personal)
+            self.assertEqual(_load_index(root / "indexes" / "by-type" / "project.mpk"), {project: project})
+            self.assertEqual(apply_spaces(spec), [])
+
+    def test_homes_converge_from_missing_stale_and_current_xattrs(self) -> None:
+        import tempfile
+
+        from .opencloud_spaces import LIST_ROLE, _grant_bytes, _set_xattr, apply_spaces, read_xattrs
+
+        faiz = "b251124a-1a13-4ef0-ab80-faf45d54dd45"
+        stale = "c97ace90-fc46-4340-b4d8-9f18bc60ca92"
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            bare = root / "users" / "faiz"
+            (bare / "files").mkdir(parents=True)
+            (bare / "photos").mkdir()
+            shared = root / "groups" / "all"
+            (shared / "media").mkdir(parents=True)
+            blob = root / "idm"
+            blob.write_bytes(f"uid=faiz,ou=users,o=libregraph-idm\x00openCloudUUID\x00{faiz}".encode())
+            spec = {
+                "users_root": str(root / "users"),
+                "groups_root": str(root / "groups"),
+                "idm": str(blob),
+                "users": [{"name": "faiz", "displayname": "Faiz"}],
+                "groups": ["all"],
+            }
+            self.assertEqual(apply_spaces(spec), ["/posix/users/faiz", "/posix/groups/all"])
+            home_attrs = read_xattrs(bare)
+            self.assertEqual(home_attrs["user.oc.owner.type"], b"spaceowner")
+            self.assertEqual(home_attrs["user.oc.owner.id"], home_attrs["user.oc.id"])
+            self.assertEqual(home_attrs[f"user.oc.grant.u:{faiz}"], _grant_bytes(f"u:{faiz}", LIST_ROLE))
+            self.assertEqual(
+                read_xattrs(bare / "files")[f"user.oc.grant.u:{faiz}"],
+                _grant_bytes(f"u:{faiz}", "txrwaduUq"),
+            )
+            self.assertEqual(
+                read_xattrs(shared / "media")[f"user.oc.grant.u:{faiz}"],
+                _grant_bytes(f"u:{faiz}", "txrwaduUq"),
+            )
+
+            space = home_attrs["user.oc.id"]
+            _set_xattr(bare, f"user.oc.grant.u:{stale}", b"stale")
+            _set_xattr(bare / "files", f"user.oc.grant.u:{stale}", b"stale")
+            self.assertEqual(apply_spaces(spec), [])
+            self.assertNotIn(f"user.oc.grant.u:{stale}", read_xattrs(bare))
+            self.assertNotIn(f"user.oc.grant.u:{stale}", read_xattrs(bare / "files"))
+            self.assertEqual(read_xattrs(bare)["user.oc.id"], space)
+            kept = read_xattrs(bare)["user.oc.mtime"]
+            self.assertEqual(apply_spaces(spec), [])
+            self.assertEqual(read_xattrs(bare)["user.oc.mtime"], kept)
+
+
+class TestWireGuardHelper(unittest.TestCase):
+    def setUp(self) -> None:
+        import importlib.util
+        from importlib.machinery import SourceFileLoader
+
+        path = ROOT / "components" / "wg-easy" / "site-wg-helper"
+        loader = SourceFileLoader("site_wg_helper", str(path))
+        spec = importlib.util.spec_from_loader("site_wg_helper", loader)
+        assert spec is not None
+        module = importlib.util.module_from_spec(spec)
+        loader.exec_module(module)
+        self.helper = module
+        self.bins = {
+            "wg": "/usr/bin/wg",
+            "ip": "/usr/sbin/ip",
+            "iptables": "/usr/sbin/iptables-nft",
+        }
+
+    def _key(self, seed: int) -> str:
+        import base64
+
+        return base64.b64encode(bytes((seed + i) % 256 for i in range(32))).decode()
+
+    def _conf(self) -> str:
+        hook = "PostUp = /bin/sh -c id"
+        return (
+            "[Interface]\n"
+            "Address = 10.8.0.1/24\n"
+            "ListenPort = 51820\n"
+            f"PrivateKey = {self._key(1)}\n"
+            "MTU = 1280\n"
+            f"{hook}\n"
+            "\n[Peer]\n"
+            f"PublicKey = {self._key(2)}\n"
+            "AllowedIPs = 10.8.0.2/32\n"
+        )
+
+    def _runner(self, calls: list[list[str]], seen: dict[str, str]):
+        def runner(argv: list[str], stdin: bytes) -> tuple[int, bytes, bytes]:
+            calls.append(argv)
+            if argv[1:4] == ["link", "show", "dev"]:
+                return 1, b"", b""
+            if argv[1:4] == ["-4", "route", "get"]:
+                return 0, b"1.1.1.1 via 192.0.2.1 dev eth1 src 192.0.2.10\n", b""
+            if argv[1:4] == ["-t", "nat", "-S"]:
+                return 0, b"-A POSTROUTING -s 10.8.0.0/24 -o eth0 -j MASQUERADE\n", b""
+            if len(argv) >= 2 and argv[1] in {"setconf", "syncconf"}:
+                seen["body"] = Path(argv[-1]).read_text(encoding="utf-8")
+                seen["path"] = argv[-1]
+            if "-C" in argv:
+                return 1, b"", b""
+            return 0, b"", b""
+
+        return runner
+
+    def test_show_is_dump_only(self) -> None:
+        calls: list[list[str]] = []
+
+        def runner(argv: list[str], stdin: bytes) -> tuple[int, bytes, bytes]:
+            calls.append(argv)
+            return 0, b"dump\n", b""
+
+        result = self.helper.evaluate({"op": "show", "iface": "wg0"}, "/tmp", runner, self.bins)
+        self.assertEqual(result["code"], 0)
+        self.assertEqual(calls, [["/usr/bin/wg", "show", "wg0", "dump"]])
+        rejected = self.helper.evaluate({"op": "show", "iface": "../etc"}, "/tmp", runner, self.bins)
+        self.assertEqual(rejected["code"], 1)
+        self.assertEqual(len(calls), 1)
+
+    def test_up_drops_hooks_and_builds_nat(self) -> None:
+        import tempfile
+
+        with tempfile.TemporaryDirectory() as tmp:
+            (Path(tmp) / "wg0.conf").write_text(self._conf(), encoding="utf-8")
+            calls: list[list[str]] = []
+            seen: dict[str, str] = {}
+            result = self.helper.evaluate(
+                {"op": "up", "iface": "wg0"},
+                tmp,
+                self._runner(calls, seen),
+                self.bins,
+            )
+            self.assertEqual(result["code"], 0, result)
+            self.assertNotIn("PostUp", seen["body"])
+            self.assertNotIn("/bin/sh", seen["body"])
+            self.assertIn(f"PrivateKey = {self._key(1)}", seen["body"])
+            self.assertIn("AllowedIPs = 10.8.0.2/32", seen["body"])
+            self.assertFalse(Path(seen["path"]).exists())
+            flat = [" ".join(call) for call in calls]
+            self.assertTrue(any(item.endswith(" wg setconf wg0 " + seen["path"]) or "setconf wg0" in item for item in flat))
+            self.assertIn(
+                "/usr/sbin/iptables-nft -t nat -D POSTROUTING -s 10.8.0.0/24 -o eth0 -j MASQUERADE",
+                flat,
+            )
+            self.assertIn(
+                "/usr/sbin/iptables-nft -t nat -A POSTROUTING -s 10.8.0.0/24 -o eth1 -j MASQUERADE",
+                flat,
+            )
+            self.assertIn("/usr/sbin/iptables-nft -I FORWARD 1 -i wg0 -j ACCEPT", flat)
+            self.assertIn("/usr/sbin/iptables-nft -I FORWARD 1 -o wg0 -j ACCEPT", flat)
+            self.assertIn(
+                "/usr/sbin/iptables-nft -t mangle -A FORWARD -i wg0 -p tcp --tcp-flags SYN,RST SYN -j TCPMSS --set-mss 1240",
+                flat,
+            )
+            self.assertIn(
+                "/usr/sbin/iptables-nft -t mangle -A FORWARD -o wg0 -p tcp --tcp-flags SYN,RST SYN -j TCPMSS --set-mss 1240",
+                flat,
+            )
+            self.assertFalse(any("/bin/sh" in item or "PostUp" in item for item in flat))
+
+    def test_sync_rebuilds_peer_file(self) -> None:
+        import tempfile
+
+        text = (
+            "[Interface]\n"
+            f"PrivateKey = {self._key(1)}\n"
+            "ListenPort = 51820\n"
+            "PostUp = iptables -F\n"
+            "\n[Peer]\n"
+            f"PublicKey = {self._key(2)}\n"
+            "AllowedIPs = 10.8.0.2/32\n"
+        )
+        with tempfile.TemporaryDirectory() as tmp:
+            calls: list[list[str]] = []
+            seen: dict[str, str] = {}
+            result = self.helper.evaluate(
+                {"op": "sync", "iface": "wg0", "config": text},
+                tmp,
+                self._runner(calls, seen),
+                self.bins,
+            )
+            self.assertEqual(result["code"], 0, result)
+            self.assertNotIn("PostUp", seen["body"])
+            self.assertNotIn("iptables", seen["body"])
+            self.assertIn("PublicKey = ", seen["body"])
+            self.assertFalse(Path(seen["path"]).exists())
+            self.assertTrue(any("syncconf" in " ".join(call) for call in calls))
+
+    def test_raw_commands_are_rejected(self) -> None:
+        import tempfile
+
+        with tempfile.TemporaryDirectory() as tmp:
+            calls: list[list[str]] = []
+            seen: dict[str, str] = {}
+            runner = self._runner(calls, seen)
+            blocked = self.helper.evaluate(
+                {"cmd": "iptables", "args": ["-F"]},
+                tmp,
+                runner,
+                self.bins,
+            )
+            self.assertEqual(blocked["code"], 127)
+            self.assertEqual(calls, [])
+            foreign = self.helper.evaluate({"op": "genkey"}, tmp, runner, self.bins)
+            self.assertEqual(foreign["code"], 127)
+            self.assertEqual(calls, [])
+
+    def test_node_client_rejects_iptables_and_sends_show(self) -> None:
+        import os
+        import shutil
+        import socket
+        import subprocess
+        import tempfile
+        import threading
+
+        if shutil.which("node") is None:
+            self.skipTest("node is not installed")
+        script = ROOT / "components" / "wg-easy" / "handoff" / "handoff.mjs"
+        refused = subprocess.run(
+            ["node", str(script), "iptables", "-F"],
+            stdin=subprocess.DEVNULL,
+            capture_output=True,
+            timeout=5,
+            check=False,
+        )
+        self.assertEqual(refused.returncode, 127)
+        self.assertIn(b"rejected command", refused.stderr)
+        shell = (ROOT / "components" / "wg-easy" / "handoff" / "handoff.sh").read_text(encoding="utf-8")
+        self.assertIn('exec /usr/bin/wg "$@"', shell)
+        with tempfile.TemporaryDirectory() as tmp:
+            sock_path = os.path.join(tmp, "helper.sock")
+            ready = threading.Event()
+
+            def serve() -> None:
+                server = socket.socket(socket.AF_UNIX, socket.SOCK_STREAM)
+                server.bind(sock_path)
+                os.chmod(sock_path, 0o666)
+                server.listen(1)
+                server.settimeout(5)
+                ready.set()
+                conn, _addr = server.accept()
+                self.helper.handle_client(conn, 1000, 1000, tmp)
+                server.close()
+
+            thread = threading.Thread(target=serve)
+            thread.start()
+            self.assertTrue(ready.wait(2))
+            env = os.environ.copy()
+            env["WG_HELPER_SOCK"] = sock_path
+            shown = subprocess.run(
+                ["node", str(script), "wg", "show", "wg0", "dump"],
+                stdin=subprocess.DEVNULL,
+                capture_output=True,
+                env=env,
+                timeout=5,
+                check=False,
+            )
+            thread.join(5)
+            self.assertNotEqual(shown.returncode, 127)
+            self.assertNotIn(b"rejected command", shown.stderr)
 
 
 if __name__ == "__main__":

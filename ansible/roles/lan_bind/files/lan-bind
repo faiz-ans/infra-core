@@ -42,12 +42,14 @@ del_nat() {
 
 add_redirects() {
   local proto
+  # Only addresses that belong to this host. A tunnel client packet to a
+  # public :443/:80/:53 is in transit and must not be captured here.
   for proto in udp tcp; do
-    iptables -t nat -A PREROUTING -p "${proto}" --dport 53 -j REDIRECT --to-ports "${DNS_PROXY_PORT}"
+    iptables -t nat -A PREROUTING -m addrtype --dst-type LOCAL -p "${proto}" --dport 53 -j REDIRECT --to-ports "${DNS_PROXY_PORT}"
   done
-  iptables -t nat -A PREROUTING -p tcp --dport 80 -j REDIRECT --to-ports "${HTTP_PORT}"
+  iptables -t nat -A PREROUTING -m addrtype --dst-type LOCAL -p tcp --dport 80 -j REDIRECT --to-ports "${HTTP_PORT}"
   for proto in tcp udp; do
-    iptables -t nat -A PREROUTING -p "${proto}" --dport 443 -j REDIRECT --to-ports "${HTTPS_PORT}"
+    iptables -t nat -A PREROUTING -m addrtype --dst-type LOCAL -p "${proto}" --dport 443 -j REDIRECT --to-ports "${HTTPS_PORT}"
   done
   for proto in tcp udp; do
     iptables -t nat -A OUTPUT -p "${proto}" -d 127.0.0.1 --dport 443 -j REDIRECT --to-ports "${HTTPS_PORT}"

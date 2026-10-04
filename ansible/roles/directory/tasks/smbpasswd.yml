@@ -1,0 +1,31 @@
+---
+- name: Read account passwords
+  set_fact:
+    site_accounts: "{{ lookup('file', site_repo + '/ansible/.tmp/directory/' + site_host_name + '/accounts.json') | from_json }}"
+  no_log: true
+
+- name: Samba password matches the directory password
+  shell: |
+    set -e
+    if pdbedit -L | awk -F: '{print $1}' | grep -qx '{{ item.name }}'; then
+      smbpasswd -s '{{ item.name }}'
+    else
+      smbpasswd -a -s '{{ item.name }}'
+    fi
+  args:
+    stdin: "{{ item.password }}\n{{ item.password }}\n"
+  loop: "{{ site_accounts.users }}"
+  no_log: true
+  changed_when: true
+
+- name: Reload Samba
+  service:
+    name: smbd
+    state: restarted
+
+- name: Remove rendered passwords
+  file:
+    path: "{{ site_repo }}/ansible/.tmp/directory/{{ site_host_name }}/accounts.json"
+    state: absent
+  delegate_to: localhost
+  become: false

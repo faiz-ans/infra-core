@@ -38,6 +38,11 @@ services:
     ports: { web: 9200 }
     keep_id: true
     publish: ["127.0.0.1:9200:9200"]
+  radicale:
+    component: radicale
+    network: site
+    privilege: rootless
+    sso: none
   pi-hole:
     component: pi-hole
     network: host
@@ -142,8 +147,28 @@ services:
     privilege: rootless
     sso: none
     ports: { web: 5055 }
-  arr:
-    component: arr
+  sonarr:
+    component: sonarr
+    network: site
+    privilege: rootless
+    sso: none
+    ports: { web: 8989 }
+    dirs: [media, downloads]
+  radarr:
+    component: radarr
+    network: site
+    privilege: rootless
+    sso: none
+    ports: { web: 7878 }
+    dirs: [media, downloads]
+  prowlarr:
+    component: prowlarr
+    network: site
+    privilege: rootless
+    sso: none
+    ports: { web: 9696 }
+  flaresolverr:
+    component: flaresolverr
     network: site
     privilege: rootless
     sso: none
@@ -237,8 +262,14 @@ services:
     privilege: rootless
     sso: forward-auth
     ports: { web: 8086 }
-  monitoring:
-    component: monitoring
+  prometheus:
+    component: prometheus
+    network: site
+    privilege: rootless
+    sso: forward-auth
+    ports: { web: 9090 }
+  grafana:
+    component: grafana
     network: site
     privilege: rootless
     sso: oidc

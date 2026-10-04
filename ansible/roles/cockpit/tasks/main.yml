@@ -1,8 +1,16 @@
 ---
-# Cockpit is a host package. hosts[].admin-gui defaults to false.
+# Cockpit is a host package. hosts[].admin-gui defaults to disabled.
 - name: This host
   set_fact:
     site_this_host: "{{ site_plan.hosts | selectattr('name', 'equalto', site_host_name) | list | first }}"
+
+- name: Admin GUI config
+  set_fact:
+    site_admin_gui: "{{ site_this_host['admin-gui'] | default({'enabled': false, 'primary': 'cockpit', 'aliases': []}) }}"
+
+- name: Admin GUI public labels
+  set_fact:
+    site_admin_gui_labels: "{{ ([site_admin_gui.primary] + (site_admin_gui.aliases | default([]))) | unique | list }}"
 
 - name: Install Cockpit
   apt:
@@ -11,17 +19,18 @@
       - cockpit-podman
       - cockpit-networkmanager
     state: present
-  when: site_this_host['admin-gui'] | default(false) | bool
+  when: site_admin_gui.enabled | bool
 
-- name: Cockpit accepts its public name
+- name: Cockpit accepts its public names
   copy:
     dest: /etc/cockpit/cockpit.conf
     mode: "0644"
     content: |
       [WebService]
-      Origins = https://cockpit.{{ site_plan.domain }} wss://cockpit.{{ site_plan.domain }}
+      Origins = {% for label in site_admin_gui_labels %}https://{{ label }}.{{ site_plan.domain }} wss://{{ label }}.{{ site_plan.domain }}{% if not loop.last %} {% endif %}{% endfor %}
+
       ProtocolHeader = X-Forwarded-Proto
-  when: site_this_host['admin-gui'] | default(false) | bool
+  when: site_admin_gui.enabled | bool
   notify: restart cockpit
 
 - name: Enable Cockpit
@@ -29,13 +38,13 @@
     name: cockpit.socket
     enabled: true
     state: started
-  when: site_this_host['admin-gui'] | default(false) | bool
+  when: site_admin_gui.enabled | bool
 
 - name: Remove Cockpit public-name config
   file:
     path: /etc/cockpit/cockpit.conf
     state: absent
-  when: not (site_this_host['admin-gui'] | default(false) | bool)
+  when: not (site_admin_gui.enabled | bool)
 
 - name: Stop Cockpit
   service:
@@ -43,7 +52,7 @@
     enabled: false
     state: stopped
   failed_when: false
-  when: not (site_this_host['admin-gui'] | default(false) | bool)
+  when: not (site_admin_gui.enabled | bool)
 
 - name: Remove Cockpit
   apt:
@@ -52,4 +61,4 @@
       - cockpit-podman
       - cockpit-networkmanager
     state: absent
-  when: not (site_this_host['admin-gui'] | default(false) | bool)
+  when: not (site_admin_gui.enabled | bool)

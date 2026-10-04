@@ -1,0 +1,5 @@
+---
+- name: Provision the directory
+  include_tasks: provision.yml
+- name: Grant SMB and home access from the directory
+  include_tasks: access.yml

@@ -217,6 +217,108 @@
   register: site_wl_uid
   changed_when: false
 
+- name: Persist IPv4 forwarding for WireGuard
+  copy:
+    dest: /etc/sysctl.d/99-wireguard.conf
+    mode: "0644"
+    content: |
+      net.ipv4.ip_forward=1
+      net.ipv4.conf.all.src_valid_mark=1
+  when: site_here | selectattr('key', 'equalto', 'wireguard') | list | length > 0
+  register: site_wg_sysctl
+
+- name: Apply WireGuard forwarding
+  command: /usr/sbin/sysctl --system
+  when: site_wg_sysctl is changed
+
+- name: Load WireGuard on boot
+  copy:
+    dest: /etc/modules-load.d/wireguard.conf
+    mode: "0644"
+    content: |
+      wireguard
+  when: site_here | selectattr('key', 'equalto', 'wireguard') | list | length > 0
+
+- name: Load the WireGuard module
+  command: /usr/sbin/modprobe wireguard
+  changed_when: false
+  when: site_here | selectattr('key', 'equalto', 'wireguard') | list | length > 0
+
+- name: WireGuard tools for the root helper
+  package:
+    name: wireguard-tools
+    state: present
+  when: site_here | selectattr('key', 'equalto', 'wireguard') | list | length > 0
+
+- name: Host iptables alternative
+  command: update-alternatives --query iptables
+  register: site_ipt_alt
+  changed_when: false
+  failed_when: false
+  when: site_here | selectattr('key', 'equalto', 'wireguard') | list | length > 0
+
+- name: Point host iptables at nft
+  command: update-alternatives --set iptables /usr/sbin/iptables-nft
+  when:
+    - site_here | selectattr('key', 'equalto', 'wireguard') | list | length > 0
+    - site_ipt_alt.rc | default(1) == 0
+    - "'Value: /usr/sbin/iptables-nft' not in (site_ipt_alt.stdout | default(''))"
+
+- name: WireGuard data directory
+  file:
+    path: "{{ ((site_plan.hosts | selectattr('name', 'equalto', site_host_name) | list | first).data.roots.appdata | default(site_plan.roots.appdata, true)) }}/wireguard"
+    state: directory
+    owner: "{{ site_wl_user }}"
+    mode: "0755"
+  when: site_here | selectattr('key', 'equalto', 'wireguard') | list | length > 0
+
+- name: Install WireGuard helper
+  copy:
+    src: "{{ playbook_dir }}/../../components/wg-easy/site-wg-helper"
+    dest: /usr/local/sbin/site-wg-helper
+    mode: "0755"
+  register: site_wg_helper_bin
+  when: site_here | selectattr('key', 'equalto', 'wireguard') | list | length > 0
+
+- name: WireGuard helper unit
+  copy:
+    dest: /etc/systemd/system/site-wg-helper.service
+    mode: "0644"
+    content: |
+      [Unit]
+      Description=WireGuard helper for rootless wg-easy
+      After=network-online.target
+
+      [Service]
+      Type=simple
+      Environment=WG_HELPER_UID={{ site_wl_uid.stdout }}
+      Environment=WG_HELPER_SOCK={{ ((site_plan.hosts | selectattr('name', 'equalto', site_host_name) | list | first).data.roots.appdata | default(site_plan.roots.appdata, true)) }}/wireguard/.wg-helper.sock
+      Environment=WG_HELPER_CONF={{ ((site_plan.hosts | selectattr('name', 'equalto', site_host_name) | list | first).data.roots.appdata | default(site_plan.roots.appdata, true)) }}/wireguard
+      ExecStart=/usr/local/sbin/site-wg-helper
+      Restart=on-failure
+      RestartSec=1
+
+      [Install]
+      WantedBy=multi-user.target
+  register: site_wg_helper_unit
+  when: site_here | selectattr('key', 'equalto', 'wireguard') | list | length > 0
+
+- name: Start WireGuard helper
+  systemd:
+    name: site-wg-helper.service
+    enabled: true
+    state: "{{ 'restarted' if (site_wg_helper_bin.changed or site_wg_helper_unit.changed) else 'started' }}"
+    daemon_reload: true
+  when: site_here | selectattr('key', 'equalto', 'wireguard') | list | length > 0
+
+- name: Stop WireGuard helper when this host has no tunnel UI
+  systemd:
+    name: site-wg-helper.service
+    enabled: false
+    state: stopped
+  failed_when: false
+  when: site_here | selectattr('key', 'equalto', 'wireguard') | list | length == 0
+
 - name: Immich Postgres directory
   set_fact:
     site_immich_pg: "{{ ((site_plan.hosts | selectattr('name', 'equalto', site_host_name) | list | first).data.roots.appdata | default(site_plan.roots.appdata)) }}/immich/postgres"
@@ -243,6 +345,41 @@
     - site_immich_pg is defined
     - site_touch | selectattr('key', 'equalto', 'immich') | list | length > 0
 
+- name: Stop the rootless unit when this service is rootful
+  become: true
+  become_user: "{{ site_wl_user }}"
+  environment:
+    XDG_RUNTIME_DIR: "/run/user/{{ site_wl_uid.stdout }}"
+  args:
+    executable: /bin/bash
+  shell: |
+    set -euo pipefail
+    dir="/home/{{ site_wl_user }}/.config/containers/systemd/{{ item.name }}"
+    [ -d "$dir" ] || exit 0
+    find "$dir" -type f \( -name '*.container' -o -name '*.kube' -o -name '*.pod' -o -name '*.network' -o -name '*.volume' \) -print0 |
+      while IFS= read -r -d '' f; do
+        base=$(basename "$f")
+        systemctl --user stop "${base%.*}.service" || true
+        systemctl --user disable "${base%.*}.service" || true
+      done
+  loop: "{{ site_touch }}"
+  loop_control:
+    label: "{{ item.name }}"
+  when:
+    - site_touch | length > 0
+    - (item.privilege | default('rootless')) == 'rootful'
+
+- name: Remove the rootless tree when this service is rootful
+  file:
+    path: "/home/{{ site_wl_user }}/.config/containers/systemd/{{ item.name }}"
+    state: absent
+  loop: "{{ site_touch }}"
+  loop_control:
+    label: "{{ item.name }}"
+  when:
+    - site_touch | length > 0
+    - (item.privilege | default('rootless')) == 'rootful'
+
 - name: Reload user systemd when a Quadlet file changed
   become: true
   become_user: "{{ site_wl_user }}"
@@ -258,7 +395,26 @@
     | list
     | length > 0
 
-- name: Restart rootless Quadlets whose files changed
+- name: Restart OpenLDAP so it adopts the current admin password
+  become: true
+  become_user: "{{ site_wl_user }}"
+  environment:
+    XDG_RUNTIME_DIR: "/run/user/{{ site_wl_uid.stdout }}"
+  args:
+    executable: /bin/bash
+  shell: |
+    set -euo pipefail
+    systemctl --user restart openldap.service
+  loop: "{{ site_sync.results | default([]) }}"
+  loop_control:
+    label: "{{ (item.item | default({})).name | default('') }}"
+  when:
+    - not (item.skipped | default(false))
+    - (item.rc | default(0)) == 0
+    - ((item.item | default({})).key | default('')) == 'openldap'
+    - ((item.item | default({})).privilege | default('rootless')) != 'rootful'
+
+- name: Restart rootless Quadlets that were synced
   become: true
   become_user: "{{ site_wl_user }}"
   environment:
@@ -268,6 +424,10 @@
   shell: |
     set -euo pipefail
     dir="/home/{{ site_wl_user }}/.config/containers/systemd/{{ (item.item | default({})).name }}"
+    name=$(basename "$dir")
+    if compgen -G "$dir"/*.container >/dev/null && ! compgen -G "$dir"/*.kube >/dev/null; then
+      podman pod exists "$name" && podman pod rm -f "$name" || true
+    fi
     find "$dir" -type f \( -name '*.container' -o -name '*.kube' -o -name '*.pod' -o -name '*.network' -o -name '*.volume' \) -print0 |
       while IFS= read -r -d '' f; do
         base=$(basename "$f")
@@ -277,8 +437,24 @@
   loop_control:
     label: "{{ (item.item | default({})).name | default('') }}"
   when:
-    - item.stdout_lines | default([]) | select('match', '^[<>c*]') | list | length > 0
+    - not (item.skipped | default(false))
+    - (item.rc | default(0)) == 0
+    - ((item.item | default({})).key | default('')) != 'openldap'
     - ((item.item | default({})).privilege | default('rootless')) != 'rootful'
+
+- name: Reload system systemd when a rootful Quadlet changed
+  command: systemctl daemon-reload
+  when: >-
+    site_touch | selectattr('privilege', 'equalto', 'rootful') | list | length > 0
+    and (
+      site_sync.results | default([])
+      | selectattr('stdout_lines', 'defined')
+      | map(attribute='stdout_lines')
+      | flatten
+      | select('match', '^[<>c*]')
+      | list
+      | length > 0
+    )
 
 - name: Restart rootful Quadlets whose files changed
   args:
@@ -286,6 +462,10 @@
   shell: |
     set -euo pipefail
     dir="/etc/containers/systemd/{{ (item.item | default({})).name }}"
+    name=$(basename "$dir")
+    if compgen -G "$dir"/*.container >/dev/null && ! compgen -G "$dir"/*.kube >/dev/null; then
+      podman pod exists "$name" && podman pod rm -f "$name" || true
+    fi
     find "$dir" -type f \( -name '*.container' -o -name '*.kube' -o -name '*.pod' -o -name '*.network' -o -name '*.volume' \) -print0 |
       while IFS= read -r -d '' f; do
         base=$(basename "$f")

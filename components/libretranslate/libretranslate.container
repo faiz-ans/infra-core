@@ -1,0 +1,17 @@
+[Unit]
+Description=libretranslate
+
+[Container]
+Image=docker.io/libretranslate/libretranslate:latest
+ContainerName=libretranslate
+Network=site
+PublishPort=5000:5000
+Pull=always
+Environment=TZ=${site.env.timezone}
+Volume=${host.data.roots.appdata}/libretranslate:/home/libretranslate/.local
+
+[Service]
+Restart=on-failure
+
+[Install]
+WantedBy=default.target

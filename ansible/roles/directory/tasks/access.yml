@@ -1,0 +1,118 @@
+---
+- name: Owns people roots?
+  set_fact:
+    site_owns_people: >-
+      {{
+        (site_plan.owners.groups.host | default('') == site_host_name)
+        or (site_plan.owners.users.host | default('') == site_host_name)
+      }}
+
+- name: Skip hosts that do not own homes
+  meta: end_host
+  when: not (site_owns_people | bool)
+
+- name: Skip when nobody needs a unix name
+  meta: end_host
+  when:
+    - not (site_plan.people_homes | bool)
+    - site_plan.policy.filesystem != 'smb'
+
+- name: Render SSSD and SMB passwords
+  command:
+    argv:
+      - python3
+      - "{{ playbook_dir }}/../scripts/render_directory.py"
+      - "{{ desired_path }}"
+      - "{{ secrets_file }}"
+      - "{{ site_repo }}/ansible/.tmp/directory"
+      - "{{ site_host_name }}"
+  delegate_to: localhost
+  become: false
+  changed_when: false
+
+- name: SSSD packages
+  apt:
+    name:
+      - sssd
+      - sssd-ldap
+      - libnss-sss
+      - libpam-sss
+    state: present
+
+- name: Install SSSD config
+  copy:
+    src: "{{ site_repo }}/ansible/.tmp/directory/{{ site_host_name }}/sssd.conf"
+    dest: /etc/sssd/sssd.conf
+    owner: root
+    group: root
+    mode: "0600"
+  no_log: true
+
+- name: passwd consults SSSD
+  lineinfile:
+    path: /etc/nsswitch.conf
+    regexp: '^passwd:'
+    line: 'passwd:         files systemd sss'
+
+- name: group consults SSSD
+  lineinfile:
+    path: /etc/nsswitch.conf
+    regexp: '^group:'
+    line: 'group:          files systemd sss'
+
+- name: Flush SSSD cache
+  command: sss_cache -E
+  changed_when: false
+  failed_when: false
+
+- name: PAM authenticates site users with the directory
+  command: pam-auth-update --package --enable sss
+  changed_when: false
+
+- name: Start SSSD
+  service:
+    name: sssd
+    state: restarted
+    enabled: true
+
+- name: Wait until directory names resolve
+  shell: |
+    set -e
+    getent group all >/dev/null
+    {% for user in site_plan.users %}
+    getent passwd {{ user.name }} >/dev/null
+    {% endfor %}
+  args:
+    executable: /bin/bash
+  register: site_nss
+  changed_when: false
+  retries: 20
+  delay: 3
+  until: site_nss.rc == 0
+
+- name: User home layout
+  include_tasks: homes.yml
+  when: site_plan.people_homes | bool
+
+- name: SMB passwords from the directory
+  include_tasks: smbpasswd.yml
+  when: site_plan.policy.filesystem == 'smb'
+
+- name: Remove rendered passwords
+  file:
+    path: "{{ site_repo }}/ansible/.tmp/directory/{{ site_host_name }}/accounts.json"
+    state: absent
+  delegate_to: localhost
+  become: false
+  when: site_plan.policy.filesystem != 'smb'
+
+- name: Remove rendered directory files
+  file:
+    path: "{{ site_repo }}/ansible/.tmp/directory/{{ item }}"
+    state: absent
+  delegate_to: localhost
+  become: false
+  loop:
+    - add.ldif
+    - modify.ldif
+    - "{{ site_host_name }}/sssd.conf"

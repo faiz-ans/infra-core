@@ -10,7 +10,7 @@ import { existsSync, readFileSync } from 'node:fs'
 const dbPath = '/etc/wireguard/wg-easy.db'
 if (!existsSync(dbPath)) process.exit(0)
 
-const PATH = '/usr/sbin:/sbin:/usr/bin:/bin'
+const PATH = '/opt/wg-handoff/bin:/usr/sbin:/sbin:/usr/bin:/bin'
 
 function sh(cmd) {
   try {
@@ -93,6 +93,8 @@ function defaultDev() {
 }
 
 function iptablesBin() {
+  // A full path would skip the handoff wrapper and run inside the user namespace.
+  if (existsSync('/opt/wg-handoff/bin/iptables')) return 'iptables'
   for (const b of ['/usr/sbin/iptables-nft', '/usr/sbin/iptables', 'iptables']) {
     if (b.startsWith('/') && !existsSync(b)) continue
     return b
@@ -143,6 +145,12 @@ const db = new DatabaseSync(dbPath)
 try {
   db.prepare(
     `UPDATE interfaces_table SET mtu = 1280, updated_at = datetime('now') WHERE mtu = 1420`
+  ).run()
+  db.prepare(
+    `UPDATE clients_table SET mtu = 1280, updated_at = datetime('now') WHERE mtu = 1420`
+  ).run()
+  db.prepare(
+    `UPDATE user_configs_table SET default_mtu = 1280, updated_at = datetime('now') WHERE default_mtu = 1420`
   ).run()
 
   const row = db

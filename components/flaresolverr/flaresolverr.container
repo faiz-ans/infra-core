@@ -1,0 +1,16 @@
+[Unit]
+Description=flaresolverr
+
+[Container]
+Image=ghcr.io/flaresolverr/flaresolverr:latest
+ContainerName=flaresolverr
+# Unpublished. Prowlarr uses http://flaresolverr:8191 on the site network.
+Network=site
+Environment=TZ=${site.env.timezone}
+Environment=LOG_LEVEL=info
+
+[Service]
+Restart=on-failure
+
+[Install]
+WantedBy=default.target

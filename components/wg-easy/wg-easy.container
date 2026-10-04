@@ -1,6 +1,6 @@
 [Unit]
 Description=wg-easy UI (rootless, host netns)
-After=network-online.target wireguard-data.service
+After=network-online.target
 
 [Container]
 Image=ghcr.io/wg-easy/wg-easy:15
@@ -20,6 +20,8 @@ Environment=NAS_LAN_IP=${site.networking.ingress.host.ip}
 Volume=${site.data.roots.appdata}/wireguard:/etc/wireguard
 Volume=${component.dir}/entrypoint.sh:/entrypoint.sh:ro
 Volume=${component.dir}/seed-mtu.mjs:/seed-mtu.mjs:ro
+Volume=${component.dir}/handoff:/opt/wg-handoff:ro
+Environment=WG_HELPER_SOCK=/etc/wireguard/.wg-helper.sock
 Entrypoint=/bin/sh
 Exec=/entrypoint.sh
 

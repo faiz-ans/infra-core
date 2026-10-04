@@ -1,0 +1,22 @@
+[Unit]
+Description=glances
+
+[Container]
+Image=docker.io/nicolargo/glances:latest
+ContainerName=glances
+Network=site
+PublishPort=127.0.0.1:61208:61208
+PublishPort=${host.ip}:61208:61208
+Pull=always
+Environment=TZ=${site.env.timezone}
+Environment=GLANCES_OPT="-w --disable-plugin docker"
+Volume=${component.dir}/glances.conf:/etc/glances/glances.conf:ro
+Volume=/etc/os-release:/etc/os-release:ro
+Volume=/sys:/sys:ro
+Volume=${host.data.roots.appdata}:/mnt/data:ro
+
+[Service]
+Restart=on-failure
+
+[Install]
+WantedBy=default.target

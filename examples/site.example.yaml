@@ -46,7 +46,10 @@ site:
       groups: [all]
   hosts:
     - name: storage
-      admin-gui: true
+      admin-gui:
+        enabled: true
+        primary: sys
+        aliases: [cockpit]
       ip: 10.0.0.10
       os:
         name: debian
@@ -98,6 +101,8 @@ site:
           services:
             caddy:
             authelia:
+            # radicale and collabora are separate services. OpenCloud links to
+            # each one only while that service is listed.
             opencloud:
             pi-hole:
               - name: pi-hole

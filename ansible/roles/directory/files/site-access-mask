@@ -1,0 +1,471 @@
+#!/usr/bin/env python3
+"""Keep a folder created by SMB usable in OpenCloud, and the reverse.
+
+OpenCloud creates directories with mode 0700. That mode clears the ACL mask,
+so an inherited named-user entry is present and still grants nothing. SMB
+clients do the same when UNIX extensions let them chmod a new folder to 0755.
+The workload user then cannot write the OpenCloud records, and the person
+cannot enter the folder from the other side.
+
+The group-write bit is that mask. Restoring it makes the default ACL effective
+again. A folder that still has no OpenCloud id is listed for a later scan, or
+scanned here when this process is the watcher.
+"""
+
+import argparse
+import ctypes
+import ctypes.util
+import os
+import select
+import stat
+import struct
+import subprocess
+import sys
+import time
+
+SKIP = (".Trash", ".space")
+INDEX_CAP = 50
+LARGE = 1024 * 1024
+
+FAN_CLOEXEC = 0x00000001
+FAN_NONBLOCK = 0x00000002
+FAN_ATTRIB = 0x00000004
+FAN_UNLIMITED_QUEUE = 0x00000010
+FAN_REPORT_DFID_NAME = 0x00000C00
+FAN_MARK_ADD = 0x00000001
+FAN_MARK_FILESYSTEM = 0x00000100
+FAN_Q_OVERFLOW = 0x00004000
+FAN_MOVED_TO = 0x00000080
+FAN_CREATE = 0x00000100
+FAN_ONDIR = 0x40000000
+FAN_EVENT_INFO_TYPE_DFID_NAME = 2
+AT_FDCWD = -100
+
+
+def xattr(path, name):
+    try:
+        return os.getxattr(path, name).decode().strip("\x00").strip()
+    except OSError:
+        return ""
+
+
+def skipped(name):
+    return name.startswith(".oc-") or name in SKIP or name.endswith(".mlock")
+
+
+def under_subroot(path, roots):
+    for root in roots:
+        root = root.rstrip("/")
+        if not path.startswith(root + "/"):
+            continue
+        parts = path[len(root) + 1 :].split("/")
+        if len(parts) >= 2 and not any(skipped(part) for part in parts):
+            return True
+    return False
+
+
+def container_path(path, roots):
+    mounts = (roots[0], "/posix/users"), (roots[1], "/posix/groups")
+    for host, mount in mounts:
+        host = host.rstrip("/")
+        if path == host or path.startswith(host + "/"):
+            return mount + path[len(host) :]
+    return ""
+
+
+_DEFAULTS = {}
+
+
+def named_defaults(parent):
+    """Named default ACL entries on the parent, without the owning-user entry."""
+    if parent in _DEFAULTS:
+        return _DEFAULTS[parent]
+    entries = []
+    try:
+        out = subprocess.check_output(
+            ["getfacl", "-c", parent], text=True, stderr=subprocess.DEVNULL
+        )
+    except (OSError, subprocess.CalledProcessError):
+        _DEFAULTS[parent] = entries
+        return entries
+    for line in out.splitlines():
+        if not line.startswith("default:"):
+            continue
+        body = line[len("default:") :]
+        kind, name, _perm = body.split(":", 2)
+        if kind in ("user", "group") and name:
+            entries.append(body)
+    _DEFAULTS[parent] = entries
+    return entries
+
+
+def grants_missing(path, grants):
+    try:
+        out = subprocess.check_output(
+            ["getfacl", "-c", path], text=True, stderr=subprocess.DEVNULL
+        )
+    except (OSError, subprocess.CalledProcessError):
+        return True
+    have = set()
+    for line in out.splitlines():
+        entry = line.split("\t", 1)[0]
+        if entry.startswith("user:") or entry.startswith("group:"):
+            have.add(entry)
+    return any(grant not in have for grant in grants)
+
+
+def apply_grants(path, grants, is_dir):
+    spec = list(grants) + ["mask::rwx"]
+    if is_dir:
+        spec.extend("d:" + grant for grant in grants)
+        spec.append("d:mask::rwx")
+    subprocess.run(["setfacl", "-m", ",".join(spec), "--", path], check=False)
+
+
+EDITOR = "txrwaduUq"
+
+
+def subroot_of(path, roots):
+    """The layout folder above path, when path is something created inside it."""
+    for root in roots:
+        root = root.rstrip("/")
+        if not path.startswith(root + "/"):
+            continue
+        parts = path[len(root) + 1 :].split("/")
+        if len(parts) >= 3 and not any(skipped(part) for part in parts):
+            return os.path.join(root, parts[0], parts[1])
+    return ""
+
+
+def stamp_editor(path, roots):
+    """A folder created inside a subroot inherits delete and rename from here."""
+    sub = subroot_of(path, roots)
+    if not sub:
+        return False
+    try:
+        names = os.listxattr(sub)
+    except OSError:
+        return False
+    changed = False
+    prefix = "user.oc.grant."
+    for name in names:
+        if not (name.startswith(prefix + "u:") or name.startswith(prefix + "g:")):
+            continue
+        principal = name[len(prefix) :]
+        flags = "g" if principal.startswith("g:") else ""
+        value = f"\x00t=A:f={flags}:p={EDITOR}:c=:e=0\n".encode()
+        try:
+            current = os.getxattr(path, name)
+        except OSError:
+            current = None
+        if current == value:
+            continue
+        try:
+            os.setxattr(path, name, value)
+        except OSError:
+            continue
+        changed = True
+    return changed
+
+
+def ensure(path, roots=()):
+    """Restore the mask, and copy the parent's default ACL when it did not stick."""
+    try:
+        mode = os.lstat(path).st_mode
+    except OSError:
+        return False
+    if stat.S_ISLNK(mode):
+        return False
+    is_dir = stat.S_ISDIR(mode)
+    if not is_dir and not stat.S_ISREG(mode):
+        return False
+    changed = False
+    grants = named_defaults(os.path.dirname(path))
+    if grants and grants_missing(path, grants):
+        apply_grants(path, grants, is_dir)
+        changed = True
+    if fix_mask(path):
+        changed = True
+    if roots and stamp_editor(path, roots):
+        changed = True
+    return changed
+
+
+def fix_mask(path):
+    """Return True when the group class had to be opened up."""
+    try:
+        mode = os.lstat(path).st_mode
+    except OSError:
+        return False
+    if stat.S_ISLNK(mode) or not (stat.S_ISDIR(mode) or stat.S_ISREG(mode)):
+        return False
+    if mode & stat.S_IWGRP:
+        return False
+    updated = mode | stat.S_IRGRP | stat.S_IWGRP
+    updated &= ~stat.S_IRWXO
+    if stat.S_ISDIR(mode):
+        updated |= stat.S_IXGRP | stat.S_ISGID
+    os.chmod(path, updated, follow_symlinks=False)
+    return True
+
+
+def space_id(path, roots):
+    current = path
+    floors = {root.rstrip("/") for root in roots}
+    while current not in floors and current != "/":
+        if xattr(current, "user.oc.space.alias"):
+            return xattr(current, "user.oc.id")
+        parent = os.path.dirname(current)
+        if parent == current:
+            break
+        current = parent
+    return ""
+
+
+def has_large_file(path):
+    for dirpath, dirnames, filenames in os.walk(path):
+        dirnames[:] = [name for name in dirnames if not skipped(name)]
+        for name in filenames:
+            if skipped(name):
+                continue
+            try:
+                if os.lstat(os.path.join(dirpath, name)).st_size > LARGE:
+                    return True
+            except OSError:
+                continue
+    return False
+
+
+def subroots(root):
+    root = root.rstrip("/")
+    if not os.path.isdir(root):
+        return
+    for home in os.scandir(root):
+        if not home.is_dir(follow_symlinks=False) or skipped(home.name):
+            continue
+        for sub in os.scandir(home.path):
+            if sub.is_dir(follow_symlinks=False) and not skipped(sub.name):
+                yield sub.path
+
+
+def repair(roots, index_list):
+    fixed = 0
+    indexed = []
+    for root in roots:
+        for sub in subroots(root):
+            for dirpath, dirnames, _filenames in os.walk(sub):
+                dirnames[:] = [name for name in dirnames if not skipped(name)]
+                if ensure(dirpath, roots):
+                    fixed += 1
+                if dirpath == sub or xattr(dirpath, "user.oc.id"):
+                    continue
+                if not xattr(dirpath, "user.oc.space.id"):
+                    sid = space_id(dirpath, roots)
+                    if not sid:
+                        continue
+                    os.setxattr(dirpath, "user.oc.space.id", sid.encode())
+                if len(indexed) >= INDEX_CAP or has_large_file(dirpath):
+                    continue
+                indexed.append(dirpath)
+    indexed.sort()
+    kept = []
+    for path in indexed:
+        if any(path.startswith(parent + "/") for parent in kept):
+            continue
+        kept.append(path)
+    indexed = kept
+    print(f"fixed {fixed}")
+    if index_list:
+        os.makedirs(os.path.dirname(index_list), exist_ok=True)
+        if indexed:
+            with open(index_list, "w", encoding="utf-8") as handle:
+                for path in indexed:
+                    print(f"index {path}")
+                    handle.write(path + "\n")
+        elif os.path.exists(index_list):
+            os.remove(index_list)
+
+
+def remember(path, pending, when):
+    try:
+        mode = os.lstat(path).st_mode
+    except OSError:
+        return
+    if not (stat.S_ISDIR(mode) or stat.S_ISREG(mode)):
+        return
+    for existing in list(pending):
+        if path.startswith(existing + "/"):
+            return
+        if existing.startswith(path + "/"):
+            pending.pop(existing, None)
+    pending[path] = when
+
+
+def scan_one(path, roots, workload, runtime):
+    if xattr(path, "user.oc.id"):
+        return
+    if not xattr(path, "user.oc.space.id"):
+        sid = space_id(path, roots)
+        if not sid:
+            return
+        os.setxattr(path, "user.oc.space.id", sid.encode())
+    container = container_path(path, roots)
+    if not container or not workload:
+        return
+    env = os.environ.copy()
+    env["XDG_RUNTIME_DIR"] = runtime
+    subprocess.run(
+        [
+            "runuser",
+            "-u",
+            workload,
+            "--",
+            "env",
+            f"XDG_RUNTIME_DIR={runtime}",
+            "podman",
+            "exec",
+            "opencloud-opencloud",
+            "opencloud",
+            "posixfs",
+            "scan",
+            container,
+        ],
+        env=env,
+        check=False,
+    )
+
+
+def watch(roots, workload, runtime):
+    libc = ctypes.CDLL(ctypes.util.find_library("c"), use_errno=True)
+    libc.fanotify_init.argtypes = [ctypes.c_uint, ctypes.c_uint]
+    libc.fanotify_init.restype = ctypes.c_int
+    libc.fanotify_mark.argtypes = [
+        ctypes.c_int,
+        ctypes.c_uint,
+        ctypes.c_uint64,
+        ctypes.c_int,
+        ctypes.c_char_p,
+    ]
+    libc.fanotify_mark.restype = ctypes.c_int
+    libc.open_by_handle_at.argtypes = [ctypes.c_int, ctypes.c_void_p, ctypes.c_int]
+    libc.open_by_handle_at.restype = ctypes.c_int
+
+    fan = libc.fanotify_init(
+        FAN_CLOEXEC | FAN_NONBLOCK | FAN_UNLIMITED_QUEUE | FAN_REPORT_DFID_NAME,
+        os.O_RDONLY | os.O_CLOEXEC,
+    )
+    if fan < 0:
+        raise OSError(ctypes.get_errno(), "fanotify_init")
+
+    mounts = []
+    for root in roots:
+        root = root.rstrip("/")
+        if not os.path.isdir(root):
+            continue
+        flags = FAN_MARK_ADD | FAN_MARK_FILESYSTEM
+        mask = FAN_CREATE | FAN_MOVED_TO | FAN_ONDIR | FAN_ATTRIB
+        if libc.fanotify_mark(fan, flags, mask, AT_FDCWD, root.encode()) != 0:
+            raise OSError(ctypes.get_errno(), f"fanotify_mark {root}")
+        mounts.append(os.open(root, os.O_RDONLY | os.O_DIRECTORY | os.O_CLOEXEC))
+
+    pending = {}
+    while True:
+        ready, _, _ = select.select([fan], [], [], 0.3)
+        now = time.time()
+        if ready:
+            try:
+                blob = os.read(fan, 65536)
+            except BlockingIOError:
+                blob = b""
+            for path, _is_dir in events(libc, blob, mounts, roots):
+                if not under_subroot(path, roots):
+                    continue
+                ensure(path, roots)
+                remember(path, pending, now + 0.5)
+        due = [path for path, when in pending.items() if when <= now]
+        for path in due:
+            pending.pop(path, None)
+            try:
+                if os.path.exists(path) and not xattr(path, "user.oc.id"):
+                    scan_one(path, roots, workload, runtime)
+            except OSError as exc:
+                print(f"index {path}: {exc}", file=sys.stderr)
+
+
+def events(libc, blob, mounts, roots):
+    offset = 0
+    found = []
+    while offset + 24 <= len(blob):
+        event_len, _vers, _reserved, metadata_len, mask, evfd, _pid = struct.unpack_from(
+            "=IBBHQii", blob, offset
+        )
+        if event_len < 24:
+            break
+        if evfd >= 0:
+            os.close(evfd)
+        if mask & FAN_Q_OVERFLOW:
+            print("fanotify queue overflow", file=sys.stderr)
+        info = offset + metadata_len
+        end = offset + event_len
+        while info + 4 <= end:
+            info_type, _pad, info_len = struct.unpack_from("=BBH", blob, info)
+            if info_len < 4 or info + info_len > end:
+                break
+            if info_type == FAN_EVENT_INFO_TYPE_DFID_NAME:
+                path = path_from_handle(libc, blob[info : info + info_len], mounts, roots)
+                if path:
+                    found.append((path, bool(mask & FAN_ONDIR)))
+            info += info_len
+        offset += event_len
+    return found
+
+
+def path_from_handle(libc, record, mounts, roots):
+    if len(record) < 12 + 8:
+        return ""
+    handle_bytes, handle_type = struct.unpack_from("=Ii", record, 12)
+    handle_at = 20
+    handle_end = handle_at + handle_bytes
+    if handle_end > len(record):
+        return ""
+    name = record[handle_end:].split(b"\x00", 1)[0].decode(errors="replace")
+    if not name or "/" in name or name == "..":
+        return ""
+    raw = struct.pack("=Ii", handle_bytes, handle_type) + record[handle_at:handle_end]
+    packed = ctypes.create_string_buffer(raw)
+    floors = [root.rstrip("/") for root in roots]
+    for mount in mounts:
+        parent = libc.open_by_handle_at(
+            mount, ctypes.cast(packed, ctypes.c_void_p), os.O_PATH | os.O_CLOEXEC
+        )
+        if parent < 0:
+            continue
+        try:
+            link = os.readlink(f"/proc/self/fd/{parent}")
+        finally:
+            os.close(parent)
+        candidate = link if name == "." else os.path.join(link, name)
+        candidate = os.path.normpath(candidate)
+        if any(candidate == floor or candidate.startswith(floor + "/") for floor in floors):
+            return candidate
+    return ""
+
+
+def main():
+    parser = argparse.ArgumentParser()
+    parser.add_argument("mode", choices=("repair", "watch"))
+    parser.add_argument("--users", required=True)
+    parser.add_argument("--groups", required=True)
+    parser.add_argument("--index-list", default="")
+    parser.add_argument("--workload", default="")
+    parser.add_argument("--runtime", default="")
+    args = parser.parse_args()
+    roots = (args.users, args.groups)
+    if args.mode == "repair":
+        repair(roots, args.index_list)
+        return
+    watch(roots, args.workload, args.runtime or "/run/user/0")
+
+
+if __name__ == "__main__":
+    main()

@@ -1,0 +1,20 @@
+[Unit]
+Description=restic-rest
+
+[Container]
+Image=docker.io/restic/rest-server:latest
+ContainerName=restic-rest
+Network=site
+PublishPort=8000:8000
+Pull=always
+Environment=TZ=${site.env.timezone}
+Environment=DATA_DIRECTORY=/data
+Environment=PASSWORD_FILE=/data/.htpasswd
+Environment=OPTIONS=--listen :8000
+Volume=${site.env.backup_drive}/restic:/data
+
+[Service]
+Restart=on-failure
+
+[Install]
+WantedBy=default.target

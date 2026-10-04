@@ -58,7 +58,7 @@ def bind(desired: dict[str, Any], host: dict[str, Any] | None, secrets: dict[str
         "site.data.roots.users": r["users"],
         "site.networking.ingress.host.ip": str(ing.get("ip") or ""),
         "site.networking.ingress.host.name": str(ing.get("name") or ""),
-        "site.networking.loopback": LOOPBACK,
+        "host-loopback-mapped-ip": LOOPBACK,
         "site.networking.tunnel.endpoint": str(p.get("tunnel_endpoint") or ""),
         "site.homepage.allowed_hosts": ",".join(
             [

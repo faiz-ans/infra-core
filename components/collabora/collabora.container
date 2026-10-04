@@ -1,0 +1,23 @@
+[Unit]
+Description=collabora
+
+[Container]
+Image=docker.io/collabora/code:latest
+ContainerName=collabora
+Network=site
+PublishPort=9980:9980
+AddCapability=MKNOD
+AddCapability=SYS_ADMIN
+Environment=TZ=${site.env.timezone}
+Environment=DONT_GEN_SSL_CERT=YES
+Environment=extra_params=--o:ssl.enable=false --o:ssl.ssl_termination=true --o:welcome.enable=false
+Volume=${host.data.roots.appdata}/collabora/ca:/ca
+Volume=${component.dir}/entrypoint.sh:/entrypoint.sh:ro
+Entrypoint=/bin/sh
+Exec=/entrypoint.sh
+
+[Service]
+Restart=on-failure
+
+[Install]
+WantedBy=default.target

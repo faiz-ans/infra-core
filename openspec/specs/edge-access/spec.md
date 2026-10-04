@@ -59,7 +59,7 @@ Caddy, Authelia, Homepage, Pi-hole, Gitea, and Vaultwarden SHALL attach to a sha
 - **THEN** DNS on the edge network resolves that name without using `HTPC_UPSTREAM`
 
 ### Requirement: Single Caddy on Core
-Caddy SHALL run only on `core` as a **rootless** Quadlet in the host network namespace. It SHALL listen on unprivileged TCP/UDP ports (catalog high ports, e.g. 8080/8443). A privileged **host** nft/iptables unit SHALL REDIRECT (or equivalent source-preserving DNAT that remains in the host netns) LAN and WireGuard `:80` and `:443` (TCP and UDP) to those ports. Caddy MUST bind those high ports on all host interfaces so both the LAN address and `wg0` are served. It SHALL terminate `*.{$DOMAIN}` (HTTPS, internal TLS in this catalog) and reverse-proxy to Core apps by Podman DNS/name or localhost, and to mantle published ports at `{$SURFACE_UPSTREAM}`. No second reverse proxy SHALL be required on `surface`. Host nginx (OMV workbench) MUST NOT listen on 80 or 443. Caddy MUST NOT be a rootful container. The redirect MUST NOT target `127.0.0.1` plus a userspace proxy in a way that replaces the client source address.
+Caddy SHALL run only on `core` as a **rootless** Quadlet in the host network namespace. It SHALL listen on unprivileged TCP/UDP ports (catalog high ports, e.g. 8080/8443). A privileged **host** nft/iptables unit SHALL REDIRECT (or equivalent source-preserving DNAT that remains in the host netns) `:80` and `:443` (TCP and UDP) only when the destination is an address of this host, whether the client is on the LAN or on WireGuard. Packets the host is forwarding to any other destination MUST NOT be redirected. Caddy MUST bind those high ports on all host interfaces so both the LAN address and `wg0` are served. It SHALL terminate `*.{$DOMAIN}` (HTTPS, internal TLS in this catalog) and reverse-proxy to Core apps by Podman DNS/name or localhost, and to mantle published ports at `{$SURFACE_UPSTREAM}`. No second reverse proxy SHALL be required on `surface`. Host nginx (OMV workbench) MUST NOT listen on 80 or 443. Caddy MUST NOT be a rootful container. The redirect MUST NOT target `127.0.0.1` plus a userspace proxy in a way that replaces the client source address.
 
 #### Scenario: Jellyfin through Pi Caddy
 - **WHEN** a client requests `watch.{$DOMAIN}`
@@ -70,7 +70,7 @@ Caddy SHALL run only on `core` as a **rootless** Quadlet in the host network nam
 - **THEN** the Caddy process is a user Quadlet and its connection log (or equivalent) shows that client’s source IP, not `127.0.0.1` or a slirp/pasta gateway alone
 
 ### Requirement: Paired Pi-holes
-Pi-hole SHALL run **rootless** in the host network namespace on `core` and on `mantle`. Each instance SHALL listen on an unprivileged port (e.g. 15353) on all interfaces. A privileged host redirect SHALL map that host’s DNS address `:53` to that port (Core: extend `core-lan-bind`; do not DNAT solely to `127.0.0.1` then proxy). `*.{$DOMAIN}` SHALL still resolve to the NAS LAN IP (Caddy). Mantle Pi-hole config SHALL be a local volume (not NFS). DHCP MAY list both Pi-holes; it MUST NOT list a public resolver as a third server. FTL SHALL see the real client source IP for LAN and WireGuard queries.
+Pi-hole SHALL run **rootless** in the host network namespace on `core` and on `mantle`. Each instance SHALL listen on an unprivileged port (e.g. 15353) on all interfaces. A privileged host redirect SHALL map `:53` to that port only when the destination is an address of this host (Core: extend `core-lan-bind`; do not DNAT solely to `127.0.0.1` then proxy). `*.{$DOMAIN}` SHALL still resolve to the NAS LAN IP (Caddy). Mantle Pi-hole config SHALL be a local volume (not NFS). DHCP MAY list both Pi-holes; it MUST NOT list a public resolver as a third server. FTL SHALL see the real client source IP for LAN and WireGuard queries.
 
 #### Scenario: Core DNS is down
 - **WHEN** the NAS Pi-hole is unreachable and a client uses the mantle Pi-hole
@@ -81,15 +81,15 @@ Pi-hole SHALL run **rootless** in the host network namespace on `core` and on `m
 - **THEN** the query is answered and the logged client address is that host, not only loopback or a container bridge
 
 ### Requirement: WireGuard data plane rootful; client UI rootless
-The WireGuard **data plane** (`wg0`, routing/NAT, UDP 51820) SHALL run as privileged host plumbing on `core` (`wg-quick` or equivalent). It MUST NOT run as a rootless tun container. Remote peers SHALL reach `*.{$DOMAIN}` as if on LAN. Client DNS SHALL be `NAS_LAN_IP`. Catalog seed and/or first-run SHALL keep client MTU 1280. The WireGuard **client/peer UI** (wg-easy, port 51821) SHALL run as a **rootless** host-netns Quadlet. Caddy SHALL reverse-proxy the VPN UI to that port, not via a Docker `host.docker.internal` name. Site values SHALL stay in attributes, not plaintext git. Netbird SHALL NOT replace this VPN.
+The WireGuard **data plane** (`wg0`, routing/NAT, UDP 51820) SHALL run as privileged host plumbing. A root helper SHALL accept structured `show`, `up`, `down`, and `sync` operations from the UI, build `wg0` from the interface address, listen port, keys, and peers, and install its own NAT rules for that tunnel. It MUST NOT execute UI-supplied iptables text or config hooks. Key generation SHALL stay in the UI. The data plane MUST NOT run as a rootless tun. Remote peers SHALL reach `*.{$DOMAIN}` as if on LAN, and packets from a peer to any other destination SHALL be forwarded and NATed out the host uplink. Client DNS SHALL be the ingress host IP. Catalog seed and/or first-run SHALL keep the interface MTU, the default client MTU, and each factory client MTU of 1420 at 1280. SET SHALL persist `net.ipv4.ip_forward=1` on that host. Placing WireGuard SHALL re-apply the host port redirects so they stay limited to this host's own addresses. The WireGuard **client/peer UI** (wg-easy, port 51821) SHALL run as a **rootless** host-netns Quadlet. Caddy SHALL reverse-proxy the VPN UI to `127.0.0.1:51821`. Netbird SHALL NOT replace this VPN.
 
 #### Scenario: Remote client
-- **WHEN** a peer is connected to the NAS WireGuard service
+- **WHEN** a peer is connected to the site WireGuard service
 - **THEN** that peer can resolve and use `*.{$DOMAIN}` through Caddy
 
-#### Scenario: UI is not the data plane
-- **WHEN** an operator opens the catalogued VPN hostname
-- **THEN** Caddy reaches the rootless wg-easy UI while `wg0` is still a host/rootful interface
+#### Scenario: Clients page can read the interface
+- **WHEN** an operator opens the clients page
+- **THEN** the rootless wg-easy UI hands `wg show` to the root helper, which reads the host `wg0`
 
 ### Requirement: RustDesk rootless host network
 RustDesk OSS `hbbs` and `hbbr` SHALL run **rootless** with host networking on `core` so UDP 21116 sees real peer IPs. They SHALL NOT use an nft/iptables port redirect and MUST NOT be DNAT’d to loopback. The catalog MUST NOT publish 21115–21119 through Caddy or the site router; off-LAN desktop remains WireGuard first.

@@ -1,0 +1,62 @@
+[Unit]
+Description=opencloud
+
+[Container]
+Image=docker.io/opencloudeu/opencloud-rolling:latest
+ContainerName=opencloud
+Network=site
+UserNS=keep-id
+PublishPort=127.0.0.1:9200:9200
+AddHost=cloud.${site.env.domain}:${site.networking.ingress.host.ip}
+# Pasta host-loopback. The site network cannot reach ingress :443;
+# lan-bind maps 127.0.0.1:443 to Caddy :8443.
+AddHost=auth.${site.env.domain}:${host-loopback-mapped-ip}
+Environment=TZ=${site.env.timezone}
+Environment=PUID=${host.operations.workload.uid}
+Environment=PGID=${host.operations.workload.gid}
+Environment=PROXY_HTTP_ADDR=0.0.0.0:9200
+Environment=PROXY_TLS=false
+Environment=OC_INSECURE=true
+Environment=IDM_CREATE_DEMO_USERS=false
+Secret=${secrets.opencloud.admin_password},type=env,target=IDM_ADMIN_PASSWORD
+Environment=OC_URL=https://cloud.${site.env.domain}
+Environment=OC_DOMAIN=cloud.${site.env.domain}
+Environment=IDP_DOMAIN=auth.${site.env.domain}
+Environment=OC_OIDC_ISSUER=https://auth.${site.env.domain}
+Environment=WEB_OIDC_CLIENT_ID=opencloud
+# Quadlet splits an unquoted value on spaces, so the client would only request openid.
+Environment=WEB_OIDC_SCOPE="openid groups profile email"
+# Authelia access tokens are opaque. JWT verify logs the user out.
+Environment=PROXY_OIDC_ACCESS_TOKEN_VERIFY_METHOD=none
+Environment=PROXY_OIDC_SKIP_VERIFICATION=false
+Environment=PROXY_USER_OIDC_CLAIM=preferred_username
+Environment=PROXY_AUTOPROVISION_ACCOUNTS=true
+Environment=PROXY_AUTOPROVISION_CLAIM_USERNAME=preferred_username
+Environment=PROXY_ROLE_ASSIGNMENT_OIDC_CLAIM=groups
+Environment=GRAPH_ASSIGN_DEFAULT_USER_ROLE=true
+Environment=OC_EXCLUDE_RUN_SERVICES=idp
+Environment=PROXY_CSP_CONFIG_FILE_LOCATION=/etc/opencloud/csp.yaml
+Environment=PROXY_ENABLE_BASIC_AUTH=true
+Environment=STORAGE_USERS_DRIVER=posix
+Environment=STORAGE_USERS_POSIX_ROOT=/posix
+Environment=STORAGE_USERS_POSIX_WATCH_FS=true
+# Grants written on create must be visible on the next listing.
+Environment=STORAGE_USERS_FILEMETADATA_CACHE_TTL=1s
+Environment=STORAGE_USERS_POSIX_PERSONAL_SPACE_PATH_TEMPLATE=users/{{.User.Username}}
+Environment=STORAGE_USERS_POSIX_GENERAL_SPACE_PATH_TEMPLATE=groups/{{.SpaceName}}
+Volume=${site.data.roots.appdata}/opencloud/config:/etc/opencloud
+Volume=${component.dir}/csp.yaml:/etc/opencloud/csp.yaml:ro
+Volume=${component.dir}/proxy.yaml:/etc/opencloud/proxy.yaml
+Volume=${site.data.roots.appdata}/opencloud/data:/var/lib/opencloud
+Volume=${site.data.roots.appdata}/opencloud/posix:/posix
+Volume=${site.data.roots.users}:/posix/users
+Volume=${site.data.roots.appdata}/opencloud/projects:/posix/projects
+Volume=${site.data.roots.groups}:/posix/groups
+Entrypoint=/bin/sh
+Exec=-c "opencloud init || true; opencloud server"
+
+[Service]
+Restart=on-failure
+
+[Install]
+WantedBy=default.target

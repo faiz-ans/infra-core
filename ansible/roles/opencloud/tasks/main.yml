@@ -57,15 +57,13 @@
   loop:
     - "{{ site_plan.roots.appdata }}/opencloud/posix/users"
     - "{{ site_plan.roots.appdata }}/opencloud/posix/projects"
+    - "{{ site_plan.roots.appdata }}/opencloud/posix/groups"
 
-- name: Sticky/ACL on people trees so SMB and OpenCloud can share writers
+- name: Users root stays traversable
   file:
-    path: "{{ item }}"
+    path: "{{ site_plan.roots.users }}"
     state: directory
     mode: "2775"
-  loop:
-    - "{{ site_plan.roots.users }}"
-    - "{{ site_plan.roots.groups }}/all"
 
 - name: Detect existing space xattrs
   command: getfattr -n user.oc.space.id --only-values "{{ site_plan.roots.users }}"

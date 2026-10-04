@@ -1,0 +1,26 @@
+[Unit]
+Description=openldap
+After=network-online.target
+
+[Container]
+Image=docker.io/osixia/openldap:1.5.0
+ContainerName=openldap
+Network=site
+# 389 is privileged under rootless Podman. Hosts reach slapd on 1389.
+PublishPort=127.0.0.1:1389:389
+PublishPort=${host.ip}:1389:389
+Environment=TZ=${site.env.timezone}
+Environment=LDAP_ORGANISATION=site
+Environment=LDAP_DOMAIN=${site.env.domain}
+Secret=${secrets.openldap.admin_password},type=env,target=LDAP_ADMIN_PASSWORD
+Environment=DISABLE_CHOWN=true
+Environment=LDAP_OPENLDAP_UID=0
+Environment=LDAP_OPENLDAP_GID=0
+Volume=${site.data.roots.appdata}/openldap/data:/var/lib/ldap
+Volume=${site.data.roots.appdata}/openldap/config:/etc/ldap/slapd.d
+
+[Service]
+Restart=on-failure
+
+[Install]
+WantedBy=default.target

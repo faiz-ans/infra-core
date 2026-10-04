@@ -1,0 +1,705 @@
+---
+# The personal space is the user home. A group home is a project space.
+# OpenCloud may have created the personal space on users/<name>/files.
+# That directory becomes the home, and the documents move into files/ inside it.
+- name: OpenCloud on this host
+  set_fact:
+    site_oc: "{{ site_plan.services | selectattr('host', 'equalto', site_host_name) | selectattr('key', 'equalto', 'opencloud') | list }}"
+
+- name: Skip hosts that do not run OpenCloud
+  meta: end_host
+  when: site_oc | length == 0
+
+- name: Workload user
+  set_fact:
+    site_wl_user: "{{ (site_plan.hosts | selectattr('name', 'equalto', site_host_name) | list | first).operations.workload.user | default('') }}"
+
+- name: Workload uid
+  command: id -u {{ site_wl_user }}
+  register: site_wl_uid
+  changed_when: false
+
+- name: Personal space is the home
+  block:
+    - name: Move the personal space onto the home
+      shell: |
+        set -euo pipefail
+        users_root="{{ site_plan.roots.users }}"
+        wl="{{ site_wl_user }}"
+        alias_of() {
+          getfattr -n user.oc.space.alias --only-values "$1" 2>/dev/null || true
+        }
+        {% for user in site_plan.users %}
+        name="{{ user.name }}"
+        home="${users_root}/${name}"
+        files="${home}/files"
+        parked="${home}/.oc-incoming-files"
+        if [[ "$(alias_of "$home")" == "personal/${name}" ]]; then
+          space_id="$(getfattr -n user.oc.id --only-values "$home" 2>/dev/null || true)"
+          if [[ -n "$space_id" ]]; then
+            files_mtime="$(getfattr -n user.oc.mtime --only-values "$files" 2>/dev/null || true)"
+            shopt -s nullglob
+            for dir in "$home"/*/; do
+              base="$(basename "$dir")"
+              [[ "$base" == .oc-* ]] && continue
+              parent="$(getfattr -n user.oc.parentid --only-values "$dir" 2>/dev/null || true)"
+              node="$(getfattr -n user.oc.id --only-values "$dir" 2>/dev/null || true)"
+              mtime="$(getfattr -n user.oc.mtime --only-values "$dir" 2>/dev/null || true)"
+              owned="$(getfattr -n user.oc.space.id --only-values "$dir" 2>/dev/null || true)"
+              tmtime="$(getfattr -n user.oc.tmtime --only-values "$dir" 2>/dev/null || true)"
+              stale=0
+              rebind=0
+              if [[ "$base" != "files" && -n "$node" && -n "$mtime" && -n "$files_mtime" && "$mtime" < "$files_mtime" ]]; then
+                stale=1
+              fi
+              if [[ -n "$node" && -n "$tmtime" && "$owned" != "$space_id" ]]; then
+                rebind=1
+              fi
+              if [[ "$parent" == "$space_id" && "$stale" == 0 && "$rebind" == 0 ]]; then
+                continue
+              fi
+              if [[ "$rebind" == 1 && "$parent" == "$space_id" ]]; then
+                setfattr -n user.oc.space.id -v "$space_id" "$dir"
+                echo "scan /posix/users/${name}/${base}"
+                continue
+              fi
+              if [[ "$parent" != "$space_id" ]]; then
+                setfattr -n user.oc.parentid -v "$space_id" "$dir"
+              fi
+              if [[ -n "$node" ]]; then
+                setfattr -n user.oc.dirty -v true "$dir"
+                setfattr -n user.oc.mtime -v "$(date -u +%Y-%m-%dT%H:%M:%S.%NZ)" "$dir"
+              fi
+              echo "scan /posix/users/${name}/${base}"
+            done
+            shopt -u nullglob
+          fi
+          if [[ -d "$parked" ]]; then
+            shopt -s dotglob nullglob
+            for item in "$parked"/*; do
+              base="$(basename "$item")"
+              [[ "$base" == .oc-* ]] && continue
+              dest="${files}/${base}"
+              [[ -e "$dest" ]] && continue
+              mv "$item" "$dest"
+            done
+            shopt -u dotglob nullglob
+            rm -rf "$parked"
+            echo "restored ${name}"
+          fi
+        elif [[ -d "$files" && "$(alias_of "$files")" == "personal/${name}" ]]; then
+          runuser -u "$wl" -- env XDG_RUNTIME_DIR="/run/user/$(id -u "$wl")" systemctl --user stop opencloud.service
+          hold="${users_root}/.oc-hold/${name}"
+          rm -rf "$hold"
+          mkdir -p "${users_root}/.oc-hold"
+          mv "$home" "$hold"
+          mv "$hold/files" "$home"
+          mkdir -p "$home/files"
+          shopt -s dotglob nullglob
+          for item in "$home"/*; do
+            base="$(basename "$item")"
+            [[ "$base" == "files" || "$base" == .oc-* ]] && continue
+            mv "$item" "$home/files/${base}"
+          done
+          for item in "$hold"/*; do
+            base="$(basename "$item")"
+            if [[ "$base" == .oc-* && "$base" != ".oc-incoming-files" ]]; then
+              rm -rf "$item"
+              continue
+            fi
+            if [[ "$base" == ".oc-incoming-files" ]]; then
+              for child in "$item"/*; do
+                child_base="$(basename "$child")"
+                [[ "$child_base" == .oc-* ]] && continue
+                dest="$home/files/${child_base}"
+                [[ -e "$dest" ]] && continue
+                mv "$child" "$dest"
+              done
+              rm -rf "$item"
+              continue
+            fi
+            dest="$home/${base}"
+            if [[ -e "$dest" ]]; then
+              echo "refusing to replace ${dest}" >&2
+              exit 1
+            fi
+            mv "$item" "$dest"
+          done
+          shopt -u dotglob nullglob
+          if find "$hold" -mindepth 1 -print -quit | grep -q .; then
+            echo "refusing to discard leftover ${hold}" >&2
+            exit 1
+          fi
+          rmdir "$hold"
+          rmdir "${users_root}/.oc-hold" 2>/dev/null || true
+          chown root:root "$home"
+          chmod 0750 "$home"
+          if [[ -n "$wl" ]]; then
+            setfacl -b "$home"
+            setfacl -m "u:${name}:rx,u:${wl}:rwx,m:rwx" "$home"
+          fi
+          for sub in files photos; do
+            dir="$home/${sub}"
+            [[ -d "$dir" ]] || continue
+            chown "${name}:root" "$dir"
+            chmod 2770 "$dir"
+            setfacl -b "$dir"
+            if [[ -n "$wl" ]]; then
+              setfacl -m "u:${name}:rwx,u:${wl}:rwx,m:rwx" "$dir"
+              setfacl -m "d:u:${name}:rwx,d:u:${wl}:rwx,d:m:rwx" "$dir"
+            fi
+            find "$dir" -type d -perm -1000 -exec chmod -t {} +
+          done
+          echo "moved ${name}"
+          echo "scan /posix/users/${name}"
+        fi
+        {% endfor %}
+        python3 - <<'PY'
+        import os
+        indexes = "{{ site_plan.roots.appdata }}/opencloud/posix/indexes"
+        users_root = "{{ site_plan.roots.users }}"
+        live = set()
+        live_names = []
+        if os.path.isdir(users_root):
+            for name in os.listdir(users_root):
+                home = os.path.join(users_root, name)
+                if not os.path.isdir(home) or name.startswith("."):
+                    continue
+                def attr(path, key):
+                    try:
+                        out = os.getxattr(path, key)
+                    except OSError:
+                        return ""
+                    return out.decode()
+                if attr(home, "user.oc.space.alias") != f"personal/{name}":
+                    continue
+                space_id = attr(home, "user.oc.id")
+                if space_id:
+                    live.add(space_id)
+                    live_names.append(name)
+        def unpack(blob):
+            i = 0
+            def take(n):
+                nonlocal i
+                b = blob[i:i+n]
+                i += n
+                return b
+            def read():
+                nonlocal i
+                kind = blob[i]
+                i += 1
+                if kind & 0xE0 == 0xA0:
+                    n = kind & 0x1F
+                    return take(n).decode()
+                if kind == 0xD9:
+                    n = take(1)[0]
+                    return take(n).decode()
+                if kind == 0xDA:
+                    n = int.from_bytes(take(2), "big")
+                    return take(n).decode()
+                if kind == 0xDB:
+                    n = int.from_bytes(take(4), "big")
+                    return take(n).decode()
+                raise SystemExit(f"space index value is not a string ({kind:#x})")
+            if not blob:
+                return {}
+            kind = blob[i]
+            i += 1
+            if kind & 0xF0 == 0x80:
+                n = kind & 0x0F
+            elif kind == 0xDE:
+                n = int.from_bytes(take(2), "big")
+            elif kind == 0xDF:
+                n = int.from_bytes(take(4), "big")
+            else:
+                raise SystemExit(f"space index is not a map ({kind:#x})")
+            items = {}
+            for _ in range(n):
+                key = read()
+                items[key] = read()
+            return items
+        def pack(items):
+            def pack_str(text):
+                raw = text.encode()
+                n = len(raw)
+                if n < 32:
+                    return bytes([0xA0 | n]) + raw
+                if n < 256:
+                    return bytes([0xD9, n]) + raw
+                if n < 65536:
+                    return b"\xda" + n.to_bytes(2, "big") + raw
+                return b"\xdb" + n.to_bytes(4, "big") + raw
+            n = len(items)
+            if n < 16:
+                head = bytes([0x80 | n])
+            elif n < 65536:
+                head = b"\xde" + n.to_bytes(2, "big")
+            else:
+                head = b"\xdf" + n.to_bytes(4, "big")
+            return head + b"".join(pack_str(k) + pack_str(v) for k, v in items.items())
+        personal_path = os.path.join(indexes, "by-type", "personal.mpk")
+        if not os.path.isfile(personal_path):
+            raise SystemExit
+        current = unpack(open(personal_path, "rb").read())
+        stale = [space_id for space_id in current if space_id not in live]
+        if not stale:
+            raise SystemExit
+        kept = {space_id: space_id for space_id in live}
+        st = os.stat(os.path.dirname(personal_path))
+        def store(path, items):
+            data = pack(items)
+            tmp = path + ".tmp"
+            fd = os.open(tmp, os.O_WRONLY | os.O_CREAT | os.O_TRUNC, 0o600)
+            os.write(fd, data)
+            os.close(fd)
+            os.chown(tmp, st.st_uid, st.st_gid)
+            os.replace(tmp, path)
+        store(personal_path, kept)
+        user_dir = os.path.join(indexes, "by-user-id")
+        if os.path.isdir(user_dir):
+            for name in os.listdir(user_dir):
+                if not name.endswith(".mpk"):
+                    continue
+                path = os.path.join(user_dir, name)
+                entries = unpack(open(path, "rb").read())
+                changed = False
+                for space_id in stale:
+                    if space_id in entries:
+                        del entries[space_id]
+                        changed = True
+                if changed:
+                    store(path, entries)
+        for name in live_names:
+            if os.path.isdir(os.path.join(users_root, name, "photos")):
+                print(f"scan /posix/users/{name}/photos")
+        print("dropped " + " ".join(stale))
+        PY
+      args:
+        executable: /bin/bash
+      register: site_oc_personal
+      changed_when: "'moved' in site_oc_personal.stdout or 'restored' in site_oc_personal.stdout or 'scan ' in site_oc_personal.stdout or 'dropped ' in site_oc_personal.stdout"
+
+    - name: Restart OpenCloud after a space root moves
+      become_user: "{{ site_wl_user }}"
+      environment:
+        XDG_RUNTIME_DIR: "/run/user/{{ site_wl_uid.stdout }}"
+      shell: |
+        set -euo pipefail
+        systemctl --user restart opencloud.service
+        for _ in $(seq 1 30); do
+          if podman exec opencloud true 2>/dev/null; then
+            break
+          fi
+          sleep 1
+        done
+        {% for user in site_plan.users %}
+        alias="$(getfattr -n user.oc.space.alias --only-values "{{ site_plan.roots.users }}/{{ user.name }}" 2>/dev/null || true)"
+        if [[ "$alias" == "personal/{{ user.name }}" ]]; then
+          podman exec opencloud opencloud posixfs scan "/posix/users/{{ user.name }}"
+        fi
+        {% endfor %}
+      args:
+        executable: /bin/bash
+      when: "'moved' in site_oc_personal.stdout"
+
+    - name: Restart OpenCloud after a stale personal space is removed
+      become_user: "{{ site_wl_user }}"
+      environment:
+        XDG_RUNTIME_DIR: "/run/user/{{ site_wl_uid.stdout }}"
+      shell: |
+        set -euo pipefail
+        systemctl --user restart opencloud.service
+        for _ in $(seq 1 30); do
+          if podman exec opencloud true 2>/dev/null; then
+            break
+          fi
+          sleep 1
+        done
+      args:
+        executable: /bin/bash
+      when: "'dropped ' in site_oc_personal.stdout and 'moved' not in site_oc_personal.stdout"
+
+    - name: Index folders attached to the home
+      become_user: "{{ site_wl_user }}"
+      environment:
+        XDG_RUNTIME_DIR: "/run/user/{{ site_wl_uid.stdout }}"
+      command: podman exec opencloud opencloud posixfs scan {{ item }}
+      loop: "{{ site_oc_personal.stdout_lines | default([]) | select('match', '^scan /posix/users/') | map('regex_replace', '^scan ', '') | list }}"
+      when: "'moved' not in site_oc_personal.stdout"
+
+    - name: Attach group home folders to the project space
+      shell: |
+        set -euo pipefail
+        groups_root="{{ site_plan.roots.groups }}"
+        {% for group in site_plan.groups %}
+        name="{{ group }}"
+        home="${groups_root}/${name}"
+        [[ -d "$home" ]] || continue
+        alias="$(getfattr -n user.oc.space.alias --only-values "$home" 2>/dev/null || true)"
+        [[ "$alias" == "project/${name}" ]] || continue
+        space_id="$(getfattr -n user.oc.id --only-values "$home" 2>/dev/null || true)"
+        [[ -n "$space_id" ]] || continue
+        needs_scan=0
+        shopt -s nullglob
+        for dir in "$home"/*/; do
+          base="$(basename "$dir")"
+          [[ "$base" == .oc-* ]] && continue
+          parent="$(getfattr -n user.oc.parentid --only-values "$dir" 2>/dev/null || true)"
+          node="$(getfattr -n user.oc.id --only-values "$dir" 2>/dev/null || true)"
+          if [[ "$parent" != "$space_id" || -z "$node" ]]; then
+            needs_scan=1
+            if [[ "$parent" != "$space_id" ]]; then
+              setfattr -n user.oc.parentid -v "$space_id" "$dir"
+            fi
+            find "$dir" -type d -perm -1000 -exec chmod -t {} +
+          fi
+        done
+        shopt -u nullglob
+        proof_host=""
+        while IFS= read -r -d '' candidate; do
+          file_id="$(getfattr -n user.oc.id --only-values "$candidate" 2>/dev/null || true)"
+          if [[ -z "$file_id" ]]; then
+            proof_host="$candidate"
+            needs_scan=1
+            break
+          fi
+        done < <(find "$home" \( -name '.oc-*' -o -name '.Trash' -o -name '.space' \) -prune -o -type f ! -name '.*' ! -name '*.mlock' -size -1M -print0)
+        if [[ -z "$proof_host" ]]; then
+          candidate="$(find "$home" \( -name '.oc-*' -o -name '.Trash' -o -name '.space' \) -prune -o -type f ! -name '.*' ! -name '*.mlock' -size +1M -print -quit)"
+          if [[ -n "$candidate" ]]; then
+            file_id="$(getfattr -n user.oc.id --only-values "$candidate" 2>/dev/null || true)"
+            if [[ -z "$file_id" ]]; then
+              needs_scan=1
+            fi
+          fi
+        fi
+        if [[ "$needs_scan" == 1 ]]; then
+          while IFS= read -r -d '' dir; do
+            treesize="$(getfattr -n user.oc.treesize --only-values "$dir" 2>/dev/null || true)"
+            treesize="${treesize//$'\n'/}"
+            if [[ -z "$treesize" ]]; then
+              setfattr -n user.oc.treesize -v 0 "$dir" || true
+            fi
+          done < <(find "$home" -type d -print0)
+          if [[ -n "$proof_host" ]]; then
+            echo "proof ${proof_host}|/posix/groups/${proof_host#${groups_root}/}"
+          fi
+          echo "scan /posix/groups/${name}"
+        fi
+        {% endfor %}
+      args:
+        executable: /bin/bash
+      register: site_oc_groups
+      changed_when: "'scan ' in site_oc_groups.stdout"
+
+    - name: Prove one group file indexes before scanning the space
+      become_user: "{{ site_wl_user }}"
+      environment:
+        XDG_RUNTIME_DIR: "/run/user/{{ site_wl_uid.stdout }}"
+      shell: |
+        set -euo pipefail
+        host="{{ item.split('|', 1)[0] }}"
+        container="{{ item.split('|', 1)[1] }}"
+        podman exec opencloud opencloud posixfs scan "$container"
+        file_id="$(getfattr -n user.oc.id --only-values "$host" 2>/dev/null || true)"
+        if [[ -z "$file_id" ]]; then
+          echo "OpenCloud did not index ${host}" >&2
+          exit 1
+        fi
+      args:
+        executable: /bin/bash
+      loop: "{{ site_oc_groups.stdout_lines | default([]) | select('match', '^proof ') | map('regex_replace', '^proof ', '') | list }}"
+      when: "'proof ' in (site_oc_groups.stdout | default(''))"
+
+    - name: Index folders attached to a group home
+      become_user: "{{ site_wl_user }}"
+      environment:
+        XDG_RUNTIME_DIR: "/run/user/{{ site_wl_uid.stdout }}"
+      command: podman exec opencloud opencloud posixfs scan {{ item }}
+      loop: "{{ site_oc_groups.stdout_lines | default([]) | select('match', '^scan /posix/groups/') | map('regex_replace', '^scan ', '') | list }}"
+      when: "'scan ' in (site_oc_groups.stdout | default(''))"
+
+    - name: OpenCloud space tool directory
+      file:
+        path: /usr/local/lib/site
+        state: directory
+        mode: "0755"
+
+    - name: Attach homes to the current accounts
+      copy:
+        src: "{{ playbook_dir }}/../lib/opencloud_spaces.py"
+        dest: /usr/local/lib/site/opencloud_spaces.py
+        mode: "0644"
+
+    - name: OpenCloud space spec
+      copy:
+        dest: /var/lib/site/opencloud-spaces.json
+        mode: "0600"
+        content: "{{ {'users_root': site_plan.roots.users, 'groups_root': site_plan.roots.groups, 'indexes': site_plan.roots.appdata ~ '/opencloud/posix/indexes', 'idm': site_plan.roots.appdata ~ '/opencloud/data/idm/idm.boltdb', 'users': site_plan.users, 'groups': site_plan.groups} | to_json }}"
+
+    - name: Home roots list, subroots write
+      command: python3 /usr/local/lib/site/opencloud_spaces.py /var/lib/site/opencloud-spaces.json
+      register: site_oc_grants
+      changed_when: "'updated ' in (site_oc_grants.stdout | default('')) or 'scan ' in (site_oc_grants.stdout | default(''))"
+
+    - name: Index a home that was just attached
+      become_user: "{{ site_wl_user }}"
+      environment:
+        XDG_RUNTIME_DIR: "/run/user/{{ site_wl_uid.stdout }}"
+      command: podman exec opencloud opencloud posixfs scan {{ item }}
+      loop: "{{ site_oc_grants.stdout_lines | default([]) | select('match', '^scan /posix/') | map('regex_replace', '^scan ', '') | list }}"
+      when: "'scan ' in (site_oc_grants.stdout | default(''))"
+
+    - name: Index folders created through SMB
+      become_user: "{{ site_wl_user }}"
+      environment:
+        XDG_RUNTIME_DIR: "/run/user/{{ site_wl_uid.stdout }}"
+      shell: |
+        set -euo pipefail
+        list=/var/lib/site/access-index.txt
+        [[ -s "$list" ]] || exit 0
+        users_root="{{ site_plan.roots.users }}"
+        groups_root="{{ site_plan.roots.groups }}"
+        while IFS= read -r host || [[ -n "${host:-}" ]]; do
+          [[ -n "${host:-}" && -e "$host" ]] || continue
+          have="$(getfattr -n user.oc.id --only-values "$host" 2>/dev/null || true)"
+          have="${have//$'\n'/}"
+          [[ -z "$have" ]] || continue
+          if [[ "$host" == "$users_root"/* ]]; then
+            container="/posix/users/${host#"$users_root"/}"
+          elif [[ "$host" == "$groups_root"/* ]]; then
+            container="/posix/groups/${host#"$groups_root"/}"
+          else
+            continue
+          fi
+          podman exec opencloud opencloud posixfs scan "$container"
+          got="$(getfattr -n user.oc.id --only-values "$host" 2>/dev/null || true)"
+          got="${got//$'\n'/}"
+          if [[ -z "$got" ]]; then
+            echo "OpenCloud did not index ${host}" >&2
+            exit 1
+          fi
+          echo "scan $container"
+        done < "$list"
+      args:
+        executable: /bin/bash
+      register: site_oc_smb
+      changed_when: "'scan ' in (site_oc_smb.stdout | default(''))"
+
+    - name: Drop the indexed folder list
+      file:
+        path: /var/lib/site/access-index.txt
+        state: absent
+
+    # A project home uses the space itself as the open folder, and that
+    # object always offers create. The Personal link is shown only when the
+    # signed-in user owns the space; the home is owned by the space, so the
+    # link disappears. Folder actions follow the permission string. The page
+    # is not cached, so the next SET points it at a new files script.
+    # Personal spaces only push file events to that space owner. The owner
+    # stays the space, which is what keeps the home root read-only, so an
+    # open personal folder is re-listed instead. Project spaces already
+    # push those events to the people who have grants.
+    - name: Hide create on home roots in the web UI
+      shell: |
+        python3 - << 'PY'
+        import os
+        import re
+        import urllib.request
+
+        asset_root = "{{ site_plan.roots.appdata }}/opencloud/data/web/assets/core"
+        base = "http://127.0.0.1:9200"
+
+        def fetch(path):
+            return urllib.request.urlopen(base + path, timeout=60).read()
+
+        def one(text, pattern):
+            found = sorted(set(re.findall(pattern, text)))
+            if len(found) != 1:
+                raise SystemExit(f"expected one match for {pattern}, found {found}")
+            return found[0]
+
+        def replace_one(body, olds, new):
+            new_b = new.encode()
+            if body.count(new_b) == 1 and all(body.count(old.encode()) == 0 for old in olds):
+                return body
+            for old in olds:
+                old_b = old.encode()
+                if body.count(old_b) == 1:
+                    return body.replace(old_b, new_b, 1)
+            raise SystemExit(f"{new!r} is not in the script and none of {olds!r} appear once")
+
+        def write(rel, body):
+            dest = os.path.join(asset_root, rel)
+            os.makedirs(os.path.dirname(dest), mode=0o755, exist_ok=True)
+            current = open(dest, "rb").read() if os.path.exists(dest) else None
+            if current == body:
+                print("kept", rel)
+                return False
+            tmp = dest + ".tmp"
+            with open(tmp, "wb") as handle:
+                handle.write(body)
+            os.chmod(tmp, 0o644)
+            os.replace(tmp, dest)
+            print("patched", rel)
+            return True
+
+        index_served = fetch("/")
+        marker = b'<base href="/"/>'
+        if index_served.count(marker) != 1:
+            raise SystemExit("index.html did not have the one injected base tag")
+        index_raw = index_served.replace(marker, b"", 1)
+        index_text = index_raw.decode("utf-8", "replace")
+
+        client_rel = one(index_text, r"js/chunks/web-client-[A-Za-z0-9_-]+\.mjs")
+        client = fetch("/" + client_rel)
+        client = replace_one(
+            client,
+            ["canCreate:function(){return!0}"],
+            "canCreate:function(){return!1}",
+        )
+        write(client_rel, client)
+        if fetch("/" + client_rel) != client:
+            raise SystemExit(f"{client_rel}: OpenCloud did not serve the overlay")
+
+        named = re.findall(
+            r"\./(web-app-files-([A-Za-z0-9_-]+)(?:\.site\d*)?\.mjs)",
+            index_text,
+        )
+        if len(named) != 1:
+            raise SystemExit(f"files app refs {named}")
+        source_name, file_hash = named[0]
+        source = "js/" + source_name
+        dest_name = "web-app-files-" + file_hash + ".site3.mjs"
+
+        files = fetch("/" + source)
+        files = replace_one(
+            files,
+            [
+                "if(!we(e))return v(i)?.canCreate()!==!0;",
+                "if(!we(e))return e.canUpload({user:r.user})!==!0;",
+            ],
+            "if(!we(e))return!v(i)?.permissions?.includes(`CK`);",
+        )
+        files = replace_one(
+            files,
+            [
+                "v(o)?.canCreate()?(W(),A(`li`,Dp,[_(s,{id:`new-folder-btn`",
+                "v(o)?(W(),A(`li`,Dp,[_(s,{id:`new-folder-btn`",
+            ],
+            "v(o)?.permissions?.includes(`CK`)?(W(),A(`li`,Dp,[_(s,{id:`new-folder-btn`",
+        )
+        files = replace_one(
+            files,
+            ["isVisible:()=>v(u)?.canCreate(),class:`oc-files-actions-create-new-folder`"],
+            "isVisible:()=>!!v(u)?.permissions?.includes(`CK`),class:`oc-files-actions-create-new-folder`",
+        )
+        files = replace_one(
+            files,
+            ["isVisible:()=>v(r)?.canCreate(),class:`oc-files-actions-create-new-shortcut`"],
+            "isVisible:()=>!!v(r)?.permissions?.includes(`CK`),class:`oc-files-actions-create-new-shortcut`",
+        )
+        files = replace_one(
+            files,
+            ["isActive:()=>!n.currentSpace||n.currentSpace?.isOwner(r.user),isVisible(){return!n.spacesInitialized||!!n.spaces.find(e=>Re(e)&&e.isOwner(r.user))}"],
+            "isActive:()=>!!n.currentSpace&&Re(n.currentSpace),isVisible(){return!n.spacesInitialized||!!n.spaces.find(e=>Re(e))}",
+        )
+        files = replace_one(
+            files,
+            ["isVisible:({resources:e})=>e.length?e.every(e=>e.canBeDeleted()&&!Ce(e)&&!Se(e)&&!Fe(e)&&!e.isShareRoot()):!1"],
+            "isVisible:({resources:e})=>e.length?e.every(e=>e.canBeDeleted()&&!Ce(e)&&!Se(e)&&!Fe(e)&&!e.isShareRoot()&&(e.path||``).split(`/`).filter(Boolean).length>1):!1",
+        )
+        files = replace_one(
+            files,
+            ["isVisible:({resources:e})=>e.length!==1||Fe(e[0])||!t.sharingCanRename&&Se(e[0])||Y(e[0])||e.some(e=>e.remoteItemId&&e.path===`/`)||e.length===1&&e[0].locked?!1:!e.some(e=>!e.canRename({user:o.user,ability:s})||e.processing)"],
+            "isVisible:({resources:e})=>e.length!==1||Fe(e[0])||!t.sharingCanRename&&Se(e[0])||Y(e[0])||e.some(e=>e.remoteItemId&&e.path===`/`)||e.length===1&&e[0].locked||e.length===1&&(e[0].path||``).split(`/`).filter(Boolean).length<2?!1:!e.some(e=>!e.canRename({user:o.user,ability:s})||e.processing)",
+        )
+        files = replace_one(
+            files,
+            [
+                "isVisible:({resources:e})=>e.length===0||e.some(e=>Ce(e)||Fe(e)||!e.canRename())||!v(f)&&e.some(xe)||e.length===1&&e[0].locked||e.some(e=>e.isInVault)?!1:!e.some(e=>_n(e,v(f)?.path)===!1)",
+                "isVisible:({resources:e})=>e.length===0||e.some(e=>Ce(e)||Fe(e))||!v(f)&&e.some(xe)||e.length===1&&e[0].locked||e.some(e=>e.isInVault)?!1:!e.some(e=>_n(e,v(f)?.path)===!1)",
+            ],
+            "isVisible:({resources:e})=>e.length===0||e.some(e=>Ce(e)||Fe(e)||!e.canRename()||(e.path||``).split(`/`).filter(Boolean).length<2)||!v(f)&&e.some(xe)||e.length===1&&e[0].locked||e.some(e=>e.isInVault)?!1:!e.some(e=>_n(e,v(f)?.path)===!1)",
+        )
+        write("js/" + dest_name, files)
+        if fetch("/js/" + dest_name) != files:
+            raise SystemExit(f"{dest_name}: OpenCloud did not serve the overlay")
+
+        shell_refs = re.findall(
+            r"\./js/(index\.html-([A-Za-z0-9_-]+)(?:\.site\d*)?\.mjs)",
+            index_text,
+        )
+        if len(shell_refs) != 1:
+            raise SystemExit(f"shell refs {shell_refs}")
+        shell_source, shell_hash = shell_refs[0]
+        shell_dest = "index.html-" + shell_hash + ".site.mjs"
+        shell = fetch("/js/" + shell_source)
+        shell = replace_one(
+            shell,
+            ["U(()=>t.currentFolder,()=>{d.clear()});let f={resourcesStore:t"],
+            "U(()=>t.currentFolder,()=>{d.clear()});if(!window.__sitePersonalWatch){window.__sitePersonalWatch=1;let busy=0,missingOnce=new Set,watching=``;setInterval(()=>{if(busy||document.hidden)return;let folder=t.currentFolder;if(!folder?.id)return;if(watching!==folder.id){watching=folder.id;missingOnce=new Set}let space=n.spaces.find(s=>s.id===folder.storageId);if(!space||space.driveType!==`personal`)return;busy=1;let folderId=folder.id;a.webdav.listFiles(space,{path:folder.path||``}).then(listed=>{if(t.currentFolder?.id!==folderId)return;let children=listed.children||[],ids=new Set(children.map(c=>c.id)),have=new Map(t.resources.map(c=>[c.id,c]));children.forEach(c=>{let prev=have.get(c.id);if(!prev||prev.etag!==c.etag||prev.size!==c.size||prev.mdate!==c.mdate||prev.name!==c.name)t.upsertResource(c)});let missing=t.resources.filter(c=>c.parentFolderId===folderId&&!ids.has(c.id)),seen=new Set(missing.map(c=>c.id)),drop=missing.filter(c=>missingOnce.has(c.id));missingOnce=seen;drop.length&&t.removeResources(drop)}).catch(()=>{}).finally(()=>{busy=0})},2e3)}let f={resourcesStore:t",
+        )
+        write("js/" + shell_dest, shell)
+        if fetch("/js/" + shell_dest) != shell:
+            raise SystemExit(f"{shell_dest}: OpenCloud did not serve the overlay")
+
+        new_ref = ("./" + dest_name).encode()
+        old_ref = ("./" + source_name).encode()
+        shell_new = ("./js/" + shell_dest).encode()
+        shell_old = ("./js/" + shell_source).encode()
+        index_changed = False
+        if old_ref != new_ref:
+            if index_raw.count(old_ref) != 1:
+                raise SystemExit("files app reference was not unique in index.html")
+            index_raw = index_raw.replace(old_ref, new_ref, 1)
+            index_changed = True
+        elif new_ref not in index_raw:
+            raise SystemExit("index.html does not point at the patched files app")
+        if shell_old != shell_new:
+            if index_raw.count(shell_old) != 1:
+                raise SystemExit("shell reference was not unique in index.html")
+            index_raw = index_raw.replace(shell_old, shell_new, 1)
+            index_changed = True
+        elif shell_new not in index_raw:
+            raise SystemExit("index.html does not point at the patched shell")
+        if index_changed:
+            write("index.html", index_raw)
+            served = fetch("/")
+            if new_ref not in served or shell_new not in served:
+                raise SystemExit("OpenCloud did not serve the patched index.html")
+        else:
+            print("kept", "index.html")
+        PY
+      args:
+        executable: /bin/bash
+      register: site_oc_assets
+      changed_when: "'patched ' in (site_oc_assets.stdout | default(''))"
+
+    # The posix driver caches file attributes in memory for 24 hours and does
+    # not watch setxattr. A grant written on the host stays invisible until
+    # the service process starts again. The web overlay is read on the next
+    # request, and the same restart drops the grant cache with it.
+    - name: Reload OpenCloud after space grants change
+      become_user: "{{ site_wl_user }}"
+      environment:
+        XDG_RUNTIME_DIR: "/run/user/{{ site_wl_uid.stdout }}"
+      shell: |
+        set -euo pipefail
+        systemctl --user restart opencloud.service
+        for _ in $(seq 1 30); do
+          if podman exec opencloud true 2>/dev/null; then
+            break
+          fi
+          sleep 1
+        done
+      args:
+        executable: /bin/bash
+      when: "'updated ' in (site_oc_grants.stdout | default('')) or 'patched ' in (site_oc_assets.stdout | default(''))"
+  always:
+    - name: Start OpenCloud if the move stopped it
+      become_user: "{{ site_wl_user }}"
+      environment:
+        XDG_RUNTIME_DIR: "/run/user/{{ site_wl_uid.stdout }}"
+      command: systemctl --user start opencloud.service
+      failed_when: false

@@ -1,0 +1,21 @@
+[Unit]
+Description=homeassistant
+
+[Container]
+Image=ghcr.io/home-assistant/home-assistant:stable
+ContainerName=homeassistant
+Network=site
+PublishPort=8123:8123
+Pull=always
+Environment=TZ=${site.env.timezone}
+Environment=NAS_LAN_IP=${site.networking.ingress.host.ip}
+Volume=${host.data.roots.appdata}/homeassistant:/config
+Volume=${component.dir}/ensure-http:/ensure-http:ro
+Entrypoint=/bin/sh
+Exec=-c "python3 /ensure-http/patch.py && exec /init"
+
+[Service]
+Restart=on-failure
+
+[Install]
+WantedBy=default.target

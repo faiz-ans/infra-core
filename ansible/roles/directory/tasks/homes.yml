@@ -1,0 +1,187 @@
+---
+# The home root only lists subroots. files/ and photos/ are where the user writes.
+# OpenCloud runs as the workload user. It creates files/ and writes metadata on the home.
+- name: Workload user
+  set_fact:
+    site_wl_user: "{{ (site_plan.hosts | selectattr('name', 'equalto', site_host_name) | list | first).operations.workload.user | default('') }}"
+
+- name: ACL tools
+  apt:
+    name: acl
+    state: present
+
+- name: User home directories
+  file:
+    path: "{{ site_plan.roots.users }}/{{ item.name }}"
+    state: directory
+    owner: root
+    group: root
+    mode: "0750"
+  loop: "{{ site_plan.users }}"
+
+- name: Personal and photos subroots
+  file:
+    path: "{{ site_plan.roots.users }}/{{ item.0.name }}/{{ item.1 }}"
+    state: directory
+    owner: "{{ item.0.name }}"
+    group: root
+    mode: "2770"
+  loop: "{{ site_plan.users | product(['files', 'photos']) | list }}"
+
+- name: List on the home, write on the subroots
+  shell: |
+    set -euo pipefail
+    shopt -s nullglob
+    home="{{ site_plan.roots.users }}/{{ item.name }}"
+    user="{{ item.name }}"
+    wl="{{ site_wl_user }}"
+    setfacl -b "$home"
+    if [[ -n "$wl" ]]; then
+      setfacl -m "u:${user}:rx,u:${wl}:rwx,m:rwx" "$home"
+      setfacl -m "d:u:${user}:rwx,d:u:${wl}:rwx,d:m:rwx" "$home"
+    else
+      setfacl -m "u:${user}:rx,m:rx" "$home"
+      setfacl -m "d:u:${user}:rwx,d:m:rwx" "$home"
+    fi
+    for dir in "$home"/*/; do
+      base="$(basename "$dir")"
+      [[ "$base" == .oc-* ]] && continue
+      chown "${user}:root" "$dir"
+      chmod 2770 "$dir"
+      setfacl -b "$dir"
+      if [[ -n "$wl" ]]; then
+        setfacl -m "u:${user}:rwx,u:${wl}:rwx,m:rwx" "$dir"
+        setfacl -m "d:u:${user}:rwx,d:u:${wl}:rwx,d:m:rwx" "$dir"
+      else
+        setfacl -m "u:${user}:rwx,m:rwx" "$dir"
+        setfacl -m "d:u:${user}:rwx,d:m:rwx" "$dir"
+      fi
+      # Sticky directories reject metadata writes from anyone but the owner.
+      find "$dir" -type d -perm -1000 -exec chmod -t {} +
+    done
+  args:
+    executable: /bin/bash
+  loop: "{{ site_plan.users }}"
+  changed_when: true
+
+- name: Group home directories
+  file:
+    path: "{{ site_plan.roots.groups }}/{{ item }}"
+    state: directory
+    owner: root
+    group: root
+    mode: "0750"
+  loop: "{{ site_plan.groups }}"
+
+- name: Group files and photos subroots
+  file:
+    path: "{{ site_plan.roots.groups }}/{{ item.0 }}/{{ item.1 }}"
+    state: directory
+    owner: root
+    group: "{{ item.0 }}"
+    mode: "2770"
+  loop: "{{ site_plan.groups | product(['files', 'photos']) | list }}"
+
+- name: List on the group home, write on its subroots
+  shell: |
+    set -euo pipefail
+    shopt -s nullglob
+    home="{{ site_plan.roots.groups }}/{{ item }}"
+    group="{{ item }}"
+    wl="{{ site_wl_user }}"
+    mkdir -p "${home}/files" "${home}/photos"
+    chown root:root "$home"
+    chmod 0750 "$home"
+    setfacl -b "$home"
+    if [[ -n "$wl" ]]; then
+      setfacl -m "g:${group}:rx,u:${wl}:rwx,m:rwx" "$home"
+      setfacl -m "d:g:${group}:rwx,d:u:${wl}:rwx,d:m:rwx" "$home"
+    else
+      setfacl -m "g:${group}:rx,m:rx" "$home"
+      setfacl -m "d:g:${group}:rwx,d:m:rwx" "$home"
+    fi
+    for dir in "$home"/*/; do
+      base="$(basename "$dir")"
+      [[ "$base" == .oc-* ]] && continue
+      chown root:"${group}" "$dir"
+      chmod 2770 "$dir"
+      setfacl -b "$dir"
+      if [[ -n "$wl" ]]; then
+        setfacl -m "g:${group}:rwx,u:${wl}:rwx,m:rwx" "$dir"
+        setfacl -m "d:g:${group}:rwx,d:u:${wl}:rwx,d:m:rwx" "$dir"
+      else
+        setfacl -m "g:${group}:rwx,m:rwx" "$dir"
+        setfacl -m "d:g:${group}:rwx,d:m:rwx" "$dir"
+      fi
+      find "$dir" -type d -perm -1000 -exec chmod -t {} +
+    done
+  args:
+    executable: /bin/bash
+  loop: "{{ site_plan.groups }}"
+  changed_when: true
+
+# OpenCloud mkdir uses mode 0700, and an SMB client can chmod a new folder to
+# 0755. Either one clears the ACL mask, so the other side cannot enter or index.
+- name: Keep SMB and OpenCloud creates readable by each other
+  when: site_plan.policy.filesystem == 'smb' or site_plan.policy.web == 'opencloud'
+  block:
+    - name: Install the access mask keeper
+      copy:
+        src: site-access-mask
+        dest: /usr/local/sbin/site-access-mask
+        mode: "0755"
+
+    - name: Workload uid for the access mask keeper
+      command: id -u {{ site_wl_user }}
+      register: site_mask_uid
+      changed_when: false
+      when: site_wl_user | length > 0
+
+    - name: Access mask keeper command
+      set_fact:
+        site_mask_exec: "/usr/local/sbin/site-access-mask watch --users {{ site_plan.roots.users }} --groups {{ site_plan.roots.groups }} --workload {{ site_wl_user }} --runtime /run/user/{{ site_mask_uid.stdout | trim }}"
+      when: site_wl_user | length > 0
+
+    - name: Access mask keeper unit
+      copy:
+        dest: /etc/systemd/system/site-access-mask.service
+        mode: "0644"
+        content: |
+          [Unit]
+          Description=Keep SMB and OpenCloud access to the same folders
+          After=local-fs.target
+
+          [Service]
+          Type=simple
+          ExecStart={{ site_mask_exec }}
+          Restart=on-failure
+          RestartSec=3
+
+          [Install]
+          WantedBy=multi-user.target
+      when: site_mask_exec is defined
+
+    - name: Start the access mask keeper
+      systemd:
+        name: site-access-mask.service
+        enabled: true
+        state: restarted
+        daemon_reload: true
+
+    - name: Access mask keeper is running
+      command: systemctl is-active site-access-mask.service
+      changed_when: false
+
+    - name: Open folders that either side already created
+      command:
+        argv:
+          - /usr/local/sbin/site-access-mask
+          - repair
+          - --users
+          - "{{ site_plan.roots.users }}"
+          - --groups
+          - "{{ site_plan.roots.groups }}"
+          - --index-list
+          - /var/lib/site/access-index.txt
+      register: site_mask_repair
+      changed_when: "'index ' in site_mask_repair.stdout or ('fixed ' in site_mask_repair.stdout and 'fixed 0' not in site_mask_repair.stdout)"

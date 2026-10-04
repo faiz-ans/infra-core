@@ -1,0 +1,16 @@
+[Unit]
+Description=bentopdf
+
+[Container]
+Image=ghcr.io/alam00000/bentopdf-simple:latest
+ContainerName=bentopdf
+Network=site
+PublishPort=127.0.0.1:8084:80
+Pull=always
+Environment=TZ=${site.env.timezone}
+
+[Service]
+Restart=on-failure
+
+[Install]
+WantedBy=default.target

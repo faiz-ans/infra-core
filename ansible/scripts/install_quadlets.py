@@ -11,7 +11,8 @@ ROOT = Path(__file__).resolve().parents[2]
 sys.path.insert(0, str(ROOT / "ansible"))
 
 from lib.generate import inject_authelia_ldap_password  # noqa: E402
-from lib.pod import apply_pod_overlay  # noqa: E402
+from lib.integrate import apply_placed_integrations  # noqa: E402
+from lib.pod import apply_container_overlay, apply_pod_overlay  # noqa: E402
 from lib.quadlet import read_utf8, strip_yaml_text  # noqa: E402
 from lib.resolve import bind, render  # noqa: E402
 from lib.secrets import SecretError, load_secrets  # noqa: E402
@@ -63,20 +64,34 @@ def main() -> int:
         if out.exists():
             shutil.rmtree(out)
         shutil.copytree(src, out, ignore=shutil.ignore_patterns("MANIFEST.toml"))
-        overlay = (svc.get("raw") or {}).get("pod")
-        if overlay:
-            pod_file = out / "pod.yaml"
+        raw = svc.get("raw") or {}
+        pod_overlay = raw.get("pod")
+        container_overlay = raw.get("container")
+        pod_file = out / "pod.yaml"
+        units = list(out.glob("*.container"))
+        if pod_overlay:
             if not pod_file.is_file():
                 print(f"{svc['name']} pod overlay requires pod.yaml", file=sys.stderr)
                 return 1
-            apply_pod_overlay(pod_file, overlay)
+            apply_pod_overlay(pod_file, pod_overlay)
+        if container_overlay:
+            if len(units) != 1:
+                print(f"{svc['name']} container overlay requires one .container", file=sys.stderr)
+                return 1
+            try:
+                rendered_unit = apply_container_overlay(units[0].read_text(encoding="utf-8"), container_overlay)
+            except ValueError as exc:
+                print(f"{svc['name']}: {exc}", file=sys.stderr)
+                return 1
+            units[0].write_text(rendered_unit, encoding="utf-8")
         if str(svc.get("key") or "") == "authelia" and policy(desired)["ldap"] == "openldap":
-            pod_file = out / "pod.yaml"
-            if pod_file.is_file():
-                pod_file.write_text(
-                    inject_authelia_ldap_password(pod_file.read_text(encoding="utf-8")),
+            unit = out / "authelia.container"
+            if unit.is_file():
+                unit.write_text(
+                    inject_authelia_ldap_password(unit.read_text(encoding="utf-8")),
                     encoding="utf-8",
                 )
+        apply_placed_integrations(out, desired, svc)
         mapping["component.dir"] = _host_component_dir(host, svc)
         for path in out.rglob("*"):
             if not path.is_file():

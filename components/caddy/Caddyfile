@@ -111,35 +111,21 @@ https://vpn.{$DOMAIN} {
 # COCKPIT (Core; Cockpit's own login, not Authelia)
 #--------------------------------
 
-https://box.{$DOMAIN} {
-	tls internal
-	redir https://cockpit.{$DOMAIN}{uri} permanent
-}
-
 https://cockpit.{$DOMAIN} {
 	tls internal
+	redir https://sys.{$DOMAIN}{uri} permanent
+}
+
+https://sys.{$DOMAIN} {
+	tls internal
 	reverse_proxy https://127.0.0.1:9090 {
-		header_up Host cockpit.{$DOMAIN}
-		header_up X-Forwarded-Host cockpit.{$DOMAIN}
+		header_up Host sys.{$DOMAIN}
+		header_up X-Forwarded-Host sys.{$DOMAIN}
 		header_up X-Forwarded-Proto https
 		transport http {
 			tls_insecure_skip_verify
 		}
 	}
-}
-
-#--------------------------------
-# OPENMEDIAVAULT
-#--------------------------------
-
-https://openmediavault.{$DOMAIN}, https://omv.{$DOMAIN} {
-	tls internal
-	redir https://nas.{$DOMAIN}{uri} permanent
-}
-
-https://nas.{$DOMAIN} {
-	tls internal
-	reverse_proxy 127.0.0.1:81
 }
 
 #--------------------------------
@@ -249,6 +235,20 @@ https://opencloud.{$DOMAIN}, https://oc.{$DOMAIN} {
 
 https://cloud.{$DOMAIN} {
 	tls internal
+	# OpenCloud caches its scripts for 7 days. The home-root create check
+	# is replaced on disk, so browsers must revalidate those scripts.
+	@webjs path /js/*
+	header @webjs {
+		Cache-Control no-cache
+		defer
+	}
+	# A subroot inherits delete and rename so a new folder inside it can be
+	# changed immediately. Those actions on the subroot itself are refused here.
+	@layout {
+		method DELETE MOVE
+		path_regexp layout ^/(?:remote\.php/)?dav/spaces/[^/]+/[^/]+/?$
+	}
+	respond @layout 403
 	reverse_proxy 127.0.0.1:9200 {
 		header_up Host cloud.{$DOMAIN}
 		header_up X-Forwarded-Host cloud.{$DOMAIN}
@@ -631,10 +631,10 @@ https://up.{$DOMAIN} {
 
 https://caddymanager.{$DOMAIN} {
 	tls internal
-	redir https://traffic.{$DOMAIN}{uri} permanent
+	redir https://ingress.{$DOMAIN}{uri} permanent
 }
 
-https://traffic.{$DOMAIN} {
+https://ingress.{$DOMAIN} {
 	tls internal
 	import authelia_gate
 	reverse_proxy 127.0.0.1:8086

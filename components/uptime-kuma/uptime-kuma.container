@@ -1,0 +1,17 @@
+[Unit]
+Description=uptime-kuma
+
+[Container]
+Image=docker.io/louislam/uptime-kuma:1
+ContainerName=uptime-kuma
+Network=site
+PublishPort=127.0.0.1:3004:3001
+Pull=always
+Environment=TZ=${site.env.timezone}
+Volume=${site.data.roots.appdata}/uptime-kuma:/app/data
+
+[Service]
+Restart=on-failure
+
+[Install]
+WantedBy=default.target

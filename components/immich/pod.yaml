@@ -37,7 +37,7 @@ spec:
       value: "${host.resources.gpu.gpu0.uuid}"
     resources:
       limits:
-        ${host.resources.gpu.gpu0.resource}: 1
+        "${host.resources.gpu.gpu0.resource}=all": 1
     volumeMounts:
     - name: ml
       mountPath: /cache

@@ -21,6 +21,64 @@ def _present(unit_or_bin: str) -> bool:
     return _run(["systemctl", "is-active", unit_or_bin]) in ("active", "activating")
 
 
+def _parse_ldap(text: str) -> list[dict]:
+    ids: list[dict] = []
+    cur: dict = {}
+    for line in text.splitlines():
+        if line.startswith("dn:"):
+            if cur.get("name"):
+                ids.append(cur)
+            cur = {}
+            continue
+        if ": " not in line:
+            continue
+        key, value = line.split(": ", 1)
+        if key == "uid":
+            cur["name"] = value
+        elif key == "uidNumber" and value.isdigit():
+            cur["uid"] = int(value)
+        elif key == "entryUUID":
+            cur["id"] = value
+    if cur.get("name"):
+        ids.append(cur)
+    return ids
+
+
+def _directory_ids() -> list[dict]:
+    """LDAP entryUUID for each posix account. Anonymous search cannot read them."""
+    homes = sorted(Path("/home").glob("*/.config/containers/systemd/openldap/openldap.container"))
+    rootful = Path("/etc/containers/systemd/openldap/openldap.container")
+    if rootful.is_file():
+        prefix: list[str] = ["podman", "exec", "openldap", "sh", "-c"]
+    elif homes:
+        user = homes[0].parts[2]
+        uid = _run(["id", "-u", user])
+        if not uid:
+            return []
+        prefix = [
+            "runuser",
+            "-u",
+            user,
+            "--",
+            "env",
+            f"XDG_RUNTIME_DIR=/run/user/{uid}",
+            "podman",
+            "exec",
+            "openldap",
+            "sh",
+            "-c",
+        ]
+    else:
+        return []
+    script = (
+        'base=$(ldapsearch -x -LLL -s base -b "" namingContexts | awk \'/^namingContexts:/{print $2; exit}\')\n'
+        'test -n "$base" || exit 1\n'
+        'ldapsearch -x -LLL -H ldap://127.0.0.1 -D "cn=admin,${base}" -w "$LDAP_ADMIN_PASSWORD" '
+        '-b "$base" "(objectClass=posixAccount)" uid entryUUID uidNumber\n'
+    )
+    return _parse_ldap(_run(prefix + [script]))
+
+
 def main() -> None:
     exports = ""
     for p in (Path("/etc/exports"), Path("/etc/exports.d")):
@@ -33,17 +91,18 @@ def main() -> None:
     sssd = Path("/etc/sssd/sssd.conf")
     if sssd.is_file():
         ldap["joined"] = "ldap" in sssd.read_text()
-    getent = _run(["getent", "passwd"])
-    ids = []
-    for line in getent.splitlines():
-        parts = line.split(":")
-        if len(parts) >= 3:
-            try:
-                uid = int(parts[2])
-            except ValueError:
-                continue
-            if uid >= 10000:
-                ids.append({"name": parts[0], "uid": uid, "gid": int(parts[3]) if parts[3].isdigit() else None})
+    ids = _directory_ids()
+    if not ids:
+        getent = _run(["getent", "passwd"])
+        for line in getent.splitlines():
+            parts = line.split(":")
+            if len(parts) >= 3:
+                try:
+                    uid = int(parts[2])
+                except ValueError:
+                    continue
+                if uid >= 10000:
+                    ids.append({"name": parts[0], "uid": uid, "gid": int(parts[3]) if parts[3].isdigit() else None})
     ldap["ids"] = ids
     containers = []
     for user_flag in ([], ["--user"]):

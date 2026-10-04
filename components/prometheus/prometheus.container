@@ -1,0 +1,21 @@
+[Unit]
+Description=prometheus
+
+[Container]
+Image=docker.io/prom/prometheus:latest
+ContainerName=prometheus
+Network=site
+PublishPort=9090:9090
+Environment=TZ=${site.env.timezone}
+Environment=NAS_LAN_IP=${site.networking.ingress.host.ip}
+Volume=${component.dir}/prometheus.yml.template:/etc/prometheus/prometheus.yml.template:ro
+Volume=${component.dir}/apply-config.sh:/apply-config.sh:ro
+Volume=${host.data.roots.appdata}/monitoring/prometheus:/prometheus
+Entrypoint=/bin/sh
+Exec=-c "sh /apply-config.sh && exec /bin/prometheus --config.file=/etc/prometheus/prometheus.yml --storage.tsdb.path=/prometheus"
+
+[Service]
+Restart=on-failure
+
+[Install]
+WantedBy=default.target

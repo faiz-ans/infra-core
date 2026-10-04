@@ -6,7 +6,9 @@ import re
 from pathlib import Path
 from typing import Any
 
+from .directory import ldap_base_dn, people_homes
 from .topology import (
+    admin_gui,
     all_services,
     host_by_name,
     shared_host_roots,
@@ -488,8 +490,13 @@ def build_plan(desired: dict[str, Any]) -> dict[str, Any]:
         "imports": import_blocks(desired),
         "users": site_of(desired).get("users") or [],
         "groups": site_groups(desired),
-        "hosts": hosts(desired),
+        "hosts": [{**h, "admin-gui": admin_gui(h.get("admin-gui"))} for h in hosts(desired)],
         "domain": str((site_of(desired).get("env") or {}).get("domain") or ""),
         "ldap": p["ldap"],
+        "ldap_base": ldap_base_dn(str((site_of(desired).get("env") or {}).get("domain") or ""))
+        if p["ldap"] == "openldap"
+        else "",
+        "ldap_port": 1389,
+        "people_homes": people_homes(p["filesystem"], p["web"]),
         "sso_backend": "ldap" if p["ldap"] == "openldap" else "file",
     }
