@@ -44,7 +44,12 @@
                   "type": "object",
                   "properties": {
                     "engine": { "type": "string" },
-                    "generate-upstream": { "type": "boolean", "default": true }
+                    "generate-upstream": { "type": "boolean", "default": true },
+                    "auth-exceptions": {
+                      "type": "array",
+                      "items": { "type": "string" },
+                      "description": "Service keys or published labels that skip the Authelia gate. The Authelia portal is never gated."
+                    }
                   },
                   "additionalProperties": false
                 }
@@ -333,7 +338,24 @@
               "name": { "type": "string" },
               "sysadmin": { "type": "boolean", "description": "True when this host user can administer the machine (sudo). GET sets this from the live account." },
               "roles": { "type": "array", "items": { "type": "string" } },
-              "ssh-keys": { "type": "array", "items": { "type": "string" } }
+              "ssh-keys": { "type": "array", "items": { "type": "string" } },
+              "bridge": {
+                "type": "array",
+                "description": "Accounts this user can open with a passphrase-less SSH key. A string is another local account. An object {host: account} is an account on another host. Sudo is not granted.",
+                "items": {
+                  "oneOf": [
+                    { "type": "string" },
+                    {
+                      "type": "object",
+                      "minProperties": 1,
+                      "maxProperties": 1,
+                      "additionalProperties": { "type": "string" }
+                    }
+                  ]
+                }
+              },
+              "uid": { "type": ["string", "integer"] },
+              "gid": { "type": ["string", "integer"] }
             },
             "additionalProperties": false
           }
@@ -366,19 +388,32 @@
             "workload": {
               "type": "object",
               "properties": {
-                "user": { "type": "string" },
-                "services": {
-                  "type": "object",
-                  "description": "Component key to one instance, a list of instances, or null for a single default instance.",
-                  "additionalProperties": {
-                    "oneOf": [
-                      { "type": "null" },
-                      { "$ref": "#/$defs/serviceInstance" },
-                      {
-                        "type": "array",
-                        "items": { "$ref": "#/$defs/serviceInstance" }
+                "users": {
+                  "type": "array",
+                  "description": "Local accounts. Each one runs its own service list in its own rootless Podman.",
+                  "items": {
+                    "type": "object",
+                    "required": ["name", "services"],
+                    "properties": {
+                      "name": { "type": "string" },
+                      "uid": { "type": ["string", "integer"] },
+                      "gid": { "type": ["string", "integer"] },
+                      "services": {
+                        "type": "object",
+                        "description": "Component key to one instance, a list of instances, or null for a single default instance.",
+                        "additionalProperties": {
+                          "oneOf": [
+                            { "type": "null" },
+                            { "$ref": "#/$defs/serviceInstance" },
+                            {
+                              "type": "array",
+                              "items": { "$ref": "#/$defs/serviceInstance" }
+                            }
+                          ]
+                        }
                       }
-                    ]
+                    },
+                    "additionalProperties": false
                   }
                 }
               },

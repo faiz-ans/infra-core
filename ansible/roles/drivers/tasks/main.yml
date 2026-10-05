@@ -59,10 +59,140 @@
       changed_when: false
       failed_when: "'nvidia.com/gpu=all' not in site_cdi.stdout"
 
+- name: UPS devices declared on this host
+  set_fact:
+    site_ups: "{{ site_this_host.resources.usb | default([]) | selectattr('type', 'defined') | selectattr('type', 'equalto', 'ups') | list }}"
+
 - name: NUT when a USB device is labeled UPS (not PeaNUT)
   apt:
     name:
       - nut-server
       - nut-client
+      - acl
     state: present
-  when: (site_this_host.resources.usb | default([]) | selectattr('type', 'defined') | selectattr('type', 'equalto', 'ups') | list | length) > 0
+  when: site_ups | length > 0
+
+- name: NUT server mode
+  copy:
+    dest: /etc/nut/nut.conf
+    mode: "0644"
+    content: |
+      MODE=netserver
+  when: site_ups | length > 0
+
+- name: NUT listens on localhost for PeaNUT
+  copy:
+    dest: /etc/nut/upsd.conf
+    mode: "0640"
+    owner: root
+    group: nut
+    content: |
+      LISTEN 127.0.0.1 3493
+  when: site_ups | length > 0
+
+- name: NUT driver for each declared UPS
+  copy:
+    dest: /etc/nut/ups.conf
+    mode: "0640"
+    owner: root
+    group: nut
+    content: |
+      {% for ups in site_ups %}
+      [ups]
+          driver = usbhid-ups
+          port = auto
+          vendorid = {{ (ups.id | string).split(':')[0] }}
+          productid = {{ (ups.id | string).split(':')[1] }}
+          desc = "{{ ups.name | default('ups') }}"
+      {% if (ups.id | string).split(':')[0] == '0764' %}
+          override.battery.charge.low = 30
+      {% endif %}
+      {% endfor %}
+  when: site_ups | length > 0
+
+- name: PeaNUT password from the decrypted catalog
+  slurp:
+    src: "{{ site_repo }}/ansible/.tmp/secrets.json"
+  register: site_nut_secrets
+  delegate_to: localhost
+  become: false
+  when: site_ups | length > 0
+
+- name: NUT user peanut
+  copy:
+    dest: /etc/nut/upsd.users
+    mode: "0640"
+    owner: root
+    group: nut
+    content: |
+      [peanut]
+          password = {{ (site_nut_secrets.content | b64decode | from_json) | selectattr('name', 'equalto', 'peanut_nut_remote_password') | map(attribute='value') | first }}
+          upsmon secondary
+  no_log: true
+  when: site_ups | length > 0
+
+- name: UPS ids on the USB bus
+  command: lsusb
+  register: site_lsusb
+  changed_when: false
+  when: site_ups | length > 0
+
+- name: Start the UPS driver
+  systemd:
+    name: nut-driver@ups
+    enabled: true
+    state: started
+    daemon_reload: true
+  when: site_ups | length > 0
+
+- name: UPS driver state
+  command: systemctl is-active nut-driver@ups
+  register: site_nut_active
+  changed_when: false
+  failed_when: false
+  when: site_ups | length > 0
+
+- name: NUT driver failed while the UPS is plugged in
+  fail:
+    msg: "nut-driver@ups is {{ site_nut_active.stdout | default('unknown') }} and lsusb shows the declared UPS."
+  when:
+    - site_ups | length > 0
+    - (site_nut_active.stdout | default('')) != 'active'
+    - site_ups | map(attribute='id') | map('string') | select('in', site_lsusb.stdout) | list | length > 0
+
+- name: Start NUT so PeaNUT can read it
+  systemd:
+    name: nut-server
+    enabled: true
+    state: started
+  when: site_ups | length > 0
+
+- name: Scrutiny on this host
+  set_fact:
+    site_scrutiny_user: "{{ ((site_plan.services | selectattr('host', 'equalto', site_host_name) | selectattr('key', 'equalto', 'scrutiny') | list | first) or {}).user | default('') }}"
+
+- name: Workload user can read block devices
+  user:
+    name: "{{ site_scrutiny_user }}"
+    groups: disk
+    append: true
+  when: site_scrutiny_user | length > 0
+
+- name: udev grants the workload user the data disks
+  copy:
+    dest: /etc/udev/rules.d/99-site-scrutiny-disk.rules
+    mode: "0644"
+    content: |
+      ACTION=="add|change", SUBSYSTEM=="block", KERNEL=="sd*", RUN+="/usr/bin/setfacl -m u:{{ site_scrutiny_user }}:rw $env{DEVNAME}"
+  when: site_scrutiny_user | length > 0
+
+- name: Apply the disk ACL to disks already present
+  shell: |
+    set -euo pipefail
+    shopt -s nullglob
+    for dev in /dev/sd*; do
+      setfacl -m u:{{ site_scrutiny_user }}:rw "$dev"
+    done
+  args:
+    executable: /bin/bash
+  when: site_scrutiny_user | length > 0

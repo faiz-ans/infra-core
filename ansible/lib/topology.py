@@ -68,6 +68,20 @@ def _engine_name(raw: Any, default: str = "none") -> str:
     return str(raw)
 
 
+def _auth_exceptions(ingress: Any) -> list[str]:
+    """Operator hostnames and service keys that skip the ingress auth gate."""
+    if not isinstance(ingress, dict):
+        return []
+    raw = ingress.get("auth-exceptions")
+    if raw is None:
+        raw = ingress.get("auth_exceptions") or []
+    if isinstance(raw, str):
+        return [raw]
+    if not isinstance(raw, list):
+        return []
+    return [str(item) for item in raw if str(item)]
+
+
 def _flag(raw: Any, key: str, default: bool = True) -> bool:
     if not isinstance(raw, dict) or key not in raw:
         alt = key.replace("-", "_")
@@ -90,6 +104,7 @@ def policy(desired: dict[str, Any]) -> dict[str, Any]:
         "dns": net.get("dns") or "none",
         "ingress": _engine_name(ingress),
         "generate_upstream": _flag(ingress, "generate-upstream", True),
+        "auth_exceptions": _auth_exceptions(ingress),
         "tunnel": tunnel.get("engine") or "none",
         "tunnel_endpoint": tunnel.get("endpoint") or "",
         "ldap": ident.get("ldap") or "none",
@@ -126,40 +141,99 @@ def admin_gui(value: Any) -> dict[str, Any]:
     return {"enabled": False, "primary": "cockpit", "aliases": []}
 
 
+def workload_users(host: dict[str, Any]) -> list[dict[str, Any]]:
+    """Named local accounts under this host's workload, each with its own services."""
+    wl = (host.get("operations") or {}).get("workload") or {}
+    raw = wl.get("users") if isinstance(wl, dict) else None
+    if not isinstance(raw, list):
+        return []
+    return [user for user in raw if isinstance(user, dict)]
+
+
+def _instance_name(key: str, inst: dict[str, Any], taken: set[str]) -> str:
+    """Use the name in site.yaml. Otherwise key, key2, key3, skipping names already used."""
+    explicit = str(inst.get("name") or "")
+    if explicit:
+        return explicit
+    number = 1
+    while True:
+        candidate = key if number == 1 else f"{key}{number}"
+        if candidate not in taken:
+            return candidate
+        number += 1
+
+
 def listed_services(desired: dict[str, Any]) -> list[dict[str, Any]]:
-    """Flatten hosts[].operations.workload.services into instance records."""
+    """Flatten each workload user's services into instance records."""
     pack = load_pack().get("services") or {}
     out: list[dict[str, Any]] = []
     for h in hosts(desired):
-        wl = ((h.get("operations") or {}).get("workload") or {})
-        services = wl.get("services") or {}
-        for key, val in services.items():
-            instances = val if isinstance(val, list) else [val or {}]
-            if instances == [None]:
-                instances = [{}]
-            for inst in instances:
-                inst = inst or {}
-                name = inst.get("name") or key
-                meta = copy.deepcopy(pack.get(key) or pack.get(name) or {})
-                out.append(
-                    {
-                        "host": h.get("name"),
-                        "host_ip": h.get("ip"),
-                        "key": key,
-                        "name": name,
-                        "component": meta.get("component") or key,
-                        "sso": inst.get("sso") or meta.get("sso") or "forward-auth",
-                        "network": meta.get("network") or "site",
-                        "privilege": meta.get("privilege") or "rootless",
-                        "subdomain": service_subdomain(key, inst.get("subdomain")),
-                        "keep_id": bool(meta.get("keep_id")),
-                        "dirs": list(meta.get("dirs") or []),
-                        "publish": list(meta.get("publish") or []),
-                        "ports": dict(meta.get("ports") or {}),
-                        "raw": inst,
-                    }
-                )
-    return out
+        for entry in workload_users(h):
+            user = str(entry.get("name") or "")
+            taken: set[str] = set()
+            services = entry.get("services") or {}
+            if not isinstance(services, dict):
+                continue
+            for key, val in services.items():
+                instances = val if isinstance(val, list) else [val or {}]
+                if instances == [None]:
+                    instances = [{}]
+                for inst in instances:
+                    inst = inst or {}
+                    name = _instance_name(str(key), inst, taken)
+                    taken.add(name)
+                    meta = copy.deepcopy(pack.get(key) or pack.get(name) or {})
+                    out.append(
+                        {
+                            "host": h.get("name"),
+                            "host_ip": h.get("ip"),
+                            "user": user,
+                            "key": key,
+                            "name": name,
+                            "component": meta.get("component") or key,
+                            "sso": inst.get("sso") or meta.get("sso") or "forward-auth",
+                            "network": meta.get("network") or "site",
+                            "privilege": meta.get("privilege") or "rootless",
+                            "subdomain": service_subdomain(name, inst.get("subdomain")),
+                            "keep_id": bool(meta.get("keep_id")),
+                            "dirs": list(meta.get("dirs") or []),
+                            "publish": list(meta.get("publish") or []),
+                            "ports": dict(meta.get("ports") or {}),
+                            "raw": inst,
+                        }
+                    )
+    return _with_scrutiny_collector(out, pack)
+
+
+def _with_scrutiny_collector(services: list[dict[str, Any]], pack: dict[str, Any]) -> list[dict[str, Any]]:
+    """SMART needs ATA pass-through, which a rootless container cannot do."""
+    if any(rec.get("key") == "scrutiny-collector" for rec in services):
+        return services
+    meta = pack.get("scrutiny-collector") or {}
+    extra: list[dict[str, Any]] = []
+    for rec in services:
+        if rec.get("key") != "scrutiny":
+            continue
+        extra.append(
+            {
+                "host": rec.get("host"),
+                "host_ip": rec.get("host_ip"),
+                "key": "scrutiny-collector",
+                "name": "scrutiny-collector",
+                "component": meta.get("component") or "scrutiny-collector",
+                "user": rec.get("user") or "",
+                "sso": "none",
+                "network": meta.get("network") or "host",
+                "privilege": meta.get("privilege") or "rootful",
+                "subdomain": {"primary": "", "aliases": []},
+                "keep_id": False,
+                "dirs": [],
+                "publish": [],
+                "ports": {},
+                "raw": {},
+            }
+        )
+    return services + extra
 
 
 def all_services(desired: dict[str, Any]) -> list[dict[str, Any]]:
@@ -384,9 +458,148 @@ def validate_placement(desired: dict[str, Any]) -> list[str]:
         if not any(host_user_is_sysadmin(u) for u in locals_):
             errors.append(f"host {h.get('name')} has no local sysadmin")
     errors.extend(validate_local_roots(desired))
+    errors.extend(validate_workload_users(desired))
+    errors.extend(validate_auth_exceptions(desired))
+    errors.extend(validate_bridges(desired))
+    from .plan import nfs_user_conflicts
+
+    errors.extend(nfs_user_conflicts(desired))
     from .pwm import validate_pwm
 
     errors.extend(validate_pwm(desired))
+    return errors
+
+
+def local_account_names(host: dict[str, Any]) -> set[str]:
+    return {str(user.get("name")) for user in (host.get("users") or []) if user.get("name")}
+
+
+def validate_workload_users(desired: dict[str, Any]) -> list[str]:
+    """Each workload user is a local account."""
+    errors: list[str] = []
+    for host in hosts(desired):
+        name = host.get("name") or "host"
+        wl = (host.get("operations") or {}).get("workload") or {}
+        if not isinstance(wl, dict):
+            continue
+        if "user" in wl or "services" in wl:
+            errors.append(
+                f"host {name} workload lists one user and one service map; use workload.users, each with a name and services"
+            )
+        seen_users: set[str] = set()
+        accounts = local_account_names(host)
+        for entry in workload_users(host):
+            user = str(entry.get("name") or "")
+            if not user:
+                errors.append(f"host {name} has a workload user with no name")
+                continue
+            if user in seen_users:
+                errors.append(f"host {name} lists workload user {user} more than once")
+            seen_users.add(user)
+            if user not in accounts:
+                errors.append(f"host {name} workload user {user} is not a local account")
+            services = entry.get("services") or {}
+            if not isinstance(services, dict):
+                errors.append(f"host {name} workload user {user} services must be a mapping")
+    return errors
+
+
+def auth_exception_tokens(desired: dict[str, Any]) -> set[str]:
+    """Service keys, instance names, published labels, Cockpit labels, and wifi."""
+    tokens = {"wifi"}
+    for service in all_services(desired):
+        for token in (service.get("key"), service.get("name")):
+            if token:
+                tokens.add(str(token))
+        sub = service.get("subdomain") or {}
+        if sub.get("primary"):
+            tokens.add(str(sub["primary"]))
+        tokens.update(str(alias) for alias in (sub.get("aliases") or []) if alias)
+    for host in hosts(desired):
+        gui = admin_gui(host.get("admin-gui"))
+        if not gui["enabled"]:
+            continue
+        tokens.add(gui["primary"])
+        tokens.update(alias for alias in gui["aliases"] if alias)
+    return tokens
+
+
+def validate_auth_exceptions(desired: dict[str, Any]) -> list[str]:
+    known = auth_exception_tokens(desired)
+    errors: list[str] = []
+    for token in policy(desired)["auth_exceptions"]:
+        if token not in known:
+            errors.append(f"networking.ingress auth-exceptions entry {token!r} matches no service or route")
+    return errors
+
+
+def bridge_grants(desired: dict[str, Any]) -> tuple[list[dict[str, str]], list[str]]:
+    """SSH keys owned by the account that lists bridge.
+
+    A string is another local account. A one-key object ``{host: account}`` is
+    an account on another host. The public key is installed on the target.
+    """
+    grants: list[dict[str, str]] = []
+    errors: list[str] = []
+    by_name = {str(host.get("name") or ""): host for host in hosts(desired)}
+    pending: list[tuple[str, str, str, str, str]] = []
+    for host in hosts(desired):
+        hostname = str(host.get("name") or "")
+        local = local_account_names(host)
+        for user in host.get("users") or []:
+            source = str(user.get("name") or "")
+            for entry in user.get("bridge") or []:
+                if isinstance(entry, str):
+                    target_host, target_user = hostname, entry
+                    if entry not in local:
+                        errors.append(f"host {hostname} user {source} bridges unknown local account {entry}")
+                        continue
+                    if entry == source:
+                        errors.append(f"host {hostname} user {source} cannot bridge to itself")
+                        continue
+                elif isinstance(entry, dict) and len(entry) == 1:
+                    target_host, target_user = next(iter(entry.items()))
+                    target_host, target_user = str(target_host), str(target_user)
+                    if target_host == hostname:
+                        errors.append(
+                            f"host {hostname} user {source} uses a host pair for a local account; use a bare name"
+                        )
+                        continue
+                    remote = by_name.get(target_host)
+                    if remote is None:
+                        errors.append(f"host {hostname} user {source} bridges unknown host {target_host}")
+                        continue
+                    if target_user not in local_account_names(remote):
+                        errors.append(
+                            f"host {hostname} user {source} bridges unknown account {target_user} on {target_host}"
+                        )
+                        continue
+                else:
+                    errors.append(f"host {hostname} user {source} has a bridge entry that is not a name or a host pair")
+                    continue
+                pending.append((hostname, source, target_host, target_user, str(by_name[target_host].get("ip") or "")))
+    for source_host, source, target_host, target_user, ip in pending:
+        local = source_host == target_host
+        grants.append(
+            {
+                "source_host": source_host,
+                "source_user": source,
+                "target_host": target_host,
+                "target_user": target_user,
+                "target_ip": "127.0.0.1" if local else ip,
+                "alias": target_user if local else f"{target_user}@{target_host}",
+                "key": (
+                    f"bridge_local_{target_user}"
+                    if local
+                    else f"bridge_remote_{target_host}_{target_user}"
+                ),
+            }
+        )
+    return grants, errors
+
+
+def validate_bridges(desired: dict[str, Any]) -> list[str]:
+    _grants, errors = bridge_grants(desired)
     return errors
 
 

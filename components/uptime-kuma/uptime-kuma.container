@@ -5,7 +5,9 @@ Description=uptime-kuma
 Image=docker.io/louislam/uptime-kuma:1
 ContainerName=uptime-kuma
 Network=site
+# Homepage is on the site network. 127.0.0.1 is not reachable from there.
 PublishPort=127.0.0.1:3004:3001
+#PublishPort=${site.networking.ingress.host.ip}:3004:3001
 Pull=always
 Environment=TZ=${site.env.timezone}
 Volume=${site.data.roots.appdata}/uptime-kuma:/app/data

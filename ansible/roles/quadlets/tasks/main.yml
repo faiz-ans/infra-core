@@ -3,7 +3,12 @@
 - name: Services on this host
   set_fact:
     site_here: "{{ site_plan.services | selectattr('host', 'equalto', site_host_name) | list }}"
-    site_wl_user: "{{ (site_plan.hosts | selectattr('name', 'equalto', site_host_name) | list | first).operations.workload.user | default('') }}"
+    site_wl_users: >-
+      {{
+        ((site_plan.hosts | selectattr('name', 'equalto', site_host_name) | list | first).operations.workload.users | default([]))
+        | map(attribute='name')
+        | list
+      }}
     site_touch_names: >-
       {{
         ((site_delta.services.add | default([])) + (site_delta.services.change | default([])))
@@ -12,6 +17,10 @@
         | list
       }}
     site_remove: "{{ site_delta.services.remove | default([]) | selectattr('host', 'equalto', site_host_name) | list }}"
+
+- name: Workload user for each service on this host
+  set_fact:
+    site_user_of: "{{ dict(site_here | map(attribute='key') | zip(site_here | map(attribute='user'))) }}"
 
 - name: Services whose files this SET must sync
   set_fact:
@@ -23,7 +32,7 @@
 
 - name: Skip non-workload
   meta: end_host
-  when: site_wl_user | length == 0
+  when: site_wl_users | length == 0
 
 - name: Render catalog on the runner
   command:
@@ -90,10 +99,11 @@
 
 - name: Rootless install dir
   file:
-    path: "/home/{{ site_wl_user }}/.config/containers/systemd"
+    path: "/home/{{ item }}/.config/containers/systemd"
     state: directory
-    owner: "{{ site_wl_user }}"
+    owner: "{{ item }}"
     mode: "0755"
+  loop: "{{ site_wl_users }}"
 
 - name: Rootful install dir
   file:
@@ -101,18 +111,19 @@
     state: directory
     mode: "0755"
 
-- name: Quadlet install base (rootless unless a service here is rootful)
+- name: Quadlet install base for generated Caddy and Authelia
   set_fact:
-    site_quadlet_base: "/home/{{ site_wl_user }}/.config/containers/systemd"
+    site_edge_user: "{{ site_user_of.caddy | default(site_user_of.authelia) | default(site_wl_users | first) }}"
+    site_quadlet_base: "/home/{{ site_user_of.caddy | default(site_user_of.authelia) | default(site_wl_users | first) }}/.config/containers/systemd"
 
 - name: Snapshot operator Caddy/Authelia before generated overwrite
   include_tasks: snapshot_manual.yml
   vars:
     site_snap_stamp: "{{ site_quadlet_base }}/.generate-upstream"
     site_snap_files:
-      - "{{ site_quadlet_base }}/caddy/Caddyfile"
-      - "{{ site_quadlet_base }}/authelia/configuration.yml"
-      - "{{ site_quadlet_base }}/authelia/users.yml"
+      - "/home/{{ site_user_of.caddy | default(site_edge_user) }}/.config/containers/systemd/caddy/Caddyfile"
+      - "/home/{{ site_user_of.authelia | default(site_edge_user) }}/.config/containers/systemd/authelia/configuration.yml"
+      - "/home/{{ site_user_of.authelia | default(site_edge_user) }}/.config/containers/systemd/authelia/users.yml"
   when:
     - site_plan.policy.generate_upstream | default(true)
     - site_delta.sections.edge | default(true) | bool
@@ -140,7 +151,7 @@
 - name: Sync each service tree
   synchronize:
     src: "{{ site_repo }}/ansible/.tmp/quadlets/{{ site_host_name }}/{{ item.name }}/"
-    dest: "{{ '/etc/containers/systemd/' + item.name if item.privilege == 'rootful' else '/home/' + site_wl_user + '/.config/containers/systemd/' + item.name }}"
+    dest: "{{ '/etc/containers/systemd/' + item.name if item.privilege == 'rootful' else '/home/' + item.user + '/.config/containers/systemd/' + item.name }}"
     delete: true
     rsync_opts: "{{ site_rsync_excludes }}"
   loop: "{{ site_touch }}"
@@ -149,8 +160,8 @@
 
 - name: Own rootless Quadlet files as the workload user
   file:
-    path: "/home/{{ site_wl_user }}/.config/containers/systemd/{{ item.name }}"
-    owner: "{{ site_wl_user }}"
+    path: "/home/{{ item.user }}/.config/containers/systemd/{{ item.name }}"
+    owner: "{{ item.user }}"
     recurse: true
   loop: "{{ site_touch }}"
   when:
@@ -159,18 +170,18 @@
 
 - name: Stat container volume paths
   stat:
-    path: "{{ item }}"
-  loop: "{{ lookup('file', site_repo + '/ansible/.tmp/quadlets/' + site_host_name + '/volume-dirs.txt').splitlines() }}"
+    path: "{{ item[1] if (item | length) > 1 else item[0] }}"
+  loop: "{{ lookup('file', site_repo + '/ansible/.tmp/quadlets/' + site_host_name + '/volume-dirs.txt').splitlines() | reject('equalto', '') | map('split', '|') | list }}"
   register: site_vol_stat
   when:
-    - item | length > 0
+    - (item | length) > 0
     - site_delta.sync_all | default(false) | bool or (site_delta.services.add | default([]) | selectattr('host', 'equalto', site_host_name) | list | length > 0)
 
 - name: Create missing container volume directories
   file:
-    path: "{{ item.item }}"
+    path: "{{ item.item[1] if (item.item | length) > 1 else item.item[0] }}"
     state: directory
-    owner: "{{ site_wl_user }}"
+    owner: "{{ item.item[0] if (item.item | length) > 1 else (site_wl_users | first) }}"
     mode: "0755"
   loop: "{{ site_vol_stat.results | default([]) }}"
   when:
@@ -189,7 +200,7 @@
   file:
     path: "{{ site_plan.roots.appdata }}/authelia"
     state: directory
-    owner: "{{ site_wl_user }}"
+    owner: "{{ site_user_of.authelia }}"
     mode: "0755"
   when:
     - site_here | selectattr('key', 'equalto', 'authelia') | list | length > 0
@@ -206,16 +217,21 @@
 - name: Authelia OIDC signing key is readable by the workload user
   file:
     path: "{{ site_plan.roots.appdata }}/authelia/oidc.pem"
-    owner: "{{ site_wl_user }}"
+    owner: "{{ site_user_of.authelia }}"
     mode: "0600"
   when:
     - site_here | selectattr('key', 'equalto', 'authelia') | list | length > 0
     - site_delta.sync_all | default(false) | bool or (site_touch | selectattr('key', 'equalto', 'authelia') | list | length > 0)
 
-- name: Workload user id
-  command: id -u {{ site_wl_user }}
-  register: site_wl_uid
+- name: Workload user ids
+  command: id -u {{ item }}
+  loop: "{{ site_wl_users }}"
+  register: site_wl_id_run
   changed_when: false
+
+- name: Workload user id map
+  set_fact:
+    site_wl_uids: "{{ dict(site_wl_id_run.results | map(attribute='item') | zip(site_wl_id_run.results | map(attribute='stdout') | map('trim'))) }}"
 
 - name: Persist IPv4 forwarding for WireGuard
   copy:
@@ -268,7 +284,7 @@
   file:
     path: "{{ ((site_plan.hosts | selectattr('name', 'equalto', site_host_name) | list | first).data.roots.appdata | default(site_plan.roots.appdata, true)) }}/wireguard"
     state: directory
-    owner: "{{ site_wl_user }}"
+    owner: "{{ site_user_of.wireguard }}"
     mode: "0755"
   when: site_here | selectattr('key', 'equalto', 'wireguard') | list | length > 0
 
@@ -291,7 +307,7 @@
 
       [Service]
       Type=simple
-      Environment=WG_HELPER_UID={{ site_wl_uid.stdout }}
+      Environment=WG_HELPER_UID={{ site_wl_uids[site_user_of.wireguard] }}
       Environment=WG_HELPER_SOCK={{ ((site_plan.hosts | selectattr('name', 'equalto', site_host_name) | list | first).data.roots.appdata | default(site_plan.roots.appdata, true)) }}/wireguard/.wg-helper.sock
       Environment=WG_HELPER_CONF={{ ((site_plan.hosts | selectattr('name', 'equalto', site_host_name) | list | first).data.roots.appdata | default(site_plan.roots.appdata, true)) }}/wireguard
       ExecStart=/usr/local/sbin/site-wg-helper
@@ -328,33 +344,109 @@
   file:
     path: "{{ site_immich_pg | default('/nonexistent', true) }}"
     state: directory
-    owner: "{{ site_wl_user }}"
-    group: "{{ site_wl_user }}"
+    owner: "{{ site_user_of.immich }}"
+    group: "{{ site_user_of.immich }}"
     mode: "0700"
+    recurse: true
   when:
     - site_immich_pg is defined
     - site_touch | selectattr('key', 'equalto', 'immich') | list | length > 0
 
 - name: Immich Postgres data is uid 999 inside the workload user namespace
   become: true
-  become_user: "{{ site_wl_user }}"
+  become_user: "{{ site_user_of.immich }}"
   environment:
-    XDG_RUNTIME_DIR: "/run/user/{{ site_wl_uid.stdout }}"
+    XDG_RUNTIME_DIR: "/run/user/{{ site_wl_uids[site_user_of.immich] }}"
   command: "podman unshare chown -R 999:999 {{ site_immich_pg | default('/nonexistent', true) }}"
   when:
     - site_immich_pg is defined
     - site_touch | selectattr('key', 'equalto', 'immich') | list | length > 0
 
+- name: Linkding data directory
+  set_fact:
+    site_linkding_data: "{{ ((site_plan.hosts | selectattr('name', 'equalto', site_host_name) | list | first).data.roots.appdata | default(site_plan.roots.appdata)) }}/linkding"
+  when: site_here | selectattr('key', 'equalto', 'linkding') | list | length > 0
+
+- name: Linkding data directory is grouped with the workload user
+  become: true
+  file:
+    path: "{{ site_linkding_data | default('/nonexistent', true) }}"
+    state: directory
+    owner: "{{ site_user_of.linkding }}"
+    group: "{{ site_user_of.linkding }}"
+    mode: "0755"
+    recurse: true
+  when:
+    - site_linkding_data is defined
+    - site_here | selectattr('key', 'equalto', 'linkding') | list | length > 0
+
+- name: Linkding data is uid 33 inside the workload user namespace
+  become: true
+  become_user: "{{ site_user_of.linkding }}"
+  environment:
+    XDG_RUNTIME_DIR: "/run/user/{{ site_wl_uids[site_user_of.linkding] }}"
+  command: "podman unshare chown -R 33:33 {{ site_linkding_data | default('/nonexistent', true) }}"
+  when:
+    - site_linkding_data is defined
+    - site_here | selectattr('key', 'equalto', 'linkding') | list | length > 0
+
+- name: Jotty data directory
+  set_fact:
+    site_jotty_data: "{{ ((site_plan.hosts | selectattr('name', 'equalto', site_host_name) | list | first).data.roots.appdata | default(site_plan.roots.appdata)) }}/jotty"
+  when: site_here | selectattr('key', 'equalto', 'jotty') | list | length > 0
+
+- name: Jotty data directory is grouped with the workload user
+  become: true
+  file:
+    path: "{{ site_jotty_data | default('/nonexistent', true) }}"
+    state: directory
+    owner: "{{ site_user_of.jotty }}"
+    group: "{{ site_user_of.jotty }}"
+    recurse: true
+  when:
+    - site_jotty_data is defined
+    - site_here | selectattr('key', 'equalto', 'jotty') | list | length > 0
+
+- name: Jotty data is the container PUID inside the workload user namespace
+  become: true
+  become_user: "{{ site_user_of.jotty }}"
+  environment:
+    XDG_RUNTIME_DIR: "/run/user/{{ site_wl_uids[site_user_of.jotty] }}"
+  command: "podman unshare chown -R {{ site_wl_uids[site_user_of.jotty] }}:{{ site_wl_uids[site_user_of.jotty] }} {{ site_jotty_data | default('/nonexistent', true) }}"
+  when:
+    - site_jotty_data is defined
+    - site_here | selectattr('key', 'equalto', 'jotty') | list | length > 0
+
+- name: Rootless app data owned by the host root account
+  set_fact:
+    site_root_owned_appdata:
+      - key: vaultwarden
+        path: "{{ ((site_plan.hosts | selectattr('name', 'equalto', site_host_name) | list | first).data.roots.appdata | default(site_plan.roots.appdata)) }}/vaultwarden"
+      - key: bytestash
+        path: "{{ ((site_plan.hosts | selectattr('name', 'equalto', site_host_name) | list | first).data.roots.appdata | default(site_plan.roots.appdata)) }}/bytestash"
+  when: site_here | selectattr('key', 'in', ['vaultwarden', 'bytestash']) | list | length > 0
+
+- name: Give root-owned app data to the workload user
+  become: true
+  file:
+    path: "{{ item.path }}"
+    state: directory
+    owner: "{{ site_user_of[item.key] }}"
+    group: "{{ site_user_of[item.key] }}"
+    recurse: true
+  loop: "{{ site_root_owned_appdata | default([]) }}"
+  when: site_here | selectattr('key', 'equalto', item.key) | list | length > 0
+
 - name: Stop the rootless unit when this service is rootful
   become: true
-  become_user: "{{ site_wl_user }}"
+  become_user: "{{ item.user }}"
   environment:
-    XDG_RUNTIME_DIR: "/run/user/{{ site_wl_uid.stdout }}"
+    XDG_RUNTIME_DIR: "/run/user/{{ site_wl_uids[item.user] }}"
   args:
     executable: /bin/bash
   shell: |
     set -euo pipefail
-    dir="/home/{{ site_wl_user }}/.config/containers/systemd/{{ item.name }}"
+    dir="/home/{{ item.user }}/.config/containers/systemd/{{ item.name }}"
     [ -d "$dir" ] || exit 0
     find "$dir" -type f \( -name '*.container' -o -name '*.kube' -o -name '*.pod' -o -name '*.network' -o -name '*.volume' \) -print0 |
       while IFS= read -r -d '' f; do
@@ -371,7 +463,7 @@
 
 - name: Remove the rootless tree when this service is rootful
   file:
-    path: "/home/{{ site_wl_user }}/.config/containers/systemd/{{ item.name }}"
+    path: "/home/{{ item.user }}/.config/containers/systemd/{{ item.name }}"
     state: absent
   loop: "{{ site_touch }}"
   loop_control:
@@ -380,26 +472,107 @@
     - site_touch | length > 0
     - (item.privilege | default('rootless')) == 'rootful'
 
+- name: Stop the rootful unit when this service is rootless
+  args:
+    executable: /bin/bash
+  shell: |
+    set -euo pipefail
+    dir="/etc/containers/systemd/{{ item.name }}"
+    [ -d "$dir" ] || exit 0
+    find "$dir" -type f \( -name '*.container' -o -name '*.kube' -o -name '*.pod' -o -name '*.network' -o -name '*.volume' \) -print0 |
+      while IFS= read -r -d '' f; do
+        base=$(basename "$f")
+        systemctl stop "${base%.*}.service" || true
+        systemctl disable "${base%.*}.service" || true
+      done
+  loop: "{{ site_touch }}"
+  loop_control:
+    label: "{{ item.name }}"
+  when:
+    - site_touch | length > 0
+    - (item.privilege | default('rootless')) != 'rootful'
+
+- name: Remove the rootful tree when this service is rootless
+  file:
+    path: "/etc/containers/systemd/{{ item.name }}"
+    state: absent
+  loop: "{{ site_touch }}"
+  loop_control:
+    label: "{{ item.name }}"
+  register: site_drop_rootful
+  when:
+    - site_touch | length > 0
+    - (item.privilege | default('rootless')) != 'rootful'
+
+- name: Reload system systemd after a rootful tree was removed
+  command: systemctl daemon-reload
+  when: site_drop_rootful.results | default([]) | selectattr('changed') | list | length > 0
+
+- name: Retire a synced service from any other workload user
+  become: true
+  become_user: "{{ item.0 }}"
+  environment:
+    XDG_RUNTIME_DIR: "/run/user/{{ site_wl_uids[item.0] }}"
+  args:
+    executable: /bin/bash
+  shell: |
+    set -euo pipefail
+    dir="/home/{{ item.0 }}/.config/containers/systemd/{{ item.1.name }}"
+    [ -d "$dir" ] || exit 0
+    find "$dir" -type f \( -name '*.container' -o -name '*.kube' -o -name '*.pod' -o -name '*.network' -o -name '*.volume' \) -print0 |
+      while IFS= read -r -d '' f; do
+        base=$(basename "$f")
+        systemctl --user disable --now "${base%.*}.service" || true
+      done
+    rm -rf "$dir"
+    echo retired
+  register: site_retired
+  changed_when: "'retired' in (stdout | default(''))"
+  loop: "{{ site_wl_users | product(site_touch) | list }}"
+  loop_control:
+    label: "{{ item.1.name }} from {{ item.0 }}"
+  when:
+    - site_touch | length > 0
+    - (item.1.privilege | default('rootless')) != 'rootful'
+    - item.1.user != item.0
+
 - name: Reload user systemd when a Quadlet file changed
   become: true
-  become_user: "{{ site_wl_user }}"
+  become_user: "{{ item }}"
   environment:
-    XDG_RUNTIME_DIR: "/run/user/{{ site_wl_uid.stdout }}"
+    XDG_RUNTIME_DIR: "/run/user/{{ site_wl_uids[item] }}"
   command: systemctl --user daemon-reload
-  when: >-
-    site_sync.results | default([])
-    | selectattr('stdout_lines', 'defined')
-    | map(attribute='stdout_lines')
-    | flatten
-    | select('match', '^[<>c*]')
-    | list
-    | length > 0
+  loop: "{{ site_wl_users }}"
+  when: site_touch | length > 0
+
+- name: Start a synced rootless service under its workload user
+  become: true
+  become_user: "{{ item.user }}"
+  environment:
+    XDG_RUNTIME_DIR: "/run/user/{{ site_wl_uids[item.user] }}"
+  args:
+    executable: /bin/bash
+  shell: |
+    set -euo pipefail
+    dir="/home/{{ item.user }}/.config/containers/systemd/{{ item.name }}"
+    [ -d "$dir" ] || exit 0
+    find "$dir" -type f \( -name '*.container' -o -name '*.kube' -o -name '*.pod' -o -name '*.network' -o -name '*.volume' \) -print0 |
+      while IFS= read -r -d '' f; do
+        base=$(basename "$f")
+        systemctl --user restart "${base%.*}.service"
+      done
+  loop: "{{ site_touch }}"
+  loop_control:
+    label: "{{ item.name }}"
+  when:
+    - site_touch | length > 0
+    - (item.privilege | default('rootless')) != 'rootful'
 
 - name: Restart OpenLDAP so it adopts the current admin password
   become: true
-  become_user: "{{ site_wl_user }}"
+  become_user: "{{ (item.item | default({})).user }}"
   environment:
-    XDG_RUNTIME_DIR: "/run/user/{{ site_wl_uid.stdout }}"
+    XDG_RUNTIME_DIR: "/run/user/{{ site_wl_uids[(item.item | default({})).user] }}"
   args:
     executable: /bin/bash
   shell: |
@@ -416,14 +589,14 @@
 
 - name: Restart rootless Quadlets that were synced
   become: true
-  become_user: "{{ site_wl_user }}"
+  become_user: "{{ (item.item | default({})).user }}"
   environment:
-    XDG_RUNTIME_DIR: "/run/user/{{ site_wl_uid.stdout }}"
+    XDG_RUNTIME_DIR: "/run/user/{{ site_wl_uids[(item.item | default({})).user] }}"
   args:
     executable: /bin/bash
   shell: |
     set -euo pipefail
-    dir="/home/{{ site_wl_user }}/.config/containers/systemd/{{ (item.item | default({})).name }}"
+    dir="/home/{{ (item.item | default({})).user }}/.config/containers/systemd/{{ (item.item | default({})).name }}"
     name=$(basename "$dir")
     if compgen -G "$dir"/*.container >/dev/null && ! compgen -G "$dir"/*.kube >/dev/null; then
       podman pod exists "$name" && podman pod rm -f "$name" || true
@@ -441,6 +614,35 @@
     - (item.rc | default(0)) == 0
     - ((item.item | default({})).key | default('')) != 'openldap'
     - ((item.item | default({})).privilege | default('rootless')) != 'rootful'
+
+- name: Restart Linkding so the worker can write its database
+  become: true
+  become_user: "{{ site_user_of.linkding }}"
+  environment:
+    XDG_RUNTIME_DIR: "/run/user/{{ site_wl_uids[site_user_of.linkding] }}"
+  command: systemctl --user restart linkding.service
+  when:
+    - site_linkding_data is defined
+    - site_here | selectattr('key', 'equalto', 'linkding') | list | length > 0
+
+- name: Restart Jotty so it can write the signed-in user
+  become: true
+  become_user: "{{ site_user_of.jotty }}"
+  environment:
+    XDG_RUNTIME_DIR: "/run/user/{{ site_wl_uids[site_user_of.jotty] }}"
+  command: systemctl --user restart jotty.service
+  when:
+    - site_jotty_data is defined
+    - site_here | selectattr('key', 'equalto', 'jotty') | list | length > 0
+
+- name: Restart apps that run as container root after the data is writable
+  become: true
+  become_user: "{{ site_user_of[item.key] }}"
+  environment:
+    XDG_RUNTIME_DIR: "/run/user/{{ site_wl_uids[site_user_of[item.key]] }}"
+  command: "systemctl --user restart {{ item.key }}.service"
+  loop: "{{ site_root_owned_appdata | default([]) }}"
+  when: site_here | selectattr('key', 'equalto', item.key) | list | length > 0
 
 - name: Reload system systemd when a rootful Quadlet changed
   command: systemctl daemon-reload
@@ -480,14 +682,14 @@
 
 - name: Stop removed rootless Quadlets
   become: true
-  become_user: "{{ site_wl_user }}"
+  become_user: "{{ item.user | default(site_wl_users | first) }}"
   environment:
-    XDG_RUNTIME_DIR: "/run/user/{{ site_wl_uid.stdout }}"
+    XDG_RUNTIME_DIR: "/run/user/{{ site_wl_uids[item.user | default(site_wl_users | first)] }}"
   args:
     executable: /bin/bash
   shell: |
     set -euo pipefail
-    dir="/home/{{ site_wl_user }}/.config/containers/systemd/{{ item.name }}"
+    dir="/home/{{ item.user | default(site_wl_users | first) }}/.config/containers/systemd/{{ item.name }}"
     [ -d "$dir" ] || exit 0
     find "$dir" -type f \( -name '*.container' -o -name '*.kube' -o -name '*.pod' -o -name '*.network' -o -name '*.volume' \) -print0 |
       while IFS= read -r -d '' f; do
@@ -502,7 +704,7 @@
 
 - name: Remove Quadlet directories no longer desired
   file:
-    path: "{{ '/etc/containers/systemd/' + item.name if (item.privilege | default('rootless')) == 'rootful' else '/home/' + site_wl_user + '/.config/containers/systemd/' + item.name }}"
+    path: "{{ '/etc/containers/systemd/' + item.name if (item.privilege | default('rootless')) == 'rootful' else '/home/' + (item.user | default(site_wl_users | first)) + '/.config/containers/systemd/' + item.name }}"
     state: absent
   loop: "{{ site_remove }}"
   when: site_remove | length > 0

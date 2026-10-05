@@ -1,9 +1,14 @@
 ---
 # The home root only lists subroots. files/ and photos/ are where the user writes.
 # OpenCloud runs as the workload user. It creates files/ and writes metadata on the home.
-- name: Workload user
+- name: OpenCloud user on this host
   set_fact:
-    site_wl_user: "{{ (site_plan.hosts | selectattr('name', 'equalto', site_host_name) | list | first).operations.workload.user | default('') }}"
+    site_oc_user: "{{ ((site_plan.services | selectattr('host', 'equalto', site_host_name) | selectattr('key', 'equalto', 'opencloud') | list | first) or {}).user | default('') }}"
+    site_wl_names: "{{ ((site_plan.hosts | selectattr('name', 'equalto', site_host_name) | list | first).operations.workload.users | default([])) | map(attribute='name') | list }}"
+
+- name: Workload user that may write home directories
+  set_fact:
+    site_wl_user: "{{ site_oc_user if (site_oc_user | length) > 0 else (site_wl_names[0] if (site_wl_names | length) == 1 else '') }}"
 
 - name: ACL tools
   apt:

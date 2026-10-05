@@ -5,7 +5,7 @@ from typing import Any
 
 from .directory import authelia_password_hash, file_backend_needs_passwords, ldap_base_dn, sso_groups
 from .resolve import LOOPBACK
-from .topology import admin_gui, all_services, env, hosts, ingress_host, policy, site_of
+from .topology import admin_gui, all_services, env, hosts, ingress_host, placed_keys, policy, site_of
 
 
 def domain_of(desired: dict[str, Any]) -> str:
@@ -42,6 +42,42 @@ def admin_gui_host(desired: dict[str, Any]) -> dict[str, Any] | None:
     return chosen
 
 
+def gate_all_routes(desired: dict[str, Any]) -> bool:
+    """Authelia and Caddy together authenticate every request before the upstream."""
+    p = policy(desired)
+    if p["sso"] != "authelia" or p["ingress"] != "caddy":
+        return False
+    keys = placed_keys(desired)
+    return "authelia" in keys and "caddy" in keys
+
+
+def _exempt(desired: dict[str, Any], *tokens: str) -> bool:
+    exceptions = set(policy(desired)["auth_exceptions"])
+    return any(token and token in exceptions for token in tokens)
+
+
+def service_gated(desired: dict[str, Any], service: dict[str, Any]) -> bool:
+    """True when this site block must forward-auth before it fulfills the request.
+
+    The SSO portal itself stays open so a person can sign in. With both engines
+    placed, every other route is gated unless the operator listed an exception.
+    Without both engines, only a service's own forward-auth mode is gated.
+    """
+    if service.get("key") == "authelia":
+        return False
+    sub = service.get("subdomain") or {}
+    if gate_all_routes(desired):
+        return not _exempt(desired, str(service.get("key") or ""), str(service.get("name") or ""), str(sub.get("primary") or ""))
+    return (service.get("sso") or "none") == "forward-auth"
+
+
+def route_gated(desired: dict[str, Any], *tokens: str) -> bool:
+    """Cockpit and the router site follow the same default as services."""
+    if not gate_all_routes(desired):
+        return False
+    return not _exempt(desired, *tokens)
+
+
 def upstream_for(service: dict[str, Any], ingress_name: str | None) -> str:
     """Loopback on the ingress host. Another host's address everywhere else."""
     host = service.get("host")
@@ -75,6 +111,13 @@ def generate_caddyfile(desired: dict[str, Any]) -> str:
         "		copy_headers Remote-User Remote-Groups Remote-Name Remote-Email",
         "	}",
         "}",
+        "(authelia_gate_cockpit) {",
+        "	forward_auth 127.0.0.1:9091 {",
+        f"		uri /api/authz/forward-auth?authelia_url=https://{authelia_label(desired)}.{domain}/",
+        "		copy_headers Remote-User Remote-Groups Remote-Name Remote-Email",
+        "		header_up -Authorization",
+        "	}",
+        "}",
         "",
     ]
     seen = set()
@@ -82,6 +125,27 @@ def generate_caddyfile(desired: dict[str, Any]) -> str:
         sub = s.get("subdomain") or {}
         primary = sub.get("primary")
         if not primary or primary in seen:
+            continue
+        if s["key"] == "rustdesk":
+            seen.add(primary)
+            aliases = sub.get("aliases") or []
+            for a in aliases:
+                lines += [
+                    f"https://{a}.{domain} {{",
+                    "	tls internal",
+                    f"	redir https://{primary}.{domain}{{uri}} permanent",
+                    "}",
+                    "",
+                ]
+            lines += [f"https://{primary}.{domain} {{", "	tls internal"]
+            if service_gated(desired, s):
+                lines.append("	import authelia_gate")
+            lines += [
+                "	header Content-Type text/plain",
+                "	respond \"RustDesk uses the native client. Point the ID server at this host and the relay at port 21117.\" 200",
+                "}",
+                "",
+            ]
             continue
         up_port = web_port(s)
         if s["key"] == "caddy" or not up_port:
@@ -99,7 +163,7 @@ def generate_caddyfile(desired: dict[str, Any]) -> str:
         sso = s.get("sso") or "none"
         upstream = upstream_for(s, ingress_name)
         lines += [f"https://{primary}.{domain} {{", "	tls internal"]
-        if sso == "forward-auth":
+        if service_gated(desired, s):
             lines.append("	import authelia_gate")
         if s["key"] == "authelia":
             lines += [
@@ -109,7 +173,7 @@ def generate_caddyfile(desired: dict[str, Any]) -> str:
                 "		file_server",
                 "	}",
             ]
-        if sso == "admin-only":
+        if sso == "admin-only" and not gate_all_routes(desired):
             lines += [
                 "	handle /admin* {",
                 "		import authelia_gate",
@@ -158,9 +222,10 @@ def generate_caddyfile(desired: dict[str, Any]) -> str:
             ]
         if primary not in seen:
             seen.add(primary)
+            lines += [f"https://{primary}.{domain} {{", "	tls internal"]
+            if route_gated(desired, primary, *gui_cfg["aliases"]):
+                lines.append("	import authelia_gate_cockpit")
             lines += [
-                f"https://{primary}.{domain} {{",
-                "	tls internal",
                 f"	reverse_proxy https://{gui_upstream}:9090 {{",
                 f"		header_up Host {primary}.{domain}",
                 f"		header_up X-Forwarded-Host {primary}.{domain}",
@@ -174,9 +239,10 @@ def generate_caddyfile(desired: dict[str, Any]) -> str:
             ]
     router = str(env(desired).get("lan_ip") or "").strip()
     if router:
+        lines += [f"https://wifi.{domain} {{", "	tls internal"]
+        if route_gated(desired, "wifi"):
+            lines.append("	import authelia_gate")
         lines += [
-            f"https://wifi.{domain} {{",
-            "	tls internal",
             f"	reverse_proxy https://{router} {{",
             "		transport http {",
             "			tls_insecure_skip_verify",
@@ -249,15 +315,7 @@ def generate_authelia(desired: dict[str, Any]) -> str:
             clients += _opencloud_clients(f"{sub}.{domain}")
             continue
         sub = (service.get("subdomain") or {}).get("primary") or service["name"]
-        clients += [
-            f"      - client_id: {service['key']}",
-            f"        client_name: {service['name']}",
-            "        public: true",
-            "        authorization_policy: one_factor",
-            "        scopes: [openid, groups, profile, email]",
-            f"        redirect_uris: ['https://{sub}.{domain}/', 'https://{sub}.{domain}/oidc-callback.html']",
-            "        token_endpoint_auth_method: none",
-        ]
+        clients += _oidc_client(service, f"{sub}.{domain}")
     if not clients:
         clients = ["      []"]
     return "\n".join(
@@ -308,6 +366,49 @@ def generate_authelia(desired: dict[str, Any]) -> str:
             "",
         ]
     )
+
+
+def _oidc_client(service: dict[str, Any], host: str) -> list[str]:
+    """Redirects and token auth match what each app actually sends."""
+    key = service["key"]
+    secret = _authelia_env("OIDC_CLIENT_SECRET")
+    if key == "jotty":
+        redirects = [f"https://{host}/api/oidc/callback"]
+        confidential = True
+        pkce = True
+    elif key == "bytestash":
+        redirects = [f"https://{host}/api/auth/oidc/callback"]
+        confidential = True
+        pkce = True
+    elif key == "linkding":
+        redirects = [f"https://{host}/oidc/callback/"]
+        confidential = True
+        pkce = False
+    else:
+        redirects = [f"https://{host}/", f"https://{host}/oidc-callback.html"]
+        confidential = False
+        pkce = False
+    lines = [
+        f"      - client_id: {key}",
+        f"        client_name: {service['name']}",
+        f"        public: {'false' if confidential else 'true'}",
+        "        authorization_policy: one_factor",
+        "        scopes: [openid, groups, profile, email]",
+        "        redirect_uris: [" + ", ".join(f"'{uri}'" for uri in redirects) + "]",
+    ]
+    if confidential:
+        lines += [
+            f"        client_secret: {secret}",
+            "        token_endpoint_auth_method: client_secret_post",
+        ]
+    else:
+        lines.append("        token_endpoint_auth_method: none")
+    if pkce:
+        lines += [
+            "        require_pkce: true",
+            "        pkce_challenge_method: S256",
+        ]
+    return lines
 
 
 def _opencloud_clients(host: str) -> list[str]:

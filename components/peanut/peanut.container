@@ -24,7 +24,6 @@ Environment=AUTH_DISABLED=true
 Environment=AUTH_TRUST_HOST=true
 Secret=${secrets.peanut.nut_remote_password},type=env,target=AUTH_SECRET
 Volume=${site.data.roots.appdata}/peanut:/config
-Volume=${component.dir}/settings.yml:/config/settings.yml:ro
 
 [Service]
 Restart=on-failure

@@ -1,0 +1,3 @@
+#!/command/with-contenv bash
+s6-svc -D /run/service/cron
+exit 0

@@ -15,6 +15,7 @@ site:
     ingress:
       engine: caddy
       generate-upstream: true
+      auth-exceptions: [homepage]
     tunnel:
       engine: none
       endpoint: vpn.example.lan
@@ -97,17 +98,18 @@ site:
             - id: data
               roots: [appdata, groups, users]
         workload:
-          user: admin
-          services:
-            caddy:
-            authelia:
-            opencloud:
-            pi-hole:
-              - name: pi-hole
-                subdomain:
-                  primary: dns
-                  aliases: [pihole]
-            homepage:
+          users:
+            - name: admin
+              services:
+                caddy:
+                authelia:
+                opencloud:
+                pi-hole:
+                  - name: pi-hole
+                    subdomain:
+                      primary: dns
+                      aliases: [pihole]
+                homepage:
     - name: compute
       ip: 10.0.0.11
       os:
@@ -134,6 +136,7 @@ site:
           ssh-keys: ["ssh-ed25519 AAAAEXAMPLE replace-me"]
       operations:
         workload:
-          user: admin
-          services:
-            glances:
+          users:
+            - name: admin
+              services:
+                glances:

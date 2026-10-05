@@ -10,6 +10,7 @@ from .directory import ldap_base_dn, people_homes
 from .topology import (
     admin_gui,
     all_services,
+    bridge_grants,
     host_by_name,
     shared_host_roots,
     host_roots,
@@ -20,6 +21,7 @@ from .topology import (
     roots,
     site_of,
     volume_host_roots,
+    workload_users,
 )
 
 COMPONENTS = Path(__file__).resolve().parents[2] / "components"
@@ -48,10 +50,11 @@ HOME_IMPORT_TYPES = {
 
 
 def workload_user(desired: dict[str, Any], host_name: str) -> str:
-    for h in hosts(desired):
-        if h.get("name") == host_name:
-            wl = (h.get("operations") or {}).get("workload") or {}
-            return str(wl.get("user") or "")
+    """The host's only workload user. Empty when the host has several."""
+    host = host_by_name(desired, host_name) or {}
+    users = workload_users(host)
+    if len(users) == 1:
+        return str(users[0].get("name") or "")
     return ""
 
 
@@ -115,7 +118,7 @@ def inferred_nfs(desired: dict[str, Any]) -> dict[str, list[dict[str, str]]]:
                         "host": owner["host"],
                         "path": path,
                         "client_ip": consumer_ip,
-                        "workload_user": workload_user(desired, consumer),
+                        "workload_user": str(s.get("user") or ""),
                     }
                 )
             mnt_key = (consumer, path, owner["host_ip"])
@@ -130,6 +133,29 @@ def inferred_nfs(desired: dict[str, Any]) -> dict[str, list[dict[str, str]]]:
                     }
                 )
     return {"exports": exports, "mounts": mounts}
+
+
+def nfs_user_conflicts(desired: dict[str, Any]) -> list[str]:
+    """One client IP gets one squash uid. Two workload users cannot share a remote root."""
+    owners = root_owners(desired)
+    seen: dict[tuple, str] = {}
+    errors: list[str] = []
+    for service in all_services(desired):
+        consumer = service.get("host") or ""
+        for root in referenced_site_roots(service):
+            owner = owners.get(root)
+            if not owner or not owner.get("host") or owner["host"] == consumer:
+                continue
+            key = (owner["host"], owner["path"], service.get("host_ip") or "")
+            user = str(service.get("user") or "")
+            prev = seen.get(key)
+            if prev is not None and prev != user:
+                errors.append(
+                    f"host {consumer} users {prev} and {user} both use remote root {root}; one NFS client can grant one uid"
+                )
+            else:
+                seen[key] = user
+    return errors
 
 
 def service_dirs(desired: dict[str, Any]) -> list[dict[str, str]]:
@@ -491,6 +517,7 @@ def build_plan(desired: dict[str, Any]) -> dict[str, Any]:
         "users": site_of(desired).get("users") or [],
         "groups": site_groups(desired),
         "hosts": [{**h, "admin-gui": admin_gui(h.get("admin-gui"))} for h in hosts(desired)],
+        "bridges": bridge_grants(desired)[0],
         "domain": str((site_of(desired).get("env") or {}).get("domain") or ""),
         "ldap": p["ldap"],
         "ldap_base": ldap_base_dn(str((site_of(desired).get("env") or {}).get("domain") or ""))

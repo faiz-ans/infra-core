@@ -1,0 +1,24 @@
+[Unit]
+Description=docker-proxy
+After=network-online.target
+
+[Container]
+Image=docker.io/tecnativa/docker-socket-proxy:latest
+ContainerName=docker-proxy
+Network=site
+# Host port is 2375 plus this user's index on the host (pilot 2375, hostess 2376).
+PublishPort=${host.ip}:${host.operations.workload.proxy_port}:2375
+Pull=always
+Environment=TZ=${site.env.timezone}
+# GET container status only. POST=0 blocks API writes; a :ro socket mount does not.
+Environment=POST=0
+Environment=PING=1
+Environment=INFO=1
+Environment=CONTAINERS=1
+Volume=/run/user/${host.operations.workload.uid}/podman/podman.sock:/var/run/docker.sock:ro
+
+[Service]
+Restart=on-failure
+
+[Install]
+WantedBy=default.target

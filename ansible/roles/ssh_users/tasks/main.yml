@@ -3,25 +3,125 @@
   set_fact:
     site_this_host: "{{ site_plan.hosts | selectattr('name', 'equalto', site_host_name) | list | first }}"
 
-- name: Local sysadmins
+- name: Local accounts and sysadmins
   set_fact:
+    site_local_users: "{{ site_this_host.users | default([]) }}"
     site_sysadmins: "{{ (site_this_host.users | default([]) | selectattr('sysadmin', 'defined') | selectattr('sysadmin', 'equalto', true) | list) + (site_this_host.users | default([]) | selectattr('roles', 'defined') | selectattr('roles', 'contains', 'sysadmin') | list) }}"
 
-- name: Create sysadmin accounts
+- name: Create local accounts
+  user:
+    name: "{{ item.name }}"
+    shell: "{{ '/bin/bash' if (item.sysadmin | default(false) or ('sysadmin' in (item.roles | default([]))) or (item['ssh-keys'] | default([])) or (item.bridge | default([])) or (item.name in site_bridge_targets)) else '/usr/sbin/nologin' }}"
+    create_home: true
+    uid: "{{ item.uid | default(omit) }}"
+  loop: "{{ site_local_users }}"
+  vars:
+    site_bridge_targets: "{{ site_plan.bridges | default([]) | selectattr('target_host', 'equalto', site_host_name) | map(attribute='target_user') | list }}"
+
+- name: Grant sudo to sysadmins
   user:
     name: "{{ item.name }}"
     groups: sudo
     append: true
-    shell: /bin/bash
-    create_home: true
   loop: "{{ site_sysadmins }}"
 
-- name: Install SSH keys for sysadmins
+- name: Install SSH keys for local accounts
   authorized_key:
     user: "{{ item.0.name }}"
     key: "{{ item.1 }}"
     state: present
-  loop: "{{ site_sysadmins | subelements('ssh-keys', skip_missing=True) }}"
+  loop: "{{ site_local_users | subelements('ssh-keys', skip_missing=True) }}"
+
+- name: Bridge keys owned by accounts on this host
+  set_fact:
+    site_bridges: "{{ site_plan.bridges | default([]) | selectattr('source_host', 'equalto', site_host_name) | list }}"
+
+- name: SSH directory for an account that bridges
+  file:
+    path: "/home/{{ item }}/.ssh"
+    state: directory
+    owner: "{{ item }}"
+    group: "{{ item }}"
+    mode: "0700"
+  loop: "{{ site_bridges | map(attribute='source_user') | unique | list }}"
+
+- name: Passphrase-less key for a bridge
+  become: true
+  become_user: "{{ item.source_user }}"
+  command: "ssh-keygen -q -t ed25519 -N '' -f /home/{{ item.source_user }}/.ssh/{{ item.key }} -C site-bridge-{{ item.alias }}"
+  args:
+    creates: "/home/{{ item.source_user }}/.ssh/{{ item.key }}"
+  loop: "{{ site_bridges }}"
+  loop_control:
+    label: "{{ item.source_user }} to {{ item.alias }}"
+
+- name: Read the bridge public key
+  slurp:
+    src: "/home/{{ item.source_user }}/.ssh/{{ item.key }}.pub"
+  register: site_bridge_pubs
+  loop: "{{ site_bridges }}"
+  loop_control:
+    label: "{{ item.source_user }} to {{ item.alias }}"
+
+- name: Install the bridge public key on the target account
+  authorized_key:
+    user: "{{ item.item.target_user }}"
+    key: "{{ item.content | b64decode }}"
+    state: present
+  delegate_to: "{{ item.item.target_host }}"
+  loop: "{{ site_bridge_pubs.results | default([]) }}"
+  loop_control:
+    label: "{{ item.item.source_user }}@{{ item.item.source_host }} to {{ item.item.target_user }}@{{ item.item.target_host }}"
+  when: not (item.skipped | default(false))
+
+- name: SSH client config for a local bridge
+  become: true
+  become_user: "{{ item.source_user }}"
+  blockinfile:
+    path: "/home/{{ item.source_user }}/.ssh/config"
+    create: true
+    mode: "0600"
+    marker: "# {mark} SITE BRIDGE {{ item.alias }}"
+    block: |
+      Host {{ item.alias }}
+        HostName {{ item.target_ip }}
+        User {{ item.target_user }}
+        IdentityFile ~/.ssh/{{ item.key }}
+        IdentitiesOnly yes
+  loop: "{{ site_bridges }}"
+  loop_control:
+    label: "{{ item.source_user }} to {{ item.alias }}"
+  when: item.source_host == item.target_host
+
+- name: SSH client config for a remote bridge
+  become: true
+  become_user: "{{ item.source_user }}"
+  blockinfile:
+    path: "/home/{{ item.source_user }}/.ssh/config"
+    create: true
+    mode: "0600"
+    marker: "# {mark} SITE BRIDGE {{ item.alias }}"
+    block: |
+      Match host {{ item.target_host }} user {{ item.target_user }}
+        HostName {{ item.target_ip }}
+        IdentityFile ~/.ssh/{{ item.key }}
+        IdentitiesOnly yes
+  loop: "{{ site_bridges }}"
+  loop_control:
+    label: "{{ item.source_user }} to {{ item.alias }}"
+  when: item.source_host != item.target_host
+
+- name: Drop a remote bridge alias that named only the host
+  become: true
+  become_user: "{{ item.source_user }}"
+  blockinfile:
+    path: "/home/{{ item.source_user }}/.ssh/config"
+    marker: "# {mark} SITE BRIDGE {{ item.target_host }}"
+    state: absent
+  loop: "{{ site_bridges }}"
+  loop_control:
+    label: "{{ item.target_host }}"
+  when: item.source_host != item.target_host
 
 - name: Refuse key-only without a sysadmin key
   fail:
@@ -37,3 +137,21 @@
     line: "PasswordAuthentication no"
   notify: reload ssh
   when: (site_this_host.identity.ssh | default(site_plan.policy.ssh)) == 'key-only'
+
+- name: Refuse to delete a sysadmin when only one remains
+  fail:
+    msg: "{{ site_host_name }} would have only one sysadmin; {{ item.name }} stays"
+  loop: "{{ site_delta.local_users.refuse | default([]) | selectattr('host', 'equalto', site_host_name) | list }}"
+
+- name: Drop linger for a removed local account
+  command: "loginctl disable-linger {{ item.name }}"
+  failed_when: false
+  changed_when: false
+  loop: "{{ site_delta.local_users.remove | default([]) | selectattr('host', 'equalto', site_host_name) | list }}"
+
+- name: Delete local accounts removed from site.yaml
+  user:
+    name: "{{ item.name }}"
+    state: absent
+    remove: false
+  loop: "{{ site_delta.local_users.remove | default([]) | selectattr('host', 'equalto', site_host_name) | list }}"

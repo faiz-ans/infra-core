@@ -14,7 +14,7 @@ from lib.generate import inject_authelia_ldap_password  # noqa: E402
 from lib.integrate import apply_placed_integrations  # noqa: E402
 from lib.pod import apply_container_overlay, apply_pod_overlay  # noqa: E402
 from lib.quadlet import read_utf8, strip_yaml_text  # noqa: E402
-from lib.resolve import bind, render  # noqa: E402
+from lib.resolve import account_ids, bind, proxy_port, render  # noqa: E402
 from lib.secrets import SecretError, load_secrets  # noqa: E402
 from lib.topology import all_services, host_by_name, load_desired, policy  # noqa: E402
 
@@ -34,12 +34,12 @@ def _host_volume_dirs(text: str) -> set[str]:
     return found
 
 
-def _host_component_dir(host: dict, svc: dict) -> str:
+def _host_component_dir(svc: dict) -> str:
     """Path on the workload host. The render directory is only on the operator machine."""
     name = svc["name"]
     if svc.get("privilege") == "rootful":
         return f"/etc/containers/systemd/{name}"
-    user = ((host.get("operations") or {}).get("workload") or {}).get("user") or "root"
+    user = svc.get("user") or "root"
     return f"/home/{user}/.config/containers/systemd/{name}"
 
 
@@ -52,7 +52,7 @@ def main() -> int:
     host = host_by_name(desired, host_name) or {}
     mapping = bind(desired, host)
     dest.mkdir(parents=True, exist_ok=True)
-    volume_dirs: set[str] = set()
+    volume_dirs: set[tuple[str, str]] = set()
     components = ROOT / "components"
     for svc in all_services(desired):
         if svc.get("host") != host_name:
@@ -92,17 +92,27 @@ def main() -> int:
                     encoding="utf-8",
                 )
         apply_placed_integrations(out, desired, svc)
-        mapping["component.dir"] = _host_component_dir(host, svc)
+        mapping["component.dir"] = _host_component_dir(svc)
+        uid, gid = account_ids(host, str(svc.get("user") or ""))
         for path in out.rglob("*"):
             if not path.is_file():
                 continue
             text = read_utf8(path)
             if text is None:
                 continue
+            svc_mapping = dict(mapping)
+            svc_mapping["host.operations.workload.user"] = str(svc.get("user") or "")
+            svc_mapping["host.operations.workload.uid"] = uid
+            svc_mapping["host.operations.workload.gid"] = gid
+            svc_mapping["host.operations.workload.proxy_port"] = proxy_port(host, str(svc.get("user") or ""))
+            primary = str((svc.get("subdomain") or {}).get("primary") or "")
+            domain = mapping.get("site.env.domain") or ""
+            if primary and domain:
+                svc_mapping["service.public_host"] = f"{primary}.{domain}"
             try:
                 rendered = render(
                     text,
-                    mapping,
+                    svc_mapping,
                     service=str(svc.get("key") or ""),
                     host=host_name,
                     secrets=secrets,
@@ -113,9 +123,12 @@ def main() -> int:
             if path.suffix in {".yaml", ".yml"} and "kind:" in rendered:
                 rendered = strip_yaml_text(rendered)
             path.write_text(rendered, encoding="utf-8")
-            volume_dirs.update(_host_volume_dirs(rendered))
+            owner = str(svc.get("user") or "")
+            for volume in _host_volume_dirs(rendered):
+                volume_dirs.add((owner, volume))
         (out / ".privilege").write_text(svc.get("privilege") or "rootless", encoding="utf-8")
-    (dest / "volume-dirs.txt").write_text("\n".join(sorted(volume_dirs)) + ("\n" if volume_dirs else ""), encoding="utf-8")
+    lines = [f"{owner}|{path}" for owner, path in sorted(volume_dirs)]
+    (dest / "volume-dirs.txt").write_text(("\n".join(lines) + "\n") if lines else "", encoding="utf-8")
     return 0
 
 

@@ -22,7 +22,6 @@ Environment=HOMEPAGE_VAR_LONG=${site.env.longitude}
 Environment=HOMEPAGE_VAR_ROUTER_LAN_IP=${site.env.lan_ip}
 Volume=${component.dir}/config:/app/config
 Volume=${component.dir}/images:/app/public/images
-Volume=/run/user/${host.operations.workload.uid}/podman:/run/podman:ro
 
 [Service]
 Restart=on-failure

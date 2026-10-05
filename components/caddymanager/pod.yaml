@@ -20,11 +20,11 @@ spec:
     - name: SQLITE_DB_PATH
       value: "/app/data/caddymanager.sqlite"
     - name: CORS_ORIGIN
-      value: "https://traffic.${site.env.domain}"
+      value: "https://ingress.${site.env.domain}"
     - name: LOG_LEVEL
       value: "info"
     - name: CADDY_SANDBOX_URL
-      value: "http://127.0.0.1:2019"
+      value: "http://${host-loopback-mapped-ip}:2019"
     - name: PING_INTERVAL
       value: "30000"
     - name: PING_TIMEOUT

@@ -61,14 +61,15 @@
   loop: "{{ site_nfs_here }}"
   register: site_nfs_mounted
 
-- name: Workload user id
+- name: Workload user ids
   command: >-
-    id -u {{ (site_plan.hosts | selectattr('name', 'equalto', site_host_name) | list | first).operations.workload.user }}
-  register: site_wl_uid
+    id -u {{ item }}
+  loop: "{{ ((site_plan.hosts | selectattr('name', 'equalto', site_host_name) | list | first).operations.workload.users | default([])) | map(attribute='name') | list }}"
+  register: site_wl_ids
   changed_when: false
   when: site_nfs_mounted is changed
 
-- name: Restart the rootless session so it inherits new NFS mounts
+- name: Restart each rootless session so it inherits new NFS mounts
   # user@.service often has TimeoutStopSec=5. systemctl restart then SIGKILLs
   # the session and starts in the same job, which fails with "Device or
   # resource busy" while /run/user still exists. Stop, wait, then start.
@@ -76,7 +77,7 @@
     executable: /bin/bash
   shell: |
     set -euo pipefail
-    unit="user@{{ site_wl_uid.stdout }}"
+    unit="user@{{ item.stdout }}"
     systemctl stop "$unit" || true
     for _ in $(seq 1 30); do
       systemctl is-active --quiet "$unit" || break
@@ -95,4 +96,7 @@
       sleep 1
     done
     test "$started" = 1
-  when: site_nfs_mounted is changed
+  loop: "{{ site_wl_ids.results | default([]) }}"
+  when:
+    - site_nfs_mounted is changed
+    - not (item.skipped | default(false))

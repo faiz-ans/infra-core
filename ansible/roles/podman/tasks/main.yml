@@ -3,13 +3,13 @@
   set_fact:
     site_this_host: "{{ site_plan.hosts | selectattr('name', 'equalto', site_host_name) | list | first }}"
 
-- name: Workload user
+- name: Workload users
   set_fact:
-    site_wl_user: "{{ site_this_host.operations.workload.user | default('') }}"
+    site_wl_users: "{{ (site_this_host.operations.workload.users | default([])) | map(attribute='name') | list }}"
 
-- name: Skip hosts without workload
+- name: Skip hosts without a workload user
   meta: end_host
-  when: site_wl_user | length == 0
+  when: site_wl_users | length == 0
 
 - name: Debian vs Ubuntu podman packages
   set_fact:
@@ -20,33 +20,42 @@
     name: "{{ site_podman_pkgs }}"
     state: present
 
-- name: Linger for workload user
-  command: "loginctl enable-linger {{ site_wl_user }}"
+- name: Linger for each workload user
+  command: "loginctl enable-linger {{ item }}"
+  loop: "{{ site_wl_users }}"
   changed_when: false
 
-- name: Workload user id
-  command: "id -u {{ site_wl_user }}"
-  register: site_wl_uid
+- name: Workload user ids
+  command: "id -u {{ item }}"
+  loop: "{{ site_wl_users }}"
+  register: site_wl_ids
   changed_when: false
 
 - name: User Podman API socket for Homepage status
   become: true
-  become_user: "{{ site_wl_user }}"
+  become_user: "{{ item.item }}"
   environment:
-    XDG_RUNTIME_DIR: "/run/user/{{ site_wl_uid.stdout }}"
+    XDG_RUNTIME_DIR: "/run/user/{{ item.stdout }}"
   command: systemctl --user enable --now podman.socket
+  loop: "{{ site_wl_ids.results }}"
   changed_when: false
 
 - name: Site network (rootless)
   become: true
-  become_user: "{{ site_wl_user }}"
+  become_user: "{{ item.item }}"
+  environment:
+    XDG_RUNTIME_DIR: "/run/user/{{ item.stdout }}"
   command: podman network exists site
-  register: site_net
+  loop: "{{ site_wl_ids.results }}"
+  register: site_nets
   changed_when: false
   failed_when: false
 
 - name: Create site network
   become: true
-  become_user: "{{ site_wl_user }}"
+  become_user: "{{ item.item.item }}"
+  environment:
+    XDG_RUNTIME_DIR: "/run/user/{{ item.item.stdout }}"
   command: podman network create site
-  when: site_net.rc | default(1) != 0
+  loop: "{{ site_nets.results }}"
+  when: item.rc | default(1) != 0

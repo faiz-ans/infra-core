@@ -11,6 +11,7 @@ Environment=DOMAIN=${site.env.domain}
 Secret=${secrets.authelia.session},type=env,target=SESSION_SECRET
 Secret=${secrets.authelia.storage},type=env,target=STORAGE_ENCRYPTION_KEY
 Secret=${secrets.authelia.hmac},type=env,target=OIDC_HMAC_SECRET
+Secret=${secrets.authelia.oidc_client_secret},type=env,target=OIDC_CLIENT_SECRET
 Secret=${secrets.authelia.session},type=env,target=AUTHELIA_SESSION_SECRET
 Secret=${secrets.authelia.storage},type=env,target=AUTHELIA_STORAGE_ENCRYPTION_KEY
 Environment=X_AUTHELIA_CONFIG_FILTERS=template

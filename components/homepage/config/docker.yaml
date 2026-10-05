@@ -1,4 +1,12 @@
-# Rootless Podman API (Docker-compatible). Do not use the system
-# /run/podman/podman.sock — that only sees rootful units (Scrutiny).
-core:
-  socket: /run/podman/podman.sock
+# GET-only docker-socket-proxy (docker-proxy) in front of each workload
+# user's Podman API. Host port is 2375 plus that user's index on the host.
+# Homepage must not mount a Podman socket: :ro does not block API writes.
+core-pilot:
+  host: {{HOMEPAGE_VAR_NAS_LAN_IP}}
+  port: 2375
+core-hostess:
+  host: {{HOMEPAGE_VAR_NAS_LAN_IP}}
+  port: 2376
+mantle-pilot:
+  host: {{HOMEPAGE_VAR_SURFACE_UPSTREAM}}
+  port: 2375

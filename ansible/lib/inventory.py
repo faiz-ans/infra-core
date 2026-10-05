@@ -4,7 +4,7 @@ from __future__ import annotations
 from pathlib import Path
 from typing import Any
 
-from .topology import host_user_is_sysadmin, hosts, root_owners
+from .topology import host_user_is_sysadmin, hosts, root_owners, workload_users
 
 
 def inventory_dict(desired: dict[str, Any]) -> dict[str, Any]:
@@ -32,11 +32,11 @@ def inventory_dict(desired: dict[str, Any]) -> dict[str, Any]:
             root_owner_hosts.append(name)
             vars_["site_role_root_owner"] = True
         if ops.get("workload"):
-            workload.append(name)
-            vars_["site_role_workload"] = True
-            wl = ops["workload"] if isinstance(ops["workload"], dict) else {}
-            if wl.get("user"):
-                vars_["site_workload_user"] = wl["user"]
+            names = [str(entry.get("name") or "") for entry in workload_users(h) if entry.get("name")]
+            if names:
+                workload.append(name)
+                vars_["site_role_workload"] = True
+                vars_["site_workload_users"] = names
         all_hosts[name] = vars_
     return {
         "all": {

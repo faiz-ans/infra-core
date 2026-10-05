@@ -1,22 +1,20 @@
 [Unit]
-Description=Scrutiny (rootful)
+Description=Scrutiny
 After=network-online.target
 
 [Container]
 Image=ghcr.io/analogj/scrutiny:latest-omnibus
 ContainerName=scrutiny
 Network=site
-PublishPort=${site.networking.ingress.host.ip}:8080:8080
-PublishPort=127.0.0.1:8080:8080
+# Host 8080 is Caddy's HTTP port. Publishing it makes disks.* proxy to Caddy.
+PublishPort=${site.networking.ingress.host.ip}:8087:8080
+PublishPort=127.0.0.1:8087:8080
 Environment=TZ=${site.env.timezone}
-Environment=COLLECTOR_HOST_ID=${host.name}
-Environment=COLLECTOR_CRON_SCHEDULE=0 6 * * *
-Environment=COLLECTOR_RUN_STARTUP=true
 Volume=${site.data.roots.appdata}/scrutiny/config:/opt/scrutiny/config
 Volume=${site.data.roots.appdata}/scrutiny/influxdb:/opt/scrutiny/influxdb
-Volume=/run/udev:/run/udev:ro
-Volume=/dev:/dev
-PodmanArgs=--privileged
+# Rootless smartctl cannot send ATA commands (EPERM) and reports the disk as failed SCSI.
+Volume=${component.dir}/collector-once.run:/etc/services.d/collector-once/run:ro
+Volume=${component.dir}/cron.run:/etc/services.d/cron/run:ro
 
 [Service]
 Restart=on-failure

@@ -8,9 +8,9 @@ Network=site
 PublishPort=127.0.0.1:8082:80
 Pull=always
 Environment=TZ=${site.env.timezone}
-Environment=DOMAIN=https://pw.${site.env.domain}
+Environment=DOMAIN=https://pass.${site.env.domain}
 Secret=${secrets.vaultwarden.admin_token},type=env,target=ADMIN_TOKEN
-Environment=SIGNUPS_ALLOWED=${site.env.signups_allowed}
+Environment=SIGNUPS_ALLOWED=true
 Environment=WEBSOCKET_ENABLED=true
 Volume=${site.data.roots.appdata}/vaultwarden:/data
 

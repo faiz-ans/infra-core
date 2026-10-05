@@ -1,0 +1,4 @@
+#!/command/with-contenv bash
+# The rootful collector posts SMART. This copy must not.
+s6-svc -D /run/service/collector-once
+exit 0

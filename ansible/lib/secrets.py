@@ -399,3 +399,72 @@ def _catalog_has(items: list[dict[str, str]], install_host: str, name: str, valu
             raise SecretError(f"host {install_host} would have two values for Podman secret {name}")
         return True
     return False
+
+
+def assign_secret_users(
+    desired: dict[str, Any],
+    data: dict[str, Any],
+    components: Path,
+    items: list[dict[str, Any]],
+) -> list[dict[str, Any]]:
+    """Install each rootless secret into the Podman store of the user who runs the unit."""
+    from .topology import all_services, hosts as site_hosts, workload_users
+
+    site, host_secrets = split_secrets(data)
+    refs: dict[tuple[str, str], set[str]] = {}
+    for svc in all_services(desired):
+        if (svc.get("privilege") or "rootless") == "rootful":
+            continue
+        host = str(svc.get("host") or "")
+        user = str(svc.get("user") or "")
+        service = str(svc.get("key") or "")
+        if not host or not user:
+            continue
+        comp = components / str(svc.get("component") or service)
+        if not comp.is_dir():
+            continue
+        for path in comp.rglob("*"):
+            if not path.is_file() or path.name == "MANIFEST.toml":
+                continue
+            try:
+                text = path.read_text(encoding="utf-8")
+            except UnicodeDecodeError:
+                continue
+            for match in re.finditer(r"\$\{(secrets\.[^}]+)\}", text):
+                resolved = resolve_secret(
+                    match.group(1), service=service, host=host, site=site, hosts=host_secrets
+                )
+                refs.setdefault((host, resolved.podman_name), set()).add(user)
+    by_host = {
+        str(host.get("name") or ""): [str(user.get("name") or "") for user in workload_users(host) if user.get("name")]
+        for host in site_hosts(desired)
+    }
+    out: list[dict[str, Any]] = []
+    seen: set[tuple[str, str, str]] = set()
+    for item in items:
+        host = str(item.get("host") or "")
+        name = str(item["name"])
+        if host:
+            users = refs.get((host, name)) or set(by_host.get(host) or [])
+            targets = [(host, user) for user in sorted(users)]
+        else:
+            matched = [(ref_host, user) for (ref_host, secret), users in refs.items() if secret == name for user in users]
+            if matched:
+                targets = sorted(set(matched))
+            else:
+                targets = [(ref_host, user) for ref_host, users in by_host.items() for user in users]
+        if not targets:
+            copy = dict(item)
+            copy["user"] = ""
+            out.append(copy)
+            continue
+        for install_host, user in targets:
+            slot = (install_host, name, user)
+            if slot in seen:
+                continue
+            seen.add(slot)
+            copy = dict(item)
+            copy["host"] = install_host
+            copy["user"] = user
+            out.append(copy)
+    return out

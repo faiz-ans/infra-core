@@ -7,7 +7,7 @@ from pathlib import Path
 from typing import Any
 
 from .plan import COMPONENTS, import_blocks, import_nfs, inferred_nfs, site_groups
-from .topology import admin_gui, all_services, env, hosts, ingress_host, policy, roots, site_of
+from .topology import admin_gui, all_services, env, host_user_is_sysadmin, hosts, ingress_host, policy, roots, site_of, workload_users
 
 # Host prep stays put on a Day 2 run that has no stamp yet. Service files still sync.
 UPGRADE_SECTIONS = ("quadlets", "edge", "nfs", "lan_bind", "admin_gui")
@@ -40,8 +40,51 @@ def user_delta(desired: dict[str, Any], observed: dict[str, Any]) -> dict[str, l
     return {"add": sorted(want - have), "remove": sorted(have - want)}
 
 
-def host_names(desired: dict[str, Any]) -> list[str]:
-    return [h.get("name") for h in hosts(desired) if h.get("name")]
+def local_accounts(desired: dict[str, Any]) -> list[dict[str, Any]]:
+    """Every hosts[].users entry, in host then name order."""
+    rows: list[dict[str, Any]] = []
+    for host in hosts(desired):
+        hostname = host.get("name") or ""
+        for user in host.get("users") or []:
+            name = user.get("name")
+            if not hostname or not name:
+                continue
+            rows.append(
+                {
+                    "host": hostname,
+                    "name": str(name),
+                    "sysadmin": host_user_is_sysadmin(user),
+                }
+            )
+    return sorted(rows, key=lambda row: (row["host"], row["name"]))
+
+
+def local_user_changes(
+    desired: dict[str, Any], applied: dict[str, Any] | None
+) -> dict[str, list[dict[str, Any]]]:
+    """Accounts dropped from site.yaml. A sysadmin is kept when only one would remain."""
+    previous = applied.get("local_users") if isinstance(applied, dict) else None
+    if not isinstance(previous, list):
+        return {"remove": [], "refuse": []}
+    wanted = {(row["host"], row["name"]) for row in local_accounts(desired)}
+    admins_left: dict[str, int] = {}
+    for row in local_accounts(desired):
+        if row["sysadmin"]:
+            admins_left[row["host"]] = admins_left.get(row["host"], 0) + 1
+    remove: list[dict[str, Any]] = []
+    refuse: list[dict[str, Any]] = []
+    for row in previous:
+        if not isinstance(row, dict):
+            continue
+        host, name = str(row.get("host") or ""), str(row.get("name") or "")
+        if not host or not name or (host, name) in wanted:
+            continue
+        item = {"host": host, "name": name, "sysadmin": bool(row.get("sysadmin"))}
+        if item["sysadmin"] and admins_left.get(host, 0) <= 1:
+            refuse.append(item)
+            continue
+        remove.append(item)
+    return {"remove": remove, "refuse": refuse}
 
 
 def _user_password_digest(secrets_path: Path | None) -> str:
@@ -110,7 +153,7 @@ def _render_context(desired: dict[str, Any]) -> dict[str, Any]:
                 "env": h.get("env") or {},
                 "roots": ((h.get("data") or {}).get("roots") or {}),
                 "gpu": ((h.get("resources") or {}).get("gpu") or []),
-                "user": ((h.get("operations") or {}).get("workload") or {}).get("user"),
+                "users": [str(entry.get("name") or "") for entry in workload_users(h)],
             }
             for h in hosts(desired)
         ],
@@ -182,6 +225,36 @@ def _secret_forms(desired: dict[str, Any], secrets_path: Path | None) -> tuple[l
     return sorted(kube), raw
 
 
+def _secret_owners(desired: dict[str, Any], secrets_path: Path | None) -> list[str]:
+    """host/name/user for each secret SET would install. Values stay out of the digest."""
+    if secrets_path is None or not Path(secrets_path).is_file():
+        return []
+    from .secrets import (
+        SecretError,
+        assign_secret_users,
+        kube_secret_names,
+        load_secrets,
+        mark_root_hosts,
+        podman_catalog,
+        reference_installs,
+    )
+
+    try:
+        data = load_secrets(Path(secrets_path))
+        items = podman_catalog(data)
+        items.extend(reference_installs(desired, data, COMPONENTS))
+        kube = kube_secret_names(desired, data, COMPONENTS)
+        for item in items:
+            item["kube"] = item["name"] in kube
+        mark_root_hosts(desired, data, COMPONENTS, items)
+        items = assign_secret_users(desired, data, COMPONENTS, items)
+    except SecretError:
+        return []
+    return sorted(
+        f"{item.get('host') or ''}/{item['name']}/{item.get('user') or ''}" for item in items
+    )
+
+
 def fingerprints(desired: dict[str, Any], secrets_path: Path | None = None) -> dict[str, Any]:
     """Stable hashes of each SET section and each placed service."""
     p = policy(desired)
@@ -210,6 +283,7 @@ def fingerprints(desired: dict[str, Any], secrets_path: Path | None = None) -> d
             "name": s.get("name") or s.get("key") or "",
             "key": s.get("key") or "",
             "privilege": s.get("privilege") or "rootless",
+            "user": s.get("user") or "",
         }
         body: dict[str, Any] = {
             "component": trees[component],
@@ -218,6 +292,7 @@ def fingerprints(desired: dict[str, Any], secrets_path: Path | None = None) -> d
             "subdomain": s.get("subdomain"),
             "ports": s.get("ports"),
             "sso": s.get("sso"),
+            "user": s.get("user") or "",
         }
         if s.get("key") in ("opencloud", "collabora", "radicale"):
             body["integration"] = integration_peers
@@ -257,6 +332,9 @@ def fingerprints(desired: dict[str, Any], secrets_path: Path | None = None) -> d
                     {"name": h.get("name"), "users": h.get("users") or [], "identity": h.get("identity") or {}}
                     for h in hosts(desired)
                 ],
+                "role": _file_hash(
+                    Path(__file__).resolve().parents[1] / "roles" / "ssh_users" / "tasks" / "main.yml"
+                ),
             }
         ),
         "users": _digest(
@@ -284,6 +362,8 @@ def fingerprints(desired: dict[str, Any], secrets_path: Path | None = None) -> d
                 # Epoch for CDI generation. Bumping this reinstalls the toolkit spec
                 # on hosts that already list a GPU.
                 "cdi": "nvidia-spec",
+                # Epoch for NUT ups.conf and Scrutiny disk ACLs.
+                "devices": "nut-ups-scrutiny-disk",
                 "hosts": [
                     {
                         "name": h.get("name"),
@@ -322,7 +402,7 @@ def fingerprints(desired: dict[str, Any], secrets_path: Path | None = None) -> d
                 "users": [
                     {
                         "name": h.get("name"),
-                        "user": ((h.get("operations") or {}).get("workload") or {}).get("user"),
+                        "users": [str(entry.get("name") or "") for entry in workload_users(h)],
                     }
                     for h in hosts(desired)
                 ],
@@ -337,6 +417,7 @@ def fingerprints(desired: dict[str, Any], secrets_path: Path | None = None) -> d
                     if rec.get("privilege") == "rootful"
                 ),
                 "kube": kube_secrets,
+                "owners": _secret_owners(desired, secrets_path),
             }
         ),
         "nfs": _digest(inferred_nfs(desired)),
@@ -350,10 +431,11 @@ def fingerprints(desired: dict[str, Any], secrets_path: Path | None = None) -> d
                 "services": _edge_services(desired),
                 "ldap": p["ldap"],
                 "sso": p["sso"],
+                "auth_exceptions": p["auth_exceptions"],
                 "user_passwords": _user_password_digest(secrets_path),
                 # Epoch for generated Caddy/Authelia. A unit sync copies the catalog
                 # tree; bumping this reinstalls the generated files over it.
-                "authelia": "generated-unit",
+                "authelia": "cockpit-gate",
             }
         ),
         "opencloud": _digest([rec for rec in services.values() if rec["key"] == "opencloud"]),
@@ -366,7 +448,7 @@ def fingerprints(desired: dict[str, Any], secrets_path: Path | None = None) -> d
         "static_ip": _digest([(h.get("name"), h.get("ip")) for h in hosts(desired)]),
         "quadlets": _digest(sorted(services)),
     }
-    return {"sections": sections, "services": services}
+    return {"sections": sections, "services": services, "local_users": local_accounts(desired)}
 
 
 def _records(services: dict[str, Any], ids: set[str]) -> list[dict[str, Any]]:
@@ -384,6 +466,7 @@ def set_delta(
     """What this SET must touch. `applied` is the fingerprint file from the previous SET."""
     fps = fingerprints(desired, secrets_path)
     section_names = list(fps["sections"])
+    local = local_user_changes(desired, applied if isinstance(applied, dict) else None)
     if full or not isinstance(applied, dict) or "sections" not in applied:
         if full or not upgrade:
             sections = {name: True for name in section_names}
@@ -393,6 +476,7 @@ def set_delta(
                 "sections": sections,
                 "services": {"add": [], "remove": [], "change": _records(fps["services"], set(fps["services"]))},
                 "users": {"add": [], "remove": []},
+                "local_users": local,
                 "fingerprints": fps,
             }
         sections = {name: name in UPGRADE_SECTIONS for name in section_names}
@@ -402,6 +486,7 @@ def set_delta(
             "sections": sections,
             "services": {"add": [], "remove": [], "change": []},
             "users": {"add": [], "remove": []},
+            "local_users": local,
             "fingerprints": fps,
         }
     old_sections = applied.get("sections") or {}
@@ -435,5 +520,6 @@ def set_delta(
         "sections": sections,
         "services": {"add": add, "remove": remove, "change": change},
         "users": {"add": [], "remove": []},
+        "local_users": local,
         "fingerprints": fps,
     }

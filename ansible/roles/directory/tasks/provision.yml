@@ -16,11 +16,11 @@
 
 - name: Workload user
   set_fact:
-    site_wl_user: "{{ (site_plan.hosts | selectattr('name', 'equalto', site_host_name) | list | first).operations.workload.user | default('') }}"
+    site_wl_user: "{{ ((site_plan.services | selectattr('host', 'equalto', site_host_name) | selectattr('key', 'equalto', 'openldap') | list | first) or {}).user | default('') }}"
 
 - name: Workload user is required to reach the directory
   fail:
-    msg: "OpenLDAP on {{ site_host_name }} needs operations.workload.user"
+    msg: "OpenLDAP on {{ site_host_name }} needs a workload user"
   when: site_wl_user | length == 0
 
 - name: Render directory LDIF

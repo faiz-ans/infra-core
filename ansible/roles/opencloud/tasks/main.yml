@@ -10,7 +10,7 @@
 
 - name: Workload user
   set_fact:
-    site_wl_user: "{{ (site_plan.hosts | selectattr('name', 'equalto', site_host_name) | list | first).operations.workload.user | default('') }}"
+    site_wl_user: "{{ (site_oc | first).user | default('') }}"
 
 - name: OpenCloud host dirs
   file:

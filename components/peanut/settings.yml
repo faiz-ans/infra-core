@@ -1,3 +1,6 @@
+# Not mounted. The image has no /config/settings.yml, and a file bind there
+# fails crun ("OCI runtime attempted to invoke a command that was not found").
+# NUT_HOST, NUT_PORT, USERNAME, and PASSWORD come from the container unit.
 NUT_SERVERS:
   - HOST: 127.0.0.1
     PORT: 3493

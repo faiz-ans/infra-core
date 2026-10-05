@@ -9,7 +9,7 @@ PublishPort=127.0.0.1:9093:9090
 Pull=always
 AddHost=auth.${site.env.domain}:${host-loopback-mapped-ip}
 Environment=TZ=${site.env.timezone}
-Environment=LD_SUPERUSER_NAME=${site.env.linkding_superuser}
+Environment=LD_SUPERUSER_NAME=admin
 Secret=${secrets.linkding.superuser_password},type=env,target=LD_SUPERUSER_PASSWORD
 Environment=LD_CSRF_TRUSTED_ORIGINS=https://links.${site.env.domain},https://bookmarks.${site.env.domain},https://linkding.${site.env.domain},https://auth.${site.env.domain}
 Environment=LD_ENABLE_OIDC=True

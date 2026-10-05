@@ -30,6 +30,13 @@ services:
     privilege: rootless
     sso: none
     publish: ["127.0.0.1:389:389"]
+  ldap-ui:
+    component: ldap-ui
+    network: site
+    privilege: rootless
+    sso: none
+    ports: { web: 5000 }
+    publish: ["127.0.0.1:5000:5000"]
   opencloud:
     component: opencloud
     network: site
@@ -61,6 +68,12 @@ services:
     privilege: rootless
     sso: forward-auth
     ports: { web: 61208 }
+  sablier:
+    component: sablier
+    network: site
+    privilege: rootless
+    sso: none
+    ports: { web: 10000 }
   homepage:
     component: homepage
     network: site
@@ -68,6 +81,11 @@ services:
     sso: none
     ports: { web: 3000 }
     publish: ["127.0.0.1:3000:3000"]
+  docker-proxy:
+    component: docker-proxy
+    network: site
+    privilege: rootless
+    sso: none
   peanut:
     component: peanut
     network: host
@@ -98,7 +116,7 @@ services:
     network: site
     privilege: rootless
     sso: oidc
-    ports: { web: 5000 }
+    ports: { web: 5001 }
   bentopdf:
     component: bentopdf
     network: site
@@ -110,7 +128,7 @@ services:
     network: site
     privilege: rootless
     sso: forward-auth
-    ports: { web: 8087 }
+    ports: { web: 8089 }
   libretranslate:
     component: libretranslate
     network: site
@@ -195,10 +213,15 @@ services:
     ports: { web: 8123 }
   scrutiny:
     component: scrutiny
+    network: site
+    privilege: rootless
+    sso: forward-auth
+    ports: { web: 8087 }
+  scrutiny-collector:
+    component: scrutiny-collector
     network: host
     privilege: rootful
-    sso: forward-auth
-    ports: { web: 8080 }
+    sso: none
   uptime-kuma:
     component: uptime-kuma
     network: site

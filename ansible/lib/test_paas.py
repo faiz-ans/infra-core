@@ -60,9 +60,43 @@ class TestExample(unittest.TestCase):
 
     def test_two_caddy_is_error(self) -> None:
         bad = load_desired(EXAMPLE)
-        bad["site"]["hosts"][1]["operations"]["workload"]["services"]["caddy"] = None
+        bad["site"]["hosts"][1]["operations"]["workload"]["users"][0]["services"]["caddy"] = None
         errs = validate_placement(bad)
         self.assertTrue(any("caddy" in e for e in errs))
+
+    def test_workload_users_are_local_accounts(self) -> None:
+        bad = load_desired(EXAMPLE)
+        bad["site"]["hosts"][0]["operations"]["workload"]["users"][0]["name"] = "nobody"
+        errs = validate_placement(bad)
+        self.assertTrue(any("not a local account" in e for e in errs))
+        old = load_desired(EXAMPLE)
+        wl = old["site"]["hosts"][0]["operations"]["workload"]
+        wl["user"] = "admin"
+        wl["services"] = wl["users"][0]["services"]
+        del wl["users"]
+        errs = validate_placement(old)
+        self.assertTrue(any("workload.users" in e for e in errs))
+
+    def test_each_workload_user_owns_its_services(self) -> None:
+        split = load_desired(EXAMPLE)
+        host = split["site"]["hosts"][0]
+        host["users"].append({"name": "apps", "roles": ["sysuser"]})
+        services = host["operations"]["workload"]["users"][0]["services"]
+        homepage = services.pop("homepage")
+        host["operations"]["workload"]["users"].append({"name": "apps", "services": {"homepage": homepage}})
+        records = {(item["name"], item["user"]) for item in all_services(split) if item["host"] == "storage" and item["key"] == "homepage"}
+        self.assertEqual(records, {("homepage", "apps")})
+        self.assertEqual(validate_placement(split), [])
+        both = services
+        both["homepage"] = [homepage, None]
+        host["operations"]["workload"]["users"][1]["services"]["homepage"] = None
+        named = [
+            (item["user"], item["name"])
+            for item in all_services(split)
+            if item["host"] == "storage" and item["key"] == "homepage"
+        ]
+        self.assertEqual(named, [("admin", "homepage"), ("admin", "homepage2"), ("apps", "homepage")])
+        self.assertEqual(validate_placement(split), [])
 
     def test_key_only_ready(self) -> None:
         self.assertEqual(key_only_ready(self.desired), [])
@@ -70,11 +104,39 @@ class TestExample(unittest.TestCase):
         bad["site"]["hosts"][0]["users"][0]["ssh-keys"] = []
         self.assertTrue(key_only_ready(bad))
 
+    def test_bridge_names_a_local_account(self) -> None:
+        import copy
+
+        from .topology import bridge_grants
+
+        bridged = copy.deepcopy(self.desired)
+        storage, compute = bridged["site"]["hosts"]
+        storage["users"].append({"name": "hostess", "uid": 1001})
+        storage["users"][0]["bridge"] = ["hostess", {"compute": "admin"}]
+        self.assertEqual(validate_placement(bridged), [])
+        grants, errors = bridge_grants(bridged)
+        self.assertEqual(errors, [])
+        by_alias = {item["alias"]: item for item in grants}
+        self.assertEqual(by_alias["hostess"]["target_ip"], "127.0.0.1")
+        self.assertEqual(by_alias["hostess"]["source_user"], "admin")
+        self.assertEqual(by_alias["hostess"]["key"], "bridge_local_hostess")
+        self.assertEqual(by_alias["admin@compute"]["target_user"], "admin")
+        self.assertEqual(by_alias["admin@compute"]["target_ip"], "10.0.0.11")
+        self.assertEqual(by_alias["admin@compute"]["key"], "bridge_remote_compute_admin")
+        storage["users"][0]["bridge"] = ["missing"]
+        self.assertTrue(any("unknown local account" in err for err in validate_placement(bridged)))
+        storage["users"][0]["bridge"] = ["admin"]
+        self.assertTrue(any("cannot bridge to itself" in err for err in validate_placement(bridged)))
+        storage["users"][0]["bridge"] = [{"storage": "hostess"}]
+        self.assertTrue(any("bare name" in err for err in validate_placement(bridged)))
+
     def test_resolver_namespaces(self) -> None:
         m = bind(self.desired, self.desired["site"]["hosts"][0])
         self.assertNotIn("DOMAIN", m)
         self.assertNotIn("NAS_LAN_IP", m)
         self.assertEqual(m["site.env.domain"], "example.lan")
+        self.assertEqual(m["site.identity.ldap.engine"], "none")
+        self.assertEqual(m["site.identity.ldap.dn"], "dc=example,dc=lan")
         self.assertEqual(m["site.networking.ingress.host.ip"], "10.0.0.10")
         self.assertEqual(m["host-loopback-mapped-ip"], LOOPBACK)
         self.assertIn(":8443", m["site.homepage.allowed_hosts"])
@@ -224,7 +286,14 @@ class TestExample(unittest.TestCase):
         self.assertIn("reverse_proxy https://127.0.0.1:9090", cockpit)
         self.assertIn("header_up Host sys.example.lan", cockpit)
         self.assertIn("tls_insecure_skip_verify", cockpit)
-        self.assertNotIn("authelia_gate", cockpit)
+        self.assertIn("import authelia_gate_cockpit", cockpit)
+        self.assertIn("header_up -Authorization", caddy.split("(authelia_gate_cockpit)", 1)[1].split("}", 1)[0])
+        homepage = caddy.split("https://homepage.example.lan {", 1)[1].split("\nhttps://", 1)[0]
+        self.assertNotIn("import authelia_gate", homepage)
+        portal = caddy.split("https://authelia.example.lan {", 1)[1].split("\nhttps://", 1)[0]
+        self.assertNotIn("import authelia_gate", portal)
+        glances = caddy.split("https://glances.example.lan {", 1)[1].split("\nhttps://", 1)[0]
+        self.assertIn("import authelia_gate", glances)
 
     def test_cockpit_follows_admin_gui_host(self) -> None:
         absent = load_desired(EXAMPLE)
@@ -256,6 +325,43 @@ class TestExample(unittest.TestCase):
             {"enabled": True, "primary": "sys", "aliases": ["cockpit"]},
         )
 
+    def test_docker_proxy_is_get_only(self) -> None:
+        svc = load_pack()["services"]["docker-proxy"]
+        self.assertEqual(svc["privilege"], "rootless")
+        self.assertNotIn("web", svc.get("ports") or {})
+        unit = (ROOT / "components" / "docker-proxy" / "docker-proxy.container").read_text(encoding="utf-8")
+        self.assertIn("POST=0", unit)
+        self.assertIn("CONTAINERS=1", unit)
+        self.assertIn("/run/user/${host.operations.workload.uid}/podman/podman.sock", unit)
+        self.assertIn("PublishPort=${host.ip}:${host.operations.workload.proxy_port}:2375", unit)
+        homepage = (ROOT / "components" / "homepage" / "homepage.container").read_text(encoding="utf-8")
+        self.assertNotIn("podman", homepage)
+        docker = (ROOT / "components" / "homepage" / "config" / "docker.yaml").read_text(encoding="utf-8")
+        self.assertIn("core-pilot:", docker)
+        self.assertIn("core-hostess:", docker)
+        self.assertIn("mantle-pilot:", docker)
+        self.assertNotIn("\n  socket:", docker)
+
+    def test_sablier_unit_follows_the_host(self) -> None:
+        svc = load_pack()["services"]["sablier"]
+        self.assertEqual(svc["privilege"], "rootless")
+        self.assertEqual(svc["ports"]["web"], 10000)
+        unit = (ROOT / "components" / "sablier" / "sablier.container").read_text(encoding="utf-8")
+        self.assertIn("/run/user/${host.operations.workload.uid}/podman/podman.sock", unit)
+        self.assertIn("PublishPort=${host.ip}:10000:10000", unit)
+        self.assertNotIn("192.168.", unit)
+
+    def test_scrutiny_ui_stays_rootless_off_caddy_port(self) -> None:
+        svc = load_pack()["services"]["scrutiny"]
+        self.assertEqual(svc["privilege"], "rootless")
+        self.assertEqual(svc["ports"]["web"], 8087)
+        unit = (ROOT / "components" / "scrutiny" / "scrutiny.container").read_text(encoding="utf-8")
+        self.assertNotIn(":8080:8080", unit)
+        self.assertIn("127.0.0.1:8087:8080", unit)
+        collector = load_pack()["services"]["scrutiny-collector"]
+        self.assertEqual(collector["privilege"], "rootful")
+        self.assertNotIn("web", collector.get("ports") or {})
+
     def test_wireguard_ui_stays_rootless(self) -> None:
         self.assertEqual(load_pack()["services"]["wireguard"]["privilege"], "rootless")
         unit = (ROOT / "components" / "wg-easy" / "wg-easy.container").read_text(encoding="utf-8")
@@ -273,7 +379,7 @@ class TestExample(unittest.TestCase):
                 "hosts": [
                     {
                         "name": "core",
-                        "operations": {"workload": {"services": {"wireguard": None}}},
+                        "operations": {"workload": {"users": [{"name": "pilot", "services": {"wireguard": None}}]}},
                     }
                 ]
             }
@@ -300,7 +406,7 @@ class TestExample(unittest.TestCase):
     def test_enabling_wireguard_reapplies_lan_bind(self) -> None:
         applied = fingerprints(self.desired)
         current = load_desired(EXAMPLE)
-        current["site"]["hosts"][0]["operations"]["workload"]["services"]["wireguard"] = None
+        current["site"]["hosts"][0]["operations"]["workload"]["users"][0]["services"]["wireguard"] = None
         delta = set_delta(current, applied)
         added = {item["key"] for item in delta["services"]["add"]}
         self.assertIn("wireguard", added)
@@ -310,8 +416,8 @@ class TestExample(unittest.TestCase):
     def test_caddy_remote_web_and_router(self) -> None:
         d = load_desired(EXAMPLE)
         d["site"]["env"]["lan_ip"] = "192.0.2.1"
-        d["site"]["hosts"][0]["operations"]["workload"]["services"]["wireguard"] = None
-        d["site"]["hosts"][1]["operations"]["workload"]["services"]["immich"] = {
+        d["site"]["hosts"][0]["operations"]["workload"]["users"][0]["services"]["wireguard"] = None
+        d["site"]["hosts"][1]["operations"]["workload"]["users"][0]["services"]["immich"] = {
             "name": "immich",
             "subdomain": {"primary": "photos", "aliases": ["immich"]},
         }
@@ -369,7 +475,7 @@ class TestExample(unittest.TestCase):
     def test_authelia_ldap_backend(self) -> None:
         d = load_desired(EXAMPLE)
         d["site"]["identity"]["ldap"] = "openldap"
-        d["site"]["hosts"][0]["operations"]["workload"]["services"]["openldap"] = None
+        d["site"]["hosts"][0]["operations"]["workload"]["users"][0]["services"]["openldap"] = None
         cfg = generate_authelia(d)
         self.assertIn("ldap:", cfg)
         self.assertIn("users_filter:", cfg)
@@ -423,9 +529,9 @@ class TestExample(unittest.TestCase):
                     {
                         "name": "core",
                         "ip": "192.168.1.110",
-                        "operations": {"workload": {"services": {"openldap": None}}},
+                        "operations": {"workload": {"users": [{"name": "pilot", "services": {"openldap": None}}]}},
                     },
-                    {"name": "mantle", "ip": "192.168.1.111", "operations": {"workload": {"services": {}}}},
+                    {"name": "mantle", "ip": "192.168.1.111", "operations": {"workload": {"users": [{"name": "pilot", "services": {}}]}}},
                 ],
             }
         }
@@ -493,7 +599,7 @@ class TestExample(unittest.TestCase):
         self.assertIn("admins", users)
         ldap = load_desired(EXAMPLE)
         ldap["site"]["identity"]["ldap"] = "openldap"
-        ldap["site"]["hosts"][0]["operations"]["workload"]["services"]["openldap"] = None
+        ldap["site"]["hosts"][0]["operations"]["workload"]["users"][0]["services"]["openldap"] = None
         self.assertFalse(file_backend_needs_passwords(ldap))
         unused = generate_authelia_users(ldap)
         self.assertIn("password: '*'", unused)
@@ -530,7 +636,7 @@ class TestExample(unittest.TestCase):
         nfs = inferred_nfs(self.desired)
         self.assertEqual(nfs["exports"], [])
         d = load_desired(EXAMPLE)
-        d["site"]["hosts"][1]["operations"]["workload"]["services"]["immich"] = None
+        d["site"]["hosts"][1]["operations"]["workload"]["users"][0]["services"]["immich"] = None
         nfs = inferred_nfs(d)
         paths = {e["path"] for e in nfs["exports"]}
         self.assertEqual(paths, {"/groups", "/users"})
@@ -829,6 +935,24 @@ container:
         self.assertIn("bob", ud["add"])
         self.assertEqual(ud["remove"], [])
 
+    def test_removed_local_account_is_deleted_unless_one_sysadmin_remains(self) -> None:
+        with_extra = load_desired(EXAMPLE)
+        with_extra["site"]["hosts"][0]["users"].append({"name": "apps"})
+        delta = set_delta(self.desired, fingerprints(with_extra))
+        self.assertEqual(
+            delta["local_users"]["remove"],
+            [{"host": "storage", "name": "apps", "sysadmin": False}],
+        )
+        self.assertEqual(delta["local_users"]["refuse"], [])
+        with_admin = load_desired(EXAMPLE)
+        with_admin["site"]["hosts"][0]["users"].append(
+            {"name": "standby", "sysadmin": True, "ssh-keys": ["ssh-ed25519 AAAAEXAMPLE"]}
+        )
+        delta = set_delta(self.desired, fingerprints(with_admin))
+        self.assertEqual(delta["local_users"]["remove"], [])
+        self.assertEqual(delta["local_users"]["refuse"][0]["name"], "standby")
+        self.assertEqual(delta["local_users"]["refuse"][0]["host"], "storage")
+
     def test_day2_unchanged_set_touches_nothing(self) -> None:
         applied = fingerprints(self.desired)
         delta = set_delta(self.desired, applied)
@@ -869,6 +993,24 @@ container:
         self.assertFalse(delta["sections"]["nfs"])
         self.assertFalse(delta["sections"]["admin_gui"])
 
+    def test_secret_moves_with_the_workload_user(self) -> None:
+        import copy
+
+        secrets = ROOT / "examples" / "secrets.example.yaml"
+        current = copy.deepcopy(self.desired)
+        for host in current["site"]["hosts"]:
+            for entry in host["operations"]["workload"]["users"]:
+                entry["services"] = {"authelia": None} if host["name"] == "storage" else {}
+        applied = fingerprints(current, secrets)
+        host = current["site"]["hosts"][0]
+        host["users"].append({"name": "hostess"})
+        host["operations"]["workload"]["users"][0]["services"] = {}
+        host["operations"]["workload"]["users"].append(
+            {"name": "hostess", "services": {"authelia": None}}
+        )
+        delta = set_delta(current, applied, secrets)
+        self.assertTrue(delta["sections"]["secrets"])
+
     def test_storage_role_change_reruns_storage(self) -> None:
         applied = fingerprints(self.desired)
         role = ROOT / "ansible" / "roles" / "storage" / "tasks" / "main.yml"
@@ -896,7 +1038,7 @@ container:
     def test_collabora_placement_rerenders_opencloud(self) -> None:
         applied = fingerprints(self.desired)
         current = load_desired(EXAMPLE)
-        current["site"]["hosts"][0]["operations"]["workload"]["services"]["collabora"] = None
+        current["site"]["hosts"][0]["operations"]["workload"]["users"][0]["services"]["collabora"] = None
         delta = set_delta(current, applied)
         added = {item["key"] for item in delta["services"]["add"]}
         changed = {item["key"] for item in delta["services"]["change"]}
@@ -923,7 +1065,7 @@ container:
         self.assertNotIn("caldav", proxy)
 
         both = load_desired(EXAMPLE)
-        services = both["site"]["hosts"][0]["operations"]["workload"]["services"]
+        services = both["site"]["hosts"][0]["operations"]["workload"]["users"][0]["services"]
         services["collabora"] = {"subdomain": {"primary": "office"}}
         services["radicale"] = None
         cloud = render_at(both, "opencloud")
@@ -947,8 +1089,8 @@ container:
         self.assertIn("AddHost=office.example.lan:169.254.1.2", cloud)
         self.assertNotIn("AddHost=office.example.lan:10.0.0.10", cloud)
         solo = load_desired(EXAMPLE)
-        del solo["site"]["hosts"][0]["operations"]["workload"]["services"]["opencloud"]
-        solo["site"]["hosts"][0]["operations"]["workload"]["services"]["collabora"] = None
+        del solo["site"]["hosts"][0]["operations"]["workload"]["users"][0]["services"]["opencloud"]
+        solo["site"]["hosts"][0]["operations"]["workload"]["users"][0]["services"]["collabora"] = None
         solo_office = render_at(solo, "collabora")
         self.assertNotIn("aliasgroup1", solo_office)
         self.assertIn("ssl.enable=false", solo_office)
@@ -966,8 +1108,8 @@ container:
         self.assertNotIn("PublishPort=${host.ip}:5232:5232", same_rad)
 
         split = load_desired(EXAMPLE)
-        split["site"]["hosts"][1]["operations"]["workload"]["services"]["radicale"] = None
-        split["site"]["hosts"][1]["operations"]["workload"]["services"]["collabora"] = {
+        split["site"]["hosts"][1]["operations"]["workload"]["users"][0]["services"]["radicale"] = None
+        split["site"]["hosts"][1]["operations"]["workload"]["users"][0]["services"]["collabora"] = {
             "subdomain": {"primary": "office"}
         }
         remote = Path(tempfile.mkdtemp()) / "opencloud"
@@ -989,14 +1131,14 @@ container:
         self.assertNotIn("169.254.1.2", far_office)
 
         moved = load_desired(EXAMPLE)
-        del moved["site"]["hosts"][0]["operations"]["workload"]["services"]["opencloud"]
-        moved["site"]["hosts"][1]["operations"]["workload"]["services"]["opencloud"] = {
+        del moved["site"]["hosts"][0]["operations"]["workload"]["users"][0]["services"]["opencloud"]
+        moved["site"]["hosts"][1]["operations"]["workload"]["users"][0]["services"]["opencloud"] = {
             "subdomain": {"primary": "cloud"}
         }
-        moved["site"]["hosts"][0]["operations"]["workload"]["services"]["collabora"] = {
+        moved["site"]["hosts"][0]["operations"]["workload"]["users"][0]["services"]["collabora"] = {
             "subdomain": {"primary": "office"}
         }
-        moved["site"]["hosts"][0]["operations"]["workload"]["services"]["authelia"] = {
+        moved["site"]["hosts"][0]["operations"]["workload"]["users"][0]["services"]["authelia"] = {
             "subdomain": {"primary": "auth"}
         }
         near_office = render_at(moved, "collabora")
@@ -1025,7 +1167,7 @@ container:
     def test_day2_new_web_service_updates_edge_only(self) -> None:
         applied = fingerprints(self.desired)
         current = load_desired(EXAMPLE)
-        current["site"]["hosts"][0]["operations"]["workload"]["services"]["jotty"] = None
+        current["site"]["hosts"][0]["operations"]["workload"]["users"][0]["services"]["jotty"] = None
         delta = set_delta(current, applied)
         added = {item["name"] for item in delta["services"]["add"]}
         changed = {item["key"] for item in delta["services"]["change"]}

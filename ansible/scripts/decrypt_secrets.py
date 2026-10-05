@@ -10,6 +10,7 @@ sys.path.insert(0, str(ROOT / "ansible"))
 
 from lib.secrets import (  # noqa: E402
     SecretError,
+    assign_secret_users,
     kube_secret_names,
     load_secrets,
     mark_root_hosts,
@@ -37,6 +38,7 @@ def main() -> int:
             for item in items:
                 item["kube"] = item["name"] in kube
             mark_root_hosts(desired, data, ROOT / "components", items)
+            items = assign_secret_users(desired, data, ROOT / "components", items)
     except SecretError as exc:
         print(exc, file=sys.stderr)
         return 1

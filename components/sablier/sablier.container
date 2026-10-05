@@ -1,0 +1,22 @@
+[Unit]
+Description=sablier
+After=network-online.target
+
+[Container]
+Image=docker.io/sablierapp/sablier:1.18.0
+ContainerName=sablier
+Network=site
+PublishPort=127.0.0.1:10000:10000
+PublishPort=${host.ip}:10000:10000
+Pull=always
+Exec=start --provider.name=podman
+Environment=TZ=${site.env.timezone}
+Environment=SABLIER_PROVIDER_NAME=podman
+Environment=SABLIER_PROVIDER_PODMAN_URI=unix:///run/podman/podman.sock
+Volume=/run/user/${host.operations.workload.uid}/podman/podman.sock:/run/podman/podman.sock:ro
+
+[Service]
+Restart=on-failure
+
+[Install]
+WantedBy=default.target

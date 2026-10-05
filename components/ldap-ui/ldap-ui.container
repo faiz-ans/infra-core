@@ -1,0 +1,19 @@
+[Unit]
+Description=ldap-ui
+After=network-online.target
+
+[Container]
+Image=docker.io/dnknth/ldap-ui:latest
+ContainerName=ldap-ui
+Network=site
+PublishPort=127.0.0.1:5000:5000
+Environment=LDAP_URL=ldap://${site.identity.ldap.engine}:389
+Environment=BASE_DN=${site.identity.ldap.dn}
+Environment=BIND_AS_USER=true
+Environment=BIND_PATTERN=cn=%%s,${site.identity.ldap.dn}
+
+# Optional: customize login parameters if needed
+# Environment=LOGIN_ATTR=uid
+
+[Install]
+WantedBy=default.target

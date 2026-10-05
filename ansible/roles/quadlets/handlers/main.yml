@@ -1,5 +1,6 @@
 ---
 - name: reload systemd user
   become: true
-  become_user: "{{ site_wl_user }}"
+  become_user: "{{ item }}"
   command: systemctl --user daemon-reload
+  loop: "{{ site_wl_users | default([]) }}"

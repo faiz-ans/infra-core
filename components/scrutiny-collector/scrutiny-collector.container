@@ -1,0 +1,22 @@
+[Unit]
+Description=Scrutiny collector (rootful)
+After=network-online.target
+
+[Container]
+Image=ghcr.io/analogj/scrutiny:latest-omnibus
+ContainerName=scrutiny-collector
+Network=host
+Environment=TZ=${site.env.timezone}
+Environment=COLLECTOR_API_ENDPOINT=http://127.0.0.1:8087
+Environment=COLLECTOR_HOST_ID=${host.name}
+Volume=/run/udev:/run/udev:ro
+Volume=/dev:/dev
+PodmanArgs=--privileged
+Entrypoint=/bin/bash
+Exec=-c "while true; do /opt/scrutiny/bin/scrutiny-collector-metrics run; sleep 21600; done"
+
+[Service]
+Restart=on-failure
+
+[Install]
+WantedBy=default.target
