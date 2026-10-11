@@ -5,6 +5,7 @@ does not change the hash, so SET does not restart that service.
 """
 from __future__ import annotations
 
+import base64
 import re
 import shutil
 from pathlib import Path
@@ -21,6 +22,62 @@ from .topology import ROOT, host_by_name, policy
 
 class QuadletRenderError(Exception):
     pass
+
+
+def _icon_data_uri(path: Path) -> str:
+    kind = {
+        ".svg": "image/svg+xml",
+        ".png": "image/png",
+        ".webp": "image/webp",
+        ".jpg": "image/jpeg",
+        ".jpeg": "image/jpeg",
+    }.get(path.suffix.lower(), "application/octet-stream")
+    payload = base64.b64encode(path.read_bytes()).decode("ascii")
+    return f"data:{kind};base64,{payload}"
+
+
+def _embed_waiting_icons(out: Path, icons: Path) -> None:
+    """Sablier inlines img src that is already in the HTML. The logo src is chosen
+    in script after that pass, so a relative URL is requested from the app that
+    is still starting. Embed the bytes instead."""
+    script = out / "themes" / "js" / "site.js"
+    if not script.is_file():
+        raise QuadletRenderError("sablier theme script is missing")
+    entries = []
+    for path in sorted(icons.iterdir()):
+        if not path.is_file() or path.name.startswith("."):
+            continue
+        entries.append(f'  "{path.name}": "{_icon_data_uri(path)}"')
+    body = "const ICON_FILES = {\n" + ",\n".join(entries) + "\n};\nfunction icon(name) {\n  return ICON_FILES[name] || \"\";\n}"
+    text = script.read_text(encoding="utf-8")
+    updated, count = re.subn(
+        r'function icon\(name\) \{\n  return "images/icons/" \+ name;\n\}',
+        body,
+        text,
+        count=1,
+    )
+    if count != 1:
+        raise QuadletRenderError("sablier theme script has no icon() to embed")
+    script.write_text(updated, encoding="utf-8")
+
+
+def _copy_waiting_assets(out: Path) -> None:
+    """Copy Homepage's photo and icons. Sablier will not follow a symlink."""
+    images = ROOT / "components" / "homepage" / "images"
+    background = images / "background.png"
+    icons = images / "icons"
+    if not background.is_file():
+        raise QuadletRenderError("homepage background image is missing; the Sablier waiting page uses it")
+    if not icons.is_dir() or not any(icons.iterdir()):
+        raise QuadletRenderError("homepage icons are missing; the Sablier waiting page uses them")
+    dest = out / "themes" / "images"
+    dest.mkdir(parents=True, exist_ok=True)
+    shutil.copyfile(background, dest / "background.jpg")
+    icon_dest = dest / "icons"
+    if icon_dest.exists():
+        shutil.rmtree(icon_dest)
+    shutil.copytree(icons, icon_dest)
+    _embed_waiting_icons(out, icon_dest)
 
 
 def _host_component_dir(svc: dict[str, Any]) -> str:
@@ -50,6 +107,8 @@ def populate_service(
     if out.exists():
         shutil.rmtree(out)
     shutil.copytree(src, out, ignore=shutil.ignore_patterns("MANIFEST.toml"))
+    if component == "sablier":
+        _copy_waiting_assets(out)
     raw = svc.get("raw") or {}
     pod_overlay = raw.get("pod")
     container_overlay = raw.get("container")
@@ -72,15 +131,24 @@ def populate_service(
         for unit in list(out.glob("*.container")) + list(out.glob("*.kube")):
             unit.write_text(ensure_sablier_section(unit.read_text(encoding="utf-8")), encoding="utf-8")
     assets = policy(desired)["portal_assets"]
-    if assets and str(svc.get("key") or "") == "caddy":
+    custom_caddy = bool(assets) or "sablier" in policy(desired)["plugins"]
+    if custom_caddy and str(svc.get("key") or "") == "caddy":
         unit = next(out.glob("*.container"), None)
         if unit and unit.is_file():
             text = unit.read_text(encoding="utf-8")
             text = re.sub(r"^Image=.*$", "Image=localhost/caddy-portal:2", text, count=1, flags=re.M)
             if not re.search(r"^Pull=", text, flags=re.M):
                 text = text.replace("Image=localhost/caddy-portal:2\n", "Image=localhost/caddy-portal:2\nPull=never\n", 1)
-            line = f"Volume={assets}:{assets}:ro\n"
-            if line not in text:
+            if assets:
+                theme = ROOT / "portal"
+                if not (theme / "login.js").is_file():
+                    raise QuadletRenderError("portal/login.js is missing")
+                dest = out / "portal"
+                if dest.exists():
+                    shutil.rmtree(dest)
+                shutil.copytree(theme, dest)
+            line = f"Volume=${{component.dir}}/portal:{assets}:ro\n"
+            if assets and line not in text:
                 marker = "\n[Service]\n"
                 if marker not in text:
                     raise QuadletRenderError("caddy container unit has no [Service] section for portal assets")

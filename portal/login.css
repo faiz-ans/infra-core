@@ -1,20 +1,26 @@
-/* Homepage settings.yaml uses this image at opacity 80 and brightness 50. */
-html {
-  background-color: #000 !important;
-}
-
 html::before {
   content: "";
   position: fixed;
   inset: 0;
-  z-index: -1;
+  z-index: 0;
   pointer-events: none;
-  background-image: url("/images/background.png");
   background-size: cover;
   background-position: center;
   background-repeat: no-repeat;
-  filter: brightness(0.5);
-  opacity: 0.8;
+  background-image:
+    linear-gradient(rgb(30 41 59 / 0.13), rgb(30 41 59 / 0.13)),
+    url("/images/background.png");
+  filter: none;
+  opacity: 1;
+}
+
+html::after {
+  content: "";
+  position: fixed;
+  inset: 0;
+  z-index: 0;
+  pointer-events: none;
+  backdrop-filter: brightness(0.5);
 }
 
 body,
@@ -22,4 +28,24 @@ body,
 #root > div {
   background: transparent !important;
   background-color: transparent !important;
+  color: #fff !important;
+}
+
+#root {
+  position: relative;
+  z-index: 1;
+}
+
+#username-textfield, #password-textfield {
+  background-color: color-mix(in oklab, #fff 8%, transparent);
+  border-color: color-mix(in oklab,rgb(226 232 240/1) 50%,transparent);
+}
+
+#language-button {
+  display: none;
+}
+
+.text-muted-foreground, .text-muted-foreground\/60 {
+  color: color-mix(in oklab,rgb(226 232 240/1) 75%,transparent);
+  font-family: Manrope,Manrope-Fallback,Arial,sans-serif;
 }

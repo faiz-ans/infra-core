@@ -306,8 +306,7 @@ class TestExample(unittest.TestCase):
         portal = caddy.split("https://authelia.example.lan {", 1)[1].split("\nhttps://", 1)[0]
         self.assertIn("handle_path /portal/*", portal)
         self.assertIn("handle /images/*", portal)
-        self.assertIn("handle_path /cdn/*", portal)
-        self.assertIn("header_up Host cdn.jsdelivr.net", portal)
+        self.assertNotIn("cdn.jsdelivr.net", portal)
         self.assertNotIn("handle /icons/*", portal)
         self.assertIn("header_up Host homepage.example.lan", portal)
         self.assertIn("root * /var/lib/portal", portal)
@@ -319,6 +318,19 @@ class TestExample(unittest.TestCase):
         spaced = load_desired(EXAMPLE)
         spaced["site"]["networking"]["ingress"]["portal-assets"] = "/var/lib/my portal"
         self.assertTrue(any("portal-assets" in error for error in validate_placement(spaced)))
+        import tempfile
+
+        from .quadlet_render import populate_service
+        from .topology import all_services
+
+        caddy_svc = next(item for item in all_services(styled) if item["key"] == "caddy")
+        with tempfile.TemporaryDirectory() as tmp:
+            populate_service(Path(tmp), styled, caddy_svc, None, missing_secret="name")
+            script = (Path(tmp) / "portal" / "login.js").read_text(encoding="utf-8")
+            unit = next(Path(tmp).glob("*.container")).read_text(encoding="utf-8")
+        self.assertIn('return "/images/icons/" + name;', script)
+        self.assertNotIn("jsdelivr", script)
+        self.assertIn("/portal:/var/lib/portal:ro", unit)
 
     def test_forward_auth_is_opt_in(self) -> None:
         disabled = load_desired(EXAMPLE)
@@ -427,12 +439,14 @@ class TestExample(unittest.TestCase):
         placed["site"]["hosts"][1]["operations"]["workload"]["users"][0]["services"]["sablier"] = None
         self.assertEqual(validate_placement(placed), [])
         caddy = generate_caddyfile(placed)
+        self.assertIn("order sablier before reverse_proxy", caddy)
         self.assertIn("(sablier_gate) {", caddy)
-        self.assertIn("forward_auth {args[0]} {", caddy)
-        self.assertIn("uri {args[1]}", caddy)
+        self.assertIn("sablier {args[0]} {", caddy)
+        self.assertIn("dynamic {", caddy)
+        self.assertIn("theme site", caddy)
         glances = caddy.split("https://glances.example.lan {", 1)[1].split("\nhttps://", 1)[0]
         self.assertLess(glances.index("import authelia_gate"), glances.index("import sablier_gate"))
-        self.assertIn('import sablier_gate 10.0.0.11:10000 "/api/strategies/blocking?names=glances.service"', glances)
+        self.assertIn('import sablier_gate http://10.0.0.11:10000 "glances.service" glances', glances)
         self.assertIn("lb_try_duration 30s", glances)
         homepage = caddy.split("https://homepage.example.lan {", 1)[1].split("\nhttps://", 1)[0]
         self.assertNotIn("sablier_gate", homepage)
@@ -456,7 +470,7 @@ class TestExample(unittest.TestCase):
         same["site"]["hosts"][0]["operations"]["workload"]["users"][0]["services"]["sablier"] = None
         home = generate_caddyfile(same).split("https://homepage.example.lan {", 1)[1].split("\nhttps://", 1)[0]
         self.assertNotIn("import authelia_gate", home)
-        self.assertIn('import sablier_gate 127.0.0.1:10000 "/api/strategies/blocking?names=homepage.service"', home)
+        self.assertIn('import sablier_gate http://127.0.0.1:10000 "homepage.service" homepage', home)
         tools = load_desired(EXAMPLE)
         tools["site"]["networking"]["ingress"]["plugins"] = ["sablier"]
         tools["site"]["hosts"][0]["operations"]["workload"]["users"][0]["services"]["sablier"] = None
@@ -543,7 +557,16 @@ class TestExample(unittest.TestCase):
         self.assertIn("/run/user/${host.operations.workload.uid}/bus", unit)
         self.assertIn("/run/user/${host.operations.workload.uid}/systemd:/run/user/${host.operations.workload.uid}/systemd:ro", unit)
         self.assertIn("PublishPort=${host.ip}:10000:10000", unit)
+        self.assertIn("Volume=${component.dir}/themes:/etc/sablier/themes:ro", unit)
         self.assertNotIn("192.168.", unit)
+        theme = (ROOT / "components" / "sablier" / "themes" / "site.html").read_text(encoding="utf-8")
+        self.assertIn('src="images/background.jpg"', theme)
+        self.assertIn("{{ .RefreshFrequency }}", theme)
+        self.assertIn("Starting...", theme)
+        self.assertIn('class="logo"', theme)
+        script = (ROOT / "components" / "sablier" / "themes" / "js" / "site.js").read_text(encoding="utf-8")
+        self.assertIn('return "images/icons/" + name;', script)
+        self.assertNotIn("jsdelivr", script)
 
     def test_scrutiny_ui_stays_rootless_off_caddy_port(self) -> None:
         svc = load_pack()["services"]["scrutiny"]
@@ -636,6 +659,28 @@ class TestExample(unittest.TestCase):
         self.assertEqual(generate_caddyfile(d), "")
         self.assertEqual(generate_authelia(d), "")
         self.assertEqual(validate_placement(d), [])
+
+    def test_waiting_page_copies_homepage_images(self) -> None:
+        import tempfile
+
+        from .quadlet_render import _copy_waiting_assets
+
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            script = root / "themes" / "js" / "site.js"
+            script.parent.mkdir(parents=True)
+            script.write_text(
+                'function icon(name) {\n  return "images/icons/" + name;\n}\n',
+                encoding="utf-8",
+            )
+            _copy_waiting_assets(root)
+            images = root / "themes" / "images"
+            self.assertTrue((images / "background.jpg").is_file())
+            self.assertTrue((images / "icons" / "immich.svg").is_file())
+            self.assertFalse((images / "icons" / ".DS_Store").exists())
+            rendered = script.read_text(encoding="utf-8")
+            self.assertIn('"immich.svg": "data:image/svg+xml;base64,', rendered)
+            self.assertNotIn("images/icons/", rendered)
 
     def test_background_image_is_not_rewritten_as_text(self) -> None:
         import tempfile

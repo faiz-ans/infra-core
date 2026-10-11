@@ -4,42 +4,42 @@
         - OpenCloud:
             id: opencloud
             href: https://cloud.{{HOMEPAGE_VAR_DOMAIN}}
-            icon: open-cloud-dark.svg
+            icon: /images/icons/opencloud.svg
             description: Files
             server: core-hostess
             container: opencloud
         - Jotty:
             id: jotty
             href: https://notes.{{HOMEPAGE_VAR_DOMAIN}}
-            icon: jotty.svg
+            icon: /images/icons/jotty.svg
             description: Notes
             server: core-hostess
             container: jotty
         - Linkding:
             id: linkding
             href: https://links.{{HOMEPAGE_VAR_DOMAIN}}
-            icon: linkding.svg
+            icon: /images/icons/linkding.svg
             description: Bookmarks
             server: core-hostess
             container: linkding
         - Scriberr:
             id: scriberr
             href: https://voice.{{HOMEPAGE_VAR_DOMAIN}}
-            icon: scriberr.svg
+            icon: /images/icons/scriberr.svg
             description: Transcription
             server: mantle-pilot
             container: scriberr
         - ByteStash:
             id: bytestash
             href: https://snip.{{HOMEPAGE_VAR_DOMAIN}}
-            icon: bytestash.svg
+            icon: /images/icons/bytestash.svg
             description: Snippets
             server: core-hostess
             container: bytestash
         - Vaultwarden:
             id: vaultwarden
             href: https://pass.{{HOMEPAGE_VAR_DOMAIN}}
-            icon: bitwarden.svg
+            icon: /images/icons/bitwarden.svg
             description: Passwords
             server: core-hostess
             container: vaultwarden
@@ -48,41 +48,41 @@
         - Immich:
             id: immich
             href: https://photos.{{HOMEPAGE_VAR_DOMAIN}}
-            icon: immich.svg
+            icon: /images/icons/immich.svg
             description: Photos
             server: mantle-pilot
             container: immich-immich-server
         - Jellyfin:
             id: jellyfin
             href: https://watch.{{HOMEPAGE_VAR_DOMAIN}}
-            icon: jellyfin.svg
+            icon: /images/icons/jellyfin.svg
             description: Watch Movies & TV
             server: mantle-pilot
             container: jellyfin
         - Seerr:
             href: https://request.{{HOMEPAGE_VAR_DOMAIN}}
-            icon: seerr.svg
+            icon: /images/icons/seerr.svg
             description: Request Movies & TV
             server: mantle-pilot
             container: seerr
         - Adventure Log:
             id: adventurelog
             href: https://travel.{{HOMEPAGE_VAR_DOMAIN}}
-            icon: adventure-log.svg
+            icon: /images/icons/adventurelog.svg
             description: Travel Logs
             server: mantle-pilot
             container: adventurelog-adventurelog
         - Home Assistant:
             id: homeassistant
             href: https://auto.{{HOMEPAGE_VAR_DOMAIN}}
-            icon: home-assistant.svg
+            icon: /images/icons/home-assistant.svg
             description: Home Automation
             server: mantle-pilot
             container: homeassistant
         - Frigate:
             id: frigate
             href: https://nvr.{{HOMEPAGE_VAR_DOMAIN}}
-            icon: frigate.svg
+            icon: /images/icons/frigate.svg
             description: Home NVR
             server: mantle-pilot
             container: frigate-frigate
@@ -91,42 +91,42 @@
         - Transmute:
             id: transmute
             href: https://convert.{{HOMEPAGE_VAR_DOMAIN}}
-            icon: https://cdn.jsdelivr.net/gh/selfhst/icons/svg/transmute.svg
+            icon: /images/icons/transmute.svg
             description: File Convert
             server: mantle-pilot
             container: transmute
         - BentoPDF:
             id: bentopdf
             href: https://pdf.{{HOMEPAGE_VAR_DOMAIN}}
-            icon: bentopdf.svg
+            icon: /images/icons/bentopdf.svg
             description: PDF Tools
             server: core-hostess
             container: bentopdf
         - LibreTranslate:
             id: libretranslate
             href: https://translate.{{HOMEPAGE_VAR_DOMAIN}}
-            icon: https://cdn.jsdelivr.net/gh/selfhst/icons/svg/libretranslate.svg
+            icon: /images/icons/libretranslate.svg
             description: Translate
             server: mantle-pilot
             container: libretranslate
         - OpenReader:
             id: openreader
             href: https://read.{{HOMEPAGE_VAR_DOMAIN}}
-            icon: https://cdn.jsdelivr.net/gh/selfhst/icons@main/webp/openreader.webp
+            icon: /images/icons/openreader.webp
             description: Text-to-Speech
             server: mantle-pilot
             container: openreader
         - n8n:
             id: n8n
             href: https://flow.{{HOMEPAGE_VAR_DOMAIN}}
-            icon: n8n.svg
+            icon: /images/icons/n8n.svg
             description: Workflow Automation
             server: mantle-pilot
             container: n8n
         - IT Tools:
             id: it-tools
             href: https://it.{{HOMEPAGE_VAR_DOMAIN}}
-            icon: it-tools.svg
+            icon: /images/icons/it-tools.svg
             description: Developer Utilities
             server: core-hostess
             container: it-tools
@@ -134,45 +134,36 @@
     - Web:
         - Gmail:
             href: https://gmail.com
-            icon: gmail.svg
-        - Drive:
-            href: https://drive.google.com
-            icon: google-drive.svg
-        - YouTube:
-            href: https://youtube.com
-            icon: youtube.svg
-        - Spotify:
-            href: https://open.spotify.com
-            icon: spotify.svg
-        - ChatGPT:
-            href: https://chatgpt.com
-            icon: chatgpt.svg
+            icon: /images/icons/gmail.svg
         - Amazon:
             href: https://amazon.com/gp/css/order-history
-            icon: amazon.svg
-        - Discord:
-            href: https://discord.com/channels/@me
-            icon: discord.svg
+            icon: /images/icons/amazon.svg
+        - YouTube:
+            href: https://youtube.com
+            icon: /images/icons/youtube.svg
+        - Spotify:
+            href: https://open.spotify.com
+            icon: /images/icons/spotify.svg
+        - Twitch:
+            href: https://twitch.tv
+            icon: /images/icons/twitch.svg
         - WhatsApp:
             id: whatsapp
             href: https://web.whatsapp.com
-            icon: whatsapp.svg
-        - Fidelity:
-            href: https://www.fidelity.com
-            icon: fidelity.svg
+            icon: /images/icons/whatsapp.svg
+        - ChatGPT:
+            href: https://chatgpt.com
+            icon: /images/icons/chatgpt.svg
         - GitHub:
             href: https://github.com
-            icon: github-light.svg
-        - Twitch:
-            href: https://twitch.tv
-            icon: twitch.svg
+            icon: /images/icons/github-light.svg
             
 - System:
 
     - Platform:
         - Peanut:
             href: https://ups.{{HOMEPAGE_VAR_DOMAIN}}
-            icon: peanut.svg
+            icon: /images/icons/peanut.svg
             description: Power
             server: core-pilot
             container: peanut
@@ -185,23 +176,23 @@
             href: https://sys.{{HOMEPAGE_VAR_DOMAIN}}
             # Cleartext /ping 301s onto Cockpit's certificate. Homepage follows that and reports 500.
             siteMonitor: https://{{HOMEPAGE_VAR_HOST_LOOPBACK}}:9090/ping
-            icon: cockpit.svg
+            icon: /images/icons/cockpit.svg
             description: Operations
         - OpenLDAP:
             href: https://users.{{HOMEPAGE_VAR_DOMAIN}}
-            icon: openldap.svg
+            icon: /images/icons/openldap.svg
             description: Identity & Access
             server: core-pilot
             container: openldap
         - Authelia:
             href: https://auth.{{HOMEPAGE_VAR_DOMAIN}}
-            icon: authelia.svg
+            icon: /images/icons/authelia.svg
             description: Authentication
             server: core-pilot
             container: authelia
         - RustDesk:
             href: https://desk.{{HOMEPAGE_VAR_DOMAIN}}
-            icon: rustdesk.png
+            icon: /images/icons/rustdesk.svg
             description: Remote Desktop
             server: core-hostess
             container: rustdesk-hbbs
@@ -209,7 +200,7 @@
     - Network:
         - Pi-hole:
             href: https://dns.{{HOMEPAGE_VAR_DOMAIN}}/admin
-            icon: pi-hole.svg
+            icon: /images/icons/pi-hole.svg
             description: DNS
             server: core-pilot
             container: pi-hole
@@ -224,7 +215,7 @@
                   - gravity
         - Caddy:
             href: https://ingress.{{HOMEPAGE_VAR_DOMAIN}}
-            icon: caddy.svg
+            icon: /images/icons/caddy.svg
             description: Reverse Proxy
             server: core-pilot
             container: caddy
@@ -233,13 +224,13 @@
                 url: http://{{HOMEPAGE_VAR_HOST_LOOPBACK}}:2019
         - WireGuard:
             href: https://vpn.{{HOMEPAGE_VAR_DOMAIN}}
-            icon: wireguard.svg
+            icon: /images/icons/wireguard.svg
             description: VPN
             siteMonitor: http://{{HOMEPAGE_VAR_HOST_LOOPBACK}}:51821/
         - Linksys EA8300:
             href: https://wifi.{{HOMEPAGE_VAR_DOMAIN}}
             siteMonitor: https://{{HOMEPAGE_VAR_ROUTER_LAN_IP}}/
-            icon: linksys.svg
+            icon: /images/icons/linksys.svg
             description: Router
        #- HP LaserJet M29w:
        #     href: https://print.{{HOMEPAGE_VAR_DOMAIN}}
@@ -250,7 +241,7 @@
     - Monitoring:
         - Uptime Kuma:
             href: https://up.{{HOMEPAGE_VAR_DOMAIN}}
-            icon: uptime-kuma.svg
+            icon: /images/icons/uptime-kuma.svg
             description: Service Monitor
             server: core-pilot
             container: uptime-kuma
@@ -268,7 +259,7 @@
                     - incident
         - Scrutiny:
             href: https://disks.{{HOMEPAGE_VAR_DOMAIN}}
-            icon: scrutiny.svg
+            icon: /images/icons/scrutiny.svg
             description: Disk Monitor
             server: core-pilot
             container: scrutiny
@@ -278,13 +269,13 @@
                 url: http://{{HOMEPAGE_VAR_HOST_LOOPBACK}}:8087
         - Prometheus:
             href: https://metrics.{{HOMEPAGE_VAR_DOMAIN}}
-            icon: prometheus.svg
+            icon: /images/icons/prometheus.svg
             description: Metrics
             server: core-pilot
             container: prometheus
         - Grafana:
             href: https://site.{{HOMEPAGE_VAR_DOMAIN}}
-            icon: grafana.svg
+            icon: /images/icons/grafana.svg
             description: Site Monitor
             server: core-pilot
             container: grafana
@@ -292,25 +283,25 @@
     - Media Backend:
         - qBittorrent:
             href: https://down.{{HOMEPAGE_VAR_DOMAIN}}
-            icon: qbittorrent.svg
+            icon: /images/icons/qbittorrent.svg
             description: Downloads
             server: mantle-pilot
             container: qbittorrent
         - Prowlarr:
             href: https://prowlarr.{{HOMEPAGE_VAR_DOMAIN}}
-            icon: prowlarr.svg
+            icon: /images/icons/prowlarr.svg
             description: Indices
             server: mantle-pilot
             container: prowlarr
         - Radarr:
             href: https://radarr.{{HOMEPAGE_VAR_DOMAIN}}
-            icon: radarr.svg
+            icon: /images/icons/radarr.svg
             description: Movie Requests
             server: mantle-pilot
             container: radarr
         - Sonarr:
             href: https://sonarr.{{HOMEPAGE_VAR_DOMAIN}}
-            icon: sonarr.svg
+            icon: /images/icons/sonarr.svg
             description: TV Show Requests
             server: mantle-pilot
             container: sonarr

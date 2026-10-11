@@ -1,17 +1,15 @@
-/* Homepage loads bare filenames from homarr-labs/dashboard-icons. */
+/* Files in components/homepage/images/icons, served at /images/icons. */
 function icon(name) {
-  if (name.endsWith(".png")) return "/cdn/gh/homarr-labs/dashboard-icons/png/" + name;
-  if (name.endsWith(".webp")) return "/cdn/gh/homarr-labs/dashboard-icons/webp/" + name;
-  return "/cdn/gh/homarr-labs/dashboard-icons/svg/" + name.replace(/\.svg$/, "") + ".svg";
+  return "/images/icons/" + name;
 }
 
 /* Host label from the forward-auth redirect, mapped to the Homepage icon. */
 const ICONS = {
   "auth.home.lan": icon("authelia.svg"),
   "authelia.home.lan": icon("authelia.svg"),
-  "cloud.home.lan": icon("open-cloud-dark.svg"),
-  "opencloud.home.lan": icon("open-cloud-dark.svg"),
-  "oc.home.lan": icon("open-cloud-dark.svg"),
+  "cloud.home.lan": icon("opencloud.svg"),
+  "opencloud.home.lan": icon("opencloud.svg"),
+  "oc.home.lan": icon("opencloud.svg"),
   "notes.home.lan": icon("jotty.svg"),
   "jotty.home.lan": icon("jotty.svg"),
   "links.home.lan": icon("linkding.svg"),
@@ -35,8 +33,8 @@ const ICONS = {
   "cockpit.home.lan": icon("cockpit.svg"),
   "users.home.lan": icon("openldap.svg"),
   "ldap.home.lan": icon("openldap.svg"),
-  "remote.home.lan": icon("rustdesk.png"),
-  "rustdesk.home.lan": icon("rustdesk.png"),
+  "remote.home.lan": icon("rustdesk.svg"),
+  "rustdesk.home.lan": icon("rustdesk.svg"),
   "dns.home.lan": icon("pi-hole.svg"),
   "pihole.home.lan": icon("pi-hole.svg"),
   "dns2.home.lan": icon("pi-hole.svg"),

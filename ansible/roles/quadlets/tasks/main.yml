@@ -565,7 +565,7 @@
     - ((item.item | default({})).key | default('')) == 'openldap'
     - ((item.item | default({})).privilege | default('rootless')) != 'rootful'
 
-- name: Build the optional Caddy image that can rewrite the Authelia portal
+- name: Build the optional Caddy image for the portal theme and the Sablier waiting page
   become: true
   become_user: "{{ site_user_of.caddy }}"
   environment:
@@ -574,9 +574,9 @@
     chdir: "/home/{{ site_user_of.caddy }}/.config/containers/systemd/caddy"
   command: podman build -t localhost/caddy-portal:2 -f Containerfile.portal .
   when:
-    - site_plan.policy.portal_assets | default('') | length > 0
     - site_here | selectattr('key', 'equalto', 'caddy') | list | length > 0
     - site_touch | selectattr('key', 'equalto', 'caddy') | list | length > 0
+    - (site_plan.policy.portal_assets | default('') | length > 0) or ('sablier' in (site_plan.policy.plugins | default([])))
 
 - name: Restart rootless Quadlets that were synced
   become: true

@@ -2,8 +2,6 @@
 from __future__ import annotations
 
 from typing import Any
-from urllib.parse import urlencode
-
 from .directory import authelia_password_hash, file_backend_needs_passwords, ldap_base_dn, sso_groups
 from .resolve import LOOPBACK
 from .topology import (
@@ -155,8 +153,8 @@ def sablier_import(desired: dict[str, Any], service: dict[str, Any], ingress_nam
         address = f"127.0.0.1:{port}"
     else:
         address = f"{peer.get('host_ip') or '127.0.0.1'}:{port}"
-    query = urlencode([("names", name) for name in names])
-    return f'import sablier_gate {address} "/api/strategies/blocking?{query}"'
+    label = str((service.get("subdomain") or {}).get("primary") or service.get("key") or "service")
+    return f'import sablier_gate http://{address} "{" ".join(names)}" {label}'
 
 
 def upstream_for(service: dict[str, Any], ingress_name: str | None) -> str:
@@ -202,10 +200,18 @@ def generate_caddyfile(desired: dict[str, Any]) -> str:
         "",
     ]
     if any(service.get("key") == "sablier" for service in all_services(desired)) and "sablier" in policy(desired)["plugins"]:
+        # The dynamic strategy returns the waiting page with HTTP 200. The
+        # sablier handler (localhost/caddy-portal) shows that page until
+        # X-Sablier-Session-Status is ready, then continues to the upstream.
+        lines.insert(lines.index("}"), "	order sablier before reverse_proxy")
         lines += [
             "(sablier_gate) {",
-            "	forward_auth {args[0]} {",
-            "		uri {args[1]}",
+            "	sablier {args[0]} {",
+            "		names {args[1]}",
+            "		dynamic {",
+            "			display_name {args[2]}",
+            "			theme site",
+            "		}",
             "	}",
             "}",
             "",
@@ -343,15 +349,8 @@ def generate_caddyfile(desired: dict[str, Any]) -> str:
                             "		}",
                             "	}",
                         ]
-                    # Homepage resolves icon filenames to this CDN in the browser.
-                    # The login host must serve them itself; Authelia's policy blocks other origins.
-                    lines += [
-                        "	handle_path /cdn/* {",
-                        "		reverse_proxy https://cdn.jsdelivr.net {",
-                        "			header_up Host cdn.jsdelivr.net",
-                        "		}",
-                        "	}",
-                    ]
+                    # Login icons are /images/icons/* on Homepage. The auth host
+                    # proxies that path so Authelia's policy never loads another origin.
             if admin_only:
                 lines += [
                     "	handle /admin* {",

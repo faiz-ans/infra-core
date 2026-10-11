@@ -16,6 +16,7 @@ Environment=SABLIER_PROVIDER_NAME=systemd
 Environment=SABLIER_PROVIDER_SYSTEMD_USER_INSTANCE=true
 Volume=/run/user/${host.operations.workload.uid}/bus:/run/user/${host.operations.workload.uid}/bus
 Volume=/run/user/${host.operations.workload.uid}/systemd:/run/user/${host.operations.workload.uid}/systemd:ro
+Volume=${component.dir}/themes:/etc/sablier/themes:ro
 
 [Service]
 Restart=on-failure
