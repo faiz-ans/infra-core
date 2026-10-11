@@ -1,0 +1,25 @@
+/* Homepage settings.yaml uses this image at opacity 80 and brightness 50. */
+html {
+  background-color: #000 !important;
+}
+
+html::before {
+  content: "";
+  position: fixed;
+  inset: 0;
+  z-index: -1;
+  pointer-events: none;
+  background-image: url("/images/background.png");
+  background-size: cover;
+  background-position: center;
+  background-repeat: no-repeat;
+  filter: brightness(0.5);
+  opacity: 0.8;
+}
+
+body,
+#root,
+#root > div {
+  background: transparent !important;
+  background-color: transparent !important;
+}

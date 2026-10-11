@@ -109,7 +109,9 @@
 
 - name: User home layout
   include_tasks: homes.yml
-  when: site_plan.people_homes | bool
+  when:
+    - site_plan.people_homes | bool
+    - site_delta.sections.homes | default(true) | bool
 
 - name: SMB passwords from the directory
   include_tasks: smbpasswd.yml

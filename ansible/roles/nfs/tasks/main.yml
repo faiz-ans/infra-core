@@ -1,5 +1,6 @@
 ---
-# Inferred NFS: export only to consumer IPs as the workload UID. Same-host stays local.
+# Inferred NFS: export only to consumer IPs, squashed to this host's workload
+# user. Home ACLs grant that user, not the client's local uid. Same-host stays local.
 # Day 2 drops unused inferred exports (site-inferred.exports only).
 # insecure + noresvport: the client uses a high source port. Privileged-port
 # handshakes stay in SYN-RECV when the client is behind NAT or WSL.
@@ -22,13 +23,42 @@
     mode: "0755"
   when: site_plan.nfs_exports | selectattr('host', 'equalto', site_host_name) | list | length > 0
 
+- name: Workload user that home ACLs grant
+  set_fact:
+    site_nfs_oc: "{{ ((site_plan.services | selectattr('host', 'equalto', site_host_name) | selectattr('key', 'equalto', 'opencloud') | list | first) or {}).user | default('') }}"
+    site_nfs_names: "{{ ((site_plan.hosts | selectattr('name', 'equalto', site_host_name) | list | first).operations.workload.users | default([])) | map(attribute='name') | list }}"
+  when: site_plan.nfs_exports | selectattr('host', 'equalto', site_host_name) | list | length > 0
+
+- name: Squash exports to that workload user
+  set_fact:
+    site_nfs_user: "{{ site_nfs_oc if (site_nfs_oc | length) > 0 else (site_nfs_names[0] if (site_nfs_names | length) == 1 else '') }}"
+  when: site_plan.nfs_exports | selectattr('host', 'equalto', site_host_name) | list | length > 0
+
+- name: Workload user is required to squash the export
+  assert:
+    that: site_nfs_user | length > 0
+    fail_msg: "{{ site_host_name }} exports NFS but has no workload user for the squash uid"
+  when: site_plan.nfs_exports | selectattr('host', 'equalto', site_host_name) | list | length > 0
+
+- name: Workload uid for the NFS squash
+  command: id -u {{ site_nfs_user }}
+  register: site_nfs_uid
+  changed_when: false
+  when: site_plan.nfs_exports | selectattr('host', 'equalto', site_host_name) | list | length > 0
+
+- name: Workload gid for the NFS squash
+  command: id -g {{ site_nfs_user }}
+  register: site_nfs_gid
+  changed_when: false
+  when: site_plan.nfs_exports | selectattr('host', 'equalto', site_host_name) | list | length > 0
+
 - name: Inferred exports file
   copy:
     dest: /etc/exports.d/site-inferred.exports
     mode: "0644"
     content: |
       {% for ex in site_plan.nfs_exports if ex.host == site_host_name %}
-      {{ ex.path }} {{ ex.client_ip }}(rw,sync,no_subtree_check,insecure,all_squash,anonuid=1000,anongid=1000)
+      {{ ex.path }} {{ ex.client_ip }}(rw,sync,no_subtree_check,insecure,all_squash,anonuid={{ site_nfs_uid.stdout }},anongid={{ site_nfs_gid.stdout }})
       {% endfor %}
   when: site_plan.nfs_exports | selectattr('host', 'equalto', site_host_name) | list | length > 0
   notify: reload nfs

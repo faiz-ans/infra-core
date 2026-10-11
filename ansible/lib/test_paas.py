@@ -21,6 +21,7 @@ from .generate import (
     generate_caddyfile,
     inject_authelia_ldap_password,
     ldap_base_dn,
+    service_gated,
 )
 from .inventory import inventory_dict
 from .plan import build_plan, disk_mounts, import_blocks, import_nfs, inferred_nfs, root_binds
@@ -33,6 +34,7 @@ from .topology import (
     key_only_ready,
     load_desired,
     load_pack,
+    validate_ingress,
     validate_placement,
 )
 
@@ -292,8 +294,180 @@ class TestExample(unittest.TestCase):
         self.assertNotIn("import authelia_gate", homepage)
         portal = caddy.split("https://authelia.example.lan {", 1)[1].split("\nhttps://", 1)[0]
         self.assertNotIn("import authelia_gate", portal)
+        self.assertNotIn("handle /portal/*", portal)
+        self.assertNotIn("replace ", caddy)
         glances = caddy.split("https://glances.example.lan {", 1)[1].split("\nhttps://", 1)[0]
         self.assertIn("import authelia_gate", glances)
+
+    def test_portal_assets_are_opt_in(self) -> None:
+        styled = load_desired(EXAMPLE)
+        styled["site"]["networking"]["ingress"]["portal-assets"] = "/var/lib/portal"
+        caddy = generate_caddyfile(styled)
+        portal = caddy.split("https://authelia.example.lan {", 1)[1].split("\nhttps://", 1)[0]
+        self.assertIn("handle_path /portal/*", portal)
+        self.assertIn("handle /images/*", portal)
+        self.assertIn("handle_path /cdn/*", portal)
+        self.assertIn("header_up Host cdn.jsdelivr.net", portal)
+        self.assertNotIn("handle /icons/*", portal)
+        self.assertIn("header_up Host homepage.example.lan", portal)
+        self.assertIn("root * /var/lib/portal", portal)
+        self.assertIn('href=\\"/portal/login.css\\"', portal)
+        self.assertIn("header_up -Accept-Encoding", portal)
+        homepage = caddy.split("https://homepage.example.lan {", 1)[1].split("\nhttps://", 1)[0]
+        self.assertNotIn("handle /portal/*", homepage)
+        self.assertNotIn("replace ", homepage)
+        spaced = load_desired(EXAMPLE)
+        spaced["site"]["networking"]["ingress"]["portal-assets"] = "/var/lib/my portal"
+        self.assertTrue(any("portal-assets" in error for error in validate_placement(spaced)))
+
+    def test_forward_auth_is_opt_in(self) -> None:
+        disabled = load_desired(EXAMPLE)
+        disabled["site"]["networking"]["ingress"]["forward-auth"]["enabled"] = False
+        caddy = generate_caddyfile(disabled)
+        cockpit = caddy.split("https://sys.example.lan {", 1)[1].split("\nhttps://", 1)[0]
+        self.assertNotIn("authelia_gate", cockpit)
+        glances = caddy.split("https://glances.example.lan {", 1)[1].split("\nhttps://", 1)[0]
+        self.assertIn("import authelia_gate", glances)
+        self.assertEqual(validate_placement(disabled), [])
+        missing = load_desired(EXAMPLE)
+        missing["site"]["identity"]["sso"] = "none"
+        errors = validate_placement(missing)
+        self.assertTrue(any("requires identity.sso" in error for error in errors))
+        legacy = load_desired(EXAMPLE)
+        legacy["site"]["networking"]["ingress"]["auth-exceptions"] = ["homepage"]
+        self.assertTrue(any("auth-exceptions moved" in error for error in validate_placement(legacy)))
+
+    def test_forward_auth_exceptions_are_scoped(self) -> None:
+        def desired(exceptions: list) -> dict:
+            return {
+                "site": {
+                    "networking": {
+                        "ingress": {
+                            "engine": "caddy",
+                            "forward-auth": {"enabled": True, "exceptions": exceptions},
+                        }
+                    },
+                    "identity": {"sso": "authelia"},
+                    "hosts": [
+                        {
+                            "name": "core",
+                            "ip": "10.0.0.1",
+                            "operations": {
+                                "workload": {
+                                    "users": [
+                                        {
+                                            "name": "pilot",
+                                            "services": {
+                                                "caddy": None,
+                                                "authelia": None,
+                                                "homepage": None,
+                                                "glances": [{"name": "glances"}, {"name": "glances-b"}],
+                                            },
+                                        }
+                                    ]
+                                }
+                            },
+                        },
+                        {
+                            "name": "mantle",
+                            "ip": "10.0.0.2",
+                            "operations": {
+                                "workload": {
+                                    "users": [
+                                        {"name": "pilot", "services": {"glances": {"name": "glances"}}},
+                                        {"name": "extra", "services": {"homepage": {"name": "homepage-extra"}}},
+                                    ]
+                                }
+                            },
+                        },
+                    ],
+                }
+            }
+
+        def gated(spec: dict, host: str, name: str) -> bool:
+            service = next(item for item in all_services(spec) if item["host"] == host and item["name"] == name)
+            return service_gated(spec, service)
+
+        sitewide = desired(["homepage"])
+        self.assertFalse(gated(sitewide, "core", "homepage"))
+        self.assertFalse(gated(sitewide, "mantle", "homepage-extra"))
+        self.assertTrue(gated(sitewide, "core", "glances"))
+        self.assertTrue(gated(sitewide, "core", "glances-b"))
+        by_host = desired([{"mantle": "glances"}])
+        self.assertFalse(gated(by_host, "mantle", "glances"))
+        self.assertTrue(gated(by_host, "core", "glances"))
+        self.assertTrue(gated(by_host, "core", "glances-b"))
+        by_user = desired([{"mantle": {"extra": "homepage"}}])
+        self.assertFalse(gated(by_user, "mantle", "homepage-extra"))
+        self.assertTrue(gated(by_user, "core", "homepage"))
+        by_instance = desired([{"inst": "glances"}])
+        self.assertFalse(gated(by_instance, "core", "glances"))
+        self.assertFalse(gated(by_instance, "mantle", "glances"))
+        self.assertTrue(gated(by_instance, "core", "glances-b"))
+        by_host_instance = desired([{"core": {"inst": "glances-b"}}])
+        self.assertFalse(gated(by_host_instance, "core", "glances-b"))
+        self.assertTrue(gated(by_host_instance, "core", "glances"))
+        by_user_instance = desired([{"core": {"pilot": {"inst": "glances-b"}}}])
+        self.assertFalse(gated(by_user_instance, "core", "glances-b"))
+        self.assertTrue(gated(by_user_instance, "core", "glances"))
+        self.assertEqual(validate_ingress(sitewide), [])
+        self.assertTrue(validate_ingress(desired(["missing"])))
+        self.assertTrue(validate_ingress(desired([{"inst": "missing"}])))
+        self.assertTrue(validate_ingress(desired([{"nowhere": "glances"}])))
+
+    def test_sablier_plugin_runs_after_forward_auth(self) -> None:
+        missing = load_desired(EXAMPLE)
+        missing["site"]["networking"]["ingress"]["plugins"] = ["sablier"]
+        self.assertTrue(any("lists sablier but no workload" in error for error in validate_placement(missing)))
+        unknown = load_desired(EXAMPLE)
+        unknown["site"]["networking"]["ingress"]["plugins"] = ["traefik"]
+        self.assertTrue(any("not supported" in error for error in validate_placement(unknown)))
+        placed = load_desired(EXAMPLE)
+        placed["site"]["networking"]["ingress"]["plugins"] = ["sablier"]
+        placed["site"]["hosts"][1]["operations"]["workload"]["users"][0]["services"]["sablier"] = None
+        self.assertEqual(validate_placement(placed), [])
+        caddy = generate_caddyfile(placed)
+        self.assertIn("(sablier_gate) {", caddy)
+        self.assertIn("forward_auth {args[0]} {", caddy)
+        self.assertIn("uri {args[1]}", caddy)
+        glances = caddy.split("https://glances.example.lan {", 1)[1].split("\nhttps://", 1)[0]
+        self.assertLess(glances.index("import authelia_gate"), glances.index("import sablier_gate"))
+        self.assertIn('import sablier_gate 10.0.0.11:10000 "/api/strategies/blocking?names=glances.service"', glances)
+        self.assertIn("lb_try_duration 30s", glances)
+        homepage = caddy.split("https://homepage.example.lan {", 1)[1].split("\nhttps://", 1)[0]
+        self.assertNotIn("sablier_gate", homepage)
+        self.assertNotIn("lb_try_duration", homepage)
+        portal = caddy.split("https://authelia.example.lan {", 1)[1].split("\nhttps://", 1)[0]
+        self.assertNotIn("sablier_gate", portal)
+        waker = caddy.split("https://sablier.example.lan {", 1)[1].split("\nhttps://", 1)[0]
+        self.assertIn("import authelia_gate", waker)
+        self.assertNotIn("sablier_gate", waker)
+        vault = load_desired(EXAMPLE)
+        vault["site"]["networking"]["ingress"]["forward-auth"]["enabled"] = False
+        vault["site"]["networking"]["ingress"]["plugins"] = ["sablier"]
+        vault["site"]["hosts"][0]["operations"]["workload"]["users"][0]["services"]["sablier"] = None
+        vault["site"]["hosts"][0]["operations"]["workload"]["users"][0]["services"]["vaultwarden"] = None
+        block = generate_caddyfile(vault).split("https://vaultwarden.example.lan {", 1)[1].split("\nhttps://", 1)[0]
+        admin = block.split("handle /admin*", 1)[1].split("}", 1)[0]
+        self.assertLess(admin.index("import authelia_gate"), admin.index("import sablier_gate"))
+        self.assertLess(block.index("handle /admin*"), block.index("\t\timport sablier_gate"))
+        same = load_desired(EXAMPLE)
+        same["site"]["networking"]["ingress"]["plugins"] = ["sablier"]
+        same["site"]["hosts"][0]["operations"]["workload"]["users"][0]["services"]["sablier"] = None
+        home = generate_caddyfile(same).split("https://homepage.example.lan {", 1)[1].split("\nhttps://", 1)[0]
+        self.assertNotIn("import authelia_gate", home)
+        self.assertIn('import sablier_gate 127.0.0.1:10000 "/api/strategies/blocking?names=homepage.service"', home)
+        tools = load_desired(EXAMPLE)
+        tools["site"]["networking"]["ingress"]["plugins"] = ["sablier"]
+        tools["site"]["hosts"][0]["operations"]["workload"]["users"][0]["services"]["sablier"] = None
+        tools["site"]["hosts"][0]["operations"]["workload"]["users"][0]["services"]["it-tools"] = None
+        block = generate_caddyfile(tools).split("https://it-tools.example.lan {", 1)[1].split("\nhttps://", 1)[0]
+        worker = block.split("handle /sw.js", 1)[1].split("}", 1)[0]
+        self.assertLess(block.index("handle /sw.js"), block.index("import authelia_gate"))
+        self.assertNotIn("import authelia_gate", worker)
+        self.assertNotIn("sablier_gate", worker)
+        self.assertIn("caches.delete", worker)
+        self.assertLess(block.index("import authelia_gate"), block.index("import sablier_gate"))
 
     def test_cockpit_follows_admin_gui_host(self) -> None:
         absent = load_desired(EXAMPLE)
@@ -325,6 +499,24 @@ class TestExample(unittest.TestCase):
             {"enabled": True, "primary": "sys", "aliases": ["cockpit"]},
         )
 
+    def test_docker_proxy_instances_do_not_share_a_render_name(self) -> None:
+        from .diff import fingerprints
+        from .resolve import proxy_port
+
+        desired = load_desired(ROOT / "site.yaml")
+        rows = [item for item in all_services(desired) if item["key"] == "docker-proxy"]
+        names = [(item["host"], item["user"], item["name"]) for item in rows]
+        self.assertIn(("core", "pilot", "docker-proxy"), names)
+        self.assertIn(("core", "hostess", "docker-proxy-hostess"), names)
+        self.assertIn(("mantle", "pilot", "docker-proxy"), names)
+        ids = [key for key in fingerprints(desired)["services"] if key.endswith("docker-proxy") or "docker-proxy" in key]
+        self.assertIn("core/docker-proxy", ids)
+        self.assertIn("core/docker-proxy-hostess", ids)
+        self.assertIn("mantle/docker-proxy", ids)
+        core = next(host for host in desired["site"]["hosts"] if host["name"] == "core")
+        self.assertEqual(proxy_port(core, "pilot"), "2375")
+        self.assertEqual(proxy_port(core, "hostess"), "2376")
+
     def test_docker_proxy_is_get_only(self) -> None:
         svc = load_pack()["services"]["docker-proxy"]
         self.assertEqual(svc["privilege"], "rootless")
@@ -347,7 +539,9 @@ class TestExample(unittest.TestCase):
         self.assertEqual(svc["privilege"], "rootless")
         self.assertEqual(svc["ports"]["web"], 10000)
         unit = (ROOT / "components" / "sablier" / "sablier.container").read_text(encoding="utf-8")
-        self.assertIn("/run/user/${host.operations.workload.uid}/podman/podman.sock", unit)
+        self.assertIn("--provider.name=systemd", unit)
+        self.assertIn("/run/user/${host.operations.workload.uid}/bus", unit)
+        self.assertIn("/run/user/${host.operations.workload.uid}/systemd:/run/user/${host.operations.workload.uid}/systemd:ro", unit)
         self.assertIn("PublishPort=${host.ip}:10000:10000", unit)
         self.assertNotIn("192.168.", unit)
 
@@ -675,6 +869,35 @@ container:
         self.assertIn("Volume=${host.data.roots.appdata}:/mnt/data:ro", merged)
         self.assertIn("Volume=/mnt/host/c:/mnt/windows:ro", merged)
         self.assertIn("AddDevice=${host.resources.gpu.gpu0.resource}=all", merged)
+        from .pod import merge_pod
+
+        pod = merge_pod(
+            yaml.safe_load((ROOT / "components" / "rustdesk" / "pod.yaml").read_text(encoding="utf-8")),
+            {
+                "spec": {
+                    "containers": [
+                        {"name": "hbbr", "labels": {"sablier.enable": "true"}},
+                        {"name": "hbbs", "labels": {"sablier.enable": "true"}},
+                    ]
+                }
+            },
+        )
+        by_name = {item["name"]: item for item in pod["spec"]["containers"]}
+        self.assertEqual(by_name["hbbr"]["labels"], {"sablier.enable": "true"})
+        self.assertEqual(by_name["hbbs"]["labels"], {"sablier.enable": "true"})
+        self.assertEqual(by_name["hbbs"]["args"][0], "hbbs")
+        self.assertEqual(pod["metadata"]["labels"]["app"], "rustdesk")
+        from .pod import ensure_sablier_section, sablier_enabled
+
+        self.assertTrue(sablier_enabled({"container": {"labels": {"sablier.enable": True}}}))
+        self.assertTrue(sablier_enabled({"pod": {"spec": {"containers": [{"name": "hbbs", "labels": {"sablier.enable": "true"}}]}}}))
+        self.assertFalse(sablier_enabled({"container": {"labels": {"sablier.enable": False}}}))
+        opted = ensure_sablier_section(base)
+        self.assertIn("[X-Sablier]\nEnable=true\n", opted)
+        self.assertEqual(ensure_sablier_section(opted), opted)
+        labeled = apply_container_overlay(base, {"labels": {"sablier.enable": True}})
+        self.assertIn("Label=sablier.enable=true", labeled)
+        self.assertLess(labeled.index("Label=sablier.enable=true"), labeled.index("[Service]"))
         host = self.desired["site"]["hosts"][1]
         rendered = render(merged, bind(self.desired, host))
         self.assertIn("docker.io/nicolargo/glances:ubuntu-latest-full", rendered)
@@ -702,6 +925,11 @@ container:
     def test_opencloud_oidc_scope_stays_one_value(self) -> None:
         unit = (ROOT / "components" / "opencloud" / "opencloud.container").read_text(encoding="utf-8")
         self.assertIn('Environment=WEB_OIDC_SCOPE="openid groups profile email"', unit)
+        self.assertIn("User=${host.operations.workload.uid}:${host.operations.workload.gid}", unit)
+        self.assertIn("Entrypoint=/entrypoint.sh", unit)
+        script = (ROOT / "components" / "opencloud" / "entrypoint.sh").read_text(encoding="utf-8")
+        self.assertIn("$assets/.image", script)
+        self.assertIn("rm -rf", script)
 
     def test_no_service_dir_without_qbit(self) -> None:
         plan = build_plan(self.desired)
@@ -971,6 +1199,53 @@ container:
         self.assertTrue(delta["sections"]["quadlets"])
         self.assertFalse(delta["sections"]["storage"])
         self.assertFalse(delta["sections"]["edge"])
+        self.assertFalse(delta["sections"]["homes"])
+
+    def test_container_overlay_does_not_restart_other_services_or_home_acls(self) -> None:
+        applied = fingerprints(self.desired)
+        current = load_desired(EXAMPLE)
+        services = current["site"]["hosts"][0]["operations"]["workload"]["users"][0]["services"]
+        services["homepage"] = {"container": {"environment": {"SITE_MARK": "1"}}}
+        delta = set_delta(current, applied)
+        names = {item["name"] for item in delta["services"]["change"]}
+        self.assertEqual(names, {"homepage"})
+        self.assertFalse(delta["sections"]["homes"])
+        self.assertFalse(delta["sections"]["users"])
+        self.assertFalse(delta["sections"]["storage"])
+
+    def test_unrelated_host_env_does_not_touch_services(self) -> None:
+        applied = fingerprints(self.desired)
+        current = load_desired(EXAMPLE)
+        current["site"]["hosts"][1].setdefault("env", {})["lab_note"] = "bench"
+        delta = set_delta(current, applied)
+        self.assertEqual(delta["services"]["change"], [])
+        self.assertFalse(delta["sections"]["quadlets"])
+        self.assertFalse(delta["sections"]["homes"])
+
+    def test_displayname_does_not_rewrite_home_acls(self) -> None:
+        applied = fingerprints(self.desired)
+        current = load_desired(EXAMPLE)
+        current["site"]["users"][0]["displayname"] = "Renamed"
+        delta = set_delta(current, applied)
+        self.assertTrue(delta["sections"]["users"])
+        self.assertFalse(delta["sections"]["homes"])
+        self.assertEqual(delta["services"]["change"], [])
+
+    def test_new_site_user_rewrites_homes_not_every_quadlet(self) -> None:
+        applied = fingerprints(self.desired)
+        current = load_desired(EXAMPLE)
+        current["site"]["users"].append({"name": "cara", "roles": ["appuser"]})
+        delta = set_delta(current, applied)
+        self.assertTrue(delta["sections"]["homes"])
+        self.assertTrue(delta["sections"]["users"])
+        self.assertEqual(delta["services"]["change"], [])
+
+    def test_first_homes_digest_does_not_walk_when_people_are_unchanged(self) -> None:
+        applied = fingerprints(self.desired)
+        del applied["sections"]["homes"]
+        delta = set_delta(self.desired, applied)
+        self.assertFalse(delta["sections"]["homes"])
+        self.assertEqual(delta["services"]["change"], [])
 
     def test_authelia_unit_change_regenerates_edge(self) -> None:
         applied = fingerprints(self.desired)
@@ -1031,6 +1306,18 @@ container:
             role.write_bytes(original + b"\n")
             delta = set_delta(self.desired, applied)
             self.assertTrue(delta["sections"]["admin_gui"])
+            self.assertFalse(delta["sections"]["storage"])
+        finally:
+            role.write_bytes(original)
+
+    def test_opencloud_role_change_reruns_opencloud(self) -> None:
+        applied = fingerprints(self.desired)
+        role = ROOT / "ansible" / "roles" / "opencloud" / "tasks" / "main.yml"
+        original = role.read_bytes()
+        try:
+            role.write_bytes(original + b"\n")
+            delta = set_delta(self.desired, applied)
+            self.assertTrue(delta["sections"]["opencloud"])
             self.assertFalse(delta["sections"]["storage"])
         finally:
             role.write_bytes(original)

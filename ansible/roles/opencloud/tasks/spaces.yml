@@ -19,6 +19,18 @@
   register: site_wl_uid
   changed_when: false
 
+- name: Sablier on this OpenCloud user
+  set_fact:
+    site_oc_sablier: >-
+      {{
+        site_plan.services
+        | selectattr('key', 'equalto', 'sablier')
+        | selectattr('host', 'equalto', site_host_name)
+        | selectattr('user', 'defined')
+        | selectattr('user', 'equalto', site_wl_user)
+        | list
+      }}
+
 - name: Personal space is the home
   block:
     - name: Move the personal space onto the home
@@ -286,6 +298,9 @@
       shell: |
         set -euo pipefail
         systemctl --user restart opencloud.service
+        {% if site_oc_sablier | length > 0 %}
+        curl -fsS --max-time 180 "http://127.0.0.1:10000/api/strategies/blocking?names=opencloud.service" -o /dev/null
+        {% endif %}
         for _ in $(seq 1 30); do
           if podman exec opencloud true 2>/dev/null; then
             break
@@ -309,6 +324,9 @@
       shell: |
         set -euo pipefail
         systemctl --user restart opencloud.service
+        {% if site_oc_sablier | length > 0 %}
+        curl -fsS --max-time 180 "http://127.0.0.1:10000/api/strategies/blocking?names=opencloud.service" -o /dev/null
+        {% endif %}
         for _ in $(seq 1 30); do
           if podman exec opencloud true 2>/dev/null; then
             break
@@ -500,8 +518,45 @@
     # stays the space, which is what keeps the home root read-only, so an
     # open personal folder is re-listed instead. Project spaces already
     # push those events to the people who have grants.
+    - name: Start OpenCloud before patching the web UI
+      become_user: "{{ site_wl_user }}"
+      environment:
+        XDG_RUNTIME_DIR: "/run/user/{{ site_wl_uid.stdout }}"
+      shell: |
+        set -euo pipefail
+        {% if site_oc_sablier | length > 0 %}
+        # systemctl start is an external start. Sablier stops those, and the
+        # patch then reads a connection that is already being torn down.
+        curl -fsS --max-time 180 "http://127.0.0.1:10000/api/strategies/blocking?names=opencloud.service" -o /dev/null
+        {% else %}
+        systemctl --user start opencloud.service
+        {% endif %}
+        python3 - << 'PY'
+        import time
+        import urllib.request
+
+        marker = b'<base href="/"/>'
+        last = "no response"
+        for _ in range(120):
+            try:
+                with urllib.request.urlopen("http://127.0.0.1:9200/", timeout=5) as resp:
+                    body = resp.read()
+                if marker in body:
+                    raise SystemExit(0)
+                last = "index served without the base tag"
+            except SystemExit:
+                raise
+            except Exception as exc:
+                last = str(exc)
+            time.sleep(1)
+        raise SystemExit("OpenCloud did not serve the web UI: " + last)
+        PY
+      args:
+        executable: /bin/bash
+
     - name: Hide create on home roots in the web UI
       shell: |
+        set -euo pipefail
         python3 - << 'PY'
         import os
         import re
@@ -575,52 +630,43 @@
         files = fetch("/" + source)
         files = replace_one(
             files,
-            [
-                "if(!we(e))return v(i)?.canCreate()!==!0;",
-                "if(!we(e))return e.canUpload({user:r.user})!==!0;",
-            ],
-            "if(!we(e))return!v(i)?.permissions?.includes(`CK`);",
+            ["if(!Et(e))return e.canUpload({user:r.user})!==!0;"],
+            "if(!Et(e))return!B(i)?.permissions?.includes(`CK`);",
         )
         files = replace_one(
             files,
-            [
-                "v(o)?.canCreate()?(W(),A(`li`,Dp,[_(s,{id:`new-folder-btn`",
-                "v(o)?(W(),A(`li`,Dp,[_(s,{id:`new-folder-btn`",
-            ],
-            "v(o)?.permissions?.includes(`CK`)?(W(),A(`li`,Dp,[_(s,{id:`new-folder-btn`",
+            ["B(s)?(v(),j(`li`,Qf,[a(u,{id:`new-folder-btn`"],
+            "B(s)?.permissions?.includes(`CK`)?(v(),j(`li`,Qf,[a(u,{id:`new-folder-btn`",
         )
         files = replace_one(
             files,
-            ["isVisible:()=>v(u)?.canCreate(),class:`oc-files-actions-create-new-folder`"],
-            "isVisible:()=>!!v(u)?.permissions?.includes(`CK`),class:`oc-files-actions-create-new-folder`",
+            ["isVisible:()=>B(s)?.canCreate(),class:`oc-files-actions-create-new-folder`"],
+            "isVisible:()=>!!B(s)?.permissions?.includes(`CK`),class:`oc-files-actions-create-new-folder`",
         )
         files = replace_one(
             files,
-            ["isVisible:()=>v(r)?.canCreate(),class:`oc-files-actions-create-new-shortcut`"],
-            "isVisible:()=>!!v(r)?.permissions?.includes(`CK`),class:`oc-files-actions-create-new-shortcut`",
+            ["isVisible:()=>B(r)?.canCreate(),class:`oc-files-actions-create-new-shortcut`"],
+            "isVisible:()=>!!B(r)?.permissions?.includes(`CK`),class:`oc-files-actions-create-new-shortcut`",
         )
         files = replace_one(
             files,
-            ["isActive:()=>!n.currentSpace||n.currentSpace?.isOwner(r.user),isVisible(){return!n.spacesInitialized||!!n.spaces.find(e=>Re(e)&&e.isOwner(r.user))}"],
-            "isActive:()=>!!n.currentSpace&&Re(n.currentSpace),isVisible(){return!n.spacesInitialized||!!n.spaces.find(e=>Re(e))}",
+            ["isActive:()=>!n.currentSpace||n.currentSpace?.isOwner(r.user),isVisible(){return!n.spacesInitialized||!!n.spaces.find(e=>Ht(e)&&e.isOwner(r.user))}"],
+            "isActive:()=>!!n.currentSpace&&Ht(n.currentSpace),isVisible(){return!n.spacesInitialized||!!n.spaces.find(e=>Ht(e))}",
         )
         files = replace_one(
             files,
-            ["isVisible:({resources:e})=>e.length?e.every(e=>e.canBeDeleted()&&!Ce(e)&&!Se(e)&&!Fe(e)&&!e.isShareRoot()):!1"],
-            "isVisible:({resources:e})=>e.length?e.every(e=>e.canBeDeleted()&&!Ce(e)&&!Se(e)&&!Fe(e)&&!e.isShareRoot()&&(e.path||``).split(`/`).filter(Boolean).length>1):!1",
+            ["isVisible:({resources:e})=>e.length?e.every(e=>e.canBeDeleted()&&!Tt(e)&&!wt(e)&&!Vt(e)&&!e.isShareRoot()):!1"],
+            "isVisible:({resources:e})=>e.length?e.every(e=>e.canBeDeleted()&&!Tt(e)&&!wt(e)&&!Vt(e)&&!e.isShareRoot()&&(e.path||``).split(`/`).filter(Boolean).length>1):!1",
         )
         files = replace_one(
             files,
-            ["isVisible:({resources:e})=>e.length!==1||Fe(e[0])||!t.sharingCanRename&&Se(e[0])||Y(e[0])||e.some(e=>e.remoteItemId&&e.path===`/`)||e.length===1&&e[0].locked?!1:!e.some(e=>!e.canRename({user:o.user,ability:s})||e.processing)"],
-            "isVisible:({resources:e})=>e.length!==1||Fe(e[0])||!t.sharingCanRename&&Se(e[0])||Y(e[0])||e.some(e=>e.remoteItemId&&e.path===`/`)||e.length===1&&e[0].locked||e.length===1&&(e[0].path||``).split(`/`).filter(Boolean).length<2?!1:!e.some(e=>!e.canRename({user:o.user,ability:s})||e.processing)",
+            ["isVisible:({resources:e})=>e.length!==1||Vt(e[0])||!t.sharingCanRename&&wt(e[0])||X(e[0])||e.some(e=>e.remoteItemId&&e.path===`/`)||e.length===1&&e[0].locked?!1:!e.some(e=>!e.canRename({user:o.user,ability:s})||e.processing)"],
+            "isVisible:({resources:e})=>e.length!==1||Vt(e[0])||!t.sharingCanRename&&wt(e[0])||X(e[0])||e.some(e=>e.remoteItemId&&e.path===`/`)||e.length===1&&e[0].locked||e.length===1&&(e[0].path||``).split(`/`).filter(Boolean).length<2?!1:!e.some(e=>!e.canRename({user:o.user,ability:s})||e.processing)",
         )
         files = replace_one(
             files,
-            [
-                "isVisible:({resources:e})=>e.length===0||e.some(e=>Ce(e)||Fe(e)||!e.canRename())||!v(f)&&e.some(xe)||e.length===1&&e[0].locked||e.some(e=>e.isInVault)?!1:!e.some(e=>_n(e,v(f)?.path)===!1)",
-                "isVisible:({resources:e})=>e.length===0||e.some(e=>Ce(e)||Fe(e))||!v(f)&&e.some(xe)||e.length===1&&e[0].locked||e.some(e=>e.isInVault)?!1:!e.some(e=>_n(e,v(f)?.path)===!1)",
-            ],
-            "isVisible:({resources:e})=>e.length===0||e.some(e=>Ce(e)||Fe(e)||!e.canRename()||(e.path||``).split(`/`).filter(Boolean).length<2)||!v(f)&&e.some(xe)||e.length===1&&e[0].locked||e.some(e=>e.isInVault)?!1:!e.some(e=>_n(e,v(f)?.path)===!1)",
+            ["isVisible:({resources:e})=>e.length===0||e.some(e=>Tt(e)||Vt(e))||!B(l)&&e.some(Ct)||e.length===1&&e[0].locked||e.some(e=>e.isInVault)?!1:!e.some(e=>gt(e,B(l)?.path)===!1)"],
+            "isVisible:({resources:e})=>e.length===0||e.some(e=>Tt(e)||Vt(e)||!e.canRename()||(e.path||``).split(`/`).filter(Boolean).length<2)||!B(l)&&e.some(Ct)||e.length===1&&e[0].locked||e.some(e=>e.isInVault)?!1:!e.some(e=>gt(e,B(l)?.path)===!1)",
         )
         write("js/" + dest_name, files)
         if fetch("/js/" + dest_name) != files:
@@ -637,8 +683,8 @@
         shell = fetch("/js/" + shell_source)
         shell = replace_one(
             shell,
-            ["U(()=>t.currentFolder,()=>{d.clear()});let f={resourcesStore:t"],
-            "U(()=>t.currentFolder,()=>{d.clear()});if(!window.__sitePersonalWatch){window.__sitePersonalWatch=1;let busy=0,missingOnce=new Set,watching=``;setInterval(()=>{if(busy||document.hidden)return;let folder=t.currentFolder;if(!folder?.id)return;if(watching!==folder.id){watching=folder.id;missingOnce=new Set}let space=n.spaces.find(s=>s.id===folder.storageId);if(!space||space.driveType!==`personal`)return;busy=1;let folderId=folder.id;a.webdav.listFiles(space,{path:folder.path||``}).then(listed=>{if(t.currentFolder?.id!==folderId)return;let children=listed.children||[],ids=new Set(children.map(c=>c.id)),have=new Map(t.resources.map(c=>[c.id,c]));children.forEach(c=>{let prev=have.get(c.id);if(!prev||prev.etag!==c.etag||prev.size!==c.size||prev.mdate!==c.mdate||prev.name!==c.name)t.upsertResource(c)});let missing=t.resources.filter(c=>c.parentFolderId===folderId&&!ids.has(c.id)),seen=new Set(missing.map(c=>c.id)),drop=missing.filter(c=>missingOnce.has(c.id));missingOnce=seen;drop.length&&t.removeResources(drop)}).catch(()=>{}).finally(()=>{busy=0})},2e3)}let f={resourcesStore:t",
+            ["A(()=>t.currentFolder,()=>{d.clear()});let f={resourcesStore:t"],
+            "A(()=>t.currentFolder,()=>{d.clear()});if(!window.__sitePersonalWatch){window.__sitePersonalWatch=1;let busy=0,missingOnce=new Set,watching=``;setInterval(()=>{if(busy||document.hidden)return;let folder=t.currentFolder;if(!folder?.id)return;if(watching!==folder.id){watching=folder.id;missingOnce=new Set}let space=n.spaces.find(s=>s.id===folder.storageId);if(!space||space.driveType!==`personal`)return;busy=1;let folderId=folder.id;a.webdav.listFiles(space,{path:folder.path||``}).then(listed=>{if(t.currentFolder?.id!==folderId)return;let children=listed.children||[],ids=new Set(children.map(c=>c.id)),have=new Map(t.resources.map(c=>[c.id,c]));children.forEach(c=>{let prev=have.get(c.id);if(!prev||prev.etag!==c.etag||prev.size!==c.size||prev.mdate!==c.mdate||prev.name!==c.name)t.upsertResource(c)});let missing=t.resources.filter(c=>c.parentFolderId===folderId&&!ids.has(c.id)),seen=new Set(missing.map(c=>c.id)),drop=missing.filter(c=>missingOnce.has(c.id));missingOnce=seen;drop.length&&t.removeResources(drop)}).catch(()=>{}).finally(()=>{busy=0})},2e3)}let f={resourcesStore:t",
         )
         write("js/" + shell_dest, shell)
         if fetch("/js/" + shell_dest) != shell:
@@ -671,6 +717,9 @@
         else:
             print("kept", "index.html")
         PY
+        digest=$(runuser -u "{{ site_wl_user }}" -- bash -c "cd /home/{{ site_wl_user }} && exec env XDG_RUNTIME_DIR=/run/user/{{ site_wl_uid.stdout }} podman exec opencloud sha256sum /usr/bin/opencloud" | awk '{print $1}')
+        install -d -m 0755 "{{ site_plan.roots.appdata }}/opencloud/data/web/assets"
+        printf '%s\n' "$digest" > "{{ site_plan.roots.appdata }}/opencloud/data/web/assets/.image"
       args:
         executable: /bin/bash
       register: site_oc_assets
@@ -687,6 +736,9 @@
       shell: |
         set -euo pipefail
         systemctl --user restart opencloud.service
+        {% if site_oc_sablier | length > 0 %}
+        curl -fsS --max-time 180 "http://127.0.0.1:10000/api/strategies/blocking?names=opencloud.service" -o /dev/null
+        {% endif %}
         for _ in $(seq 1 30); do
           if podman exec opencloud true 2>/dev/null; then
             break
@@ -701,5 +753,13 @@
       become_user: "{{ site_wl_user }}"
       environment:
         XDG_RUNTIME_DIR: "/run/user/{{ site_wl_uid.stdout }}"
-      command: systemctl --user start opencloud.service
+      shell: |
+        set -euo pipefail
+        {% if site_oc_sablier | length > 0 %}
+        curl -fsS --max-time 180 "http://127.0.0.1:10000/api/strategies/blocking?names=opencloud.service" -o /dev/null
+        {% else %}
+        systemctl --user start opencloud.service
+        {% endif %}
+      args:
+        executable: /bin/bash
       failed_when: false

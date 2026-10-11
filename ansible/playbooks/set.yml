@@ -5,6 +5,7 @@
 # OpenLDAP accounts → SSSD, homes, and SMB passwords.
 # Day 2 runs a play only when that section's inputs differ from applied.json.
 # A Quadlet restarts only when its synced files changed.
+# Home ACL walks run only when the people roots, names, or ACL writer changed.
 - name: Load plan
   hosts: localhost
   connection: local
@@ -265,10 +266,11 @@
         site_plan.ldap == 'openldap'
         and (
           site_delta.sections.users | default(true) | bool
-          or site_delta.sections.quadlets | default(true) | bool
           or site_delta.sections.ldap | default(true) | bool
           or site_delta.sections.secrets | default(true) | bool
           or site_delta.sync_all | default(false) | bool
+          or site_delta.services.add | default([]) | selectattr('key', 'equalto', 'openldap') | list | length > 0
+          or site_delta.services.change | default([]) | selectattr('key', 'equalto', 'openldap') | list | length > 0
         )
 
 - name: SMB and home access from the directory
@@ -285,7 +287,7 @@
         site_plan.ldap == 'openldap'
         and (
           site_delta.sections.users | default(true) | bool
-          or site_delta.sections.quadlets | default(true) | bool
+          or site_delta.sections.homes | default(true) | bool
           or site_delta.sections.ldap | default(true) | bool
           or site_delta.sections.secrets | default(true) | bool
           or site_delta.sync_all | default(false) | bool
@@ -301,7 +303,14 @@
       include_role:
         name: opencloud
         tasks_from: spaces.yml
-      when: site_plan.policy.web == 'opencloud'
+      when: >-
+        site_plan.policy.web == 'opencloud'
+        and (
+          site_delta.sections.opencloud | default(true) | bool
+          or site_delta.sections.users | default(true) | bool
+          or site_delta.sections.homes | default(true) | bool
+          or site_delta.sync_all | default(false) | bool
+        )
 
 - name: Refresh edge DNS plumbing after Pi-hole and Caddy listen
   hosts: workload

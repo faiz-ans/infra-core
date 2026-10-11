@@ -545,29 +545,6 @@
   loop: "{{ site_wl_users }}"
   when: site_touch | length > 0
 
-- name: Start a synced rootless service under its workload user
-  become: true
-  become_user: "{{ item.user }}"
-  environment:
-    XDG_RUNTIME_DIR: "/run/user/{{ site_wl_uids[item.user] }}"
-  args:
-    executable: /bin/bash
-  shell: |
-    set -euo pipefail
-    dir="/home/{{ item.user }}/.config/containers/systemd/{{ item.name }}"
-    [ -d "$dir" ] || exit 0
-    find "$dir" -type f \( -name '*.container' -o -name '*.kube' -o -name '*.pod' -o -name '*.network' -o -name '*.volume' \) -print0 |
-      while IFS= read -r -d '' f; do
-        base=$(basename "$f")
-        systemctl --user restart "${base%.*}.service"
-      done
-  loop: "{{ site_touch }}"
-  loop_control:
-    label: "{{ item.name }}"
-  when:
-    - site_touch | length > 0
-    - (item.privilege | default('rootless')) != 'rootful'
-
 - name: Restart OpenLDAP so it adopts the current admin password
   become: true
   become_user: "{{ (item.item | default({})).user }}"
@@ -584,8 +561,22 @@
   when:
     - not (item.skipped | default(false))
     - (item.rc | default(0)) == 0
+    - item.stdout_lines | default([]) | select('match', '^[<>c*]') | list | length > 0
     - ((item.item | default({})).key | default('')) == 'openldap'
     - ((item.item | default({})).privilege | default('rootless')) != 'rootful'
+
+- name: Build the optional Caddy image that can rewrite the Authelia portal
+  become: true
+  become_user: "{{ site_user_of.caddy }}"
+  environment:
+    XDG_RUNTIME_DIR: "/run/user/{{ site_wl_uids[site_user_of.caddy] }}"
+  args:
+    chdir: "/home/{{ site_user_of.caddy }}/.config/containers/systemd/caddy"
+  command: podman build -t localhost/caddy-portal:2 -f Containerfile.portal .
+  when:
+    - site_plan.policy.portal_assets | default('') | length > 0
+    - site_here | selectattr('key', 'equalto', 'caddy') | list | length > 0
+    - site_touch | selectattr('key', 'equalto', 'caddy') | list | length > 0
 
 - name: Restart rootless Quadlets that were synced
   become: true
@@ -612,6 +603,7 @@
   when:
     - not (item.skipped | default(false))
     - (item.rc | default(0)) == 0
+    - item.stdout_lines | default([]) | select('match', '^[<>c*]') | list | length > 0
     - ((item.item | default({})).key | default('')) != 'openldap'
     - ((item.item | default({})).privilege | default('rootless')) != 'rootful'
 

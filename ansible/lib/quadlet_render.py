@@ -1,0 +1,150 @@
+"""Render one service tree the way SET syncs it.
+
+The Day 2 fingerprint hashes these bytes. A site.yaml edit that no unit reads
+does not change the hash, so SET does not restart that service.
+"""
+from __future__ import annotations
+
+import re
+import shutil
+from pathlib import Path
+from typing import Any
+
+from .generate import inject_authelia_ldap_password
+from .integrate import apply_placed_integrations
+from .pod import apply_container_overlay, apply_pod_overlay, ensure_sablier_section, sablier_enabled
+from .quadlet import read_utf8, strip_yaml_text
+from .resolve import account_ids, bind, proxy_port, render
+from .secrets import SecretError
+from .topology import ROOT, host_by_name, policy
+
+
+class QuadletRenderError(Exception):
+    pass
+
+
+def _host_component_dir(svc: dict[str, Any]) -> str:
+    """Path on the workload host. The render directory is only on the operator machine."""
+    name = svc["name"]
+    if svc.get("privilege") == "rootful":
+        return f"/etc/containers/systemd/{name}"
+    user = svc.get("user") or "root"
+    return f"/home/{user}/.config/containers/systemd/{name}"
+
+
+def populate_service(
+    out: Path,
+    desired: dict[str, Any],
+    svc: dict[str, Any],
+    secrets: dict[str, Any] | None,
+    *,
+    missing_secret: str = "error",
+) -> None:
+    """Write the synced tree for one service. Raises QuadletRenderError on a bad overlay."""
+    component = str(svc.get("component") or svc.get("key") or "")
+    src = ROOT / "components" / component
+    if not src.is_dir():
+        raise QuadletRenderError(f"{svc.get('name')} has no component directory")
+    host_name = str(svc.get("host") or "")
+    host = host_by_name(desired, host_name) or {}
+    if out.exists():
+        shutil.rmtree(out)
+    shutil.copytree(src, out, ignore=shutil.ignore_patterns("MANIFEST.toml"))
+    raw = svc.get("raw") or {}
+    pod_overlay = raw.get("pod")
+    container_overlay = raw.get("container")
+    pod_file = out / "pod.yaml"
+    units = list(out.glob("*.container"))
+    name = str(svc.get("name") or "")
+    if pod_overlay:
+        if not pod_file.is_file():
+            raise QuadletRenderError(f"{name} pod overlay requires pod.yaml")
+        apply_pod_overlay(pod_file, pod_overlay)
+    if container_overlay:
+        if len(units) != 1:
+            raise QuadletRenderError(f"{name} container overlay requires one .container")
+        try:
+            rendered_unit = apply_container_overlay(units[0].read_text(encoding="utf-8"), container_overlay)
+        except ValueError as exc:
+            raise QuadletRenderError(f"{name}: {exc}") from exc
+        units[0].write_text(rendered_unit, encoding="utf-8")
+    if sablier_enabled(raw):
+        for unit in list(out.glob("*.container")) + list(out.glob("*.kube")):
+            unit.write_text(ensure_sablier_section(unit.read_text(encoding="utf-8")), encoding="utf-8")
+    assets = policy(desired)["portal_assets"]
+    if assets and str(svc.get("key") or "") == "caddy":
+        unit = next(out.glob("*.container"), None)
+        if unit and unit.is_file():
+            text = unit.read_text(encoding="utf-8")
+            text = re.sub(r"^Image=.*$", "Image=localhost/caddy-portal:2", text, count=1, flags=re.M)
+            if not re.search(r"^Pull=", text, flags=re.M):
+                text = text.replace("Image=localhost/caddy-portal:2\n", "Image=localhost/caddy-portal:2\nPull=never\n", 1)
+            line = f"Volume={assets}:{assets}:ro\n"
+            if line not in text:
+                marker = "\n[Service]\n"
+                if marker not in text:
+                    raise QuadletRenderError("caddy container unit has no [Service] section for portal assets")
+                text = text.replace(marker, "\n" + line + marker, 1)
+            unit.write_text(text, encoding="utf-8")
+    if str(svc.get("key") or "") == "authelia" and policy(desired)["ldap"] == "openldap":
+        unit = out / "authelia.container"
+        if unit.is_file():
+            unit.write_text(
+                inject_authelia_ldap_password(unit.read_text(encoding="utf-8")),
+                encoding="utf-8",
+            )
+    apply_placed_integrations(out, desired, svc)
+    mapping = bind(desired, host)
+    mapping["component.dir"] = _host_component_dir(svc)
+    uid, gid = account_ids(host, str(svc.get("user") or ""))
+    for path in out.rglob("*"):
+        if not path.is_file():
+            continue
+        text = read_utf8(path)
+        if text is None:
+            continue
+        svc_mapping = dict(mapping)
+        svc_mapping["host.operations.workload.user"] = str(svc.get("user") or "")
+        svc_mapping["host.operations.workload.uid"] = uid
+        svc_mapping["host.operations.workload.gid"] = gid
+        svc_mapping["host.operations.workload.proxy_port"] = proxy_port(host, str(svc.get("user") or ""))
+        primary = str((svc.get("subdomain") or {}).get("primary") or "")
+        domain = mapping.get("site.env.domain") or ""
+        if primary and domain:
+            svc_mapping["service.public_host"] = f"{primary}.{domain}"
+        try:
+            rendered = render(
+                text,
+                svc_mapping,
+                service=str(svc.get("key") or ""),
+                host=host_name,
+                secrets=secrets,
+                missing_secret=missing_secret,
+            )
+        except SecretError as exc:
+            raise QuadletRenderError(str(exc)) from exc
+        if path.suffix in {".yaml", ".yml"} and "kind:" in rendered:
+            rendered = strip_yaml_text(rendered)
+        path.write_text(rendered, encoding="utf-8")
+    (out / ".privilege").write_text(svc.get("privilege") or "rootless", encoding="utf-8")
+
+
+def rendered_files(
+    desired: dict[str, Any],
+    svc: dict[str, Any],
+    secrets: dict[str, Any] | None,
+) -> dict[str, bytes] | None:
+    """Relative path → bytes SET would sync. None when the service has no catalog tree."""
+    component = str(svc.get("component") or svc.get("key") or "")
+    if not (ROOT / "components" / component).is_dir():
+        return None
+    import tempfile
+
+    with tempfile.TemporaryDirectory() as tmp:
+        out = Path(tmp) / str(svc.get("name") or "service")
+        populate_service(out, desired, svc, secrets, missing_secret="name")
+        files: dict[str, bytes] = {}
+        for path in out.rglob("*"):
+            if path.is_file():
+                files[path.relative_to(out).as_posix()] = path.read_bytes()
+        return files

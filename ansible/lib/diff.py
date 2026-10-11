@@ -7,7 +7,19 @@ from pathlib import Path
 from typing import Any
 
 from .plan import COMPONENTS, import_blocks, import_nfs, inferred_nfs, site_groups
-from .topology import admin_gui, all_services, env, host_user_is_sysadmin, hosts, ingress_host, policy, roots, site_of, workload_users
+from .quadlet_render import rendered_files
+from .topology import (
+    admin_gui,
+    all_services,
+    env,
+    host_user_is_sysadmin,
+    hosts,
+    policy,
+    root_owners,
+    roots,
+    site_of,
+    workload_users,
+)
 
 # Host prep stays put on a Day 2 run that has no stamp yet. Service files still sync.
 UPGRADE_SECTIONS = ("quadlets", "edge", "nfs", "lan_bind", "admin_gui")
@@ -111,22 +123,10 @@ def _digest(payload: Any) -> str:
     return hashlib.sha256(raw.encode()).hexdigest()
 
 
-def _tree_hash(path: Path) -> str:
-    h = hashlib.sha256()
-    if not path.is_dir():
-        h.update(b"missing")
-        return h.hexdigest()
-    files = [
-        p
-        for p in path.rglob("*")
-        if p.is_file() and p.name != ".DS_Store" and "__pycache__" not in p.parts
-    ]
-    for p in sorted(files, key=lambda item: item.relative_to(path).as_posix()):
-        h.update(p.relative_to(path).as_posix().encode())
-        h.update(b"\0")
-        h.update(p.read_bytes())
-        h.update(b"\0")
-    return h.hexdigest()
+def _caddyfile_hash(desired: dict[str, Any]) -> str:
+    from .generate import generate_caddyfile
+
+    return hashlib.sha256(generate_caddyfile(desired).encode()).hexdigest()
 
 
 def _file_hash(path: Path | None) -> str:
@@ -137,27 +137,6 @@ def _file_hash(path: Path | None) -> str:
 
 def _svc_id(service: dict[str, Any]) -> str:
     return f"{service.get('host') or ''}/{service.get('name') or service.get('key') or ''}"
-
-
-def _render_context(desired: dict[str, Any]) -> dict[str, Any]:
-    """Inputs substituted into Quadlets. A homepage edit does not change this."""
-    p = policy(desired)
-    return {
-        "env": env(desired),
-        "roots": roots(desired),
-        "generate_upstream": p["generate_upstream"],
-        "hosts": [
-            {
-                "name": h.get("name"),
-                "ip": h.get("ip"),
-                "env": h.get("env") or {},
-                "roots": ((h.get("data") or {}).get("roots") or {}),
-                "gpu": ((h.get("resources") or {}).get("gpu") or []),
-                "users": [str(entry.get("name") or "") for entry in workload_users(h)],
-            }
-            for h in hosts(desired)
-        ],
-    }
 
 
 def _edge_services(desired: dict[str, Any]) -> list[dict[str, Any]]:
@@ -255,29 +234,65 @@ def _secret_owners(desired: dict[str, Any], secrets_path: Path | None) -> list[s
     )
 
 
+def _secret_data(secrets_path: Path | None) -> dict[str, Any] | None:
+    if secrets_path is None or not Path(secrets_path).is_file():
+        return None
+    from .secrets import SecretError, load_secrets
+
+    try:
+        data = load_secrets(Path(secrets_path))
+    except SecretError:
+        return None
+    return data if isinstance(data, dict) else None
+
+
+def _service_hash(desired: dict[str, Any], service: dict[str, Any], secrets: dict[str, Any] | None) -> str:
+    """Hash of the files SET would sync. Unrendered services hash their placement only."""
+    files = rendered_files(desired, service, secrets)
+    if files is None:
+        return _digest(
+            {
+                "raw": service.get("raw") or {},
+                "user": service.get("user") or "",
+                "privilege": service.get("privilege") or "rootless",
+                "subdomain": service.get("subdomain"),
+                "ports": service.get("ports"),
+                "sso": service.get("sso"),
+            }
+        )
+    return _digest({name: hashlib.sha256(data).hexdigest() for name, data in sorted(files.items())})
+
+
+def _home_writers(desired: dict[str, Any]) -> list[dict[str, str]]:
+    """Workload account that receives write ACLs on each people-root host."""
+    owners = root_owners(desired)
+    wanted = {owners[key]["host"] for key in ("users", "groups") if key in owners and owners[key].get("host")}
+    by_name = {h.get("name"): h for h in hosts(desired)}
+    rows: list[dict[str, str]] = []
+    for name in sorted(wanted):
+        host = by_name.get(name) or {}
+        writer = ""
+        for service in all_services(desired):
+            if service.get("host") == name and service.get("key") == "opencloud":
+                writer = str(service.get("user") or "")
+                break
+        names = [str(user.get("name") or "") for user in workload_users(host)]
+        if not writer:
+            writer = names[0] if len(names) == 1 else ""
+        rows.append({"host": name, "writer": writer})
+    return rows
+
+
 def fingerprints(desired: dict[str, Any], secrets_path: Path | None = None) -> dict[str, Any]:
     """Stable hashes of each SET section and each placed service."""
     p = policy(desired)
     e = env(desired)
-    context = _render_context(desired)
     placed = all_services(desired)
-    kube_secrets, raw_secret_services = _secret_forms(desired, secrets_path)
-    integration_keys = ("authelia", "opencloud", "collabora", "radicale")
-    integration_peers = [
-        {
-            "key": item.get("key"),
-            "host": item.get("host"),
-            "subdomain": (item.get("subdomain") or {}).get("primary"),
-        }
-        for item in placed
-        if item.get("key") in integration_keys
-    ]
-    trees: dict[str, str] = {}
+    kube_secrets, _raw_secret_services = _secret_forms(desired, secrets_path)
+    secret_data = _secret_data(secrets_path)
+    ansible = Path(__file__).resolve().parents[1]
     services: dict[str, dict[str, Any]] = {}
     for s in placed:
-        component = str(s.get("component") or s.get("key") or "")
-        if component not in trees:
-            trees[component] = _tree_hash(COMPONENTS / component)
         rec = {
             "host": s.get("host") or "",
             "name": s.get("name") or s.get("key") or "",
@@ -285,21 +300,7 @@ def fingerprints(desired: dict[str, Any], secrets_path: Path | None = None) -> d
             "privilege": s.get("privilege") or "rootless",
             "user": s.get("user") or "",
         }
-        body: dict[str, Any] = {
-            "component": trees[component],
-            "raw": s.get("raw") or {},
-            "context": context,
-            "subdomain": s.get("subdomain"),
-            "ports": s.get("ports"),
-            "sso": s.get("sso"),
-            "user": s.get("user") or "",
-        }
-        if s.get("key") in ("opencloud", "collabora", "radicale"):
-            body["integration"] = integration_peers
-            body["ingress"] = (ingress_host(desired) or {}).get("name")
-        if _svc_id(s) in raw_secret_services:
-            body["secret_encoding"] = "raw"
-        rec["hash"] = _digest(body)
+        rec["hash"] = _service_hash(desired, s, secret_data)
         services[_svc_id(s)] = rec
     admin = [
         (h.get("name"), admin_gui(h.get("admin-gui")), h.get("ip")) for h in hosts(desired)
@@ -352,6 +353,32 @@ def fingerprints(desired: dict[str, Any], secrets_path: Path | None = None) -> d
                     for rel in (
                         "roles/identity/tasks/sssd.yml",
                         "roles/directory/tasks/access.yml",
+                    )
+                ],
+            }
+        ),
+        # Home ACLs and the access-mask repair walk. A display name or an
+        # unrelated service edit does not change this.
+        "homes": _digest(
+            {
+                "users": sorted(
+                    str(user.get("name") or "")
+                    for user in (site_of(desired).get("users") or [])
+                    if isinstance(user, dict) and user.get("name")
+                ),
+                "groups": site_groups(desired),
+                "roots": {
+                    "users": roots(desired).get("users"),
+                    "groups": roots(desired).get("groups"),
+                },
+                "filesystem": p["filesystem"],
+                "web": p["web"],
+                "writers": _home_writers(desired),
+                "roles": [
+                    _file_hash(ansible / rel)
+                    for rel in (
+                        "roles/directory/tasks/homes.yml",
+                        "roles/directory/files/site-access-mask",
                     )
                 ],
             }
@@ -420,7 +447,13 @@ def fingerprints(desired: dict[str, Any], secrets_path: Path | None = None) -> d
                 "owners": _secret_owners(desired, secrets_path),
             }
         ),
-        "nfs": _digest(inferred_nfs(desired)),
+        "nfs": _digest(
+            {
+                "plan": inferred_nfs(desired),
+                # Squash uid is the file server's workload user. Bump to rewrite exports.
+                "squash": "file-server-workload",
+            }
+        ),
         "edge": _digest(
             {
                 "generate_upstream": p["generate_upstream"],
@@ -431,14 +464,27 @@ def fingerprints(desired: dict[str, Any], secrets_path: Path | None = None) -> d
                 "services": _edge_services(desired),
                 "ldap": p["ldap"],
                 "sso": p["sso"],
+                "forward_auth": p["forward_auth"],
                 "auth_exceptions": p["auth_exceptions"],
+                "plugins": p["plugins"],
                 "user_passwords": _user_password_digest(secrets_path),
-                # Epoch for generated Caddy/Authelia. A unit sync copies the catalog
+                # Epoch for generated Authelia. A unit sync copies the catalog
                 # tree; bumping this reinstalls the generated files over it.
-                "authelia": "cockpit-gate",
+                "authelia": "forward-auth-opt-in",
+                # The generated Caddyfile is not one of the catalog files hashed
+                # per service. A generator change has to show up here or SET
+                # leaves the installed Caddyfile in place.
+                "caddyfile": _caddyfile_hash(desired),
             }
         ),
-        "opencloud": _digest([rec for rec in services.values() if rec["key"] == "opencloud"]),
+        "opencloud": _digest(
+            {
+                "services": [rec for rec in services.values() if rec["key"] == "opencloud"],
+                # Node locks on the homes follow the workload user. A role change
+                # has to run even when the rendered unit is unchanged.
+                "role": _file_hash(ansible / "roles" / "opencloud" / "tasks" / "main.yml"),
+            }
+        ),
         "lan_bind": _digest(
             {
                 "services": [rec for rec in services.values() if rec["key"] in ("caddy", "pi-hole")],
@@ -503,6 +549,11 @@ def set_delta(
         for i in sorted(new_ids & old_ids)
         if (old_services.get(i) or {}).get("hash") != fps["services"][i].get("hash")
     ]
+    # First SET after homes was added has no prior digest. The walk already
+    # ran on earlier SETs. Record the digest without walking again unless
+    # the people list or the disks that hold it also changed.
+    if "homes" not in old_sections:
+        sections["homes"] = bool(sections.get("users") or sections.get("storage"))
     if any(rec.get("key") in ("caddy", "authelia") for rec in add + change):
         sections["edge"] = True
     if sections["edge"]:

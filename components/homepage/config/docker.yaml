@@ -1,11 +1,14 @@
 # GET-only docker-socket-proxy (docker-proxy) in front of each workload
 # user's Podman API. Host port is 2375 plus that user's index on the host.
 # Homepage must not mount a Podman socket: :ro does not block API writes.
+# Core uses the pasta host address. The LAN IP hairpins into Homepage's own
+# rootless netns, so it only reaches ports Pilot published (2375) and refuses
+# Hostess (2376).
 core-pilot:
-  host: {{HOMEPAGE_VAR_NAS_LAN_IP}}
+  host: {{HOMEPAGE_VAR_HOST_LOOPBACK}}
   port: 2375
 core-hostess:
-  host: {{HOMEPAGE_VAR_NAS_LAN_IP}}
+  host: {{HOMEPAGE_VAR_HOST_LOOPBACK}}
   port: 2376
 mantle-pilot:
   host: {{HOMEPAGE_VAR_SURFACE_UPSTREAM}}

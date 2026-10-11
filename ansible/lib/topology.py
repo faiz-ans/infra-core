@@ -68,18 +68,123 @@ def _engine_name(raw: Any, default: str = "none") -> str:
     return str(raw)
 
 
-def _auth_exceptions(ingress: Any) -> list[str]:
-    """Operator hostnames and service keys that skip the ingress auth gate."""
+INGRESS_PLUGINS = {"sablier"}
+
+
+def _exception_label(item: Any) -> str:
+    if isinstance(item, str):
+        return item
+    return repr(item)
+
+
+def _one_pair(item: Any) -> tuple[str, Any] | None:
+    if not isinstance(item, dict) or len(item) != 1:
+        return None
+    key, value = next(iter(item.items()))
+    return str(key), value
+
+
+def _parse_exception(item: Any) -> tuple[dict[str, Any] | None, str | None]:
+    """One forward-auth exception.
+
+    A string is a service key (every instance on the site) or a route label.
+    ``inst`` is an instance name, never a host. A host key narrows the match
+    to that host, and a nested user key narrows it again.
+    """
+    label = _exception_label(item)
+    blank: dict[str, Any] = {"host": None, "user": None, "service": None, "instance": None, "label": label}
+    if isinstance(item, str):
+        if not item:
+            return None, f"networking.ingress.forward-auth.exceptions entry {label!r} is empty"
+        return {**blank, "service": item}, None
+    pair = _one_pair(item)
+    if pair is None:
+        return None, (
+            f"networking.ingress.forward-auth.exceptions entry {label} "
+            "must be a service, an instance, or a single host scope"
+        )
+    key, value = pair
+    if key == "inst":
+        if not isinstance(value, str) or not value:
+            return None, f"networking.ingress.forward-auth.exceptions entry {label} needs an instance name"
+        return {**blank, "instance": value}, None
+    if isinstance(value, str) and value:
+        return {**blank, "host": key, "service": value}, None
+    inner = _one_pair(value)
+    if inner is None:
+        return None, (
+            f"networking.ingress.forward-auth.exceptions entry {label} "
+            "must name a service, an instance, or one user"
+        )
+    inner_key, inner_value = inner
+    if inner_key == "inst":
+        if not isinstance(inner_value, str) or not inner_value:
+            return None, f"networking.ingress.forward-auth.exceptions entry {label} needs an instance name"
+        return {**blank, "host": key, "instance": inner_value}, None
+    if isinstance(inner_value, str) and inner_value:
+        return {**blank, "host": key, "user": inner_key, "service": inner_value}, None
+    inst = _one_pair(inner_value)
+    if inst and inst[0] == "inst" and isinstance(inst[1], str) and inst[1]:
+        return {**blank, "host": key, "user": inner_key, "instance": inst[1]}, None
+    return None, (
+        f"networking.ingress.forward-auth.exceptions entry {label} "
+        "must name a service or an instance for that user"
+    )
+
+
+def _forward_auth(ingress: Any) -> tuple[bool, list[dict[str, Any]], list[str]]:
+    """Opt-in gate. Exceptions are ignored until enabled, but still checked."""
     if not isinstance(ingress, dict):
-        return []
-    raw = ingress.get("auth-exceptions")
-    if raw is None:
-        raw = ingress.get("auth_exceptions") or []
-    if isinstance(raw, str):
-        return [raw]
+        return False, [], []
+    block = ingress.get("forward-auth", ingress.get("forward_auth", {}))
+    if block is None:
+        block = {}
+    errors: list[str] = []
+    if "auth-exceptions" in ingress or "auth_exceptions" in ingress:
+        errors.append(
+            "networking.ingress auth-exceptions moved to ingress.forward-auth.exceptions"
+        )
+    if not isinstance(block, dict):
+        errors.append("networking.ingress.forward-auth must be a mapping")
+        return False, [], errors
+    enabled = bool(block.get("enabled", False))
+    raw = block.get("exceptions") or []
+    if isinstance(raw, (str, dict)):
+        raw = [raw]
     if not isinstance(raw, list):
-        return []
-    return [str(item) for item in raw if str(item)]
+        errors.append("networking.ingress.forward-auth.exceptions must be a list")
+        return enabled, [], errors
+    rules: list[dict[str, Any]] = []
+    for item in raw:
+        rule, error = _parse_exception(item)
+        if error:
+            errors.append(error)
+        elif rule:
+            rules.append(rule)
+    return enabled, rules, errors
+
+
+def _plugins(ingress: Any) -> tuple[list[str], list[str]]:
+    if not isinstance(ingress, dict) or "plugins" not in ingress:
+        return [], []
+    raw = ingress.get("plugins")
+    if isinstance(raw, str):
+        raw = [raw]
+    if not isinstance(raw, list):
+        return [], ["networking.ingress.plugins must be a list"]
+    errors: list[str] = []
+    names: list[str] = []
+    for item in raw:
+        name = str(item or "")
+        if not name:
+            errors.append("networking.ingress.plugins has an empty entry")
+            continue
+        if name not in INGRESS_PLUGINS:
+            errors.append(f"networking.ingress.plugins entry {name!r} is not supported")
+            continue
+        if name not in names:
+            names.append(name)
+    return names, errors
 
 
 def _flag(raw: Any, key: str, default: bool = True) -> bool:
@@ -91,6 +196,16 @@ def _flag(raw: Any, key: str, default: bool = True) -> bool:
     return bool(raw[key])
 
 
+def _portal_assets(ingress: Any) -> str:
+    """Operator directory for the Authelia login page. Empty means no injection."""
+    if not isinstance(ingress, dict):
+        return ""
+    raw = ingress.get("portal-assets", ingress.get("portal_assets", ""))
+    if raw is None:
+        return ""
+    return str(raw).strip()
+
+
 def policy(desired: dict[str, Any]) -> dict[str, Any]:
     s = site_of(desired)
     net = s.get("networking") or {}
@@ -100,11 +215,16 @@ def policy(desired: dict[str, Any]) -> dict[str, Any]:
     access = data.get("access") or {}
     tunnel = net.get("tunnel") or {}
     ingress = net.get("ingress")
+    forward_auth, auth_exceptions, _forward_errors = _forward_auth(ingress)
+    plugins, _plugin_errors = _plugins(ingress)
     return {
         "dns": net.get("dns") or "none",
         "ingress": _engine_name(ingress),
         "generate_upstream": _flag(ingress, "generate-upstream", True),
-        "auth_exceptions": _auth_exceptions(ingress),
+        "forward_auth": forward_auth,
+        "auth_exceptions": auth_exceptions,
+        "plugins": plugins,
+        "portal_assets": _portal_assets(ingress),
         "tunnel": tunnel.get("engine") or "none",
         "tunnel_endpoint": tunnel.get("endpoint") or "",
         "ldap": ident.get("ldap") or "none",
@@ -459,7 +579,7 @@ def validate_placement(desired: dict[str, Any]) -> list[str]:
             errors.append(f"host {h.get('name')} has no local sysadmin")
     errors.extend(validate_local_roots(desired))
     errors.extend(validate_workload_users(desired))
-    errors.extend(validate_auth_exceptions(desired))
+    errors.extend(validate_ingress(desired))
     errors.extend(validate_bridges(desired))
     from .plan import nfs_user_conflicts
 
@@ -504,17 +624,9 @@ def validate_workload_users(desired: dict[str, Any]) -> list[str]:
     return errors
 
 
-def auth_exception_tokens(desired: dict[str, Any]) -> set[str]:
-    """Service keys, instance names, published labels, Cockpit labels, and wifi."""
+def route_labels(desired: dict[str, Any]) -> set[str]:
+    """Cockpit labels and the router site. These are not workload services."""
     tokens = {"wifi"}
-    for service in all_services(desired):
-        for token in (service.get("key"), service.get("name")):
-            if token:
-                tokens.add(str(token))
-        sub = service.get("subdomain") or {}
-        if sub.get("primary"):
-            tokens.add(str(sub["primary"]))
-        tokens.update(str(alias) for alias in (sub.get("aliases") or []) if alias)
     for host in hosts(desired):
         gui = admin_gui(host.get("admin-gui"))
         if not gui["enabled"]:
@@ -524,12 +636,73 @@ def auth_exception_tokens(desired: dict[str, Any]) -> set[str]:
     return tokens
 
 
-def validate_auth_exceptions(desired: dict[str, Any]) -> list[str]:
-    known = auth_exception_tokens(desired)
-    errors: list[str] = []
-    for token in policy(desired)["auth_exceptions"]:
-        if token not in known:
-            errors.append(f"networking.ingress auth-exceptions entry {token!r} matches no service or route")
+def exception_covers_service(rule: dict[str, Any], service: dict[str, Any]) -> bool:
+    """True when this forward-auth exception skips the gate for one instance."""
+    if rule.get("host") and rule["host"] != service.get("host"):
+        return False
+    if rule.get("user") and rule["user"] != service.get("user"):
+        return False
+    if rule.get("instance"):
+        return rule["instance"] == service.get("name")
+    if rule.get("service"):
+        return rule["service"] == service.get("key")
+    return False
+
+
+def exception_covers_route(rule: dict[str, Any], *tokens: str) -> bool:
+    """A bare service-or-route name can also skip Cockpit or the router site."""
+    if rule.get("host") or rule.get("user") or rule.get("instance"):
+        return False
+    service = rule.get("service")
+    return bool(service and service in tokens)
+
+
+def validate_ingress(desired: dict[str, Any]) -> list[str]:
+    """Forward-auth is opt-in. Plugins integrate only when listed and placed."""
+    s = site_of(desired)
+    ingress = (s.get("networking") or {}).get("ingress")
+    _enabled, _rules, errors = _forward_auth(ingress)
+    _names, plugin_errors = _plugins(ingress)
+    errors.extend(plugin_errors)
+    assets = _portal_assets(ingress)
+    if assets and any(char.isspace() for char in assets):
+        errors.append("networking.ingress.portal-assets must be a path without spaces")
+    p = policy(desired)
+    placed = placed_keys(desired)
+    services = all_services(desired)
+    if p["forward_auth"]:
+        if p["ingress"] != "caddy":
+            errors.append("ingress.forward-auth.enabled requires networking.ingress.engine caddy")
+        if p["sso"] in (None, "", "none"):
+            errors.append("ingress.forward-auth.enabled requires identity.sso")
+        elif p["sso"] != "authelia":
+            errors.append(
+                f"ingress.forward-auth.enabled requires identity.sso authelia, not {p['sso']}"
+            )
+        elif "authelia" not in placed:
+            errors.append("ingress.forward-auth.enabled requires a placed authelia service")
+    keys = {str(service.get("key")) for service in services if service.get("key")}
+    labels = route_labels(desired)
+    for rule in p["auth_exceptions"]:
+        if rule.get("instance") or rule.get("host") or rule.get("user"):
+            matched = any(exception_covers_service(rule, service) for service in services)
+        else:
+            matched = rule.get("service") in keys or rule.get("service") in labels
+        if not matched:
+            errors.append(
+                "networking.ingress.forward-auth.exceptions entry "
+                f"{rule['label']!r} matches no service or route"
+            )
+    if "sablier" in p["plugins"] and "sablier" not in placed:
+        errors.append("networking.ingress.plugins lists sablier but no workload lists sablier")
+    seen_host: set[str] = set()
+    for service in services:
+        if service.get("key") != "sablier":
+            continue
+        host = str(service.get("host") or "")
+        if host in seen_host:
+            errors.append(f"host {host} lists sablier more than once")
+        seen_host.add(host)
     return errors
 
 

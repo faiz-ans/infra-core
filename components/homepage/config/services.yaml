@@ -52,7 +52,6 @@
             description: Photos
             server: mantle-pilot
             container: immich-immich-server
-            siteMonitor: http://{{HOMEPAGE_VAR_SURFACE_UPSTREAM}}:2283/
         - Jellyfin:
             id: jellyfin
             href: https://watch.{{HOMEPAGE_VAR_DOMAIN}}

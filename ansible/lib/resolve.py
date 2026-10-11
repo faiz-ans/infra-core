@@ -5,7 +5,7 @@ import re
 from typing import Any
 
 from .directory import ldap_base_dn
-from .secrets import resolve_secret, split_secrets
+from .secrets import SecretError, resolve_secret, split_secrets
 from .topology import env, host_roots, hosts, ingress_host, policy, root_owners, roots, workload_users
 
 VAR = re.compile(r"\$\{([^}]+)\}")
@@ -117,6 +117,7 @@ def render(
     service: str = "",
     host: str = "",
     secrets: dict[str, Any] | None = None,
+    missing_secret: str = "error",
 ) -> str:
     site: dict[str, Any] = {}
     hosts: dict[str, Any] = {}
@@ -128,7 +129,12 @@ def render(
         if key.startswith("secrets."):
             if secrets is None:
                 return secret_name(key)
-            return resolve_secret(key, service=service, host=host, site=site, hosts=hosts).podman_name
+            try:
+                return resolve_secret(key, service=service, host=host, site=site, hosts=hosts).podman_name
+            except SecretError:
+                if missing_secret == "name":
+                    return secret_name(key)
+                raise
         if key in mapping:
             return mapping[key]
         return m.group(0)

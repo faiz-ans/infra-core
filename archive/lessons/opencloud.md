@@ -31,7 +31,9 @@ Mounts, host path then container path:
 - site groups root → `/posix/groups`
 - `${appdata}/opencloud/data` → `/var/lib/opencloud`
 
-The container is rootless with `keep_id`. Container uid 1000 is the workload user on the host. Host uid 0 appears as 65534 inside the container. The process command is `opencloud init || true; opencloud server`. IDM is `${appdata}/opencloud/data/idm/idm.boltdb`.
+The container is rootless with `keep_id`. `User=` is the workload uid and gid, so the process is that account inside the container whichever host uid it has. Host uid 0 appears as 65534 inside the container. The process command is the image entrypoint: `opencloud init || true; exec opencloud server`. IDM is `${appdata}/opencloud/data/idm/idm.boltdb`.
+
+Posix node locks are not in appdata. Each home has `.oc-nodes` (and `.oc-tmp`, `.space`) and the lock files are mode `0600`, owned by the user who ran the container. SET chowns those trees to the current workload user before the container starts, and restarts OpenCloud when a running process still has the old identity. A lock the new user cannot open is omitted from the space list, personal and project alike. Appdata ownership does not cover them.
 
 `STORAGE_USERS_FILEMETADATA_CACHE_TTL` appears once. `OC_CACHE_STORE=noop` is shared with the ID cache. Leave it unset.
 

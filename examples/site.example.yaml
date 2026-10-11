@@ -15,7 +15,9 @@ site:
     ingress:
       engine: caddy
       generate-upstream: true
-      auth-exceptions: [homepage]
+      forward-auth:
+        enabled: true
+        exceptions: [homepage]
     tunnel:
       engine: none
       endpoint: vpn.example.lan

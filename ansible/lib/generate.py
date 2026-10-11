@@ -2,10 +2,23 @@
 from __future__ import annotations
 
 from typing import Any
+from urllib.parse import urlencode
 
 from .directory import authelia_password_hash, file_backend_needs_passwords, ldap_base_dn, sso_groups
 from .resolve import LOOPBACK
-from .topology import admin_gui, all_services, env, hosts, ingress_host, placed_keys, policy, site_of
+from .topology import (
+    ROOT,
+    admin_gui,
+    all_services,
+    env,
+    exception_covers_route,
+    exception_covers_service,
+    hosts,
+    ingress_host,
+    placed_keys,
+    policy,
+    site_of,
+)
 
 
 def domain_of(desired: dict[str, Any]) -> str:
@@ -43,39 +56,107 @@ def admin_gui_host(desired: dict[str, Any]) -> dict[str, Any] | None:
 
 
 def gate_all_routes(desired: dict[str, Any]) -> bool:
-    """Authelia and Caddy together authenticate every request before the upstream."""
+    """Forward-auth is opt-in, and still requires both engines to be placed."""
     p = policy(desired)
-    if p["sso"] != "authelia" or p["ingress"] != "caddy":
+    if not p["forward_auth"] or p["sso"] != "authelia" or p["ingress"] != "caddy":
         return False
     keys = placed_keys(desired)
     return "authelia" in keys and "caddy" in keys
 
 
-def _exempt(desired: dict[str, Any], *tokens: str) -> bool:
-    exceptions = set(policy(desired)["auth_exceptions"])
-    return any(token and token in exceptions for token in tokens)
+def _service_excepted(desired: dict[str, Any], service: dict[str, Any]) -> bool:
+    return any(exception_covers_service(rule, service) for rule in policy(desired)["auth_exceptions"])
+
+
+def _route_excepted(desired: dict[str, Any], *tokens: str) -> bool:
+    return any(exception_covers_route(rule, *tokens) for rule in policy(desired)["auth_exceptions"])
 
 
 def service_gated(desired: dict[str, Any], service: dict[str, Any]) -> bool:
     """True when this site block must forward-auth before it fulfills the request.
 
-    The SSO portal itself stays open so a person can sign in. With both engines
-    placed, every other route is gated unless the operator listed an exception.
-    Without both engines, only a service's own forward-auth mode is gated.
+    The SSO portal itself stays open so a person can sign in. The site-wide
+    gate runs only when forward-auth is enabled and both engines are placed.
+    Every other route is then gated unless an exception names it. Otherwise
+    only a service's own forward-auth mode is gated.
     """
     if service.get("key") == "authelia":
         return False
-    sub = service.get("subdomain") or {}
     if gate_all_routes(desired):
-        return not _exempt(desired, str(service.get("key") or ""), str(service.get("name") or ""), str(sub.get("primary") or ""))
+        return not _service_excepted(desired, service)
     return (service.get("sso") or "none") == "forward-auth"
 
 
 def route_gated(desired: dict[str, Any], *tokens: str) -> bool:
-    """Cockpit and the router site follow the same default as services."""
+    """Cockpit and the router site follow the site-wide forward-auth switch."""
     if not gate_all_routes(desired):
         return False
-    return not _exempt(desired, *tokens)
+    return not _route_excepted(desired, *tokens)
+
+
+def _sablier_peer(desired: dict[str, Any], service: dict[str, Any]) -> dict[str, Any] | None:
+    """The Sablier that shares this container's host and workload user.
+
+    It talks to that user's systemd, which only sees that user's Quadlets.
+    Authelia stays running because forward-auth calls it before any plugin.
+    """
+    if "sablier" not in policy(desired)["plugins"]:
+        return None
+    if service.get("key") in ("sablier", "authelia", "caddy"):
+        return None
+    for peer in all_services(desired):
+        if peer.get("key") != "sablier":
+            continue
+        if peer.get("host") == service.get("host") and peer.get("user") == service.get("user"):
+            return peer
+    return None
+
+
+def _sablier_names(service: dict[str, Any]) -> list[str]:
+    """Systemd user units for this service. Quadlet names each unit after the file."""
+    component = str(service.get("component") or service.get("key") or "")
+    directory = ROOT / "components" / component
+    found: list[str] = []
+    if directory.is_dir():
+        for pattern in ("*.container", "*.kube"):
+            for unit in sorted(directory.glob(pattern)):
+                found.append(f"{unit.stem}.service")
+    if found:
+        return found
+    name = str(service.get("name") or service.get("key") or "")
+    return [f"{name}.service"] if name else []
+
+
+# IT Tools is a client-side PWA. After one visit its service worker serves the
+# app from cache, so later navigations never reach Caddy. This worker replaces
+# that one: it keeps no cache and does not answer fetches, so the browser goes
+# back through the gates. The check for /sw.js itself is not authenticated;
+# a login redirect would leave the caching worker installed.
+IT_TOOLS_SW = (
+    "self.addEventListener('install',e=>self.skipWaiting());"
+    "self.addEventListener('activate',e=>e.waitUntil((async()=>{"
+    "const ks=await caches.keys();"
+    "await Promise.all(ks.map(k=>caches.delete(k)));"
+    "await self.clients.claim();"
+    "const cs=await self.clients.matchAll({type:'window'});"
+    "await Promise.all(cs.map(c=>c.navigate(c.url)));"
+    "})()));"
+)
+
+
+def sablier_import(desired: dict[str, Any], service: dict[str, Any], ingress_name: str | None) -> str | None:
+    """Ask Sablier to wake this container after authentication and before the upstream."""
+    peer = _sablier_peer(desired, service)
+    names = _sablier_names(service)
+    if not peer or not names:
+        return None
+    port = web_port(peer) or "10000"
+    if peer.get("host") and ingress_name and peer.get("host") == ingress_name:
+        address = f"127.0.0.1:{port}"
+    else:
+        address = f"{peer.get('host_ip') or '127.0.0.1'}:{port}"
+    query = urlencode([("names", name) for name in names])
+    return f'import sablier_gate {address} "/api/strategies/blocking?{query}"'
 
 
 def upstream_for(service: dict[str, Any], ingress_name: str | None) -> str:
@@ -120,6 +201,15 @@ def generate_caddyfile(desired: dict[str, Any]) -> str:
         "}",
         "",
     ]
+    if any(service.get("key") == "sablier" for service in all_services(desired)) and "sablier" in policy(desired)["plugins"]:
+        lines += [
+            "(sablier_gate) {",
+            "	forward_auth {args[0]} {",
+            "		uri {args[1]}",
+            "	}",
+            "}",
+            "",
+        ]
     seen = set()
     for s in all_services(desired):
         sub = s.get("subdomain") or {}
@@ -163,23 +253,8 @@ def generate_caddyfile(desired: dict[str, Any]) -> str:
         sso = s.get("sso") or "none"
         upstream = upstream_for(s, ingress_name)
         lines += [f"https://{primary}.{domain} {{", "	tls internal"]
-        if service_gated(desired, s):
-            lines.append("	import authelia_gate")
-        if s["key"] == "authelia":
-            lines += [
-                "	handle /pki/local-root.crt {",
-                "		rewrite * /root.crt",
-                "		root * /data/caddy/pki/authorities/local",
-                "		file_server",
-                "	}",
-            ]
-        if sso == "admin-only" and not gate_all_routes(desired):
-            lines += [
-                "	handle /admin* {",
-                "		import authelia_gate",
-                f"		reverse_proxy {upstream}:{up_port}",
-                "	}",
-            ]
+        wake = sablier_import(desired, s, ingress_name)
+        admin_only = sso == "admin-only" and not gate_all_routes(desired)
         proxy = [
             f"	reverse_proxy {upstream}:{up_port} {{",
             f"		header_up Host {primary}.{domain}",
@@ -199,8 +274,109 @@ def generate_caddyfile(desired: dict[str, Any]) -> str:
                 "			write_timeout 3600s",
                 "		}",
             ]
+        if wake:
+            # Sablier is ready when systemd is active. The process can still
+            # reset the published port until it listens.
+            proxy += [
+                "		lb_try_duration 30s",
+                "		lb_try_interval 250ms",
+            ]
         proxy.append("	}")
-        lines += proxy
+        if s["key"] == "it-tools":
+            lines += [
+                "	route {",
+                "		handle /sw.js {",
+                "			header Cache-Control no-store",
+                "			header Content-Type application/javascript",
+                f'			respond "{IT_TOOLS_SW}" 200',
+                "		}",
+            ]
+            if service_gated(desired, s):
+                lines.append("		import authelia_gate")
+            if wake:
+                lines.append("\t\t" + wake)
+            lines += ["\t" + line for line in proxy]
+            lines += ["	}", "}", ""]
+            continue
+        if admin_only and wake:
+            # route keeps source order: authenticate, then Sablier, then the upstream.
+            lines += [
+                "	route {",
+                "		handle /admin* {",
+                "			import authelia_gate",
+                "\t\t\t" + wake,
+                f"			reverse_proxy {upstream}:{up_port}",
+                "		}",
+                "\t\t" + wake,
+            ]
+            lines += ["\t" + line for line in proxy]
+            lines.append("	}")
+        else:
+            if service_gated(desired, s):
+                lines.append("	import authelia_gate")
+            if wake:
+                lines.append("\t" + wake)
+            portal = policy(desired)["portal_assets"] if s["key"] == "authelia" else ""
+            if s["key"] == "authelia":
+                lines += [
+                    "	handle /pki/local-root.crt {",
+                    "		rewrite * /root.crt",
+                    "		root * /data/caddy/pki/authorities/local",
+                    "		file_server",
+                    "	}",
+                ]
+                if portal:
+                    lines += [
+                        "	handle_path /portal/* {",
+                        f"		root * {portal}",
+                        "		file_server",
+                        "	}",
+                    ]
+                    home = next((item for item in all_services(desired) if item.get("key") == "homepage" and web_port(item)), None)
+                    if home:
+                        home_label = str((home.get("subdomain") or {}).get("primary") or "homepage")
+                        home_up = f"{upstream_for(home, ingress_name)}:{web_port(home)}"
+                        lines += [
+                            "	handle /images/* {",
+                            f"		reverse_proxy {home_up} {{",
+                            f"			header_up Host {home_label}.{domain}",
+                            "		}",
+                            "	}",
+                        ]
+                    # Homepage resolves icon filenames to this CDN in the browser.
+                    # The login host must serve them itself; Authelia's policy blocks other origins.
+                    lines += [
+                        "	handle_path /cdn/* {",
+                        "		reverse_proxy https://cdn.jsdelivr.net {",
+                        "			header_up Host cdn.jsdelivr.net",
+                        "		}",
+                        "	}",
+                    ]
+            if admin_only:
+                lines += [
+                    "	handle /admin* {",
+                    "		import authelia_gate",
+                    f"		reverse_proxy {upstream}:{up_port}",
+                    "	}",
+                ]
+            if portal:
+                # replace is provided by the optional localhost/caddy-portal image.
+                # It runs before the proxy so it sees the HTML body.
+                lines += [
+                    "	route {",
+                    '		replace "</head>" "</head><link rel=\\"stylesheet\\" href=\\"/portal/login.css\\"><script src=\\"/portal/login.js\\" defer></script>"',
+                ]
+                opened = False
+                for line in proxy:
+                    if not opened and line.startswith("\treverse_proxy "):
+                        lines.append("\t" + line)
+                        lines.append("\t\t\theader_up -Accept-Encoding")
+                        opened = True
+                        continue
+                    lines.append("\t" + line)
+                lines.append("	}")
+            else:
+                lines += proxy
         lines += ["}", ""]
     gui = admin_gui_host(desired)
     if gui:

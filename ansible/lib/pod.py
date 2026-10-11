@@ -58,6 +58,7 @@ _CONTAINER_KEYS = {
     "podmanArgs",
     "publishPort",
     "secret",
+    "labels",
 }
 
 
@@ -87,7 +88,51 @@ def apply_container_overlay(text: str, overlay: dict[str, Any] | None) -> str:
         text = _ensure_line(text, f"PublishPort={port}")
     for secret in overlay.get("secret") or []:
         text = _ensure_line(text, f"Secret={secret}")
+    labels = overlay.get("labels") or {}
+    if labels:
+        if not isinstance(labels, dict):
+            raise ValueError("container.labels must be a mapping")
+        for key, value in labels.items():
+            if isinstance(value, bool):
+                value = "true" if value else "false"
+            elif not isinstance(value, str):
+                raise ValueError(f"container.labels.{key} must be a string")
+            text = _ensure_line(text, f"Label={key}={value}")
     return text
+
+
+def _sablier_flag(value: Any) -> bool:
+    return value is True or str(value).lower() == "true"
+
+
+def sablier_enabled(raw: dict[str, Any] | None) -> bool:
+    """True when site.yaml opted this instance into Sablier."""
+    raw = raw or {}
+    labels = ((raw.get("container") or {}).get("labels") or {})
+    if isinstance(labels, dict) and _sablier_flag(labels.get("sablier.enable")):
+        return True
+    containers = (((raw.get("pod") or {}).get("spec") or {}).get("containers") or [])
+    for item in containers:
+        if not isinstance(item, dict):
+            continue
+        pod_labels = item.get("labels") or {}
+        if isinstance(pod_labels, dict) and _sablier_flag(pod_labels.get("sablier.enable")):
+            return True
+    return False
+
+
+def ensure_sablier_section(text: str) -> str:
+    """Quadlet copies this section into the generated unit. The systemd provider reads it there.
+
+    A Podman label is not enough: Quadlet starts containers with --rm, so stopping one
+    deletes it and the Podman API cannot start it again.
+    """
+    if "[X-Sablier]" in text:
+        section = text.split("[X-Sablier]", 1)[1].split("\n[", 1)[0]
+        if re.search(r"(?m)^Enable=", section):
+            return text
+        return text.rstrip() + "\nEnable=true\n"
+    return text.rstrip() + "\n\n[X-Sablier]\nEnable=true\n"
 
 
 def _ensure_line(text: str, line: str) -> str:

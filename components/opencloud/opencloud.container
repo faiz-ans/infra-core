@@ -6,6 +6,7 @@ Image=docker.io/opencloudeu/opencloud-rolling:latest
 ContainerName=opencloud
 Network=site
 UserNS=keep-id
+User=${host.operations.workload.uid}:${host.operations.workload.gid}
 PublishPort=127.0.0.1:9200:9200
 AddHost=cloud.${site.env.domain}:${site.networking.ingress.host.ip}
 # Pasta host-loopback. The site network cannot reach ingress :443;
@@ -52,8 +53,8 @@ Volume=${site.data.roots.appdata}/opencloud/posix:/posix
 Volume=${site.data.roots.users}:/posix/users
 Volume=${site.data.roots.appdata}/opencloud/projects:/posix/projects
 Volume=${site.data.roots.groups}:/posix/groups
-Entrypoint=/bin/sh
-Exec=-c "opencloud init || true; opencloud server"
+Volume=${component.dir}/entrypoint.sh:/entrypoint.sh:ro
+Entrypoint=/entrypoint.sh
 
 [Service]
 Restart=on-failure

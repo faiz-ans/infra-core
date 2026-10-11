@@ -45,10 +45,35 @@
                   "properties": {
                     "engine": { "type": "string" },
                     "generate-upstream": { "type": "boolean", "default": true },
-                    "auth-exceptions": {
+                    "forward-auth": {
+                      "type": "object",
+                      "properties": {
+                        "enabled": {
+                          "type": "boolean",
+                          "default": false,
+                          "description": "Gate every generated site with the SSO engine. Requires identity.sso to be declared and placed. The SSO portal is never gated."
+                        },
+                        "exceptions": {
+                          "type": "array",
+                          "description": "Skip the gate for a service key, a scoped service, or an instance (inst). A bare name may also be a Cockpit label or wifi.",
+                          "items": {
+                            "oneOf": [
+                              { "type": "string" },
+                              { "type": "object" }
+                            ]
+                          }
+                        }
+                      },
+                      "additionalProperties": false
+                    },
+                    "plugins": {
                       "type": "array",
-                      "items": { "type": "string" },
-                      "description": "Service keys or published labels that skip the Authelia gate. The Authelia portal is never gated."
+                      "description": "Ingress middleware. sablier wakes containers on the same host and workload user after forward-auth.",
+                      "items": { "type": "string", "enum": ["sablier"] }
+                    },
+                    "portal-assets": {
+                      "type": "string",
+                      "description": "Directory on the ingress host of login.css and login.js. When set, the generated Authelia site serves /portal/ and injects those files. Omit to leave the portal untouched."
                     }
                   },
                   "additionalProperties": false
@@ -442,7 +467,38 @@
         },
         "pod": {
           "type": "object",
-          "description": "Delta merged into the component pod.yaml. Named lists merge by name."
+          "description": "Delta merged into the component pod.yaml. Named lists merge by name.",
+          "properties": {
+            "metadata": {
+              "type": "object",
+              "properties": {
+                "labels": {
+                  "type": "object",
+                  "additionalProperties": { "type": "string" },
+                  "description": "Pod metadata.labels. Written onto the Pod."
+                }
+              }
+            },
+            "spec": {
+              "type": "object",
+              "properties": {
+                "containers": {
+                  "type": "array",
+                  "description": "Matched by name. labels are written onto that container.",
+                  "items": {
+                    "type": "object",
+                    "properties": {
+                      "name": { "type": "string" },
+                      "labels": {
+                        "type": "object",
+                        "additionalProperties": { "type": "string" }
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          }
         },
         "container": {
           "type": "object",
@@ -455,7 +511,12 @@
             "addDevice": { "type": "array", "items": { "type": "string" }, "description": "Quadlet AddDevice= values, same form as podman --device" },
             "podmanArgs": { "type": "array", "items": { "type": "string" } },
             "publishPort": { "type": "array", "items": { "type": "string" } },
-            "secret": { "type": "array", "items": { "type": "string" } }
+            "secret": { "type": "array", "items": { "type": "string" } },
+            "labels": {
+              "type": "object",
+              "additionalProperties": { "type": ["string", "boolean"] },
+              "description": "Quadlet labels. Each entry is written as Label=<key>=<value>."
+            }
           },
           "additionalProperties": false
         }

@@ -9,11 +9,13 @@ Network=site
 PublishPort=127.0.0.1:10000:10000
 PublishPort=${host.ip}:10000:10000
 Pull=always
-Exec=start --provider.name=podman
+Exec=start --provider.name=systemd --provider.systemd.user-instance=true --provider.auto-stop-on-startup --provider.auto-stop-externally-started
 Environment=TZ=${site.env.timezone}
-Environment=SABLIER_PROVIDER_NAME=podman
-Environment=SABLIER_PROVIDER_PODMAN_URI=unix:///run/podman/podman.sock
-Volume=/run/user/${host.operations.workload.uid}/podman/podman.sock:/run/podman/podman.sock:ro
+Environment=DBUS_SESSION_BUS_ADDRESS=unix:path=/run/user/${host.operations.workload.uid}/bus
+Environment=SABLIER_PROVIDER_NAME=systemd
+Environment=SABLIER_PROVIDER_SYSTEMD_USER_INSTANCE=true
+Volume=/run/user/${host.operations.workload.uid}/bus:/run/user/${host.operations.workload.uid}/bus
+Volume=/run/user/${host.operations.workload.uid}/systemd:/run/user/${host.operations.workload.uid}/systemd:ro
 
 [Service]
 Restart=on-failure
