@@ -1,3 +1,0 @@
-[[Services]]
-Service = "restic.service"
-Oneshot = false

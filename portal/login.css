@@ -23,6 +23,10 @@ html::after {
   backdrop-filter: brightness(0.5);
 }
 
+header {
+  display: none;
+}
+
 body,
 #root,
 #root > div {
@@ -41,11 +45,71 @@ body,
   border-color: color-mix(in oklab,rgb(226 232 240/1) 50%,transparent);
 }
 
-#language-button {
-  display: none;
+#first-factor-stage {
+  min-height: 100vh;
+  display: flex;
+  flex-direction: column;
 }
 
 .text-muted-foreground, .text-muted-foreground\/60 {
   color: color-mix(in oklab,rgb(226 232 240/1) 75%,transparent);
   font-family: Manrope,Manrope-Fallback,Arial,sans-serif;
+}
+
+.header-bar {
+  display: flex;
+  width: 100%;
+  padding: 2rem;
+  margin-bottom: auto;
+  max-width: 80rem;
+}
+
+.footer-bar {
+  display: flex;
+  width: 100%;
+  box-sizing: border-box;
+  justify-content: flex-end;
+  padding: 2rem;
+  margin-top: auto;
+  max-width: 80rem;
+}
+
+.home-button {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 1.5rem;
+  height: 1.5rem;
+  color: #e3e3e3;
+  text-decoration: none;
+  margin-right: calc(0.25rem * 3);
+  margin-bottom: calc(0.25rem * 4);
+}
+
+@media (max-width: 767px) {
+  .home-button {
+    margin-right: 1.25rem;
+  }
+}
+
+.home-button svg {
+  display: block;
+  width: 24px;
+  height: 24px;
+  fill: currentColor;
+}
+
+.portal-service-title {
+  left: 0;
+  right: 0;
+  margin: 0;
+  padding: 0.5rem 0 2rem 0;
+  text-align: center;
+  pointer-events: none;
+  color: #fff;
+  font-family: Manrope, Manrope-Fallback, Arial, sans-serif;
+  font-size: 1.75rem;
+  font-weight: 800;
+  line-height: 1.1;
+  letter-spacing: -0.03em;
 }

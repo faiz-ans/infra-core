@@ -3,56 +3,63 @@ function icon(name) {
   return "images/icons/" + name;
 }
 
-const ICONS = {
-  "auth.home.lan": icon("authelia.svg"),
-  "authelia.home.lan": icon("authelia.svg"),
-  "cloud.home.lan": icon("opencloud.svg"),
-  "opencloud.home.lan": icon("opencloud.svg"),
-  "oc.home.lan": icon("opencloud.svg"),
-  "notes.home.lan": icon("jotty.svg"),
-  "jotty.home.lan": icon("jotty.svg"),
-  "links.home.lan": icon("linkding.svg"),
-  "linkding.home.lan": icon("linkding.svg"),
-  "snips.home.lan": icon("bytestash.svg"),
-  "snip.home.lan": icon("bytestash.svg"),
-  "bytestash.home.lan": icon("bytestash.svg"),
-  "pass.home.lan": icon("bitwarden.svg"),
-  "vaultwarden.home.lan": icon("bitwarden.svg"),
-  "pw.home.lan": icon("bitwarden.svg"),
-  "photos.home.lan": icon("immich.svg"),
-  "immich.home.lan": icon("immich.svg"),
-  "gallery.home.lan": icon("immich.svg"),
-  "pdf.home.lan": icon("bentopdf.svg"),
-  "bentopdf.home.lan": icon("bentopdf.svg"),
-  "it.home.lan": icon("it-tools.svg"),
-  "tools.home.lan": icon("it-tools.svg"),
-  "ups.home.lan": icon("peanut.svg"),
-  "peanut.home.lan": icon("peanut.svg"),
-  "sys.home.lan": icon("cockpit.svg"),
-  "cockpit.home.lan": icon("cockpit.svg"),
-  "users.home.lan": icon("openldap.svg"),
-  "ldap.home.lan": icon("openldap.svg"),
-  "remote.home.lan": icon("rustdesk.svg"),
-  "rustdesk.home.lan": icon("rustdesk.svg"),
-  "dns.home.lan": icon("pi-hole.svg"),
-  "pihole.home.lan": icon("pi-hole.svg"),
-  "dns2.home.lan": icon("pi-hole.svg"),
-  "pihole2.home.lan": icon("pi-hole.svg"),
-  "ingress.home.lan": icon("caddy.svg"),
-  "caddymanager.home.lan": icon("caddy.svg"),
-  "caddy.home.lan": icon("caddy.svg"),
-  "vpn.home.lan": icon("wireguard.svg"),
-  "wireguard.home.lan": icon("wireguard.svg"),
-  "wg.home.lan": icon("wireguard.svg"),
-  "wifi.home.lan": icon("linksys.svg"),
-  "up.home.lan": icon("uptime-kuma.svg"),
-  "uptime.home.lan": icon("uptime-kuma.svg"),
-  "kuma.home.lan": icon("uptime-kuma.svg"),
-  "disks.home.lan": icon("scrutiny.svg"),
-  "scrutiny.home.lan": icon("scrutiny.svg"),
+/* Display names match the Homepage service tiles. Keep in step with portal/login.js. */
+const SERVICES = {
+  "auth.home.lan": ["authelia.svg", "Authelia"],
+  "authelia.home.lan": ["authelia.svg", "Authelia"],
+  "cloud.home.lan": ["opencloud.svg", "OpenCloud"],
+  "opencloud.home.lan": ["opencloud.svg", "OpenCloud"],
+  "oc.home.lan": ["opencloud.svg", "OpenCloud"],
+  "notes.home.lan": ["jotty.svg", "Jotty"],
+  "jotty.home.lan": ["jotty.svg", "Jotty"],
+  "links.home.lan": ["linkding.svg", "Linkding"],
+  "linkding.home.lan": ["linkding.svg", "Linkding"],
+  "snips.home.lan": ["bytestash.svg", "ByteStash"],
+  "snip.home.lan": ["bytestash.svg", "ByteStash"],
+  "bytestash.home.lan": ["bytestash.svg", "ByteStash"],
+  "pass.home.lan": ["bitwarden.svg", "Vaultwarden"],
+  "vaultwarden.home.lan": ["bitwarden.svg", "Vaultwarden"],
+  "pw.home.lan": ["bitwarden.svg", "Vaultwarden"],
+  "photos.home.lan": ["immich.svg", "Immich"],
+  "immich.home.lan": ["immich.svg", "Immich"],
+  "gallery.home.lan": ["immich.svg", "Immich"],
+  "pdf.home.lan": ["bentopdf.svg", "BentoPDF"],
+  "bentopdf.home.lan": ["bentopdf.svg", "BentoPDF"],
+  "it.home.lan": ["it-tools.svg", "IT Tools"],
+  "tools.home.lan": ["it-tools.svg", "IT Tools"],
+  "ups.home.lan": ["peanut.svg", "Peanut"],
+  "peanut.home.lan": ["peanut.svg", "Peanut"],
+  "sys.home.lan": ["cockpit.svg", "Cockpit"],
+  "cockpit.home.lan": ["cockpit.svg", "Cockpit"],
+  "users.home.lan": ["openldap.svg", "OpenLDAP"],
+  "ldap.home.lan": ["openldap.svg", "OpenLDAP"],
+  "remote.home.lan": ["rustdesk.svg", "RustDesk"],
+  "rustdesk.home.lan": ["rustdesk.svg", "RustDesk"],
+  "dns.home.lan": ["pi-hole.svg", "Pi-hole"],
+  "pihole.home.lan": ["pi-hole.svg", "Pi-hole"],
+  "dns2.home.lan": ["pi-hole.svg", "Pi-hole"],
+  "pihole2.home.lan": ["pi-hole.svg", "Pi-hole"],
+  "ingress.home.lan": ["caddy.svg", "Caddy"],
+  "caddymanager.home.lan": ["caddy.svg", "Caddy"],
+  "caddy.home.lan": ["caddy.svg", "Caddy"],
+  "vpn.home.lan": ["wireguard.svg", "WireGuard"],
+  "wireguard.home.lan": ["wireguard.svg", "WireGuard"],
+  "wg.home.lan": ["wireguard.svg", "WireGuard"],
+  "wifi.home.lan": ["linksys.svg", "Linksys EA8300"],
+  "up.home.lan": ["uptime-kuma.svg", "Uptime Kuma"],
+  "uptime.home.lan": ["uptime-kuma.svg", "Uptime Kuma"],
+  "kuma.home.lan": ["uptime-kuma.svg", "Uptime Kuma"],
+  "disks.home.lan": ["scrutiny.svg", "Scrutiny"],
+  "scrutiny.home.lan": ["scrutiny.svg", "Scrutiny"],
 };
 
-const src = ICONS[location.hostname];
+const row = SERVICES[location.hostname];
 const logo = document.querySelector(".logo");
-if (logo && src) logo.src = src;
-else if (logo) logo.remove();
+const title = document.querySelector(".service-name");
+if (logo && row) {
+  logo.src = icon(row[0]);
+  if (title) title.textContent = row[1];
+} else if (logo) {
+  logo.remove();
+  if (title) title.remove();
+}

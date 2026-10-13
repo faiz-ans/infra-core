@@ -9,3 +9,5 @@ These are product notes. The fix belongs in GET/SET (playbooks, roles, generator
 - [OpenCloud](opencloud.md) — homes as spaces, grants, SMB, context menus, live updates
 - [WireGuard](wireguard.md) — rootless UI helper, and internet through the tunnel
 - [Uptime Kuma, Scrutiny, PeaNUT, CaddyManager](services.md) — widget addresses, Scrutiny collector, NUT, CaddyManager login
+- [Vaultwarden](vaultwarden.md) — Android 401, web vault behind Authelia, client paths left open, Sablier
+- [Sablier](sablier.md) — stock Caddy calls the standalone server; Quadlet units, not container names

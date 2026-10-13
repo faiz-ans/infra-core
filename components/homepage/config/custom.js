@@ -1,7 +1,7 @@
 /* Move Apps/System tabs into the header (after weather) as Material icon buttons.
  * Also normalize glances uptime "1 day" → "1d" (Homepage only rewrites plural "days").
  * Footer: glances visibility toggle + scroll-to-top (before refresh).
- * PeaNUT / Caddy / Pi-hole / Uptime Kuma: shorten service-block labels.
+ * PeaNUT / Caddy / Pi-hole / Uptime Kuma / Backrest: shorten service-block labels.
  *
  * Flip tiles + Glances service customizations: see config/archive/
  */
@@ -36,6 +36,8 @@
     "uptimekuma.incidents": "Incidents",
     incidents: "Incidents",
     incident: "Incidents",
+    // Backrest
+    "bytes added": "Added",
   };
 
   const TAB_BY_ID = {

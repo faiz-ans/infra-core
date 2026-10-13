@@ -73,12 +73,18 @@ def _route_excepted(desired: dict[str, Any], *tokens: str) -> bool:
 def service_gated(desired: dict[str, Any], service: dict[str, Any]) -> bool:
     """True when this site block must forward-auth before it fulfills the request.
 
-    The SSO portal itself stays open so a person can sign in. The site-wide
-    gate runs only when forward-auth is enabled and both engines are placed.
-    Every other route is then gated unless an exception names it. Otherwise
-    only a service's own forward-auth mode is gated.
+    The SSO portal itself stays open so a person can sign in. An admin-only
+    service keeps that narrower matcher: the site block stays open and only
+    /admin* is gated. The site-wide gate runs only when forward-auth is
+    enabled and both engines are placed. Every other route is then gated
+    unless an exception names it. Otherwise only a service's own
+    forward-auth mode is gated.
     """
-    if service.get("key") == "authelia":
+    if service.get("key") in ("authelia", "opencloud"):
+        # OpenCloud signs in with OIDC. A site-wide gate turns /config.json
+        # into an Authelia redirect, which the web app shows as a missing config.
+        return False
+    if (service.get("sso") or "none") == "admin-only":
         return False
     if gate_all_routes(desired):
         return not _service_excepted(desired, service)
@@ -142,6 +148,26 @@ IT_TOOLS_SW = (
 )
 
 
+# A hard refresh receives Authelia's redirect and still leaves the stored page
+# in place. The next ordinary visit replays it. This header is on that redirect,
+# which is the response the browser actually receives, and drops the stored page.
+DROP_STORED = 'header Clear-Site-Data "\\"cache\\""'
+
+
+def _deny_replay(proxy: list[str]) -> list[str]:
+    """A forward-auth success must not be reusable after sign-out.
+
+    These apps answer with a cacheable page. The browser then replays that
+    page on the next visit and never asks Caddy, so Authelia does not run.
+    A hard refresh skips the stored copy for that one navigation. The redirect
+    it receives does not replace the stored page, so the visit after that
+    replays it again unless the redirect tells the browser to drop the cache.
+    """
+    if not proxy or proxy[-1] != "\t}":
+        return list(proxy)
+    return [*proxy[:-1], '\t\theader_down Cache-Control "private, no-store"', "\t}"]
+
+
 def sablier_import(desired: dict[str, Any], service: dict[str, Any], ingress_name: str | None) -> str | None:
     """Ask Sablier to wake this container after authentication and before the upstream."""
     peer = _sablier_peer(desired, service)
@@ -188,6 +214,9 @@ def generate_caddyfile(desired: dict[str, Any]) -> str:
         "	forward_auth 127.0.0.1:9091 {",
         f"		uri /api/authz/forward-auth?authelia_url=https://{authelia_label(desired)}.{domain}/",
         "		copy_headers Remote-User Remote-Groups Remote-Name Remote-Email",
+        # The app's own Basic header is for the upstream. Authelia treats it as
+        # the session and redirects, so the browser never reaches the app.
+        "		header_up -Authorization",
         "	}",
         "}",
         "(authelia_gate_cockpit) {",
@@ -235,6 +264,7 @@ def generate_caddyfile(desired: dict[str, Any]) -> str:
                 ]
             lines += [f"https://{primary}.{domain} {{", "	tls internal"]
             if service_gated(desired, s):
+                lines.append("\t" + DROP_STORED)
                 lines.append("	import authelia_gate")
             lines += [
                 "	header Content-Type text/plain",
@@ -260,7 +290,7 @@ def generate_caddyfile(desired: dict[str, Any]) -> str:
         upstream = upstream_for(s, ingress_name)
         lines += [f"https://{primary}.{domain} {{", "	tls internal"]
         wake = sablier_import(desired, s, ingress_name)
-        admin_only = sso == "admin-only" and not gate_all_routes(desired)
+        admin_only = sso == "admin-only"
         proxy = [
             f"	reverse_proxy {upstream}:{up_port} {{",
             f"		header_up Host {primary}.{domain}",
@@ -272,7 +302,7 @@ def generate_caddyfile(desired: dict[str, Any]) -> str:
                 "		header_up -X-Remote-User",
                 "		header_up X-Remote-User {http.request.header.Remote-User}",
             ]
-        if s["key"] == "collabora":
+        if s["key"] in ("collabora", "opencloud"):
             proxy += [
                 "		flush_interval -1",
                 "		transport http {",
@@ -298,27 +328,51 @@ def generate_caddyfile(desired: dict[str, Any]) -> str:
                 "		}",
             ]
             if service_gated(desired, s):
+                lines.append("\t\t" + DROP_STORED)
                 lines.append("		import authelia_gate")
             if wake:
                 lines.append("\t\t" + wake)
-            lines += ["\t" + line for line in proxy]
+            body = _deny_replay(proxy) if service_gated(desired, s) else proxy
+            lines += ["\t" + line for line in body]
             lines += ["	}", "}", ""]
             continue
-        if admin_only and wake:
-            # route keeps source order: authenticate, then Sablier, then the upstream.
+        if admin_only:
+            # Clients talk to the API with no Authelia cookie. The web vault and
+            # /admin stay behind forward auth. Sablier still runs on both.
             lines += [
                 "	route {",
-                "		handle /admin* {",
-                "			import authelia_gate",
-                "\t\t\t" + wake,
-                f"			reverse_proxy {upstream}:{up_port}",
-                "		}",
-                "\t\t" + wake,
+                "		@bitwarden path /api* /identity* /notifications* /icons* /events*",
+                "		handle @bitwarden {",
             ]
-            lines += ["\t" + line for line in proxy]
-            lines.append("	}")
+            if wake:
+                lines.append("\t\t\t" + wake)
+            lines += ["\t\t" + line for line in proxy]
+            lines += [
+                "		}",
+                "		handle {",
+                "\t\t\t" + DROP_STORED,
+                "			import authelia_gate",
+            ]
+            if wake:
+                lines.append("\t\t\t" + wake)
+            lines += ["\t\t" + line for line in _deny_replay(proxy)]
+            lines += ["		}", "	}"]
         else:
+            if s["key"] == "opencloud":
+                lines += [
+                    "	@webjs path /js/*",
+                    "	header @webjs {",
+                    "		Cache-Control no-cache",
+                    "		defer",
+                    "	}",
+                    "	@layout {",
+                    "		method DELETE MOVE",
+                    "		path_regexp layout ^/(?:remote\\.php/)?dav/spaces/[^/]+/[^/]+/?$",
+                    "	}",
+                    "	respond @layout 403",
+                ]
             if service_gated(desired, s):
+                lines.append("\t" + DROP_STORED)
                 lines.append("	import authelia_gate")
             if wake:
                 lines.append("\t" + wake)
@@ -351,13 +405,6 @@ def generate_caddyfile(desired: dict[str, Any]) -> str:
                         ]
                     # Login icons are /images/icons/* on Homepage. The auth host
                     # proxies that path so Authelia's policy never loads another origin.
-            if admin_only:
-                lines += [
-                    "	handle /admin* {",
-                    "		import authelia_gate",
-                    f"		reverse_proxy {upstream}:{up_port}",
-                    "	}",
-                ]
             if portal:
                 # replace is provided by the optional localhost/caddy-portal image.
                 # It runs before the proxy so it sees the HTML body.
@@ -375,7 +422,7 @@ def generate_caddyfile(desired: dict[str, Any]) -> str:
                     lines.append("\t" + line)
                 lines.append("	}")
             else:
-                lines += proxy
+                lines += _deny_replay(proxy) if service_gated(desired, s) else proxy
         lines += ["}", ""]
     gui = admin_gui_host(desired)
     if gui:
@@ -398,7 +445,9 @@ def generate_caddyfile(desired: dict[str, Any]) -> str:
         if primary not in seen:
             seen.add(primary)
             lines += [f"https://{primary}.{domain} {{", "	tls internal"]
-            if route_gated(desired, primary, *gui_cfg["aliases"]):
+            cockpit_gated = route_gated(desired, primary, *gui_cfg["aliases"])
+            if cockpit_gated:
+                lines.append("\t" + DROP_STORED)
                 lines.append("	import authelia_gate_cockpit")
             lines += [
                 f"	reverse_proxy https://{gui_upstream}:9090 {{",
@@ -408,6 +457,10 @@ def generate_caddyfile(desired: dict[str, Any]) -> str:
                 "		transport http {",
                 "			tls_insecure_skip_verify",
                 "		}",
+            ]
+            if cockpit_gated:
+                lines.append('\t\theader_down Cache-Control "private, no-store"')
+            lines += [
                 "	}",
                 "}",
                 "",
@@ -416,6 +469,7 @@ def generate_caddyfile(desired: dict[str, Any]) -> str:
     if router:
         lines += [f"https://wifi.{domain} {{", "	tls internal"]
         if route_gated(desired, "wifi"):
+            lines.append("\t" + DROP_STORED)
             lines.append("	import authelia_gate")
         lines += [
             f"	reverse_proxy https://{router} {{",
@@ -423,6 +477,10 @@ def generate_caddyfile(desired: dict[str, Any]) -> str:
             "			tls_insecure_skip_verify",
             "		}",
             f"		header_up Host {router}",
+        ]
+        if route_gated(desired, "wifi"):
+            lines.append('\t\theader_down Cache-Control "private, no-store"')
+        lines += [
             "	}",
             "}",
             "",

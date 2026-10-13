@@ -257,6 +257,13 @@ services:
     network: site
     privilege: rootless
     sso: none
+  backrest:
+    component: backrest
+    network: site
+    privilege: rootless
+    sso: forward-auth
+    ports: { web: 9898 }
+    publish: ["127.0.0.1:9898:9898"]
   restic-rest:
     component: restic-rest
     network: site

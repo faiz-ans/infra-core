@@ -9,9 +9,9 @@ PublishPort=8000:8000
 Pull=always
 Environment=TZ=${site.env.timezone}
 Environment=DATA_DIRECTORY=/data
-Environment=PASSWORD_FILE=/data/.htpasswd
-Environment=OPTIONS=--listen :8000
-Volume=${site.env.backup_drive}/restic:/data
+Environment=PASSWORD_FILE=/auth/htpasswd
+Secret=${secrets.restic.htpasswd},type=mount,target=/auth/htpasswd
+Volume=${host.env.backup_drive}/restic:/data
 
 [Service]
 Restart=on-failure

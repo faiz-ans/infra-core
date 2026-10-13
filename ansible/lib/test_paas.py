@@ -272,6 +272,11 @@ class TestExample(unittest.TestCase):
         self.assertIn("handle /pki/local-root.crt", caddy)
         self.assertIn("root * /data/caddy/pki/authorities/local", caddy)
         self.assertIn("https://opencloud.example.lan", caddy)
+        cloud = caddy.split("https://opencloud.example.lan {", 1)[1].split("\nhttps://", 1)[0]
+        self.assertNotIn("authelia_gate", cloud)
+        self.assertIn("respond @layout 403", cloud)
+        self.assertIn("flush_interval -1", cloud)
+        self.assertIn("read_timeout 3600s", cloud)
         self.assertIn("https://homepage.example.lan", caddy)
         self.assertIn("https://dns.example.lan", caddy)
         self.assertNotIn("https://auth.example.lan", caddy)
@@ -289,6 +294,7 @@ class TestExample(unittest.TestCase):
         self.assertIn("header_up Host sys.example.lan", cockpit)
         self.assertIn("tls_insecure_skip_verify", cockpit)
         self.assertIn("import authelia_gate_cockpit", cockpit)
+        self.assertIn("header_up -Authorization", caddy.split("(authelia_gate)", 1)[1].split("}", 1)[0])
         self.assertIn("header_up -Authorization", caddy.split("(authelia_gate_cockpit)", 1)[1].split("}", 1)[0])
         homepage = caddy.split("https://homepage.example.lan {", 1)[1].split("\nhttps://", 1)[0]
         self.assertNotIn("import authelia_gate", homepage)
@@ -462,14 +468,33 @@ class TestExample(unittest.TestCase):
         vault["site"]["hosts"][0]["operations"]["workload"]["users"][0]["services"]["sablier"] = None
         vault["site"]["hosts"][0]["operations"]["workload"]["users"][0]["services"]["vaultwarden"] = None
         block = generate_caddyfile(vault).split("https://vaultwarden.example.lan {", 1)[1].split("\nhttps://", 1)[0]
-        admin = block.split("handle /admin*", 1)[1].split("}", 1)[0]
-        self.assertLess(admin.index("import authelia_gate"), admin.index("import sablier_gate"))
-        self.assertLess(block.index("handle /admin*"), block.index("\t\timport sablier_gate"))
+        client = block.split("handle @bitwarden", 1)[1].split("handle {", 1)[0]
+        ui = block.split("handle {", 1)[1]
+        self.assertNotIn("authelia_gate", client)
+        self.assertIn("sablier_gate", client)
+        self.assertLess(ui.index("import authelia_gate"), ui.index("import sablier_gate"))
+        self.assertNotIn("no-store", client)
+        self.assertNotIn("Clear-Site-Data", client)
+        self.assertIn('header_down Cache-Control "private, no-store"', ui)
+        self.assertIn('Clear-Site-Data "\\"cache\\""', ui)
+        gated = load_desired(EXAMPLE)
+        gated["site"]["hosts"][0]["operations"]["workload"]["users"][0]["services"]["vaultwarden"] = None
+        block = generate_caddyfile(gated).split("https://vaultwarden.example.lan {", 1)[1].split("\nhttps://", 1)[0]
+        client = block.split("handle @bitwarden", 1)[1].split("handle {", 1)[0]
+        ui = block.split("handle {", 1)[1]
+        self.assertNotIn("authelia_gate", client)
+        self.assertNotIn("no-store", client)
+        self.assertNotIn("Clear-Site-Data", client)
+        self.assertIn("import authelia_gate", ui)
+        self.assertIn('header_down Cache-Control "private, no-store"', ui)
+        self.assertIn('Clear-Site-Data "\\"cache\\""', ui)
         same = load_desired(EXAMPLE)
         same["site"]["networking"]["ingress"]["plugins"] = ["sablier"]
         same["site"]["hosts"][0]["operations"]["workload"]["users"][0]["services"]["sablier"] = None
         home = generate_caddyfile(same).split("https://homepage.example.lan {", 1)[1].split("\nhttps://", 1)[0]
         self.assertNotIn("import authelia_gate", home)
+        self.assertNotIn("no-store", home)
+        self.assertNotIn("Clear-Site-Data", home)
         self.assertIn('import sablier_gate http://127.0.0.1:10000 "homepage.service" homepage', home)
         tools = load_desired(EXAMPLE)
         tools["site"]["networking"]["ingress"]["plugins"] = ["sablier"]
@@ -478,10 +503,12 @@ class TestExample(unittest.TestCase):
         block = generate_caddyfile(tools).split("https://it-tools.example.lan {", 1)[1].split("\nhttps://", 1)[0]
         worker = block.split("handle /sw.js", 1)[1].split("}", 1)[0]
         self.assertLess(block.index("handle /sw.js"), block.index("import authelia_gate"))
+        self.assertLess(block.index('Clear-Site-Data "\\"cache\\""'), block.index("import authelia_gate"))
         self.assertNotIn("import authelia_gate", worker)
         self.assertNotIn("sablier_gate", worker)
         self.assertIn("caches.delete", worker)
         self.assertLess(block.index("import authelia_gate"), block.index("import sablier_gate"))
+        self.assertIn('header_down Cache-Control "private, no-store"', block.split("import authelia_gate", 1)[1])
 
     def test_cockpit_follows_admin_gui_host(self) -> None:
         absent = load_desired(EXAMPLE)

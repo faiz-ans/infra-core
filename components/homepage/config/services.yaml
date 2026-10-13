@@ -172,6 +172,19 @@
                 # pasta host-loopback. IP, not hostname (Node AAAA stall).
                 url: http://{{HOMEPAGE_VAR_HOST_LOOPBACK}}:8092
                 key: ups 
+        - Backrest:
+            href: https://backup.{{HOMEPAGE_VAR_DOMAIN}}
+            icon: /images/icons/backrest.svg
+            description: Backups
+            server: core-pilot
+            container: backrest
+            widget:
+                type: backrest
+                url: http://backrest:9898
+                fields:
+                    - num_success_30
+                    - num_failure_30
+                    - bytes_added_30
         - Cockpit:
             href: https://sys.{{HOMEPAGE_VAR_DOMAIN}}
             # Cleartext /ping 301s onto Cockpit's certificate. Homepage follows that and reports 500.
@@ -190,12 +203,6 @@
             description: Authentication
             server: core-pilot
             container: authelia
-        - RustDesk:
-            href: https://desk.{{HOMEPAGE_VAR_DOMAIN}}
-            icon: /images/icons/rustdesk.svg
-            description: Remote Desktop
-            server: core-hostess
-            container: rustdesk-hbbs
 
     - Network:
         - Pi-hole:
@@ -237,6 +244,12 @@
        #     siteMonitor: https://{{HOMEPAGE_VAR_PRINTER_LAN_IP}}/
        #     icon: hp.svg
        #     description: Printer
+        - RustDesk (Server):
+            href: https://desk.{{HOMEPAGE_VAR_DOMAIN}}
+            icon: /images/icons/rustdesk.svg
+            description: Remote Desktop
+            server: core-hostess
+            container: rustdesk-hbbs
 
     - Monitoring:
         - Uptime Kuma:
