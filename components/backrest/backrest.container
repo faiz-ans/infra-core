@@ -6,6 +6,7 @@ Image=ghcr.io/garethgeorge/backrest:latest
 ContainerName=backrest
 Network=site
 PublishPort=127.0.0.1:9898:9898
+PublishPort=${host.ip}:9898:9898
 Pull=always
 Environment=TZ=${site.env.timezone}
 Environment=BACKREST_PORT=0.0.0.0:9898
@@ -18,9 +19,6 @@ Environment=BACKUP_HOST=${host.name}
 Environment=RESTIC_REPOSITORY=rest:http://${site.hosts.mantle.ip}:8000/${host.name}
 Secret=${secrets.restic.password},type=env,target=RESTIC_PASSWORD
 Secret=${secrets.restic.rest_password},type=env,target=RESTIC_REST_PASSWORD
-Volume=${site.data.roots.appdata}:/data/appdata:ro
-Volume=${site.data.roots.groups}:/data/groups:ro
-Volume=${site.data.roots.users}:/data/users:ro
 Volume=${host.appdata}/backrest/config:/config
 Volume=${host.appdata}/backrest/data:/data
 Volume=${host.appdata}/backrest/cache:/cache

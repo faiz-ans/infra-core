@@ -578,6 +578,30 @@
     - site_touch | selectattr('key', 'equalto', 'caddy') | list | length > 0
     - (site_plan.policy.portal_assets | default('') | length > 0) or ('sablier' in (site_plan.policy.plugins | default([])))
 
+- name: Backrest app directory belongs to its workload user
+  become: true
+  file:
+    path: "{{ ((site_plan.hosts | selectattr('name', 'equalto', site_host_name) | list | first).data.roots.appdata | default(site_plan.roots.appdata)) }}/backrest"
+    state: directory
+    owner: "{{ site_user_of.backrest }}"
+    group: "{{ site_user_of.backrest }}"
+    recurse: true
+  when: site_here | selectattr('key', 'equalto', 'backrest') | list | length > 0
+
+- name: Start Backrest when the previous start failed
+  become: true
+  become_user: "{{ site_user_of.backrest }}"
+  environment:
+    XDG_RUNTIME_DIR: "/run/user/{{ site_wl_uids[site_user_of.backrest] }}"
+  args:
+    executable: /bin/bash
+  shell: |
+    set -euo pipefail
+    if systemctl --user is-failed --quiet backrest.service; then
+      systemctl --user start backrest.service
+    fi
+  when: site_here | selectattr('key', 'equalto', 'backrest') | list | length > 0
+
 - name: Restart rootless Quadlets that were synced
   become: true
   become_user: "{{ (item.item | default({})).user }}"

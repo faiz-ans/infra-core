@@ -556,7 +556,8 @@ class TestExample(unittest.TestCase):
         self.assertIn("mantle/docker-proxy", ids)
         core = next(host for host in desired["site"]["hosts"] if host["name"] == "core")
         self.assertEqual(proxy_port(core, "pilot"), "2375")
-        self.assertEqual(proxy_port(core, "hostess"), "2376")
+        self.assertEqual(proxy_port(core, "loadmaster"), "2376")
+        self.assertEqual(proxy_port(core, "hostess"), "2377")
 
     def test_docker_proxy_is_get_only(self) -> None:
         svc = load_pack()["services"]["docker-proxy"]
@@ -908,6 +909,39 @@ class TestExample(unittest.TestCase):
         self.assertEqual(paths, {"/groups", "/users"})
         self.assertNotIn("/appdata", paths)
         self.assertTrue(all(e["client_ip"] == "10.0.0.11" for e in nfs["exports"]))
+
+    def test_backup_grants_local_sources_and_nfs_for_a_remote_root(self) -> None:
+        from .backup import backup_grants, backup_sources
+
+        d = load_desired(EXAMPLE)
+        d["site"]["data"]["backup"] = {
+            "engine": "backrest",
+            "sources": {
+                "roots": ["groups", {"compute": "appdata"}],
+                "homes": [{"user": {"name": "alice", "path": "/"}}],
+            },
+        }
+        d["site"]["hosts"][1].setdefault("data", {})["roots"] = {"appdata": "/var/lib/appdata"}
+        d["site"]["hosts"][0]["operations"]["workload"]["users"].append(
+            {"name": "loadmaster", "services": {"backrest": None}}
+        )
+        sources, errors = backup_sources(d)
+        self.assertEqual(errors, [])
+        grants = {(item["host"], item["user"], item["path"]) for item in backup_grants(d)}
+        self.assertEqual(
+            grants,
+            {("storage", "loadmaster", "/groups"), ("storage", "loadmaster", "/users/alice")},
+        )
+        remote = next(item for item in sources if item["remote"])
+        self.assertEqual(remote["path"], "/var/lib/appdata")
+        self.assertEqual(remote["client_path"], "/mnt/backup/data/hosts/compute/appdata")
+        self.assertEqual(remote["container"], "/data/hosts/compute/appdata")
+        exported = [item for item in inferred_nfs(d)["exports"] if item["path"] == "/var/lib/appdata"]
+        self.assertEqual(exported[0]["host"], "compute")
+        self.assertEqual(exported[0]["client_ip"], "10.0.0.10")
+        mounted = [item for item in inferred_nfs(d)["mounts"] if item["export"] == "/var/lib/appdata"]
+        self.assertEqual(mounted[0]["host"], "storage")
+        self.assertEqual(mounted[0]["path"], "/mnt/backup/data/hosts/compute/appdata")
 
     def test_glances_pod_overlay_keeps_baseline(self) -> None:
         import yaml

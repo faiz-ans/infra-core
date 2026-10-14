@@ -29,6 +29,35 @@
                 "web": { "type": "string", "enum": ["none", "opencloud", "nextcloud"] }
               },
               "additionalProperties": false
+            },
+            "backup": {
+              "type": "object",
+              "description": "The engine user's read access follows sources. A source on another host is an inferred NFS mount. Isolating that user from other services is the operator's placement.",
+              "properties": {
+                "engine": { "type": "string", "description": "Placed service key, or none." },
+                "sources": {
+                  "type": "object",
+                  "properties": {
+                    "roots": {
+                      "type": "array",
+                      "description": "A site root name, or one host: host-root pair.",
+                      "items": {
+                        "oneOf": [
+                          { "type": "string" },
+                          { "type": "object", "minProperties": 1, "maxProperties": 1, "additionalProperties": { "type": "string" } }
+                        ]
+                      }
+                    },
+                    "homes": {
+                      "type": "array",
+                      "description": "A path under a user home, group home, or app home. / is the whole home.",
+                      "items": { "type": "object" }
+                    }
+                  },
+                  "additionalProperties": false
+                }
+              },
+              "additionalProperties": false
             }
           },
           "additionalProperties": false

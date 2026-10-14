@@ -6,6 +6,7 @@ import json
 from pathlib import Path
 from typing import Any
 
+from .backup import backup_grants
 from .plan import COMPONENTS, import_blocks, import_nfs, inferred_nfs, site_groups
 from .quadlet_render import rendered_files
 from .topology import (
@@ -450,8 +451,10 @@ def fingerprints(desired: dict[str, Any], secrets_path: Path | None = None) -> d
         "nfs": _digest(
             {
                 "plan": inferred_nfs(desired),
-                # Squash uid is the file server's workload user. Bump to rewrite exports.
+                # Squash uid is the file server's workload user. The role hash
+                # rewrites exports when that lookup changes.
                 "squash": "file-server-workload",
+                "role": _file_hash(ansible / "roles" / "nfs" / "tasks" / "main.yml"),
             }
         ),
         "edge": _digest(
@@ -492,6 +495,12 @@ def fingerprints(desired: dict[str, Any], secrets_path: Path | None = None) -> d
             }
         ),
         "static_ip": _digest([(h.get("name"), h.get("ip")) for h in hosts(desired)]),
+        "backup": _digest(
+            {
+                "grants": backup_grants(desired),
+                "role": _file_hash(ansible / "roles" / "backup" / "tasks" / "main.yml"),
+            }
+        ),
         "quadlets": _digest(sorted(services)),
     }
     return {"sections": sections, "services": services, "local_users": local_accounts(desired)}

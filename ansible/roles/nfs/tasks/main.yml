@@ -4,6 +4,10 @@
 # Day 2 drops unused inferred exports (site-inferred.exports only).
 # insecure + noresvport: the client uses a high source port. Privileged-port
 # handshakes stay in SYN-RECV when the client is behind NAT or WSL.
+# WSL mirrored networking delivers userspace binds only. Kernel nfsd listens
+# on 12049; site-nfs-mirror publishes that socket on 2049. The relay's source
+# address is this host, so the export allows it, and the relay accepts only
+# the real client addresses.
 - name: NFS packages on owners and consumers
   apt:
     name:
@@ -23,9 +27,14 @@
     mode: "0755"
   when: site_plan.nfs_exports | selectattr('host', 'equalto', site_host_name) | list | length > 0
 
+- name: OpenCloud on this export host
+  set_fact:
+    site_nfs_oc_matches: "{{ site_plan.services | selectattr('host', 'equalto', site_host_name) | selectattr('key', 'equalto', 'opencloud') | list }}"
+  when: site_plan.nfs_exports | selectattr('host', 'equalto', site_host_name) | list | length > 0
+
 - name: Workload user that home ACLs grant
   set_fact:
-    site_nfs_oc: "{{ ((site_plan.services | selectattr('host', 'equalto', site_host_name) | selectattr('key', 'equalto', 'opencloud') | list | first) or {}).user | default('') }}"
+    site_nfs_oc: "{{ site_nfs_oc_matches[0].user if site_nfs_oc_matches | length > 0 else '' }}"
     site_nfs_names: "{{ ((site_plan.hosts | selectattr('name', 'equalto', site_host_name) | list | first).operations.workload.users | default([])) | map(attribute='name') | list }}"
   when: site_plan.nfs_exports | selectattr('host', 'equalto', site_host_name) | list | length > 0
 
@@ -52,6 +61,22 @@
   changed_when: false
   when: site_plan.nfs_exports | selectattr('host', 'equalto', site_host_name) | list | length > 0
 
+- name: Detect WSL
+  command: grep -qiE 'microsoft|wsl' /proc/version
+  register: site_wsl_grep
+  changed_when: false
+  failed_when: false
+
+- name: WSL flag
+  set_fact:
+    site_is_wsl: "{{ site_wsl_grep.rc == 0 }}"
+
+- name: This host LAN address
+  set_fact:
+    site_nfs_ip: "{{ (site_plan.hosts | selectattr('name', 'equalto', site_host_name) | list | first).ip }}"
+    site_nfs_clients: "{{ site_plan.nfs_exports | selectattr('host', 'equalto', site_host_name) | map(attribute='client_ip') | unique | list }}"
+  when: site_plan.nfs_exports | selectattr('host', 'equalto', site_host_name) | list | length > 0
+
 - name: Inferred exports file
   copy:
     dest: /etc/exports.d/site-inferred.exports
@@ -59,6 +84,9 @@
     content: |
       {% for ex in site_plan.nfs_exports if ex.host == site_host_name %}
       {{ ex.path }} {{ ex.client_ip }}(rw,sync,no_subtree_check,insecure,all_squash,anonuid={{ site_nfs_uid.stdout }},anongid={{ site_nfs_gid.stdout }})
+      {% if site_is_wsl | bool and ex.client_ip != site_nfs_ip %}
+      {{ ex.path }} {{ site_nfs_ip }}(rw,sync,no_subtree_check,insecure,all_squash,anonuid={{ site_nfs_uid.stdout }},anongid={{ site_nfs_gid.stdout }})
+      {% endif %}
       {% endfor %}
   when: site_plan.nfs_exports | selectattr('host', 'equalto', site_host_name) | list | length > 0
   notify: reload nfs
@@ -73,12 +101,164 @@
 - name: Apply inferred exports before mounts
   meta: flush_handlers
 
+- name: Userspace relay for the mirrored NFS port
+  apt:
+    name: socat
+    state: present
+  when:
+    - site_is_wsl | bool
+    - site_plan.nfs_exports | selectattr('host', 'equalto', site_host_name) | list | length > 0
+
+- name: Keep kernel nfsd off the mirrored port
+  copy:
+    dest: /etc/nfs.conf.d/site-wsl.conf
+    mode: "0644"
+    content: |
+      [nfsd]
+      port=12049
+  register: site_nfs_wsl_port
+  when:
+    - site_is_wsl | bool
+    - site_plan.nfs_exports | selectattr('host', 'equalto', site_host_name) | list | length > 0
+
+- name: nfsd listen ports
+  command: cat /proc/fs/nfsd/portlist
+  register: site_nfsd_ports
+  changed_when: false
+  failed_when: false
+  when:
+    - site_is_wsl | bool
+    - site_plan.nfs_exports | selectattr('host', 'equalto', site_host_name) | list | length > 0
+
+- name: Restart NFS so WSL nfsd leaves port 2049
+  systemd:
+    name: nfs-server
+    state: restarted
+  when:
+    - site_is_wsl | bool
+    - site_plan.nfs_exports | selectattr('host', 'equalto', site_host_name) | list | length > 0
+    - site_nfs_wsl_port is changed or ('12049' not in (site_nfsd_ports.stdout | default('')))
+
+- name: Relay accepts only the exported clients
+  copy:
+    dest: /etc/site-nfs-mirror.nft
+    mode: "0644"
+    content: |
+      table inet site_nfs_mirror {
+        chain input {
+          type filter hook input priority filter; policy accept;
+          tcp dport 2049 ip saddr != { {{ site_nfs_clients | join(', ') }} } drop
+        }
+      }
+  register: site_nfs_mirror_nft
+  when:
+    - site_is_wsl | bool
+    - site_plan.nfs_exports | selectattr('host', 'equalto', site_host_name) | list | length > 0
+
+- name: WSL NFS publisher
+  copy:
+    dest: /etc/systemd/system/site-nfs-mirror.service
+    mode: "0644"
+    content: |
+      [Unit]
+      Description=Publish kernel NFS through a userspace socket
+      After=nfs-server.service
+      BindsTo=nfs-server.service
+
+      [Service]
+      ExecStartPre=-/usr/sbin/nft delete table inet site_nfs_mirror
+      ExecStartPre=/usr/sbin/nft -f /etc/site-nfs-mirror.nft
+      ExecStart=/usr/bin/socat TCP-LISTEN:2049,bind=0.0.0.0,reuseaddr,fork,keepalive TCP:{{ site_nfs_ip }}:12049
+      ExecStopPost=-/usr/sbin/nft delete table inet site_nfs_mirror
+      Restart=on-failure
+      RestartSec=1
+
+      [Install]
+      WantedBy=multi-user.target
+  register: site_nfs_mirror_unit
+  when:
+    - site_is_wsl | bool
+    - site_plan.nfs_exports | selectattr('host', 'equalto', site_host_name) | list | length > 0
+
+- name: Publish NFS on the mirrored port
+  systemd:
+    name: site-nfs-mirror
+    enabled: true
+    state: "{{ 'restarted' if (site_nfs_mirror_unit is changed or site_nfs_wsl_port is changed or site_nfs_mirror_nft is changed) else 'started' }}"
+    daemon_reload: true
+  when:
+    - site_is_wsl | bool
+    - site_plan.nfs_exports | selectattr('host', 'equalto', site_host_name) | list | length > 0
+
+- name: WSL nfsd port file
+  stat:
+    path: /etc/nfs.conf.d/site-wsl.conf
+  register: site_nfs_wsl_port_stat
+  when: >
+    not (site_is_wsl | bool)
+    or (site_plan.nfs_exports | selectattr('host', 'equalto', site_host_name) | list | length == 0)
+
+- name: WSL NFS publisher unit
+  stat:
+    path: /etc/systemd/system/site-nfs-mirror.service
+  register: site_nfs_mirror_stat
+  when: >
+    not (site_is_wsl | bool)
+    or (site_plan.nfs_exports | selectattr('host', 'equalto', site_host_name) | list | length == 0)
+
+- name: Stop the WSL NFS publisher
+  systemd:
+    name: site-nfs-mirror
+    enabled: false
+    state: stopped
+  when: site_nfs_mirror_stat.stat is defined and site_nfs_mirror_stat.stat.exists
+
+- name: Remove the WSL NFS publisher off WSL
+  file:
+    path: /etc/systemd/system/site-nfs-mirror.service
+    state: absent
+  when: site_nfs_mirror_stat.stat is defined and site_nfs_mirror_stat.stat.exists
+
+- name: Reload systemd after removing the WSL NFS publisher
+  command: systemctl daemon-reload
+  when: site_nfs_mirror_stat.stat is defined and site_nfs_mirror_stat.stat.exists
+
+- name: Remove the WSL relay filter
+  file:
+    path: /etc/site-nfs-mirror.nft
+    state: absent
+  when: >
+    not (site_is_wsl | bool)
+    or (site_plan.nfs_exports | selectattr('host', 'equalto', site_host_name) | list | length == 0)
+
+- name: Remove the WSL nfsd port off WSL
+  file:
+    path: /etc/nfs.conf.d/site-wsl.conf
+    state: absent
+  when: site_nfs_wsl_port_stat.stat is defined and site_nfs_wsl_port_stat.stat.exists
+
+- name: Restore kernel nfsd to port 2049
+  systemd:
+    name: nfs-server
+    state: restarted
+  when: site_nfs_wsl_port_stat.stat is defined and site_nfs_wsl_port_stat.stat.exists
+
 - name: This host consumes NFS
   set_fact:
     site_nfs_here: "{{ site_plan.nfs_mounts | selectattr('host', 'equalto', site_host_name) | list }}"
 
 - name: Share the mount tree so later mounts enter the rootless session
   command: mount --make-rshared /
+  when: site_nfs_here | length > 0
+
+- name: Release a dead NFS mount so it can be mounted again
+  shell: |
+    set -euo pipefail
+    if findmnt -n {{ item.path | quote }} >/dev/null && ! stat {{ item.path | quote }} >/dev/null 2>&1; then
+      umount -l {{ item.path | quote }}
+    fi
+  loop: "{{ site_nfs_here }}"
+  changed_when: false
   when: site_nfs_here | length > 0
 
 - name: Mount inferred NFS on consumers

@@ -1,0 +1,25 @@
+# Read access for the backup engine's user on sources that live on this host.
+# Remote sources are NFS mounts. This does not replace existing access entries.
+- name: Backup grants on this host
+  set_fact:
+    site_backup_grants: "{{ site_plan.backup_grants | default([]) | selectattr('host', 'equalto', site_host_name) | list }}"
+
+- name: ACL tools for backup reads
+  apt:
+    name: acl
+    state: present
+  when: site_backup_grants | length > 0
+
+- name: Read-only access for the backup user
+  shell: |
+    set -euo pipefail
+    path="{{ item.path }}"
+    user="{{ item.user }}"
+    if [ ! -e "$path" ]; then
+      echo "backup source $path is missing" >&2
+      exit 1
+    fi
+    setfacl -R -m "u:${user}:rX" "$path"
+    setfacl -R -d -m "u:${user}:rX" "$path"
+  loop: "{{ site_backup_grants }}"
+  when: site_backup_grants | length > 0

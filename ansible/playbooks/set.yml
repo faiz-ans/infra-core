@@ -312,6 +312,20 @@
           or site_delta.sync_all | default(false) | bool
         )
 
+- name: Backup source read access
+  hosts: all
+  gather_facts: false
+  become: true
+  tasks:
+    - name: Read access on local backup sources
+      include_role:
+        name: backup
+      when: >-
+        site_delta.sections.backup | default(true) | bool
+        or site_delta.sections.homes | default(false) | bool
+        or site_delta.sections.opencloud | default(false) | bool
+        or site_delta.sync_all | default(false) | bool
+
 - name: Refresh edge DNS plumbing after Pi-hole and Caddy listen
   hosts: workload
   gather_facts: false

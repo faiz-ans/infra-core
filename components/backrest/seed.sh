@@ -5,6 +5,11 @@ if [ ! -s /config/config.json ]; then
   escape() { printf '%s' "$1" | sed 's/\\/\\\\/g; s/"/\\"/g'; }
   password=$(escape "${RESTIC_PASSWORD}")
   rest_password=$(escape "${RESTIC_REST_PASSWORD}")
+  if [ -s /sources.list ]; then
+    plan_paths=$(awk 'BEGIN { sep = "" } NF { printf "%s\"%s\"", sep, $0; sep = "," }' /sources.list)
+  else
+    plan_paths='"/data/appdata","/data/groups","/data/users"'
+  fi
   cat > /config/config.json <<EOF
 {
   "modno": 1,
@@ -31,7 +36,7 @@ if [ ! -s /config/config.json ]; then
     {
       "id": "site-data",
       "repo": "site",
-      "paths": ["/data/appdata", "/data/groups", "/data/users"],
+      "paths": [${plan_paths}],
       "excludes": ["/data/appdata/restic", "/data/appdata/backrest"],
       "schedule": { "cron": "0 3 * * *", "clock": "CLOCK_LOCAL" },
       "retention": {

@@ -584,6 +584,9 @@ def validate_placement(desired: dict[str, Any]) -> list[str]:
     from .plan import nfs_user_conflicts
 
     errors.extend(nfs_user_conflicts(desired))
+    from .backup import validate_backup
+
+    errors.extend(validate_backup(desired))
     from .pwm import validate_pwm
 
     errors.extend(validate_pwm(desired))

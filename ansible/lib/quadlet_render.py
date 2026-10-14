@@ -6,18 +6,20 @@ does not change the hash, so SET does not restart that service.
 from __future__ import annotations
 
 import base64
+import posixpath
 import re
 import shutil
 from pathlib import Path
 from typing import Any
 
+from .backup import backup_runner, backup_sources
 from .generate import inject_authelia_ldap_password
 from .integrate import apply_placed_integrations
 from .pod import apply_container_overlay, apply_pod_overlay, ensure_sablier_section, sablier_enabled
 from .quadlet import read_utf8, strip_yaml_text
 from .resolve import account_ids, bind, proxy_port, render
 from .secrets import SecretError
-from .topology import ROOT, host_by_name, policy
+from .topology import ROOT, host_by_name, policy, workload_users
 
 
 class QuadletRenderError(Exception):
@@ -176,6 +178,10 @@ def populate_service(
         svc_mapping["host.operations.workload.uid"] = uid
         svc_mapping["host.operations.workload.gid"] = gid
         svc_mapping["host.operations.workload.proxy_port"] = proxy_port(host, str(svc.get("user") or ""))
+        for entry in workload_users(host):
+            entry_name = str(entry.get("name") or "")
+            if entry_name:
+                svc_mapping[f"host.operations.workload.users.{entry_name}.proxy_port"] = proxy_port(host, entry_name)
         primary = str((svc.get("subdomain") or {}).get("primary") or "")
         domain = mapping.get("site.env.domain") or ""
         if primary and domain:
@@ -194,7 +200,42 @@ def populate_service(
         if path.suffix in {".yaml", ".yml"} and "kind:" in rendered:
             rendered = strip_yaml_text(rendered)
         path.write_text(rendered, encoding="utf-8")
+    _mount_backup_sources(out, desired, svc)
     (out / ".privilege").write_text(svc.get("privilege") or "rootless", encoding="utf-8")
+
+
+def _mount_backup_sources(out: Path, desired: dict[str, Any], svc: dict[str, Any]) -> None:
+    """Bind each backup source into the engine container. The plan list is first-start only."""
+    runner = backup_runner(desired)
+    if runner is None or runner.get("key") != svc.get("key") or runner.get("host") != svc.get("host"):
+        return
+    if runner.get("user") != svc.get("user") or runner.get("name") != svc.get("name"):
+        return
+    sources, errors = backup_sources(desired)
+    if errors:
+        raise QuadletRenderError("; ".join(errors))
+    unit = next(out.glob("*.container"), None)
+    if unit is None or not unit.is_file():
+        return
+    text = unit.read_text(encoding="utf-8")
+    lines = [f"Volume={source['client_path']}:{source['container']}:ro" for source in sources]
+    lines.append("Volume=${component.dir}/sources.list:/sources.list:ro")
+    # component.dir was already substituted in this file.
+    component_dir = ""
+    for line in text.splitlines():
+        if line.startswith("Volume=") and line.endswith("/seed.sh:/seed.sh:ro"):
+            component_dir = posixpath.dirname(line.split(":", 1)[0].removeprefix("Volume="))
+            break
+    if component_dir:
+        lines[-1] = f"Volume={component_dir}/sources.list:/sources.list:ro"
+    marker = "\n[Service]\n"
+    if marker not in text:
+        raise QuadletRenderError("backup container unit has no [Service] section for source mounts")
+    block = "\n".join(lines) + "\n"
+    if block not in text:
+        text = text.replace(marker, "\n" + block + marker, 1)
+    unit.write_text(text, encoding="utf-8")
+    (out / "sources.list").write_text("".join(f"{source['container']}\n" for source in sources), encoding="utf-8")
 
 
 def rendered_files(

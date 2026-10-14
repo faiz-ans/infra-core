@@ -180,7 +180,8 @@
             container: backrest
             widget:
                 type: backrest
-                url: http://backrest:9898
+                # loadmaster's site network is not Homepage's. The host publish is what 169.254.1.2 reaches.
+                url: http://{{HOMEPAGE_VAR_HOST_LOOPBACK}}:9898
                 fields:
                     - num_success_30
                     - num_failure_30

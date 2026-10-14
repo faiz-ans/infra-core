@@ -6,6 +6,7 @@ import re
 from pathlib import Path
 from typing import Any
 
+from .backup import backup_grants
 from .directory import ldap_base_dn, people_homes
 from .topology import (
     admin_gui,
@@ -132,6 +133,21 @@ def inferred_nfs(desired: dict[str, Any]) -> dict[str, list[dict[str, str]]]:
                         "export": path,
                     }
                 )
+    from .backup import backup_nfs
+
+    extra = backup_nfs(desired)
+    for export in extra["exports"]:
+        ex_key = (export["host"], export["path"], export["client_ip"])
+        if ex_key in seen_ex:
+            continue
+        seen_ex.add(ex_key)
+        exports.append(export)
+    for mount in extra["mounts"]:
+        mnt_key = (mount["host"], mount["path"], mount["server_ip"])
+        if mnt_key in seen_mnt:
+            continue
+        seen_mnt.add(mnt_key)
+        mounts.append(mount)
     return {"exports": exports, "mounts": mounts}
 
 
@@ -518,6 +534,7 @@ def build_plan(desired: dict[str, Any]) -> dict[str, Any]:
         "groups": site_groups(desired),
         "hosts": [{**h, "admin-gui": admin_gui(h.get("admin-gui"))} for h in hosts(desired)],
         "bridges": bridge_grants(desired)[0],
+        "backup_grants": backup_grants(desired),
         "domain": str((site_of(desired).get("env") or {}).get("domain") or ""),
         "ldap": p["ldap"],
         "ldap_base": ldap_base_dn(str((site_of(desired).get("env") or {}).get("domain") or ""))
