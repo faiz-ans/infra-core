@@ -1,7 +1,12 @@
-html,
+html {
+  height: 100%;
+  overflow: hidden;
+}
+
 body {
   margin: 0;
   height: 100%;
+  overflow: hidden;
   color: #fff;
   font-family: Manrope, Manrope-Fallback, Arial, sans-serif;
   display: flex;
@@ -27,13 +32,17 @@ body {
 }
 
 .header-bar {
-  margin-bottom: auto;
+  position: relative;
+  z-index: 2;
+  flex: 0 0 auto;
   padding: 2rem;
 }
 
 .footer-bar {
+  position: relative;
+  z-index: 2;
+  flex: 0 0 auto;
   height: 24px;
-  margin-top: auto;
   margin-bottom: calc(0.25rem * 4);
   padding: 2rem;
 }
@@ -41,10 +50,20 @@ body {
 main {
   position: relative;
   z-index: 2;
+  flex: 1 1 auto;
+  min-height: 0;
+  overflow-x: hidden;
+  overflow-y: auto;
+  scrollbar-width: none;
+  -ms-overflow-style: none;
   display: flex;
+  flex-direction: column;
   align-items: center;
-  justify-content: center;
   text-align: center;
+}
+
+main::-webkit-scrollbar {
+  display: none;
 }
 
 .card {
@@ -52,6 +71,7 @@ main {
   width: 100%;
   max-width: 444px;
   min-height: 28.725rem;
+  margin-block: auto;
   padding: 0 32px;
   box-sizing: border-box;
   display: flex;

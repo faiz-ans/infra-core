@@ -4,18 +4,41 @@
  * Narrow: HTPC wraps under NAS, left-aligned; stats wrap within each widget
  */
 
-/* Hide page scrollbar; scrolling still works */
+/* Page stays fixed; only the service-tile area scrolls (scrollbar hidden) */
 html,
 body,
+#page_wrapper,
 #inner_wrapper {
+  height: 100%;
+  overflow: hidden;
+}
+
+#inner_wrapper > .flex.flex-col {
+  height: 100%;
+  max-height: 100%;
+  min-height: 0 !important;
+  overflow: hidden;
+}
+
+#layout-groups,
+#services,
+#bookmarks {
+  flex: 1 1 auto;
+  min-height: 0;
+  overflow-x: hidden;
+  overflow-y: auto;
   scrollbar-width: none; /* Firefox */
   -ms-overflow-style: none; /* legacy Edge */
 }
 
-html::-webkit-scrollbar,
-body::-webkit-scrollbar,
-#inner_wrapper::-webkit-scrollbar {
+#layout-groups::-webkit-scrollbar,
+#services::-webkit-scrollbar,
+#bookmarks::-webkit-scrollbar {
   display: none; /* Chromium / Safari */
+}
+
+#footer {
+  flex: 0 0 auto;
 }
 
 #widgets-wrap {

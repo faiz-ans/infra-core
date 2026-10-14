@@ -79,14 +79,16 @@
 
   function getScrollRoot() {
     return (
-      document.getElementById("inner_wrapper") ||
-      document.scrollingElement ||
-      document.documentElement
+      document.getElementById("layout-groups") ||
+      document.getElementById("services") ||
+      document.getElementById("bookmarks")
     );
   }
 
   function scrollToTop() {
-    getScrollRoot().scrollTo({ top: 0, behavior: "smooth" });
+    const root = getScrollRoot();
+    if (!root) return;
+    root.scrollTo({ top: 0, behavior: "smooth" });
   }
 
   function createFooterControl(id, { svg, label, onClick }) {

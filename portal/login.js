@@ -8,6 +8,8 @@ function icon(name) {
 const SERVICES = {
   "auth.home.lan": ["authelia.svg", "Authelia"],
   "authelia.home.lan": ["authelia.svg", "Authelia"],
+  "backup.home.lan": ["backrest.svg", "Backrest"],
+  "backrest.home.lan": ["backrest.svg", "Backrest"],
   "cloud.home.lan": ["opencloud.svg", "OpenCloud"],
   "opencloud.home.lan": ["opencloud.svg", "OpenCloud"],
   "oc.home.lan": ["opencloud.svg", "OpenCloud"],
@@ -54,19 +56,27 @@ const SERVICES = {
   "scrutiny.home.lan": ["scrutiny.svg", "Scrutiny"],
 };
 
+function serviceForHost(hostname) {
+  const row = SERVICES[hostname];
+  return row ? { src: icon(row[0]), name: row[1] } : null;
+}
+
 function serviceForRedirect() {
   const rd = new URLSearchParams(location.search).get("rd");
-  if (!rd) return null;
-  try {
-    const row = SERVICES[new URL(rd).hostname];
-    return row ? { src: icon(row[0]), name: row[1] } : null;
-  } catch (e) {
-    return null;
+  if (rd) {
+    try {
+      const fromRedirect = serviceForHost(new URL(rd).hostname);
+      if (fromRedirect) return fromRedirect;
+    } catch (e) {
+      /* fall through to this host */
+    }
   }
+  return serviceForHost(location.hostname);
 }
 
 function swapLogo(src) {
-  const slot = document.querySelector("img[alt='Logo'], img[src*='logo.png'], svg.w-16");
+  const stage = document.getElementById("first-factor-stage");
+  const slot = stage && stage.querySelector("img[alt='Logo'], img[src*='logo.png'], svg.w-16");
   if (!slot) return null;
   if (slot.dataset.portalIcon === src) return slot;
   const img = document.createElement("img");
@@ -108,28 +118,48 @@ function placeHome() {
   footerBar.appendChild(link);
   stage.prepend(headerBar);
   stage.appendChild(footerBar);
+  encloseContent(stage);
   return true;
 }
 
-if (!placeHome()) {
-  const homeObserver = new MutationObserver(() => {
-    if (placeHome()) homeObserver.disconnect();
-  });
-  homeObserver.observe(document.documentElement, { childList: true, subtree: true });
-}
-
-const service = serviceForRedirect();
-if (service) {
-  const pin = () => {
-    const img = swapLogo(service.src);
-    if (!img) return false;
-    placeTitle(img, service.name);
-    return true;
-  };
-  if (!pin()) {
-    const observer = new MutationObserver(() => {
-      if (pin()) observer.disconnect();
-    });
-    observer.observe(document.documentElement, { childList: true, subtree: true });
+function encloseContent(stage) {
+  let content = stage.querySelector(":scope > .portal-content");
+  if (!content) {
+    content = document.createElement("div");
+    content.className = "portal-content";
+    const footer = stage.querySelector(":scope > .footer-bar");
+    stage.insertBefore(content, footer);
+  }
+  for (const el of [...stage.children]) {
+    if (
+      el === content ||
+      el.classList.contains("header-bar") ||
+      el.classList.contains("footer-bar")
+    ) {
+      continue;
+    }
+    content.appendChild(el);
   }
 }
+
+function pinService() {
+  const stage = document.getElementById("first-factor-stage");
+  if (!stage || !stage.querySelector("#username-textfield")) return;
+  if (stage.querySelector("[data-portal-icon]")) return;
+  const service = serviceForRedirect();
+  if (!service) return;
+  const img = swapLogo(service.src);
+  if (!img) return;
+  placeTitle(img, service.name);
+}
+
+const homeObserver = new MutationObserver(() => {
+  const stage = document.getElementById("first-factor-stage");
+  if (!stage) return;
+  if (!stage.querySelector("a.home-button")) placeHome();
+  else encloseContent(stage);
+  pinService();
+});
+homeObserver.observe(document.documentElement, { childList: true, subtree: true });
+placeHome();
+pinService();
