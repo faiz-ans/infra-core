@@ -327,20 +327,6 @@ https://links.{$DOMAIN} {
 }
 
 #--------------------------------
-# RUSTDESK
-#--------------------------------
-
-https://rustdesk.{$DOMAIN}, https://remote.{$DOMAIN} {
-	tls internal
-	redir https://desk.{$DOMAIN}{uri} permanent
-}
-
-https://desk.{$DOMAIN} {
-	tls internal
-	respond "RustDesk ID/relay is this host (LAN and WireGuard only). Use the native client. Do not port-forward 21115-21119." 200
-}
-
-#--------------------------------
 # ADVENTURELOG
 #--------------------------------
 

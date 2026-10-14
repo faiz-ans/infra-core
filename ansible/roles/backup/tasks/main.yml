@@ -1,5 +1,9 @@
-# Read access for the backup engine's user on sources that live on this host.
-# Remote sources are NFS mounts. This does not replace existing access entries.
+# Read access for whoever opens the source. On the backup host that is the
+# engine user. On an export host it is the NFS squash user.
+# setfacl -m, not only the default ACL: a mode 0600 create clears the mask,
+# which leaves a named user entry with no effect. The timer repeats -m so
+# files created after SET become readable before the next backup.
+# This does not replace existing access entries.
 - name: Backup grants on this host
   set_fact:
     site_backup_grants: "{{ site_plan.backup_grants | default([]) | selectattr('host', 'equalto', site_host_name) | list }}"
@@ -22,4 +26,67 @@
     setfacl -R -m "u:${user}:rX" "$path"
     setfacl -R -d -m "u:${user}:rX" "$path"
   loop: "{{ site_backup_grants }}"
+  when: site_backup_grants | length > 0
+
+- name: Backup ACL refresh list
+  copy:
+    dest: /etc/site-backup-acl.grants
+    mode: "0644"
+    content: |
+      {% for grant in site_backup_grants %}
+      {{ grant.user }} {{ grant.path }}
+      {% endfor %}
+  when: site_backup_grants | length > 0
+
+- name: Backup ACL refresh script
+  copy:
+    dest: /usr/local/sbin/site-backup-acl
+    mode: "0755"
+    content: |
+      #!/bin/sh
+      set -eu
+      [ -s /etc/site-backup-acl.grants ] || exit 0
+      while read -r user path; do
+        [ -n "$user" ] || continue
+        [ -e "$path" ] || continue
+        setfacl -R -m "u:${user}:rX" "$path"
+        setfacl -R -d -m "u:${user}:rX" "$path"
+      done < /etc/site-backup-acl.grants
+  when: site_backup_grants | length > 0
+
+- name: Backup ACL refresh service
+  copy:
+    dest: /etc/systemd/system/site-backup-acl.service
+    mode: "0644"
+    content: |
+      [Unit]
+      Description=Refresh read access for backup sources
+
+      [Service]
+      Type=oneshot
+      ExecStart=/usr/local/sbin/site-backup-acl
+  when: site_backup_grants | length > 0
+
+- name: Backup ACL refresh timer
+  copy:
+    dest: /etc/systemd/system/site-backup-acl.timer
+    mode: "0644"
+    content: |
+      [Unit]
+      Description=Refresh backup read access before the daily backup
+
+      [Timer]
+      OnCalendar=02:30
+      Persistent=false
+
+      [Install]
+      WantedBy=timers.target
+  when: site_backup_grants | length > 0
+
+- name: Enable the backup ACL refresh
+  systemd:
+    name: site-backup-acl.timer
+    enabled: true
+    state: started
+    daemon_reload: true
   when: site_backup_grants | length > 0

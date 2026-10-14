@@ -6,6 +6,9 @@
 core-pilot:
   host: {{HOMEPAGE_VAR_HOST_LOOPBACK}}
   port: {{HOMEPAGE_VAR_PILOT_PROXY_PORT}}
+core-loadmaster:
+  host: {{HOMEPAGE_VAR_HOST_LOOPBACK}}
+  port: {{HOMEPAGE_VAR_LOADMASTER_PROXY_PORT}}
 core-hostess:
   host: {{HOMEPAGE_VAR_HOST_LOOPBACK}}
   port: {{HOMEPAGE_VAR_HOSTESS_PROXY_PORT}}

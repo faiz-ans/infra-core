@@ -251,28 +251,6 @@ def generate_caddyfile(desired: dict[str, Any]) -> str:
         primary = sub.get("primary")
         if not primary or primary in seen:
             continue
-        if s["key"] == "rustdesk":
-            seen.add(primary)
-            aliases = sub.get("aliases") or []
-            for a in aliases:
-                lines += [
-                    f"https://{a}.{domain} {{",
-                    "	tls internal",
-                    f"	redir https://{primary}.{domain}{{uri}} permanent",
-                    "}",
-                    "",
-                ]
-            lines += [f"https://{primary}.{domain} {{", "	tls internal"]
-            if service_gated(desired, s):
-                lines.append("\t" + DROP_STORED)
-                lines.append("	import authelia_gate")
-            lines += [
-                "	header Content-Type text/plain",
-                "	respond \"RustDesk uses the native client. Point the ID server at this host and the relay at port 21117.\" 200",
-                "}",
-                "",
-            ]
-            continue
         up_port = web_port(s)
         if s["key"] == "caddy" or not up_port:
             continue

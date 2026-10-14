@@ -176,7 +176,7 @@
             href: https://backup.{{HOMEPAGE_VAR_DOMAIN}}
             icon: /images/icons/backrest.svg
             description: Backups
-            server: core-pilot
+            server: core-loadmaster
             container: backrest
             widget:
                 type: backrest
@@ -245,12 +245,6 @@
        #     siteMonitor: https://{{HOMEPAGE_VAR_PRINTER_LAN_IP}}/
        #     icon: hp.svg
        #     description: Printer
-        - RustDesk (Server):
-            href: https://desk.{{HOMEPAGE_VAR_DOMAIN}}
-            icon: /images/icons/rustdesk.svg
-            description: Remote Desktop
-            server: core-hostess
-            container: rustdesk-hbbs
 
     - Monitoring:
         - Uptime Kuma:
@@ -262,9 +256,7 @@
             widget:
                 type: uptimekuma
                 url: http://uptime-kuma:3001
-                # Hostname stalls Homepage's resolver (AAAA ENODATA).
-                # 169.254.1.2 does not reach a port bound only on 127.0.0.1.
-                #url: http://{{HOMEPAGE_VAR_NAS_LAN_IP}}:3004
+                # seed.sh creates this slug. The status-page API hangs without it.
                 slug: home
                 fields:
                     - up

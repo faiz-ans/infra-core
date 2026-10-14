@@ -21,6 +21,7 @@ Environment=HOMEPAGE_VAR_LAT=${site.env.latitude}
 Environment=HOMEPAGE_VAR_LONG=${site.env.longitude}
 Environment=HOMEPAGE_VAR_ROUTER_LAN_IP=${site.env.lan_ip}
 Environment=HOMEPAGE_VAR_PILOT_PROXY_PORT=${host.operations.workload.users.pilot.proxy_port}
+Environment=HOMEPAGE_VAR_LOADMASTER_PROXY_PORT=${host.operations.workload.users.loadmaster.proxy_port}
 Environment=HOMEPAGE_VAR_HOSTESS_PROXY_PORT=${host.operations.workload.users.hostess.proxy_port}
 Volume=${component.dir}/config:/app/config
 Volume=${component.dir}/images:/app/public/images

@@ -36,8 +36,6 @@ const SERVICES = {
   "cockpit.home.lan": ["cockpit.svg", "Cockpit"],
   "users.home.lan": ["openldap.svg", "OpenLDAP"],
   "ldap.home.lan": ["openldap.svg", "OpenLDAP"],
-  "remote.home.lan": ["rustdesk.svg", "RustDesk"],
-  "rustdesk.home.lan": ["rustdesk.svg", "RustDesk"],
   "dns.home.lan": ["pi-hole.svg", "Pi-hole"],
   "pihole.home.lan": ["pi-hole.svg", "Pi-hole"],
   "dns2.home.lan": ["pi-hole.svg", "Pi-hole"],

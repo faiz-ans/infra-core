@@ -4,7 +4,7 @@ from __future__ import annotations
 import posixpath
 from typing import Any
 
-from .topology import all_services, host_by_name, host_roots, hosts, root_owners, roots, site_of
+from .topology import all_services, host_by_name, host_roots, hosts, root_owners, roots, site_of, workload_users
 
 
 def backup_spec(desired: dict[str, Any]) -> dict[str, Any]:
@@ -131,18 +131,55 @@ def backup_sources(desired: dict[str, Any]) -> tuple[list[dict[str, str]], list[
     return out, errors
 
 
+def _export_reader(desired: dict[str, Any], host_name: str) -> str:
+    """User an NFS client is squashed to on this export host.
+
+    OpenCloud when that host runs it, otherwise its only workload user.
+    """
+    oc = ""
+    names: list[str] = []
+    host = host_by_name(desired, host_name)
+    for entry in workload_users(host or {}):
+        name = str(entry.get("name") or "")
+        if name and name not in names:
+            names.append(name)
+    for service in all_services(desired):
+        if service.get("host") == host_name and service.get("key") == "opencloud":
+            oc = str(service.get("user") or "")
+    if oc:
+        return oc
+    if len(names) == 1:
+        return names[0]
+    return ""
+
+
 def backup_grants(desired: dict[str, Any]) -> list[dict[str, str]]:
-    """Read ACLs on the backup host. A remote source is reached by NFS, not a local account."""
+    """Read ACLs for whoever actually opens each source.
+
+    On the backup host that is the engine user. A remote source is read through
+    NFS, which squashes the client to the export host's workload user, so the
+    grant is for that user on the export host.
+    """
     runner = backup_runner(desired)
     if runner is None:
         return []
-    user = str(runner.get("user") or "")
-    host = str(runner.get("host") or "")
+    runner_user = str(runner.get("user") or "")
     grants = []
+    seen: set[tuple[str, str, str]] = set()
     for source in backup_sources(desired)[0]:
-        if source["remote"] or source["owner_host"] != host:
+        if source["remote"]:
+            host = source["owner_host"]
+            user = _export_reader(desired, host)
+            path = source["path"]
+        else:
+            host = source["owner_host"]
+            user = runner_user
+            path = source["path"]
+        key = (host, user, path)
+        if not user or key in seen:
             continue
-        grants.append({"host": host, "user": user, "path": source["path"]})
+        seen.add(key)
+        grants.append({"host": host, "user": user, "path": path})
     return grants
 
 

@@ -11,6 +11,9 @@ PublishPort=127.0.0.1:3004:3001
 Pull=always
 Environment=TZ=${site.env.timezone}
 Volume=${site.data.roots.appdata}/uptime-kuma:/app/data
+Volume=${component.dir}/seed.sh:/seed.sh:ro
+Entrypoint=/bin/sh
+Exec=/seed.sh
 
 [Service]
 Restart=on-failure

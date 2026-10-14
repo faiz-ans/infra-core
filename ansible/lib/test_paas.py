@@ -548,6 +548,7 @@ class TestExample(unittest.TestCase):
         rows = [item for item in all_services(desired) if item["key"] == "docker-proxy"]
         names = [(item["host"], item["user"], item["name"]) for item in rows]
         self.assertIn(("core", "pilot", "docker-proxy"), names)
+        self.assertIn(("core", "loadmaster", "docker-proxy-loadmaster"), names)
         self.assertIn(("core", "hostess", "docker-proxy-hostess"), names)
         self.assertIn(("mantle", "pilot", "docker-proxy"), names)
         ids = [key for key in fingerprints(desired)["services"] if key.endswith("docker-proxy") or "docker-proxy" in key]
@@ -930,7 +931,11 @@ class TestExample(unittest.TestCase):
         grants = {(item["host"], item["user"], item["path"]) for item in backup_grants(d)}
         self.assertEqual(
             grants,
-            {("storage", "loadmaster", "/groups"), ("storage", "loadmaster", "/users/alice")},
+            {
+                ("storage", "loadmaster", "/groups"),
+                ("storage", "loadmaster", "/users/alice"),
+                ("compute", "admin", "/var/lib/appdata"),
+            },
         )
         remote = next(item for item in sources if item["remote"])
         self.assertEqual(remote["path"], "/var/lib/appdata")
