@@ -106,32 +106,6 @@ class TestExample(unittest.TestCase):
         bad["site"]["hosts"][0]["users"][0]["ssh-keys"] = []
         self.assertTrue(key_only_ready(bad))
 
-    def test_bridge_names_a_local_account(self) -> None:
-        import copy
-
-        from .topology import bridge_grants
-
-        bridged = copy.deepcopy(self.desired)
-        storage, compute = bridged["site"]["hosts"]
-        storage["users"].append({"name": "hostess", "uid": 1001})
-        storage["users"][0]["bridge"] = ["hostess", {"compute": "admin"}]
-        self.assertEqual(validate_placement(bridged), [])
-        grants, errors = bridge_grants(bridged)
-        self.assertEqual(errors, [])
-        by_alias = {item["alias"]: item for item in grants}
-        self.assertEqual(by_alias["hostess"]["target_ip"], "127.0.0.1")
-        self.assertEqual(by_alias["hostess"]["source_user"], "admin")
-        self.assertEqual(by_alias["hostess"]["key"], "bridge_local_hostess")
-        self.assertEqual(by_alias["admin@compute"]["target_user"], "admin")
-        self.assertEqual(by_alias["admin@compute"]["target_ip"], "10.0.0.11")
-        self.assertEqual(by_alias["admin@compute"]["key"], "bridge_remote_compute_admin")
-        storage["users"][0]["bridge"] = ["missing"]
-        self.assertTrue(any("unknown local account" in err for err in validate_placement(bridged)))
-        storage["users"][0]["bridge"] = ["admin"]
-        self.assertTrue(any("cannot bridge to itself" in err for err in validate_placement(bridged)))
-        storage["users"][0]["bridge"] = [{"storage": "hostess"}]
-        self.assertTrue(any("bare name" in err for err in validate_placement(bridged)))
-
     def test_resolver_namespaces(self) -> None:
         m = bind(self.desired, self.desired["site"]["hosts"][0])
         self.assertNotIn("DOMAIN", m)

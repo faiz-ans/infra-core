@@ -11,7 +11,6 @@ from .directory import ldap_base_dn, people_homes
 from .topology import (
     admin_gui,
     all_services,
-    bridge_grants,
     host_by_name,
     shared_host_roots,
     host_roots,
@@ -533,7 +532,6 @@ def build_plan(desired: dict[str, Any]) -> dict[str, Any]:
         "users": site_of(desired).get("users") or [],
         "groups": site_groups(desired),
         "hosts": [{**h, "admin-gui": admin_gui(h.get("admin-gui"))} for h in hosts(desired)],
-        "bridges": bridge_grants(desired)[0],
         "backup_grants": backup_grants(desired),
         "domain": str((site_of(desired).get("env") or {}).get("domain") or ""),
         "ldap": p["ldap"],

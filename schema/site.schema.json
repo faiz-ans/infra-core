@@ -393,21 +393,6 @@
               "sysadmin": { "type": "boolean", "description": "True when this host user can administer the machine (sudo). GET sets this from the live account." },
               "roles": { "type": "array", "items": { "type": "string" } },
               "ssh-keys": { "type": "array", "items": { "type": "string" } },
-              "bridge": {
-                "type": "array",
-                "description": "Accounts this user can open with a passphrase-less SSH key. A string is another local account. An object {host: account} is an account on another host. Sudo is not granted.",
-                "items": {
-                  "oneOf": [
-                    { "type": "string" },
-                    {
-                      "type": "object",
-                      "minProperties": 1,
-                      "maxProperties": 1,
-                      "additionalProperties": { "type": "string" }
-                    }
-                  ]
-                }
-              },
               "uid": { "type": ["string", "integer"] },
               "gid": { "type": ["string", "integer"] }
             },

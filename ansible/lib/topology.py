@@ -580,7 +580,6 @@ def validate_placement(desired: dict[str, Any]) -> list[str]:
     errors.extend(validate_local_roots(desired))
     errors.extend(validate_workload_users(desired))
     errors.extend(validate_ingress(desired))
-    errors.extend(validate_bridges(desired))
     from .plan import nfs_user_conflicts
 
     errors.extend(nfs_user_conflicts(desired))
@@ -706,76 +705,6 @@ def validate_ingress(desired: dict[str, Any]) -> list[str]:
         if host in seen_host:
             errors.append(f"host {host} lists sablier more than once")
         seen_host.add(host)
-    return errors
-
-
-def bridge_grants(desired: dict[str, Any]) -> tuple[list[dict[str, str]], list[str]]:
-    """SSH keys owned by the account that lists bridge.
-
-    A string is another local account. A one-key object ``{host: account}`` is
-    an account on another host. The public key is installed on the target.
-    """
-    grants: list[dict[str, str]] = []
-    errors: list[str] = []
-    by_name = {str(host.get("name") or ""): host for host in hosts(desired)}
-    pending: list[tuple[str, str, str, str, str]] = []
-    for host in hosts(desired):
-        hostname = str(host.get("name") or "")
-        local = local_account_names(host)
-        for user in host.get("users") or []:
-            source = str(user.get("name") or "")
-            for entry in user.get("bridge") or []:
-                if isinstance(entry, str):
-                    target_host, target_user = hostname, entry
-                    if entry not in local:
-                        errors.append(f"host {hostname} user {source} bridges unknown local account {entry}")
-                        continue
-                    if entry == source:
-                        errors.append(f"host {hostname} user {source} cannot bridge to itself")
-                        continue
-                elif isinstance(entry, dict) and len(entry) == 1:
-                    target_host, target_user = next(iter(entry.items()))
-                    target_host, target_user = str(target_host), str(target_user)
-                    if target_host == hostname:
-                        errors.append(
-                            f"host {hostname} user {source} uses a host pair for a local account; use a bare name"
-                        )
-                        continue
-                    remote = by_name.get(target_host)
-                    if remote is None:
-                        errors.append(f"host {hostname} user {source} bridges unknown host {target_host}")
-                        continue
-                    if target_user not in local_account_names(remote):
-                        errors.append(
-                            f"host {hostname} user {source} bridges unknown account {target_user} on {target_host}"
-                        )
-                        continue
-                else:
-                    errors.append(f"host {hostname} user {source} has a bridge entry that is not a name or a host pair")
-                    continue
-                pending.append((hostname, source, target_host, target_user, str(by_name[target_host].get("ip") or "")))
-    for source_host, source, target_host, target_user, ip in pending:
-        local = source_host == target_host
-        grants.append(
-            {
-                "source_host": source_host,
-                "source_user": source,
-                "target_host": target_host,
-                "target_user": target_user,
-                "target_ip": "127.0.0.1" if local else ip,
-                "alias": target_user if local else f"{target_user}@{target_host}",
-                "key": (
-                    f"bridge_local_{target_user}"
-                    if local
-                    else f"bridge_remote_{target_host}_{target_user}"
-                ),
-            }
-        )
-    return grants, errors
-
-
-def validate_bridges(desired: dict[str, Any]) -> list[str]:
-    _grants, errors = bridge_grants(desired)
     return errors
 
 
