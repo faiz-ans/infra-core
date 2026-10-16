@@ -1,0 +1,89 @@
+#!/bin/sh
+# Forced command for Loadmaster's backup key on Mantle.
+# SSH_ORIGINAL_COMMAND must be one of these, with no extra arguments:
+#   restic-rest start|stop|status
+#   disk on|off|status
+# status is read-only. It exists so the controller can wait until D: and
+# restic-rest are actually up, and until D: is off. Install this file
+# root-owned (root:root, mode 755) and pin the key with:
+#   restrict,command="/usr/local/sbin/backup-remote"
+set -eu
+
+cmd=${SSH_ORIGINAL_COMMAND-}
+case "$cmd" in
+  "restic-rest start"|"restic-rest stop"|"restic-rest status"|"disk on"|"disk off"|"disk status")
+    ;;
+  *)
+    printf 'denied\n' >&2
+    exit 1
+    ;;
+esac
+
+if [ -x /usr/bin/logger ]; then
+  printf '%s\n' "$cmd" | /usr/bin/logger -t backup-remote || true
+fi
+
+uid=$(/usr/bin/id -u)
+export XDG_RUNTIME_DIR="/run/user/${uid}"
+if [ -S "${XDG_RUNTIME_DIR}/bus" ]; then
+  export DBUS_SESSION_BUS_ADDRESS="unix:path=${XDG_RUNTIME_DIR}/bus"
+fi
+
+PS=/mnt/c/Windows/System32/WindowsPowerShell/v1.0/powershell.exe
+SCHTASKS=/mnt/c/Windows/System32/schtasks.exe
+DISK_PS1='C:\ProgramData\backup-disk\backup-disk.ps1'
+# While this file exists, status must not mount D:. A status poll during
+# shutdown was remounting the disk and keeping the spindle powered.
+STOPPING="${XDG_RUNTIME_DIR}/backup-disk-stopping"
+
+# Podman accepts the repo only when statfs succeeds. test -d is not enough:
+# statfs on drvfs returns ENOENT.
+restic_visible() {
+  /usr/bin/systemd-run --user --quiet --pipe --wait --collect /usr/bin/stat -f /mnt/d/restic >/dev/null 2>&1
+}
+
+disk_status() {
+  out=$("$PS" -NoProfile -NonInteractive -ExecutionPolicy Bypass -File "$DISK_PS1" -Action Status | /usr/bin/tr -d '\r')
+  out=$(printf '%s\n' "$out" | /usr/bin/sed '/^$/d' | /usr/bin/tail -n 1)
+  if [ "$out" = "ready" ] && [ -f "$STOPPING" ]; then
+    printf 'pending\n'
+    return
+  fi
+  if [ "$out" = "ready" ]; then
+    err=$(/usr/bin/sudo -n /usr/local/sbin/backup-wsl-mount on 2>&1) || true
+    if ! restic_visible; then
+      if [ -n "$err" ]; then
+        printf 'error: %s\n' "$err"
+      else
+        printf 'pending\n'
+      fi
+      return
+    fi
+  fi
+  printf '%s\n' "$out"
+}
+
+case "$cmd" in
+  "restic-rest start")
+    /usr/bin/systemctl --user start restic-rest.service
+    ;;
+  "restic-rest stop")
+    /usr/bin/systemctl --user stop restic-rest.service
+    ;;
+  "restic-rest status")
+    /usr/bin/systemctl --user is-active restic-rest.service || true
+    ;;
+  "disk on")
+    rm -f "$STOPPING"
+    "$SCHTASKS" /Run /TN BackupDiskOn
+    ;;
+  "disk off")
+    touch "$STOPPING"
+    # Drop the WSL mount before Windows disables the disk.
+    /usr/bin/sudo -n /usr/local/sbin/backup-wsl-mount off >/dev/null 2>&1 || true
+    "$SCHTASKS" /Run /TN BackupDiskOff
+    ;;
+  "disk status")
+    disk_status
+    ;;
+esac

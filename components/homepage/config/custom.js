@@ -2,9 +2,97 @@
  * Also normalize glances uptime "1 day" → "1d" (Homepage only rewrites plural "days").
  * Footer: glances visibility toggle + scroll-to-top (before refresh).
  * PeaNUT / Caddy / Pi-hole / Uptime Kuma / Backrest: shorten service-block labels.
+ * Backrest: replay the last summary shown on the tile when Sablier has stopped it.
+ * custom.js loads after Homepage's first widget fetch, so that fetch cannot be patched in time.
+ * After a failed summary poll, skip further Backrest summary requests for several minutes.
  *
  * Flip tiles + Glances service customizations: see config/archive/
  */
+(function () {
+  const RAW_KEY = "homepage-backrest-summary";
+  const QUIET_MS = 5 * 60 * 1000;
+  let quietUntil = 0;
+
+  function requestUrl(input) {
+    if (typeof input === "string") return input;
+    if (input instanceof URL) return input.href;
+    if (input && typeof input.url === "string") return input.url;
+    return "";
+  }
+
+  function isBackrestSummary(url) {
+    try {
+      const parsed = new URL(url, location.origin);
+      return (
+        parsed.pathname === "/api/services/proxy" &&
+        parsed.searchParams.get("endpoint") === "GetSummaryDashboard"
+      );
+    } catch {
+      return false;
+    }
+  }
+
+  function jsonResponse(body, status) {
+    return new Response(JSON.stringify(body), {
+      status: status || 200,
+      headers: { "Content-Type": "application/json" },
+    });
+  }
+
+  function storedSummary() {
+    try {
+      const data = JSON.parse(localStorage.getItem(RAW_KEY) || "");
+      if (!data || typeof data !== "object" || data.error) return null;
+      if (typeof data.bytesAdded30Days !== "number") return null;
+      return data;
+    } catch {
+      return null;
+    }
+  }
+
+  const nativeFetch = window.fetch.bind(window);
+  window.fetch = async function (input, init) {
+    const url = requestUrl(input);
+    if (!isBackrestSummary(url)) return nativeFetch(input, init);
+
+    const saved = storedSummary();
+    if (Date.now() < quietUntil) {
+      return jsonResponse(saved || { error: { message: "Backrest offline" } });
+    }
+
+    const controller = new AbortController();
+    const timer = setTimeout(() => controller.abort(), 2000);
+    const parent = init && init.signal;
+    if (parent) {
+      if (parent.aborted) controller.abort();
+      else parent.addEventListener("abort", () => controller.abort(), { once: true });
+    }
+
+    try {
+      const res = await nativeFetch(input, { ...init, signal: controller.signal });
+      const text = await res.text();
+      let data = null;
+      try {
+        data = JSON.parse(text);
+      } catch {
+        data = null;
+      }
+      if (res.ok && data && !data.error && typeof data.bytesAdded30Days === "number") {
+        localStorage.setItem(RAW_KEY, JSON.stringify(data));
+        quietUntil = 0;
+        return jsonResponse(data);
+      }
+      quietUntil = Date.now() + QUIET_MS;
+      return jsonResponse(saved || data || { error: { message: "Backrest offline" } }, saved ? 200 : res.status);
+    } catch {
+      quietUntil = Date.now() + QUIET_MS;
+      return jsonResponse(saved || { error: { message: "Backrest offline" } });
+    } finally {
+      clearTimeout(timer);
+    }
+  };
+})();
+
 (function () {
   const ICON_SVG = {
     Apps:
@@ -46,6 +134,90 @@
   };
 
   const GLANCES_VISIBLE_KEY = "homepage-glances-visible";
+  const BACKREST_BLOCKS_KEY = "homepage-backrest-blocks";
+
+  function backrestTile() {
+    return document.querySelector('li.service:has(a[href*="://backup."])');
+  }
+
+  function readBackrestBlocks() {
+    try {
+      const rows = JSON.parse(localStorage.getItem(BACKREST_BLOCKS_KEY) || "");
+      if (!Array.isArray(rows) || !rows.length) return null;
+      const clean = rows.filter(
+        (row) =>
+          row &&
+          typeof row.label === "string" &&
+          typeof row.value === "string" &&
+          row.label &&
+          row.value &&
+          row.value !== "-",
+      );
+      return clean.length ? clean : null;
+    } catch {
+      return null;
+    }
+  }
+
+  function rememberBackrest(rows) {
+    localStorage.setItem(BACKREST_BLOCKS_KEY, JSON.stringify(rows));
+    document.documentElement.classList.add("backrest-summary-cached");
+  }
+
+  function backrestBlocksFromTile(li) {
+    const blocks = [...li.querySelectorAll(".service-block")];
+    if (!blocks.length || li.querySelector("[data-backrest-cached]")) return null;
+    const rows = blocks.map((block) => ({
+      label: (
+        block.querySelector(".service-block-label, .font-bold")?.textContent || ""
+      ).trim(),
+      value: (
+        block.querySelector(".service-block-value, .font-thin")?.textContent || ""
+      ).trim(),
+    }));
+    if (!rows.length || rows.some((row) => !row.label || !row.value || row.value === "-")) {
+      return null;
+    }
+    return rows;
+  }
+
+  function restoreBackrestBlocks(li, rows) {
+    const error = li.querySelector("details");
+    if (!error || li.querySelector("[data-backrest-cached]")) return;
+
+    const wrap = document.createElement("div");
+    wrap.className = "relative flex flex-row w-full service-container";
+    wrap.dataset.backrestCached = "1";
+    for (const row of rows) {
+      const block = document.createElement("div");
+      block.className =
+        "bg-theme-200/50 dark:bg-theme-900/20 rounded-sm m-1 flex-1 flex flex-col items-center justify-center text-center p-1 service-block";
+      const value = document.createElement("div");
+      value.className = "font-thin text-sm service-block-value";
+      value.textContent = row.value;
+      const label = document.createElement("div");
+      label.className = "font-bold text-xs uppercase service-block-label";
+      label.textContent = row.label;
+      block.append(value, label);
+      wrap.appendChild(block);
+    }
+    error.replaceWith(wrap);
+  }
+
+  function syncBackrestSummary() {
+    const cached = readBackrestBlocks();
+    document.documentElement.classList.toggle("backrest-summary-cached", Boolean(cached));
+
+    const li = backrestTile();
+    if (!li) return;
+
+    const live = backrestBlocksFromTile(li);
+    if (live) {
+      rememberBackrest(live);
+      return;
+    }
+    if (cached) restoreBackrestBlocks(li, cached);
+  }
 
   function glancesVisible() {
     // Default off for first visit; persist once the user toggles.
@@ -251,6 +423,7 @@
     syncGlancesStacked();
     syncDatetimeWrapComma();
     ensureFooterControls();
+    syncBackrestSummary();
     shortenServiceBlockLabels();
   }
 
@@ -294,6 +467,9 @@
 
   // Apply persisted glances visibility before paint when possible
   applyGlancesVisibility();
+  if (readBackrestBlocks()) {
+    document.documentElement.classList.add("backrest-summary-cached");
+  }
   // Enable toggle animations only after the initial visibility is applied
   requestAnimationFrame(() => {
     requestAnimationFrame(() => {

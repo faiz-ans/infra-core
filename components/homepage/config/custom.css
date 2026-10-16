@@ -285,6 +285,12 @@ li.service.homepage-widget-ready .service-container {
   opacity: 1;
 }
 
+/* Last Backrest summary is redrawn by custom.js. Hide the error immediately
+   so it does not flash while that script catches up. */
+html.backrest-summary-cached li.service:has(a[href*="://backup."]) details {
+  display: none;
+}
+
 /* Footer controls (match refresh button styling) */
 #style .homepage-footer-control {
   cursor: pointer;

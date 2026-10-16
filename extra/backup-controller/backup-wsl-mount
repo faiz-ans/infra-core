@@ -1,0 +1,71 @@
+#!/bin/sh
+# Make D:\restic visible to rootless podman.
+# Podman checks the bind source with statfs. On a drvfs mount that call
+# returns ENOENT even when the directory is there, so restic-rest never
+# starts. Mount the letter on the side and present the repo through bindfs,
+# whose statfs succeeds. Run as root, in PID 1's mount namespace.
+# Install root:root 755. pilot may run only this path with NOPASSWD.
+set -eu
+
+action=${1:-}
+case "$action" in
+  on|off) ;;
+  *)
+    printf 'usage: backup-wsl-mount on|off\n' >&2
+    exit 1
+    ;;
+esac
+
+self_ns=$(readlink /proc/self/ns/mnt 2>/dev/null || true)
+init_ns=$(readlink /proc/1/ns/mnt 2>/dev/null || true)
+if [ -n "$init_ns" ] && [ "$init_ns" != "$self_ns" ]; then
+  exec /usr/bin/nsenter -t 1 -m -- "$0" "$action"
+fi
+
+raw=/var/lib/backup-disk
+repo=/mnt/d/restic
+
+fuse_mounted() {
+  fstype=$(/usr/bin/findmnt -n -o FSTYPE --target "$repo" 2>/dev/null || true)
+  case "$fstype" in
+    fuse|fuse.bindfs) return 0 ;;
+    *) return 1 ;;
+  esac
+}
+
+if [ "$action" = "off" ]; then
+  # Lazy unmount only. fuser -km on a path that is not its own mount kills
+  # every process on the WSL root disk, which shuts the distro down.
+  /usr/bin/umount -l "$repo" >/dev/null 2>&1 || true
+  /usr/bin/umount -l "$raw" >/dev/null 2>&1 || true
+  /usr/bin/umount -l /mnt/d >/dev/null 2>&1 || true
+  exit 0
+fi
+
+if [ ! -x /usr/bin/bindfs ]; then
+  printf 'bindfs is not installed\n' >&2
+  exit 1
+fi
+if ! /usr/bin/grep -qx 'user_allow_other' /etc/fuse.conf 2>/dev/null; then
+  printf '\nuser_allow_other\n' >> /etc/fuse.conf
+fi
+
+/bin/mkdir -p "$raw" /mnt/d
+if /usr/bin/findmnt -n -o FSTYPE --target /mnt/d 2>/dev/null | /usr/bin/grep -Eq '9p|drvfs'; then
+  /usr/bin/umount /mnt/d || /usr/bin/umount -l /mnt/d
+fi
+/bin/mkdir -p "$repo"
+if ! /usr/bin/mountpoint -q "$raw"; then
+  /bin/mount -t drvfs D: "$raw"
+fi
+if [ ! -d "$raw/restic" ]; then
+  printf 'D:\\restic is not on the mounted disk\n' >&2
+  exit 1
+fi
+if ! fuse_mounted; then
+  uid=${SUDO_UID:-0}
+  gid=${SUDO_GID:-0}
+  /usr/bin/bindfs --force-user="$uid" --force-group="$gid" -o allow_other "$raw/restic" "$repo"
+  /bin/mount --make-rshared "$repo" 2>/dev/null || true
+fi
+/usr/bin/stat -f "$repo" >/dev/null

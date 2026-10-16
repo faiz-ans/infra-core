@@ -1,0 +1,15 @@
+[Unit]
+Description=Turn Backrest, restic-rest, and D: on for backups and backup.home.lan
+After=network-online.target
+
+[Service]
+Type=simple
+Environment=BACKUP_IDLE_MINUTES=15
+Environment=BACKUP_LEAD_MINUTES=5
+Environment=BACKUP_TZ=America/Los_Angeles
+ExecStart=/usr/bin/python3 %h/.local/lib/backup-controller/backup_controller.py
+Restart=on-failure
+RestartSec=5
+
+[Install]
+WantedBy=default.target
