@@ -86,4 +86,6 @@ Then `wsl --shutdown`, reopen, and confirm:
 
 Do **not** install Docker Desktop, Podman Desktop, or Materia stacks yet. Catalog apply on `mantle` comes after Core is on Podman and this repo’s components exist.
 
+After Pi-hole is published, register the HTPC logon task so Ubuntu and the port-53 dnsproxy start when that user signs in: [`wsl-pihole.md`](wsl-pihole.md) step 3 (`windows/wsl-logon/`).
+
 USB SMART for Scrutiny: `windows/scrutiny-collector/`. Steam → AKL: `windows/steam-akl/`.

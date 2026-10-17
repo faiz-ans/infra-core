@@ -6,12 +6,16 @@
 $ErrorActionPreference = 'Stop'
 
 $src = Join-Path $PSScriptRoot 'backup-disk.ps1'
+$vbsSrc = Join-Path $PSScriptRoot 'backup-disk.vbs'
 if (-not (Test-Path -LiteralPath $src)) { throw "missing $src" }
+if (-not (Test-Path -LiteralPath $vbsSrc)) { throw "missing $vbsSrc" }
 
 $destDir = 'C:\ProgramData\backup-disk'
 New-Item -ItemType Directory -Force -Path $destDir | Out-Null
 $dest = Join-Path $destDir 'backup-disk.ps1'
+$vbs = Join-Path $destDir 'backup-disk.vbs'
 Copy-Item -LiteralPath $src -Destination $dest -Force
+Copy-Item -LiteralPath $vbsSrc -Destination $vbs -Force
 
 & $dest -Action Save
 
@@ -40,7 +44,9 @@ if (Test-Path -LiteralPath $errorFile) { Remove-Item -LiteralPath $errorFile -Fo
 $principal = New-ScheduledTaskPrincipal -UserId $caller -LogonType Interactive -RunLevel Highest
 # Demand start is the default. Windows PowerShell 5.1 has -DisallowDemandStart, not -AllowDemandStart.
 $settings = New-ScheduledTaskSettingsSet -DontStopOnIdleEnd -MultipleInstances IgnoreNew -ExecutionTimeLimit (New-TimeSpan -Minutes 5)
-$exe = 'C:\Windows\System32\WindowsPowerShell\v1.0\powershell.exe'
+# wscript Run style 0 starts PowerShell with no console. powershell.exe
+# -WindowStyle Hidden still flashes a window in this Interactive session.
+$exe = 'C:\Windows\System32\wscript.exe'
 $scheduler = New-Object -ComObject Schedule.Service
 $scheduler.Connect()
 $folder = $scheduler.GetFolder('\')
@@ -48,7 +54,7 @@ $folder = $scheduler.GetFolder('\')
 foreach ($pair in @(@('BackupDiskOn', 'On'), @('BackupDiskOff', 'Off'))) {
     $name = $pair[0]
     $actionName = $pair[1]
-    $arg = '-NoProfile -NonInteractive -ExecutionPolicy Bypass -File C:\ProgramData\backup-disk\backup-disk.ps1 -Action ' + $actionName
+    $arg = '//nologo C:\ProgramData\backup-disk\backup-disk.vbs ' + $actionName
     $action = New-ScheduledTaskAction -Execute $exe -Argument $arg
     Register-ScheduledTask -TaskName $name -Action $action -Principal $principal -Settings $settings -Force | Out-Null
     $task = $folder.GetTask($name)

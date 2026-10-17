@@ -36,10 +36,11 @@ DISK_PS1='C:\ProgramData\backup-disk\backup-disk.ps1'
 # shutdown was remounting the disk and keeping the spindle powered.
 STOPPING="${XDG_RUNTIME_DIR}/backup-disk-stopping"
 
-# Podman accepts the repo only when statfs succeeds. test -d is not enough:
-# statfs on drvfs returns ENOENT.
+# Ready means the repository config is visible in podman's mount namespace.
+# A host mount of D: made after that namespace was created is not.
 restic_visible() {
-  /usr/bin/systemd-run --user --quiet --pipe --wait --collect /usr/bin/stat -f /mnt/d/restic >/dev/null 2>&1
+  /usr/bin/systemd-run --user --quiet --pipe --wait --collect \
+    /usr/bin/podman unshare /usr/bin/test -f /mnt/d/restic/core/config >/dev/null 2>&1
 }
 
 disk_status() {
@@ -65,7 +66,9 @@ disk_status() {
 
 case "$cmd" in
   "restic-rest start")
-    /usr/bin/systemctl --user start restic-rest.service
+    # Restart, not start. An already-running container keeps the mount
+    # from before D: was mounted and continues to serve an empty /data.
+    /usr/bin/systemctl --user restart restic-rest.service
     ;;
   "restic-rest stop")
     /usr/bin/systemctl --user stop restic-rest.service

@@ -1,0 +1,155 @@
+#!/bin/sh
+# Mount D: where rootless restic-rest can write it.
+# WSL's automount of C: is 9p (drvfs). podman unshare sees that mount, and
+# statfs on it returns v9fs. That is the check Podman runs on a volume
+# before it starts the container. The rootless mount namespace is a private
+# copy of / taken when the first container started: it has no shared peer
+# with the host, so a D: mount created only on the host never arrives there.
+# The container then bind-mounts the empty ext4 directory underneath.
+# Mount D: on the host and, when that private namespace exists, inside it.
+# Run as root, in PID 1's mount namespace.
+# Install root:root 755. pilot may run only this path with NOPASSWD.
+set -eu
+
+action=${1:-}
+case "$action" in
+  on|off|in-podman) ;;
+  *)
+    printf 'usage: backup-wsl-mount on|off\n' >&2
+    exit 1
+    ;;
+esac
+
+repo=/mnt/d/restic
+legacy=/var/lib/backup-disk
+unfsd_pid=/run/backup-disk-unfsd.pid
+
+exact_mount() {
+  target=$(/usr/bin/findmnt -n -o TARGET --target "$1" 2>/dev/null || true)
+  [ "$target" = "$1" ]
+}
+
+drive_mounted() {
+  exact_mount /mnt/d || return 1
+  fstype=$(/usr/bin/findmnt -n -o FSTYPE --target /mnt/d)
+  src=$(/usr/bin/findmnt -n -o SOURCE --target /mnt/d)
+  [ "$fstype" = "9p" ] || return 1
+  case "$src" in
+    "D:"|"D:\\") return 0 ;;
+  esac
+  return 1
+}
+
+stop_unfsd() {
+  if [ -f "$unfsd_pid" ]; then
+    pid=$(/usr/bin/cat "$unfsd_pid" 2>/dev/null || true)
+    if [ -n "$pid" ]; then
+      /bin/kill "$pid" >/dev/null 2>&1 || true
+    fi
+    /bin/rm -f "$unfsd_pid"
+  fi
+}
+
+# Lazy unmount only. fuser -km on a path that is not its own mount kills
+# every process on the WSL root disk, which shuts the distro down.
+unmount_d() {
+  stop_unfsd
+  /usr/bin/umount -l "$repo" >/dev/null 2>&1 || true
+  /usr/bin/umount -l /mnt/d >/dev/null 2>&1 || true
+  /usr/bin/umount -l "$legacy" >/dev/null 2>&1 || true
+}
+
+require_user() {
+  user=${SUDO_USER:-}
+  if [ -z "$user" ]; then
+    printf 'run backup-wsl-mount via sudo from the podman user\n' >&2
+    exit 1
+  fi
+  uid=$(/usr/bin/id -u "$user")
+  gid=$(/usr/bin/id -g "$user")
+}
+
+mount_d() {
+  if exact_mount "$repo"; then
+    /usr/bin/umount "$repo" || /usr/bin/umount -l "$repo"
+  fi
+  if /usr/bin/mountpoint -q "$legacy"; then
+    /usr/bin/umount "$legacy" || /usr/bin/umount -l "$legacy"
+  fi
+  if drive_mounted; then
+    return 0
+  fi
+  if exact_mount /mnt/d; then
+    /usr/bin/umount /mnt/d || /usr/bin/umount -l /mnt/d
+  fi
+  /bin/mkdir -p /mnt/d
+  /bin/mount -t drvfs D: /mnt/d -o "noatime,uid=${uid},gid=${gid}"
+}
+
+# A process whose mount namespace is the one podman unshare joins.
+# Empty when that namespace is only created for the duration of the command.
+podman_peer() {
+  peer=$(/usr/sbin/runuser -u "$user" -- env XDG_RUNTIME_DIR="/run/user/${uid}" /usr/bin/podman unshare /usr/bin/readlink /proc/self/ns/mnt 2>/dev/null || true)
+  self=$(/usr/bin/readlink /proc/self/ns/mnt)
+  if [ -z "$peer" ] || [ "$peer" = "$self" ]; then
+    return 1
+  fi
+  for d in /proc/[0-9]*; do
+    n=$(/usr/bin/readlink "$d/ns/mnt" 2>/dev/null || true)
+    if [ "$n" = "$peer" ]; then
+      printf '%s\n' "${d#/proc/}"
+      return 0
+    fi
+  done
+  return 1
+}
+
+if [ "$action" = "in-podman" ]; then
+  inner=${2:-}
+  case "$inner" in
+    on|off) ;;
+    *)
+      printf 'usage: backup-wsl-mount on|off\n' >&2
+      exit 1
+      ;;
+  esac
+  require_user
+  if [ "$inner" = "on" ]; then
+    mount_d
+  else
+    unmount_d
+  fi
+  exit 0
+fi
+
+self_ns=$(readlink /proc/self/ns/mnt 2>/dev/null || true)
+init_ns=$(readlink /proc/1/ns/mnt 2>/dev/null || true)
+if [ -n "$init_ns" ] && [ "$init_ns" != "$self_ns" ]; then
+  exec /usr/bin/nsenter -t 1 -m -- "$0" "$action"
+fi
+
+require_user
+
+if [ "$action" = "off" ]; then
+  unmount_d
+  peer=$(podman_peer || true)
+  if [ -n "$peer" ]; then
+    /usr/bin/nsenter -t "$peer" -m -- "$0" in-podman off
+  fi
+  exit 0
+fi
+
+stop_unfsd
+mount_d
+peer=$(podman_peer || true)
+if [ -n "$peer" ]; then
+  /usr/bin/nsenter -t "$peer" -m -- "$0" in-podman on
+fi
+if [ ! -f "$repo/core/config" ]; then
+  printf 'D:\\restic\\core\\config is not visible\n' >&2
+  exit 1
+fi
+if ! /usr/sbin/runuser -u "$user" -- env XDG_RUNTIME_DIR="/run/user/${uid}" /usr/bin/podman unshare /usr/bin/test -f "$repo/core/config"; then
+  printf 'rootless podman cannot see %s\n' "$repo/core/config" >&2
+  exit 1
+fi

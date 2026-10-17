@@ -1,7 +1,8 @@
 #!/usr/bin/env python3
 """Power Backrest, Mantle restic-rest, and the Surface D: disk together.
 
-This is a personal-site extra. GET/SET does not install it. Caddy already
+This lives under windows/ because restic-rest runs in WSL2 and parks a drive
+on the Windows host. GET/SET does not install it. Caddy already
 proxies https://backup.home.lan to 127.0.0.1:9898. This process binds that
 address and publishes Backrest on 127.0.0.1:19898 instead, via a Quadlet
 drop-in under the loadmaster user. The Homepage widget keeps using the LAN
@@ -43,6 +44,8 @@ ZONE = ZoneInfo(os.environ.get("BACKUP_TZ", "America/Los_Angeles"))
 SITE_HOST = os.environ.get("BACKUP_SITE_HOST", "backup.home.lan").lower()
 IDLE = timedelta(minutes=int(os.environ.get("BACKUP_IDLE_MINUTES", "15")))
 LEAD = timedelta(minutes=int(os.environ.get("BACKUP_LEAD_MINUTES", "5")))
+ACL_LEAD = timedelta(seconds=int(os.environ.get("BACKUP_ACL_LEAD_SECONDS", "45")))
+ACL_REFRESH = Path(os.environ.get("BACKUP_ACL_REFRESH", "/usr/local/sbin/site-backup-acl"))
 GRACE = timedelta(minutes=int(os.environ.get("BACKUP_START_GRACE_MINUTES", "20")))
 SKEW = timedelta(minutes=10)
 LISTEN_HOST = os.environ.get("BACKUP_LISTEN_HOST", "127.0.0.1")
@@ -154,6 +157,25 @@ def dow_match(expr: str, sunday0: int) -> bool:
     if field_match(expr, sunday0, 0, 7):
         return True
     return sunday0 == 0 and field_match(expr, 7, 0, 7)
+
+
+def acl_due(now: datetime, jobs: list[Job]) -> bool:
+    """A job fires within ACL_LEAD. The read-access repair belongs here.
+
+    Caddy renews its local certificates, mode 0600, in the minutes after the
+    02:30 sweep. That chmod clears the ACL mask, so the backup user cannot
+    read the new files until setfacl runs again.
+    """
+    for job in jobs:
+        minute = now.replace(second=0, microsecond=0)
+        for step in (0, 1):
+            when = minute + timedelta(minutes=step)
+            if not cron_match(job.cron, when):
+                continue
+            remaining = when - now
+            if timedelta(0) < remaining <= ACL_LEAD:
+                return True
+    return False
 
 
 def cron_match(expr: str, when: datetime) -> bool:
@@ -637,7 +659,7 @@ def read_operations() -> list[dict[str, Any]]:
     errors: list[str] = []
     for port in ports:
         try:
-            payload = api_post(port, "GetOperations", {"lastN": 200})
+            payload = api_post(port, "GetOperations", {"selector": {"lastN": 200}})
         except Exception as exc:
             errors.append(str(exc))
             continue
@@ -705,6 +727,7 @@ class Controller:
         self.window_start = parse_stamp(state.get("window_start"))
         self.server: ThreadingHTTPServer | None = None
         self.last_reconcile = datetime.min.replace(tzinfo=ZONE)
+        self.last_acl = 0.0
 
     def now(self) -> datetime:
         return datetime.now(ZONE)
@@ -745,6 +768,24 @@ class Controller:
         self.window_start = None
         self.persist()
 
+    def refresh_read_access(self) -> None:
+        """Restore read access on the mode-0600 backup paths. Returns when done.
+
+        Call this only from the scheduler and from the Backup request. A walk
+        of every source root takes long enough to time out the Backrest UI.
+        """
+        if not ACL_REFRESH.is_file():
+            return
+        result = subprocess.run(
+            ["sudo", "-n", str(ACL_REFRESH), "repair"],
+            check=False,
+            capture_output=True,
+            text=True,
+        )
+        if result.returncode != 0:
+            detail = (result.stderr or result.stdout or "").strip()
+            log.warning("backup read access was not refreshed (%s)", detail or result.returncode)
+
     def tick(self) -> None:
         try:
             heal_dropin()
@@ -780,6 +821,9 @@ class Controller:
                 log.exception("scheduled wake failed")
                 return
         if self.gate.phase == "on":
+            if acl_due(now, self.jobs) and time.monotonic() - self.last_acl >= 30:
+                self.last_acl = time.monotonic()
+                self.refresh_read_access()
             if self.hold.wants_power() and not backrest_active():
                 try:
                     self.remote.backrest("start")
@@ -859,6 +903,8 @@ class Controller:
         elif self.gate.phase != "on":
             handler.send_error(503, "Backrest is off")
             return
+        if handler.path.rstrip("/").endswith("/Backup"):
+            self.refresh_read_access()
         proxy(handler, UPSTREAM_PORT)
 
 

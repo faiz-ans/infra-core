@@ -1,7 +1,7 @@
 #!/bin/sh
 # Install the backup controller for the loadmaster user on Core.
 # This is not part of GET/SET. Run it as loadmaster:
-#   sh extra/backup-controller/install-loadmaster.sh
+#   sh windows/backup-controller/install-loadmaster.sh
 set -eu
 
 src=$(CDPATH= cd -- "$(dirname "$0")" && pwd)
@@ -13,6 +13,7 @@ mkdir -p "$dest" "$unit_dir" "${HOME}/.ssh"
 install -m 755 "$src/backup_controller.py" "$dest/backup_controller.py"
 install -m 755 "$src/backup-remote" "$dest/backup-remote"
 install -m 644 "$src/backup-disk.ps1" "$dest/backup-disk.ps1"
+install -m 644 "$src/backup-disk.vbs" "$dest/backup-disk.vbs"
 install -m 644 "$src/install-surface.ps1" "$dest/install-surface.ps1"
 install -m 644 "$src/backup-controller.service" "$unit_dir/backup-controller.service"
 

@@ -81,22 +81,30 @@ dig +short @192.168.1.111 google.com
 
 The first answer is the ingress IP. The second is a public address.
 
-## 3. Keep it across reboot
+## 3. Start with the HTPC sign-in
 
-Elevated PowerShell. Change the exe path if you did not use `C:\Tools\dnsproxy\`.
+Ubuntu WSL is owned by Windows user **HTPC**. It does not boot at system start, and a SYSTEM task cannot open that distro. Sign in as **HTPC** on `surface`, stop the foreground `dnsproxy.exe` from step 2, then from an elevated PowerShell:
 
 ```powershell
-$action = New-ScheduledTaskAction -Execute 'C:\Tools\dnsproxy\dnsproxy.exe' `
-  -Argument '-l 0.0.0.0 -p 53 -u 127.0.0.1:15353 --cache'
-$trigger = New-ScheduledTaskTrigger -AtStartup
-$principal = New-ScheduledTaskPrincipal -UserId 'SYSTEM' -LogonType ServiceAccount -RunLevel Highest
-Register-ScheduledTask -TaskName 'SiteWslPiholeDns' -Action $action -Trigger $trigger -Principal $principal -Force
-Start-ScheduledTask -TaskName 'SiteWslPiholeDns'
+powershell -NoProfile -ExecutionPolicy Bypass -File windows\wsl-logon\Register-MantleLogon.ps1
 ```
 
-Stop the foreground `dnsproxy.exe` from step 2 before starting the task, or port 53 is already taken.
+That registers two tasks, both 30 seconds after HTPC signs in:
 
-WSL has to be running before the task can reach Pi-hole. A query that arrives first fails until the guest and the Pi-hole container are up.
+- **Site Mantle Logon** runs `wsl.exe -d Ubuntu -e sleep infinity` with no console window and leaves that process running. WSL shuts the distro down when the last `wsl.exe` exits, so a one-shot boot (`wsl -e true`) comes up and then goes away. Ending this task, or `wsl --shutdown`, stops mantle.
+- **Site Mantle Dns** starts `dnsproxy.exe` on `0.0.0.0:53` forwarding to `127.0.0.1:15353`, also with no console window. Neither task has an execution time limit.
+
+Re-registering removes the old **SiteWslPiholeDns** startup task if it is still there. Stop a foreground `dnsproxy.exe` before starting **Site Mantle Dns**, or port 53 is already taken.
+
+A query that arrives before Pi-hole is listening still fails. After the next sign-in, check:
+
+```powershell
+Get-ScheduledTask -TaskName 'Site Mantle Logon','Site Mantle Dns' | Get-ScheduledTaskInfo
+wsl -d Ubuntu -e hostname
+Resolve-DnsName dash.home.lan -Server 127.0.0.1 -Type A -DnsOnly
+```
+
+`hostname` is `mantle`. The name resolves to the ingress address.
 
 ## 4. Router
 

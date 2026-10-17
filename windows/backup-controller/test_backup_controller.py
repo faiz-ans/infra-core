@@ -37,6 +37,10 @@ class CronTests(unittest.TestCase):
         self.assertEqual(wednesday.weekday(), 2)
         self.assertEqual(sunday.weekday(), 6)
         self.assertEqual(bc.fire_on("0 3 * * *", wednesday, ZONE), at(wednesday, 3, 0))
+        jobs = [bc.Job("backup", "site-data", "0 3 * * *")]
+        self.assertFalse(bc.acl_due(at(wednesday, 2, 56), jobs))
+        self.assertTrue(bc.acl_due(at(wednesday, 2, 59).replace(second=20), jobs))
+        self.assertFalse(bc.acl_due(at(wednesday, 3, 0), jobs))
         self.assertIsNone(bc.fire_on("30 3 * * 0", wednesday, ZONE))
         self.assertEqual(bc.fire_on("30 3 * * 0", sunday, ZONE), at(sunday, 3, 30))
         self.assertEqual(bc.fire_on("30 3 * * 7", sunday, ZONE), at(sunday, 3, 30))
