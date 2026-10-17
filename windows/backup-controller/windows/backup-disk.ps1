@@ -9,7 +9,7 @@
 [CmdletBinding()]
 param(
     [Parameter(Mandatory = $true)]
-    [ValidateSet('On', 'Off', 'Status', 'Save')]
+    [ValidateSet('On', 'Off', 'Status', 'Save', 'SmartShort', 'SmartLong', 'SmartStatus')]
     [string]$Action
 )
 
@@ -19,6 +19,8 @@ $Root = 'C:\ProgramData\backup-disk'
 $IdFile = Join-Path $Root 'instance-id.txt'
 $PowerFile = Join-Path $Root 'power-id.txt'
 $ErrorFile = Join-Path $Root 'last-error.txt'
+$SmartFile = Join-Path $Root 'smart.txt'
+$Smartctl = 'C:\Program Files\smartmontools\bin\smartctl.exe'
 
 function Write-Token {
     param([string]$Token)
@@ -158,7 +160,96 @@ function Test-Ready {
     return Test-Path -LiteralPath 'D:\restic'
 }
 
+function Write-SmartToken {
+    param([string]$Token)
+    New-Item -ItemType Directory -Force -Path $Root | Out-Null
+    Set-Content -LiteralPath $SmartFile -Value $Token -Encoding ASCII
+}
+
+function Get-BackupDiskNumber {
+    param([string]$InstanceId)
+    Assert-NotSystem $InstanceId
+    $win = Get-CimInstance Win32_DiskDrive | Where-Object { $_.PNPDeviceID -eq $InstanceId } | Select-Object -First 1
+    if (-not $win) { throw 'backup disk is not online' }
+    if ($win.Index -eq (Get-SystemDiskNumber)) { throw 'refusing the system disk' }
+    return [int]$win.Index
+}
+
+function Invoke-Smartctl {
+    param([string[]]$SmartArgs)
+    if (-not (Test-Path -LiteralPath $Smartctl)) { throw 'smartctl is missing' }
+    $out = & $Smartctl @SmartArgs 2>&1 | Out-String
+    return @{ Code = $LASTEXITCODE; Text = $out }
+}
+
+function Get-SelfTestState {
+    param(
+        [string]$Text,
+        [int]$Code
+    )
+    if ($Text -match 'routine in progress|of test remaining') { return 'running' }
+    if ($Text -match 'previous self-test routine completed|completed without error|was aborted|interrupted by') { return 'done' }
+    if ($Code -ne 0) { return 'error' }
+    return 'unknown'
+}
+
+function Get-SmartDevice {
+    param([int]$Number)
+    # smartctl --scan-open names physical drive N as /dev/sdX and opens the
+    # backup disk as -d sat. \\.\PhysicalDriveN returns "Invalid argument".
+    return '/dev/sd' + [char](97 + $Number)
+}
+
+function Read-SelfTestState {
+    param([string]$Device)
+    $info = Invoke-Smartctl @('-d', 'sat', '-c', $Device)
+    return (Get-SelfTestState -Text $info.Text -Code $info.Code)
+}
+
+function Start-SelfTest {
+    param(
+        [string]$InstanceId,
+        [string]$Mode
+    )
+    $number = Get-BackupDiskNumber $InstanceId
+    $device = Get-SmartDevice $number
+    Write-SmartToken 'running'
+    $started = Invoke-Smartctl @('-d', 'sat', '-t', $Mode, $device)
+    if ($started.Code -ne 0) {
+        Write-SmartToken 'error'
+        $detail = ($started.Text -replace '[\r\n]+', ' ').Trim()
+        throw ('smartctl -d sat -t ' + $Mode + ' ' + $device + ' failed: ' + $detail)
+    }
+    $deadline = (Get-Date).AddHours(18)
+    if ($Mode -eq 'short') { $deadline = (Get-Date).AddMinutes(30) }
+    do {
+        Start-Sleep -Seconds 30
+        $state = Read-SelfTestState $device
+        if ($state -eq 'done') {
+            Write-SmartToken 'done'
+            return
+        }
+        if ($state -eq 'error') {
+            Write-SmartToken 'error'
+            throw 'smartctl could not read the self-test'
+        }
+    } while ((Get-Date) -lt $deadline)
+    Write-SmartToken 'error'
+    throw 'self-test did not finish'
+}
+
 try {
+    if ($Action -eq 'SmartStatus') {
+        if (-not (Test-Path -LiteralPath $SmartFile)) {
+            Write-Token 'idle'
+            exit 0
+        }
+        $token = (Get-Content -LiteralPath $SmartFile -Raw).Trim()
+        if ($token -ne 'running' -and $token -ne 'done' -and $token -ne 'error') { $token = 'idle' }
+        Write-Token $token
+        exit 0
+    }
+
     if ($Action -eq 'Save') {
         $id = Find-Identity
         if (-not $id) { throw 'D: is not online' }
@@ -175,6 +266,14 @@ try {
     }
     if (-not $id) { throw 'D: is offline and no saved disk id exists' }
     Assert-NotSystem $id
+
+    if ($Action -eq 'SmartShort' -or $Action -eq 'SmartLong') {
+        $mode = 'short'
+        if ($Action -eq 'SmartLong') { $mode = 'long' }
+        Start-SelfTest $id $mode
+        Write-Token 'done'
+        exit 0
+    }
 
     $power = Resolve-PowerId $id -Persist:($Action -ne 'Status')
     $usb = Get-PnpDevice -InstanceId $power -ErrorAction SilentlyContinue

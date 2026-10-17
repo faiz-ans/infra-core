@@ -1,11 +1,12 @@
 # Read access for whoever opens the source. On the backup host that is the
 # engine user. On an export host it is the NFS squash user.
-# setfacl -m, not only the default ACL: a mode 0600 create or chmod clears
-# the mask, which leaves a named user entry with no effect. Caddy's local
-# certificates are mode 0600 and renew in the half hour after 02:30, so the
-# 02:30 sweep is not the last word. `repair` fixes those masks again, and
-# the backup controller runs it in the minute before a job and before a
-# browser backup. This does not replace existing access entries.
+# setfacl -m, not only the default ACL: a mode 0600 or 0700 create clears
+# the mask, which leaves a named user entry with no effect. OpenCloud's
+# NATS and metadata trees do this all day, and Caddy's certificates do it
+# when they renew. The 00:00 sweep resets the whole tree before the 00:25
+# wake. `repair` fixes whatever was created mode 0600 or 0700 after that,
+# and the backup controller runs it in the minute before a job and before
+# a browser backup. This does not replace existing access entries.
 - name: Backup grants on this host
   set_fact:
     site_backup_grants: "{{ site_plan.backup_grants | default([]) | selectattr('host', 'equalto', site_host_name) | list }}"
@@ -53,17 +54,9 @@
         [ -n "$user" ] || continue
         [ -e "$path" ] || continue
         if [ "$mode" = "repair" ]; then
-          # Mode 0600 clears the ACL mask. Caddy rewrites these paths that
-          # way when it renews a local certificate; the Authelia key is
-          # chmod 0600. The rest of the tree is the 02:30 sweep.
-          for rel in caddy/data/caddy/certificates caddy/data/caddy/pki authelia/oidc.pem; do
-            target="${path}/${rel}"
-            if [ -d "$target" ]; then
-              find "$target" -xdev \( -type f -perm 600 -o -type d -perm 700 \) -exec setfacl -m "u:${user}:rX" {} +
-            elif [ -f "$target" ]; then
-              setfacl -m "u:${user}:rX" "$target"
-            fi
-          done
+          # A 0600 file or 0700 directory clears the ACL mask. The named
+          # user entry stays and grants nothing until setfacl runs again.
+          find "$path" -xdev \( -type f -perm 600 -o -type d -perm 700 \) -exec setfacl -m "u:${user}:rX" {} +
           continue
         fi
         setfacl -R -m "u:${user}:rX" "$path"
@@ -93,7 +86,7 @@
       Description=Refresh backup read access before the daily backup
 
       [Timer]
-      OnCalendar=02:30
+      OnCalendar=00:00
       Persistent=false
 
       [Install]

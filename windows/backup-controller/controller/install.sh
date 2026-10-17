@@ -15,6 +15,8 @@ install -m 755 "$src/backup-remote" "$dest/backup-remote"
 install -m 644 "$src/backup-disk.ps1" "$dest/backup-disk.ps1"
 install -m 644 "$src/backup-disk.vbs" "$dest/backup-disk.vbs"
 install -m 644 "$src/install-surface.ps1" "$dest/install-surface.ps1"
+install -m 644 "$src/../scrutiny-collector/Invoke-ScrutinyCollector.ps1" "$dest/Invoke-ScrutinyCollector.ps1"
+install -m 755 "$src/backup-smart" "$dest/backup-smart"
 install -m 644 "$src/backup-controller.service" "$unit_dir/backup-controller.service"
 
 if [ ! -f "$key" ]; then
@@ -36,7 +38,11 @@ printf 'Pin Loadmaster'\''s key in ~pilot/.ssh/authorized_keys on Mantle:\n'
 printf '  restrict,command="/usr/local/sbin/backup-remote" %s\n\n' "$pub"
 printf 'Record Mantle'\''s host key:\n'
 printf '  ssh-keyscan -H 192.168.1.111 >> %s/.ssh/backup_mantle_known_hosts\n\n' "$HOME"
-printf 'Linger, so the 02:55 wake runs without a login (needs root):\n'
+printf 'On Core, as root, the IronWolf test is a fixed command (short or long on /dev/sda only):\n'
+printf '  install -m 755 -o root -g root %s/backup-smart /usr/local/sbin/backup-smart\n' "$dest"
+printf '  printf '\''loadmaster ALL=(root) NOPASSWD: /usr/local/sbin/backup-smart short, /usr/local/sbin/backup-smart long\\n'\'' > /etc/sudoers.d/backup-smart\n'
+printf '  chmod 440 /etc/sudoers.d/backup-smart\n\n'
+printf 'Linger, so the 00:25 wake runs without a login (needs root):\n'
 printf '  sudo loginctl enable-linger loadmaster\n\n'
 printf 'Then start it:\n'
 printf '  systemctl --user enable --now backup-controller.service\n'

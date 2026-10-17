@@ -36,27 +36,27 @@ class CronTests(unittest.TestCase):
         sunday = date(2026, 10, 18)
         self.assertEqual(wednesday.weekday(), 2)
         self.assertEqual(sunday.weekday(), 6)
-        self.assertEqual(bc.fire_on("0 3 * * *", wednesday, ZONE), at(wednesday, 3, 0))
-        jobs = [bc.Job("backup", "site-data", "0 3 * * *")]
-        self.assertFalse(bc.acl_due(at(wednesday, 2, 56), jobs))
-        self.assertTrue(bc.acl_due(at(wednesday, 2, 59).replace(second=20), jobs))
-        self.assertFalse(bc.acl_due(at(wednesday, 3, 0), jobs))
-        self.assertIsNone(bc.fire_on("30 3 * * 0", wednesday, ZONE))
-        self.assertEqual(bc.fire_on("30 3 * * 0", sunday, ZONE), at(sunday, 3, 30))
-        self.assertEqual(bc.fire_on("30 3 * * 7", sunday, ZONE), at(sunday, 3, 30))
+        self.assertEqual(bc.fire_on("30 0 * * *", wednesday, ZONE), at(wednesday, 0, 30))
+        jobs = [bc.Job("backup", "site-data", "30 0 * * *")]
+        self.assertFalse(bc.acl_due(at(wednesday, 0, 26), jobs))
+        self.assertTrue(bc.acl_due(at(wednesday, 0, 29).replace(second=20), jobs))
+        self.assertFalse(bc.acl_due(at(wednesday, 0, 30), jobs))
+        self.assertIsNone(bc.fire_on("0 1 * * 0", wednesday, ZONE))
+        self.assertEqual(bc.fire_on("0 1 * * 0", sunday, ZONE), at(sunday, 1, 0))
+        self.assertEqual(bc.fire_on("0 1 * * 7", sunday, ZONE), at(sunday, 1, 0))
 
     def test_window_opens_five_minutes_early(self) -> None:
         wednesday = date(2026, 10, 14)
         jobs = bc.default_jobs()
-        self.assertFalse(bc.should_open(at(wednesday, 2, 54), jobs, None, ZONE))
-        self.assertTrue(bc.should_open(at(wednesday, 2, 55), jobs, None, ZONE))
-        self.assertTrue(bc.should_open(at(wednesday, 3, 20), jobs, None, ZONE))
-        self.assertFalse(bc.should_open(at(wednesday, 3, 21), jobs, None, ZONE))
-        self.assertFalse(bc.should_open(at(wednesday, 2, 55), jobs, wednesday, ZONE))
+        self.assertFalse(bc.should_open(at(wednesday, 0, 24), jobs, None, ZONE))
+        self.assertTrue(bc.should_open(at(wednesday, 0, 25), jobs, None, ZONE))
+        self.assertTrue(bc.should_open(at(wednesday, 0, 50), jobs, None, ZONE))
+        self.assertFalse(bc.should_open(at(wednesday, 0, 51), jobs, None, ZONE))
+        self.assertFalse(bc.should_open(at(wednesday, 0, 25), jobs, wednesday, ZONE))
         self.assertGreater(at(wednesday, 23, 29), bc.window_deadline(jobs, wednesday, ZONE))
         sunday = date(2026, 10, 18)
-        self.assertTrue(bc.should_open(at(sunday, 3, 40), jobs, None, ZONE))
-        self.assertFalse(bc.should_open(at(sunday, 3, 51), jobs, None, ZONE))
+        self.assertTrue(bc.should_open(at(sunday, 1, 10), jobs, None, ZONE))
+        self.assertFalse(bc.should_open(at(sunday, 1, 21), jobs, None, ZONE))
 
 
 def op(kind: str, status: str, start: datetime, plan: str = "", repo: str = "site") -> dict:
@@ -78,6 +78,13 @@ class OperationTests(unittest.TestCase):
         self.assertFalse(bc.is_running({"status": 0}))
         self.assertTrue(bc.is_running({"status": "STATUS_INPROGRESS"}))
         self.assertFalse(bc.any_running([{}]))
+        now_ms = int(datetime.now(ZONE).timestamp() * 1000)
+        later = str(now_ms + 3_600_000)
+        due = str(now_ms - 60_000)
+        self.assertFalse(bc.is_running({"status": "STATUS_PENDING", "unixTimeStartMs": later}, now_ms))
+        self.assertFalse(bc.is_running({"status": 1, "unixTimeStartMs": later}, now_ms))
+        self.assertTrue(bc.is_running({"status": "STATUS_PENDING", "unixTimeStartMs": due}, now_ms))
+        self.assertTrue(bc.is_running({"status": "STATUS_PENDING"}, now_ms))
 
 
 class WindowTests(unittest.TestCase):
@@ -104,23 +111,23 @@ class WindowTests(unittest.TestCase):
 
     def test_sunday_waits_for_prune(self) -> None:
         day = date(2026, 10, 18)
-        start = at(day, 2, 45)
+        start = at(day, 0, 20)
         ops = [op("backup", "STATUS_SUCCESS", at(day, 3, 0), plan="site-data")]
-        self.assertEqual(bc.window_status(at(day, 3, 40), bc.default_jobs(), ops, start, ZONE), "wait")
-        ops.append(op("prune", "STATUS_SUCCESS", at(day, 3, 31)))
-        self.assertEqual(bc.window_status(at(day, 3, 45), bc.default_jobs(), ops, start, ZONE), "done")
+        self.assertEqual(bc.window_status(at(day, 1, 10), bc.default_jobs(), ops, start, ZONE), "wait")
+        ops.append(op("prune", "STATUS_SUCCESS", at(day, 1, 1)))
+        self.assertEqual(bc.window_status(at(day, 1, 15), bc.default_jobs(), ops, start, ZONE), "done")
 
     def test_later_sunday_job_keeps_an_early_miss_open(self) -> None:
         day = date(2026, 10, 18)
         start = at(day, 2, 45)
-        self.assertEqual(bc.window_status(at(day, 3, 25), bc.default_jobs(), [], start, ZONE), "wait")
-        self.assertEqual(bc.window_status(at(day, 3, 51), bc.default_jobs(), [], start, ZONE), "missed")
+        self.assertEqual(bc.window_status(at(day, 0, 55), bc.default_jobs(), [], start, ZONE), "wait")
+        self.assertEqual(bc.window_status(at(day, 1, 21), bc.default_jobs(), [], start, ZONE), "missed")
 
     def test_yesterday_does_not_satisfy_today(self) -> None:
         day = date(2026, 10, 14)
         start = at(day, 2, 45)
-        ops = [op("backup", "STATUS_SUCCESS", at(date(2026, 10, 13), 3, 0), plan="site-data")]
-        self.assertEqual(bc.window_status(at(day, 3, 10), bc.default_jobs(), ops, start, ZONE), "wait")
+        ops = [op("backup", "STATUS_SUCCESS", at(date(2026, 10, 13), 0, 30), plan="site-data")]
+        self.assertEqual(bc.window_status(at(day, 0, 35), bc.default_jobs(), ops, start, ZONE), "wait")
 
 
 class HoldTests(unittest.TestCase):
@@ -161,6 +168,18 @@ class HoldTests(unittest.TestCase):
         hold.release_interactive(click + bc.IDLE)
         self.assertFalse(hold.interactive)
 
+    def test_expire_ends_the_idle_period(self) -> None:
+        hold = bc.Hold()
+        hold.browser(at(date(2026, 10, 14), 12, 0))
+        hold.expire()
+        self.assertFalse(hold.interactive)
+        self.assertFalse(hold.wants_power())
+        hold.browser(at(date(2026, 10, 14), 12, 0))
+        hold.cron = True
+        hold.expire()
+        self.assertFalse(hold.interactive)
+        self.assertTrue(hold.wants_power())
+
 
 class RequestTests(unittest.TestCase):
     def test_only_the_backup_site_wakes(self) -> None:
@@ -182,11 +201,11 @@ class RequestTests(unittest.TestCase):
 class ScheduleTests(unittest.TestCase):
     def test_seed_shape_and_disabled_prune(self) -> None:
         config = {
-            "plans": [{"id": "site-data", "schedule": {"cron": "0 3 * * *", "clock": "CLOCK_LOCAL"}}],
+            "plans": [{"id": "site-data", "schedule": {"cron": "30 0 * * *", "clock": "CLOCK_LOCAL"}}],
             "repos": [
                 {
                     "id": "site",
-                    "prunePolicy": {"schedule": {"cron": "30 3 * * 0", "clock": "CLOCK_LOCAL"}},
+                    "prunePolicy": {"schedule": {"cron": "0 1 * * 0", "clock": "CLOCK_LOCAL"}},
                     "checkPolicy": {"schedule": {"disabled": True, "cron": "0 4 1 * *"}},
                 }
             ],
@@ -225,7 +244,33 @@ class StackTests(unittest.TestCase):
         stack.power_off()
         self.assertEqual(
             remote.calls,
-            ["backrest stop", "restic stop", "disk off", "wait-disk off"],
+            ["backrest stop", "restic stop", "collect", "disk off", "wait-disk off"],
+        )
+        remote.calls.clear()
+        stack.power_off(leave_disk=True)
+        self.assertEqual(remote.calls, ["backrest stop", "restic stop"])
+
+    def test_a_live_timer_stops_the_park(self) -> None:
+        remote = Recorder()
+
+        def keep() -> bool:
+            return "restic stop" in remote.calls
+
+        bc.Stack(remote).power_off(keep=keep)
+        self.assertEqual(remote.calls, ["backrest stop", "restic stop"])
+
+    def test_collect_failure_still_parks(self) -> None:
+        remote = Recorder()
+
+        def collect_and_wait() -> None:
+            remote.calls.append("collect")
+            raise RuntimeError("surface collect failed")
+
+        remote.collect_and_wait = collect_and_wait  # type: ignore[method-assign]
+        bc.Stack(remote).power_off()
+        self.assertEqual(
+            remote.calls,
+            ["backrest stop", "restic stop", "collect", "disk off", "wait-disk off"],
         )
 
     def test_running_job_refuses_shutdown(self) -> None:
@@ -263,6 +308,74 @@ class Recorder:
     def jobs_running(self) -> bool:
         return self.running
 
+    def collect_and_wait(self) -> None:
+        self.calls.append("collect")
+
+    def leftovers(self) -> bool:
+        return True
+
+
+class ReconcileTests(unittest.TestCase):
+    def test_page_during_an_external_disk_skips_the_park(self) -> None:
+        remote = Recorder()
+        controller = bc.Controller(remote)  # type: ignore[arg-type]
+
+        def restic(action: str) -> None:
+            remote.calls.append(f"restic {action}")
+            if action == "stop":
+                controller.hold.browser(controller.now())
+
+        remote.restic = restic  # type: ignore[method-assign]
+        controller._reconcile_off()
+        self.assertNotIn("disk off", remote.calls)
+        self.assertEqual(controller.gate.phase, "off")
+
+    def test_open_page_is_not_an_unattended_disk(self) -> None:
+        remote = Recorder()
+        controller = bc.Controller(remote)  # type: ignore[arg-type]
+        controller.hold.browser(controller.now())
+        controller._reconcile_off()
+        self.assertEqual(remote.calls, [])
+
+
+class SmartTests(unittest.TestCase):
+    def test_sunday_short_and_first_sunday_long(self) -> None:
+        self.assertIsNone(bc.smart_mode(date(2026, 10, 16)))
+        self.assertEqual(bc.smart_mode(date(2026, 10, 4)), "long")
+        self.assertEqual(bc.smart_mode(date(2026, 10, 11)), "short")
+        self.assertEqual(bc.smart_mode(date(2026, 10, 18)), "short")
+        self.assertEqual(date(2026, 10, 4).weekday(), 6)
+
+    def test_stale_done_is_not_this_test(self) -> None:
+        self.assertEqual(bc.surface_progress(False, "done"), (False, "wait"))
+        self.assertEqual(bc.surface_progress(False, "running"), (True, "wait"))
+        self.assertEqual(bc.surface_progress(True, "done"), (True, "done"))
+        self.assertEqual(bc.surface_progress(True, "error"), (True, "error"))
+        self.assertEqual(bc.surface_progress(False, "idle"), (False, "wait"))
+
+    def test_park_collects_before_the_disk_goes_off(self) -> None:
+        remote = Recorder()
+        controller = bc.Controller(remote)  # type: ignore[arg-type]
+        with patch.object(controller, "persist"):
+            controller._park_surface()
+        self.assertEqual(remote.calls, ["collect", "disk off", "wait-disk off"])
+        self.assertTrue(controller.smart_finished)
+        self.assertFalse(controller.hold.smart)
+
+    def test_collect_accepts_done_without_seeing_running(self) -> None:
+        remote = bc.Remote()
+        tokens = iter(["done"])
+
+        def ssh(command: str) -> str:
+            if command == "collect":
+                return ""
+            return next(tokens)
+
+        remote._ssh = ssh  # type: ignore[method-assign]
+        with patch.object(bc.time, "sleep") as sleep:
+            remote.collect_and_wait()
+        sleep.assert_not_called()
+
 
 class RemoteScriptTests(unittest.TestCase):
     def test_allow_list_is_the_script(self) -> None:
@@ -274,7 +387,7 @@ class RemoteScriptTests(unittest.TestCase):
 
     def test_anything_else_is_denied(self) -> None:
         script = ROOT / "backup-remote"
-        for command in ("", "bash", "disk on; reboot", "restic-rest start extra", "disk status; id"):
+        for command in ("", "bash", "disk on; reboot", "restic-rest start extra", "disk status; id", "smart short extra", "smartctl -t long", "collect extra"):
             run = subprocess.run(
                 ["/bin/sh", str(script)],
                 check=False,

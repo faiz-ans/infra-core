@@ -3,6 +3,8 @@
 # SSH_ORIGINAL_COMMAND must be one of these, with no extra arguments:
 #   restic-rest start|stop|status
 #   disk on|off|status
+#   smart short|long|status
+#   collect|collect status
 # status is read-only. It exists so the controller can wait until D: and
 # restic-rest are actually up, and until D: is off. Install this file
 # root-owned (root:root, mode 755) and pin the key with:
@@ -11,7 +13,7 @@ set -eu
 
 cmd=${SSH_ORIGINAL_COMMAND-}
 case "$cmd" in
-  "restic-rest start"|"restic-rest stop"|"restic-rest status"|"disk on"|"disk off"|"disk status")
+  "restic-rest start"|"restic-rest stop"|"restic-rest status"|"disk on"|"disk off"|"disk status"|"smart short"|"smart long"|"smart status"|"collect"|"collect status")
     ;;
   *)
     printf 'denied\n' >&2
@@ -88,5 +90,26 @@ case "$cmd" in
     ;;
   "disk status")
     disk_status
+    ;;
+  "smart short")
+    "$SCHTASKS" /Run /TN BackupDiskSmartShort
+    ;;
+  "smart long")
+    "$SCHTASKS" /Run /TN BackupDiskSmartLong
+    ;;
+  "smart status")
+    out=$("$PS" -NoProfile -NonInteractive -ExecutionPolicy Bypass -File "$DISK_PS1" -Action SmartStatus | /usr/bin/tr -d '\r')
+    out=$(printf '%s\n' "$out" | /usr/bin/sed '/^$/d' | /usr/bin/tail -n 1)
+    printf '%s\n' "$out"
+    ;;
+  "collect")
+    # Mark this run before schtasks returns. The task then replaces the token.
+    "$PS" -NoProfile -NonInteractive -ExecutionPolicy Bypass -Command "New-Item -ItemType Directory -Force -Path 'C:\ProgramData\backup-disk' | Out-Null; Set-Content -LiteralPath 'C:\ProgramData\backup-disk\collect.txt' -Value 'running' -Encoding ASCII"
+    "$SCHTASKS" /Run /TN BackupDiskCollect
+    ;;
+  "collect status")
+    out=$("$PS" -NoProfile -NonInteractive -ExecutionPolicy Bypass -Command "if (Test-Path -LiteralPath 'C:\ProgramData\backup-disk\collect.txt') { (Get-Content -LiteralPath 'C:\ProgramData\backup-disk\collect.txt' -Raw).Trim() } else { 'idle' }" | /usr/bin/tr -d '\r')
+    out=$(printf '%s\n' "$out" | /usr/bin/sed '/^$/d' | /usr/bin/tail -n 1)
+    printf '%s\n' "$out"
     ;;
 esac

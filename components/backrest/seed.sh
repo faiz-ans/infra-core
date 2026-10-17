@@ -27,7 +27,7 @@ if [ ! -s /config/config.json ]; then
         "RESTIC_REST_PASSWORD=${rest_password}"
       ],
       "prunePolicy": {
-        "schedule": { "cron": "30 3 * * 0", "clock": "CLOCK_LOCAL" },
+        "schedule": { "cron": "0 1 * * 0", "clock": "CLOCK_LOCAL" },
         "maxUnusedPercent": 10
       }
     }
@@ -38,7 +38,7 @@ if [ ! -s /config/config.json ]; then
       "repo": "site",
       "paths": [${plan_paths}],
       "excludes": ["/data/appdata/restic", "/data/appdata/backrest"],
-      "schedule": { "cron": "0 3 * * *", "clock": "CLOCK_LOCAL" },
+      "schedule": { "cron": "30 0 * * *", "clock": "CLOCK_LOCAL" },
       "retention": {
         "policyTimeBucketed": { "daily": 7, "weekly": 4, "monthly": 12 }
       }

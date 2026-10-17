@@ -13,7 +13,8 @@ Volume=/run/udev:/run/udev:ro
 Volume=/dev:/dev
 PodmanArgs=--privileged
 Entrypoint=/bin/bash
-Exec=-c "while true; do /opt/scrutiny/bin/scrutiny-collector-metrics run; sleep 21600; done"
+# Attribute collect every 30 minutes. Sleep starts after each run finishes.
+Exec=-c "while true; do /opt/scrutiny/bin/scrutiny-collector-metrics run; sleep 1800; done"
 
 [Service]
 Restart=on-failure

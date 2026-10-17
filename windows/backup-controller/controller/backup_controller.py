@@ -8,15 +8,29 @@ address and publishes Backrest on 127.0.0.1:19898 instead, via a Quadlet
 drop-in under the loadmaster user. The Homepage widget keeps using the LAN
 publish and does not count as activity.
 
-The daily backup is 03:00 America/Los_Angeles (five minutes of lead time).
-Sunday prune is 03:30. Both come from Backrest's config once it is up; the
-seed schedule is the fallback. A browser request wakes the same three parts.
-They turn off again after BACKUP_IDLE_MINUTES with no browser traffic and no
-Backrest operation still running. A running operation finishes first, and the
-idle period starts at that finish.
+The daily backup is 00:30 America/Los_Angeles (five minutes of lead time).
+Sunday prune is 01:00. Both come from Backrest's config once it is up; the
+seed schedule is the fallback. The seed writes that schedule only when
+config.json is created. An existing Backrest config keeps its own crons
+until they are changed in the UI. A browser request wakes the same three
+parts. They turn off again after BACKUP_IDLE_MINUTES with no browser traffic
+and no Backrest operation still running. A running operation finishes first,
+and the idle period starts at that finish. SIGUSR1 ends that idle period
+immediately so the next pass stops the stack. It does not cancel a
+scheduled backup window.
+
+On Sunday, after that window, Backrest and restic-rest stop and the D: disk
+stays on for a SMART self-test. A short test runs every Sunday. The first
+Sunday of the month runs a long test instead. The same test is started on
+Core's IronWolf and is not waited on. D: is parked when its own test ends.
+
+Before that park, and before a weekday park, one Scrutiny collect runs on
+Surface. The drive is still enabled, so the collect posts both the Restic
+disk and the internal SSD. The collector task has no schedule of its own.
 
 SSH to Mantle uses a dedicated key whose server side is backup-remote. That
-script accepts only restic-rest and D: on, off, and status.
+script accepts only restic-rest, D: on/off/status, smart short/long/status,
+and collect / collect status.
 """
 
 from __future__ import annotations
@@ -76,6 +90,11 @@ ALLOWED = (
     "disk on",
     "disk off",
     "disk status",
+    "smart short",
+    "smart long",
+    "smart status",
+    "collect",
+    "collect status",
 )
 LOOPBACK_PUBLISH = f"127.0.0.1:{LISTEN_PORT}:9898"
 UPSTREAM_PUBLISH = f"127.0.0.1:{UPSTREAM_PORT}:9898"
@@ -99,9 +118,12 @@ KIND_FIELDS = {
     "forget": ("operationForget", "operation_forget"),
 }
 DEFAULT_JOBS = (
-    ("backup", "site-data", "0 3 * * *"),
-    ("prune", "site", "30 3 * * 0"),
+    ("backup", "site-data", "30 0 * * *"),
+    ("prune", "site", "0 1 * * 0"),
 )
+SMART_SCRIPT = Path(os.environ.get("BACKUP_SMART", "/usr/local/sbin/backup-smart"))
+SMART_LIMIT = timedelta(hours=int(os.environ.get("BACKUP_SMART_LIMIT_HOURS", "18")))
+COLLECT_LIMIT = timedelta(minutes=int(os.environ.get("BACKUP_COLLECT_MINUTES", "15")))
 HOP = {
     "connection",
     "keep-alive",
@@ -162,9 +184,8 @@ def dow_match(expr: str, sunday0: int) -> bool:
 def acl_due(now: datetime, jobs: list[Job]) -> bool:
     """A job fires within ACL_LEAD. The read-access repair belongs here.
 
-    Caddy renews its local certificates, mode 0600, in the minutes after the
-    02:30 sweep. That chmod clears the ACL mask, so the backup user cannot
-    read the new files until setfacl runs again.
+    A mode 0600 file or 0700 directory clears the ACL mask. The 00:00 sweep
+    resets the tree; this repair catches anything created that way after it.
     """
     for job in jobs:
         minute = now.replace(second=0, microsecond=0)
@@ -246,6 +267,30 @@ def jobs_today(jobs: list[Job], day: date, zone: ZoneInfo) -> list[tuple[Job, da
     return due
 
 
+def smart_mode(day: date) -> str | None:
+    """short every Sunday, long on the first Sunday of the month."""
+    if day.weekday() != 6:
+        return None
+    if day.day <= 7:
+        return "long"
+    return "short"
+
+
+def surface_progress(seen_running: bool, token: str) -> tuple[bool, str]:
+    """Return the updated seen-running flag and wait, done, or error.
+
+    done before the task has reported running is the previous test's token.
+    """
+    word = (token or "").strip().split()[0] if token else "idle"
+    if word == "running":
+        return True, "wait"
+    if word == "error":
+        return seen_running, "error"
+    if word == "done" and seen_running:
+        return True, "done"
+    return seen_running, "wait"
+
+
 def window_deadline(jobs: list[Job], day: date, zone: ZoneInfo) -> datetime | None:
     due = jobs_today(jobs, day, zone)
     if not due:
@@ -282,9 +327,22 @@ def op_status(op: dict[str, Any]) -> Any:
     return pick(op, "status")
 
 
-def is_running(op: dict[str, Any]) -> bool:
+def is_running(op: dict[str, Any], now_ms: int | None = None) -> bool:
     # A missing status is the proto default, STATUS_UNKNOWN, not a live job.
-    return op_status(op) in RUNNING
+    # STATUS_PENDING with a future start is the next scheduled run, which
+    # Backrest inserts as soon as the previous one finishes. It is not work
+    # in progress, and it must not hold the disk open.
+    status = op_status(op)
+    if status not in RUNNING:
+        return False
+    if status not in (1, "STATUS_PENDING"):
+        return True
+    started = start_ms(op)
+    if started is None:
+        return True
+    if now_ms is None:
+        now_ms = int(time.time() * 1000)
+    return started <= now_ms + 60_000
 
 
 def is_terminal(op: dict[str, Any]) -> bool:
@@ -338,6 +396,7 @@ class Hold:
     def __init__(self) -> None:
         self.interactive = False
         self.cron = False
+        self.smart = False
         self.last_activity: datetime | None = None
         self.job_running = False
         self.job_idle_since: datetime | None = None
@@ -363,6 +422,11 @@ class Hold:
             return
         if now - max(anchors) >= IDLE:
             self.interactive = False
+
+    def expire(self) -> None:
+        self.interactive = False
+        self.last_activity = None
+        self.job_idle_since = None
 
     def wants_power(self) -> bool:
         return self.interactive or self.cron
@@ -425,11 +489,33 @@ class Stack:
                 log.exception("rollback failed")
             raise
 
-    def power_off(self, force: bool = False) -> None:
+    def power_off(
+        self,
+        force: bool = False,
+        leave_disk: bool = False,
+        keep: Callable[[], bool] | None = None,
+    ) -> None:
+        # A page opened while this was already stopping has a live idle timer.
+        # Do not park the disk out from under it. Check again before the park:
+        # stopping Backrest is slow enough for the visit to arrive in between.
+        if keep and keep():
+            return
         if not force and self.remote.jobs_running():
             raise Busy("a Backrest operation is still running")
+        if keep and keep():
+            return
         self.remote.backrest("stop")
+        if keep and keep():
+            return
         self.remote.restic("stop")
+        if leave_disk or (keep and keep()):
+            return
+        try:
+            self.remote.collect_and_wait()
+        except Exception:
+            log.exception("surface collect failed; parking the disk")
+        if keep and keep():
+            return
         self.remote.disk("off")
         self.remote.wait_disk("off")
 
@@ -491,6 +577,27 @@ class Gate:
 class Remote:
     def disk(self, action: str) -> str:
         return self._ssh(f"disk {action}")
+
+    def smart(self, action: str) -> str:
+        return self._ssh(f"smart {action}")
+
+    def collect_and_wait(self) -> None:
+        # backup-remote writes "running" before the task starts, so a done or
+        # error token from this point belongs to this run.
+        log.info("collecting Surface SMART before parking the disk")
+        self._ssh("collect")
+        deadline = time.monotonic() + COLLECT_LIMIT.total_seconds()
+        last = ""
+        while time.monotonic() < deadline:
+            last = self._ssh("collect status").strip().splitlines()[-1].strip()
+            word = last.split()[0] if last else "idle"
+            if word == "done":
+                log.info("surface collect finished")
+                return
+            if word == "error":
+                raise RuntimeError("surface collect failed")
+            time.sleep(2)
+        raise TimeoutError(f"surface collect stayed {last or 'unknown'}")
 
     def restic(self, action: str) -> str:
         return self._ssh(f"restic-rest {action}")
@@ -725,6 +832,19 @@ class Controller:
         self.jobs = jobs_from_state(state)
         self.completed = parse_day(state.get("completed_on"))
         self.window_start = parse_stamp(state.get("window_start"))
+        smart = state.get("smart") if isinstance(state.get("smart"), dict) else {}
+        self.smart_date = parse_day(smart.get("date"))
+        self.smart_mode_name = smart.get("mode") if smart.get("mode") in ("short", "long") else None
+        self.smart_started = bool(smart.get("started"))
+        self.smart_seen = bool(smart.get("seen_running"))
+        self.smart_finished = bool(smart.get("finished"))
+        self.smart_started_at = parse_stamp(smart.get("started_at"))
+        if (
+            self.smart_date is not None
+            and not self.smart_finished
+            and self.smart_mode_name is not None
+        ):
+            self.hold.smart = True
         self.server: ThreadingHTTPServer | None = None
         self.last_reconcile = datetime.min.replace(tzinfo=ZONE)
         self.last_acl = 0.0
@@ -738,6 +858,14 @@ class Controller:
                 "completed_on": self.completed.isoformat() if self.completed else "",
                 "window_start": self.window_start.isoformat() if self.window_start else "",
                 "jobs": [[job.kind, job.ident, job.cron] for job in self.jobs],
+                "smart": {
+                    "date": self.smart_date.isoformat() if self.smart_date else "",
+                    "mode": self.smart_mode_name or "",
+                    "started": self.smart_started,
+                    "seen_running": self.smart_seen,
+                    "finished": self.smart_finished,
+                    "started_at": self.smart_started_at.isoformat() if self.smart_started_at else "",
+                },
             }
         )
 
@@ -766,6 +894,15 @@ class Controller:
         else:
             self.completed = now.date()
         self.window_start = None
+        mode = smart_mode(self.completed) if status == "done" else None
+        if mode and not (self.smart_finished and self.smart_date == self.completed):
+            self.hold.smart = True
+            self.smart_date = self.completed
+            self.smart_mode_name = mode
+            if not self.smart_started:
+                self.smart_seen = False
+                self.smart_finished = False
+                self.smart_started_at = None
         self.persist()
 
     def refresh_read_access(self) -> None:
@@ -830,7 +967,7 @@ class Controller:
                 except Exception:
                     log.exception("Backrest restart failed")
             self._watch(now)
-        elif self.gate.phase == "off" and now - self.last_reconcile >= timedelta(seconds=30):
+        elif self.gate.phase == "off" and not self.hold.smart and now - self.last_reconcile >= timedelta(seconds=30):
             self.last_reconcile = now
             self._reconcile_off()
 
@@ -862,34 +999,140 @@ class Controller:
                 if status in ("done", "missed"):
                     self.finish_window(status, now)
             want = self.hold.wants_power()
+            smart = self.hold.smart
         if not want:
             try:
-                self.gate.ensure_off(self.stack.power_off)
+                if smart:
+                    if self.gate.phase == "on":
+                        self.gate.ensure_off(lambda: self.stack.power_off(leave_disk=True, keep=self._held))
+                    self._run_smart(now)
+                else:
+                    self.gate.ensure_off(lambda: self.stack.power_off(keep=self._held))
             except Busy:
                 log.info("shutdown waited for a Backrest operation")
             except Exception:
                 log.exception("shutdown failed")
 
+    def expire_idle(self) -> None:
+        with self.lock:
+            self.hold.expire()
+        log.info("idle timer expired")
+
+    def _held(self) -> bool:
+        with self.lock:
+            return self.hold.wants_power() or self.hold.smart
+
     def _reconcile_off(self) -> None:
+        # The disk may already be on from disk-on outside this process. Park it
+        # only while no idle timer is running. A visit sets the timer and waits
+        # out this stop, so the park must not land after that visit.
+        if self._held():
+            return
+        with self.gate.cv:
+            if self.gate.phase != "off":
+                return
+            self.gate.phase = "stopping"
+            self.gate.cv.notify_all()
+        busy = False
         try:
-            if self.remote.leftovers():
-                log.info("stack is up with nobody using it; turning it off")
-                self.stack.power_off()
+            if self._held():
+                return
+            if not self.remote.leftovers():
+                return
+            log.info("stack is up with nobody using it; turning it off")
+            self.stack.power_off(keep=self._held)
         except Busy:
             # The operation may have started before this process. Count anything
             # from the beginning of the local day, not from this check.
+            busy = True
             with self.lock:
                 self.hold.cron = True
                 start = datetime.combine(self.now().date(), datetime.min.time(), tzinfo=ZONE)
                 if self.window_start is None or self.window_start > start:
                     self.window_start = start
                     self.persist()
-            try:
-                self.gate.ensure_on(lambda: None)
-            except Exception:
-                log.exception("could not record the in-progress operation")
         except Exception:
             log.exception("idle check failed")
+        finally:
+            with self.gate.cv:
+                if self.gate.phase == "stopping":
+                    self.gate.phase = "off"
+                self.gate.cv.notify_all()
+        if not busy:
+            return
+        try:
+            self.gate.ensure_on(lambda: None)
+        except Exception:
+            log.exception("could not record the in-progress operation")
+
+    def _ironwolf(self, mode: str) -> None:
+        if mode not in ("short", "long"):
+            return
+        run = subprocess.run(
+            ["sudo", "-n", str(SMART_SCRIPT), mode],
+            check=False,
+            capture_output=True,
+            text=True,
+            timeout=60,
+        )
+        if run.returncode != 0:
+            detail = (run.stderr or run.stdout or "").strip()
+            log.error("IronWolf %s test did not start (%s)", mode, detail or run.returncode)
+            return
+        log.info("IronWolf %s test started", mode)
+
+    def _park_surface(self) -> None:
+        try:
+            self.remote.collect_and_wait()
+        except Exception:
+            log.exception("surface collect failed; parking the disk")
+        self.remote.disk("off")
+        self.remote.wait_disk("off")
+        self.hold.smart = False
+        self.smart_finished = True
+        self.persist()
+        log.info("Restic disk parked")
+
+    def _run_smart(self, now: datetime) -> None:
+        mode = self.smart_mode_name or smart_mode(now.date())
+        if mode not in ("short", "long"):
+            self.hold.smart = False
+            self.persist()
+            return
+        if self.smart_started_at is not None and now - self.smart_started_at > SMART_LIMIT:
+            log.error("surface SMART exceeded %s; parking the disk", SMART_LIMIT)
+            self._park_surface()
+            return
+        if not self.smart_started:
+            try:
+                self.remote.smart(mode)
+            except Exception:
+                log.exception("surface SMART did not start; parking the disk")
+                try:
+                    self._ironwolf(mode)
+                except Exception:
+                    log.exception("IronWolf SMART")
+                self._park_surface()
+                return
+            try:
+                self._ironwolf(mode)
+            except Exception:
+                log.exception("IronWolf SMART")
+            self.smart_started = True
+            self.smart_started_at = now
+            self.persist()
+        token = self.remote.smart("status").strip().splitlines()[-1].strip()
+        seen, result = surface_progress(self.smart_seen, token)
+        if seen != self.smart_seen:
+            self.smart_seen = seen
+            self.persist()
+        if result == "wait":
+            return
+        if result == "error":
+            log.error("surface SMART failed; parking the disk")
+        else:
+            log.info("surface %s SMART test finished", mode)
+        self._park_surface()
 
     def handle(self, handler: BaseHTTPRequestHandler) -> None:
         if request_wakes(handler.headers):
@@ -1050,8 +1293,13 @@ def main() -> None:
 
     import signal
 
+    def expire_handler(signum: int, _frame: Any) -> None:
+        log.info("signal %s", signum)
+        controller.expire_idle()
+
     signal.signal(signal.SIGTERM, quit_handler)
     signal.signal(signal.SIGINT, quit_handler)
+    signal.signal(signal.SIGUSR1, expire_handler)
     while not stop.is_set():
         if controller.server is None and prepare_listen(controller):
             try:

@@ -1,0 +1,27 @@
+#!/bin/sh
+# Start a SMART self-test on Core's IronWolf and return. The test keeps
+# running on the drive after this process exits. Loadmaster may run only
+# the two commands below, via sudo. There is no status command and no
+# device argument: the disk is /dev/sda.
+#   /usr/local/sbin/backup-smart short
+#   /usr/local/sbin/backup-smart long
+# Install root:root 755. sudoers:
+#   loadmaster ALL=(root) NOPASSWD: /usr/local/sbin/backup-smart short, /usr/local/sbin/backup-smart long
+set -eu
+
+mode=${1:-}
+case "$mode" in
+  short|long) ;;
+  *)
+    printf 'denied\n' >&2
+    exit 1
+    ;;
+esac
+
+disk=/dev/sda
+if [ ! -b "$disk" ]; then
+  printf 'missing %s\n' "$disk" >&2
+  exit 1
+fi
+
+exec /usr/sbin/smartctl -n never -t "$mode" "$disk"
