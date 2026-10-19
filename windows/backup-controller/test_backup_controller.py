@@ -180,6 +180,13 @@ class HoldTests(unittest.TestCase):
         self.assertFalse(hold.interactive)
         self.assertTrue(hold.wants_power())
 
+    def test_smart_hold_does_not_count_as_a_visit(self) -> None:
+        remote = Recorder()
+        controller = bc.Controller(remote)  # type: ignore[arg-type]
+        controller.hold.smart = True
+        self.assertTrue(controller._held())
+        self.assertFalse(controller._visit())
+
 
 class RequestTests(unittest.TestCase):
     def test_only_the_backup_site_wakes(self) -> None:
@@ -348,6 +355,7 @@ class SmartTests(unittest.TestCase):
 
     def test_stale_done_is_not_this_test(self) -> None:
         self.assertEqual(bc.surface_progress(False, "done"), (False, "wait"))
+        self.assertEqual(bc.surface_progress(False, "done", settled=True), (True, "done"))
         self.assertEqual(bc.surface_progress(False, "running"), (True, "wait"))
         self.assertEqual(bc.surface_progress(True, "done"), (True, "done"))
         self.assertEqual(bc.surface_progress(True, "error"), (True, "error"))
@@ -358,7 +366,10 @@ class SmartTests(unittest.TestCase):
         controller = bc.Controller(remote)  # type: ignore[arg-type]
         with patch.object(controller, "persist"):
             controller._park_surface()
-        self.assertEqual(remote.calls, ["collect", "disk off", "wait-disk off"])
+        self.assertEqual(
+            remote.calls,
+            ["backrest stop", "restic stop", "collect", "disk off", "wait-disk off"],
+        )
         self.assertTrue(controller.smart_finished)
         self.assertFalse(controller.hold.smart)
 

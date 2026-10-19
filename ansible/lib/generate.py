@@ -131,12 +131,13 @@ def _sablier_names(service: dict[str, Any]) -> list[str]:
     return [f"{name}.service"] if name else []
 
 
-# IT Tools is a client-side PWA. After one visit its service worker serves the
-# app from cache, so later navigations never reach Caddy. This worker replaces
-# that one: it keeps no cache and does not answer fetches, so the browser goes
-# back through the gates. The check for /sw.js itself is not authenticated;
-# a login redirect would leave the caching worker installed.
-IT_TOOLS_SW = (
+# These apps install a service worker. After one visit it serves the app from
+# cache, so later navigations never reach Caddy. This worker replaces that one:
+# it keeps no cache and does not answer fetches, so the browser goes back
+# through the gates. The check for /sw.js itself is not authenticated; a login
+# redirect would leave the caching worker installed.
+PWA_APPS = frozenset({"it-tools", "scriberr"})
+DISARM_SW = (
     "self.addEventListener('install',e=>self.skipWaiting());"
     "self.addEventListener('activate',e=>e.waitUntil((async()=>{"
     "const ks=await caches.keys();"
@@ -169,10 +170,16 @@ def _deny_replay(proxy: list[str]) -> list[str]:
 
 
 def sablier_import(desired: dict[str, Any], service: dict[str, Any], ingress_name: str | None) -> str | None:
-    """Ask Sablier to wake this container after authentication and before the upstream."""
+    """Ask Sablier to wake this container after authentication and before the upstream.
+
+    Only an instance that opted in. The systemd provider refuses a unit with
+    no [X-Sablier] section, and the waiting page then never finishes.
+    """
+    from .pod import sablier_enabled
+
     peer = _sablier_peer(desired, service)
     names = _sablier_names(service)
-    if not peer or not names:
+    if not peer or not names or not sablier_enabled(service.get("raw")):
         return None
     port = web_port(peer) or "10000"
     if peer.get("host") and ingress_name and peer.get("host") == ingress_name:
@@ -296,13 +303,13 @@ def generate_caddyfile(desired: dict[str, Any]) -> str:
                 "		lb_try_interval 250ms",
             ]
         proxy.append("	}")
-        if s["key"] == "it-tools":
+        if s["key"] in PWA_APPS:
             lines += [
                 "	route {",
                 "		handle /sw.js {",
                 "			header Cache-Control no-store",
                 "			header Content-Type application/javascript",
-                f'			respond "{IT_TOOLS_SW}" 200',
+                f'			respond "{DISARM_SW}" 200',
                 "		}",
             ]
             if service_gated(desired, s):

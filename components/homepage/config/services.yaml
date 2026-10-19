@@ -67,7 +67,7 @@
             container: seerr
         - Adventure Log:
             id: adventurelog
-            href: https://travel.{{HOMEPAGE_VAR_DOMAIN}}
+            href: https://trips.{{HOMEPAGE_VAR_DOMAIN}}
             icon: /images/icons/adventurelog.svg
             description: Travel Logs
             server: mantle-pilot

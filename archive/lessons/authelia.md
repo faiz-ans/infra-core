@@ -24,9 +24,9 @@ On every gated site:
 
 Homepage is exempt from forward auth, so it does not get these headers. Vaultwarden client paths (`/api`, `/identity`, `/notifications`, `/icons`, `/events`) stay open and do not get them. The web vault does.
 
-## IT Tools
+## IT Tools and Scriberr
 
-IT Tools is a client-side app and installs a service worker (`/sw.js`). After one signed-in visit the worker serves the app from cache, including in a new tab. A hard refresh is the load that skips the worker.
+Both install a service worker (`/sw.js`). After one signed-in visit the worker serves the app from cache, including in a new tab. A hard refresh is the load that skips the worker. `Clear-Site-Data` does not remove the worker.
 
 Caddy answers `/sw.js` before Authelia with a worker that deletes those caches and does not answer fetches. The browser checks that URL on its own. The next visit goes through Authelia, then Sablier.
 

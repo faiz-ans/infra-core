@@ -276,17 +276,19 @@ def smart_mode(day: date) -> str | None:
     return "short"
 
 
-def surface_progress(seen_running: bool, token: str) -> tuple[bool, str]:
+def surface_progress(seen_running: bool, token: str, *, settled: bool = False) -> tuple[bool, str]:
     """Return the updated seen-running flag and wait, done, or error.
 
     done before the task has reported running is the previous test's token.
+    Once this run has had time to finish, done is this test: the controller
+    stops polling while the containers are down, so it can miss running.
     """
     word = (token or "").strip().split()[0] if token else "idle"
     if word == "running":
         return True, "wait"
     if word == "error":
         return seen_running, "error"
-    if word == "done" and seen_running:
+    if word == "done" and (seen_running or settled):
         return True, "done"
     return seen_running, "wait"
 
@@ -967,7 +969,11 @@ class Controller:
                 except Exception:
                     log.exception("Backrest restart failed")
             self._watch(now)
-        elif self.gate.phase == "off" and not self.hold.smart and now - self.last_reconcile >= timedelta(seconds=30):
+        elif self.hold.smart:
+            # Containers are already stopped, so the gate is off. Keep polling
+            # the self-test or the disk stays up until the 18 hour limit.
+            self._run_smart(now)
+        elif self.gate.phase == "off" and now - self.last_reconcile >= timedelta(seconds=30):
             self.last_reconcile = now
             self._reconcile_off()
 
@@ -1004,7 +1010,10 @@ class Controller:
             try:
                 if smart:
                     if self.gate.phase == "on":
-                        self.gate.ensure_off(lambda: self.stack.power_off(leave_disk=True, keep=self._held))
+                        # smart is already set. keep must be a page or a backup
+                        # window only, or this stop returns without stopping
+                        # Backrest and restic-rest.
+                        self.gate.ensure_off(lambda: self.stack.power_off(leave_disk=True, keep=self._visit))
                     self._run_smart(now)
                 else:
                     self.gate.ensure_off(lambda: self.stack.power_off(keep=self._held))
@@ -1017,6 +1026,10 @@ class Controller:
         with self.lock:
             self.hold.expire()
         log.info("idle timer expired")
+
+    def _visit(self) -> bool:
+        with self.lock:
+            return self.hold.wants_power()
 
     def _held(self) -> bool:
         with self.lock:
@@ -1082,6 +1095,14 @@ class Controller:
         log.info("IronWolf %s test started", mode)
 
     def _park_surface(self) -> None:
+        # The gate is off once the backup containers are supposed to be stopped.
+        # A later page visit can start them again while this test is still open,
+        # and disk off cannot disable a drive restic-rest still has mounted.
+        for stop in (lambda: self.remote.backrest("stop"), lambda: self.remote.restic("stop")):
+            try:
+                stop()
+            except Exception:
+                log.exception("stop before park failed")
         try:
             self.remote.collect_and_wait()
         except Exception:
@@ -1122,7 +1143,8 @@ class Controller:
             self.smart_started_at = now
             self.persist()
         token = self.remote.smart("status").strip().splitlines()[-1].strip()
-        seen, result = surface_progress(self.smart_seen, token)
+        settled = self.smart_started_at is not None and now - self.smart_started_at >= timedelta(seconds=45)
+        seen, result = surface_progress(self.smart_seen, token, settled=settled)
         if seen != self.smart_seen:
             self.smart_seen = seen
             self.persist()

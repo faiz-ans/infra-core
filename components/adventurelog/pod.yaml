@@ -34,15 +34,15 @@ spec:
     - name: TZ
       value: "${site.env.timezone}"
     - name: SITE_URL
-      value: "https://travel.${site.env.domain}"
+      value: "https://${service.public_host}"
     - name: PUBLIC_URL
-      value: "https://travel.${site.env.domain}"
+      value: "https://${service.public_host}"
     - name: FRONTEND_URL
-      value: "https://travel.${site.env.domain}"
+      value: "https://${service.public_host}"
     - name: ORIGIN
-      value: "https://travel.${site.env.domain}"
+      value: "https://${service.public_host}"
     - name: CSRF_TRUSTED_ORIGINS
-      value: "https://travel.${site.env.domain}"
+      value: "https://${service.public_host}"
     - name: POSTGRES_PASSWORD
       valueFrom:
         secretKeyRef:

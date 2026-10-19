@@ -127,12 +127,26 @@ Mirrored networking does not deliver a LAN TCP port into WSL unless a Hyper-V fi
 | Collabora | 9980 |
 | docker-proxy | 2375 |
 | Sablier | 10000 |
+| Adventure Log | 8015 |
+| Frigate | 8971 |
+| Home Assistant | 8123 |
+| Jellyfin | 8096 |
+| LibreTranslate | 5000 |
+| n8n | 5678 |
+| OpenReader | 3003 |
+| Prowlarr | 9696 |
+| qBittorrent | 8081 |
+| Radarr | 7878 |
+| Scriberr | 8085 |
+| Seerr | 5055 |
+| Sonarr | 8989 |
+| Transmute | 3313 |
 
-Elevated PowerShell. Use the same `VMCreatorId` as the existing WSL rules (`Get-NetFirewallHyperVRule`). If New-NetFirewallHyperVRule says the file already exists, enable that rule instead of creating it.
+Elevated PowerShell. `VMCreatorId` is the WSL VM that already has the open ports (`{40E0AC32-46A5-438A-A0B2-2B479E8F2E90}`). The first Hyper-V rule is not that id. If New-NetFirewallHyperVRule says the file already exists, enable that rule instead of creating it.
 
 ```powershell
-$wsl = (Get-NetFirewallHyperVRule | Select-Object -First 1 -ExpandProperty VMCreatorId)
-foreach ($port in 61208, 2283, 8088, 9980, 2375, 10000) {
+$wsl = "{40E0AC32-46A5-438A-A0B2-2B479E8F2E90}"
+foreach ($port in 61208, 2283, 8088, 9980, 2375, 10000, 8015, 8971, 8123, 8096, 5000, 5678, 3003, 9696, 8081, 7878, 8085, 5055, 8989, 3313) {
   $name = "WSL-TCP-$port"
   if (Get-NetFirewallHyperVRule -Name $name -ErrorAction SilentlyContinue) {
     Enable-NetFirewallHyperVRule -Name $name

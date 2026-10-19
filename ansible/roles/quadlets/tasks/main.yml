@@ -417,6 +417,52 @@
     - site_jotty_data is defined
     - site_here | selectattr('key', 'equalto', 'jotty') | list | length > 0
 
+# linuxserver drops to PUID after start. n8n and Seerr run as uid 1000.
+# Scriberr's image is uid 10001. In a rootless pod that uid is not the
+# workload user, so a directory owned by the host user is not writable.
+- name: App dirs written as a container uid
+  set_fact:
+    site_ns_appdata: "{{ ((site_plan.hosts | selectattr('name', 'equalto', site_host_name) | list | first).data.roots.appdata | default(site_plan.roots.appdata)) }}"
+    site_ns_owned:
+      - {key: jellyfin, rel: jellyfin}
+      - {key: sonarr, rel: arr/sonarr}
+      - {key: radarr, rel: arr/radarr}
+      - {key: prowlarr, rel: arr/prowlarr}
+      - {key: qbittorrent, rel: qbittorrent}
+      - {key: n8n, rel: n8n, uid: "1000"}
+      - {key: seerr, rel: seerr, uid: "1000"}
+      - {key: libretranslate, rel: libretranslate, uid: "1032"}
+      - {key: scriberr, rel: scriberr, uid: "10001"}
+      - {key: adventurelog, rel: adventurelog/postgres, uid: "999"}
+
+# These directories are owned by the workload user and group root. Group
+# root is outside that user's id map, so podman unshare chown is refused.
+# Root can assign the subordinate id the container uid maps to.
+- name: Those dirs are that uid inside the workload user namespace
+  become: true
+  args:
+    executable: /bin/bash
+  shell: |
+    set -euo pipefail
+    user="{{ site_user_of[item.key] }}"
+    cuid="{{ item.uid | default(site_wl_uids[site_user_of[item.key]]) }}"
+    start=$(awk -F: -v u="$user" '$1==u {print $2; exit}' /etc/subuid)
+    gstart=$(awk -F: -v u="$user" '$1==u {print $2; exit}' /etc/subgid)
+    if [ -z "$start" ] || [ -z "$gstart" ]; then
+      echo "no subordinate ids for $user" >&2
+      exit 1
+    fi
+    if [ "$cuid" = "0" ]; then
+      hostuid=$(id -u "$user")
+      hostgid=$(id -g "$user")
+    else
+      hostuid=$((start + cuid - 1))
+      hostgid=$((gstart + cuid - 1))
+    fi
+    chown -R "$hostuid:$hostgid" "{{ site_ns_appdata }}/{{ item.rel }}"
+  loop: "{{ site_ns_owned | selectattr('key', 'in', site_here | map(attribute='key') | list) | list }}"
+  when: site_here | selectattr('key', 'equalto', item.key) | list | length > 0
+
 - name: Rootless app data owned by the host root account
   set_fact:
     site_root_owned_appdata:
@@ -545,6 +591,15 @@
   loop: "{{ site_wl_users }}"
   when: site_touch | length > 0
 
+- name: Restart those apps so a wedged process sees the new owner
+  become: true
+  become_user: "{{ site_user_of[item.key] }}"
+  environment:
+    XDG_RUNTIME_DIR: "/run/user/{{ site_wl_uids[site_user_of[item.key]] }}"
+  command: systemctl --user restart {{ item.key }}.service
+  loop: "{{ site_ns_owned | selectattr('key', 'in', site_here | map(attribute='key') | list) | list }}"
+  when: site_here | selectattr('key', 'equalto', item.key) | list | length > 0
+
 - name: Restart OpenLDAP so it adopts the current admin password
   become: true
   become_user: "{{ (item.item | default({})).user }}"
@@ -640,6 +695,14 @@
   when:
     - site_linkding_data is defined
     - site_here | selectattr('key', 'equalto', 'linkding') | list | length > 0
+
+- name: Restart Home Assistant so the proxy config in its store is applied
+  become: true
+  become_user: "{{ site_user_of.homeassistant }}"
+  environment:
+    XDG_RUNTIME_DIR: "/run/user/{{ site_wl_uids[site_user_of.homeassistant] }}"
+  command: systemctl --user restart homeassistant.service
+  when: site_here | selectattr('key', 'equalto', 'homeassistant') | list | length > 0
 
 - name: Restart Jotty so it can write the signed-in user
   become: true

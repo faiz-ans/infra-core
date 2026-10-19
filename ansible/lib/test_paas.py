@@ -417,6 +417,9 @@ class TestExample(unittest.TestCase):
         placed = load_desired(EXAMPLE)
         placed["site"]["networking"]["ingress"]["plugins"] = ["sablier"]
         placed["site"]["hosts"][1]["operations"]["workload"]["users"][0]["services"]["sablier"] = None
+        placed["site"]["hosts"][1]["operations"]["workload"]["users"][0]["services"]["glances"] = [
+            {"name": "glances", "container": {"labels": {"sablier.enable": True}}}
+        ]
         self.assertEqual(validate_placement(placed), [])
         caddy = generate_caddyfile(placed)
         self.assertIn("order sablier before reverse_proxy", caddy)
@@ -445,8 +448,8 @@ class TestExample(unittest.TestCase):
         client = block.split("handle @bitwarden", 1)[1].split("handle {", 1)[0]
         ui = block.split("handle {", 1)[1]
         self.assertNotIn("authelia_gate", client)
-        self.assertIn("sablier_gate", client)
-        self.assertLess(ui.index("import authelia_gate"), ui.index("import sablier_gate"))
+        self.assertNotIn("sablier_gate", client)
+        self.assertNotIn("sablier_gate", ui)
         self.assertNotIn("no-store", client)
         self.assertNotIn("Clear-Site-Data", client)
         self.assertIn('header_down Cache-Control "private, no-store"', ui)
@@ -469,7 +472,7 @@ class TestExample(unittest.TestCase):
         self.assertNotIn("import authelia_gate", home)
         self.assertNotIn("no-store", home)
         self.assertNotIn("Clear-Site-Data", home)
-        self.assertIn('import sablier_gate http://127.0.0.1:10000 "homepage.service" homepage', home)
+        self.assertNotIn("sablier_gate", home)
         tools = load_desired(EXAMPLE)
         tools["site"]["networking"]["ingress"]["plugins"] = ["sablier"]
         tools["site"]["hosts"][0]["operations"]["workload"]["users"][0]["services"]["sablier"] = None
@@ -481,8 +484,12 @@ class TestExample(unittest.TestCase):
         self.assertNotIn("import authelia_gate", worker)
         self.assertNotIn("sablier_gate", worker)
         self.assertIn("caches.delete", worker)
-        self.assertLess(block.index("import authelia_gate"), block.index("import sablier_gate"))
+        self.assertNotIn("sablier_gate", block)
         self.assertIn('header_down Cache-Control "private, no-store"', block.split("import authelia_gate", 1)[1])
+        tools["site"]["hosts"][0]["operations"]["workload"]["users"][0]["services"]["scriberr"] = None
+        scribe = generate_caddyfile(tools).split("https://scriberr.example.lan {", 1)[1].split("\nhttps://", 1)[0]
+        self.assertIn("handle /sw.js", scribe)
+        self.assertLess(scribe.index("handle /sw.js"), scribe.index("import authelia_gate"))
 
     def test_cockpit_follows_admin_gui_host(self) -> None:
         absent = load_desired(EXAMPLE)

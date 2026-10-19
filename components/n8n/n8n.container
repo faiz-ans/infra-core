@@ -6,7 +6,6 @@ Image=docker.n8n.io/n8nio/n8n:latest
 ContainerName=n8n
 Network=site
 PublishPort=5678:5678
-Pull=always
 Environment=TZ=${site.env.timezone}
 Environment=GENERIC_TIMEZONE=${site.env.timezone}
 Environment=N8N_HOST=flow.${site.env.domain}
