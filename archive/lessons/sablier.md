@@ -6,7 +6,9 @@ Caddy `forward_auth` hits `/api/strategies/blocking?names=<unit>.service`. Block
 
 The name in that URL is the systemd unit (`linkding.service`), not the Podman container name. Quadlet starts containers with `--rm`. Stopping one deletes it. The Podman provider can only start a container that still exists, so the next visit returns `no such container`. The systemd provider runs `systemctl --user start`, and Quadlet creates the container again.
 
-Opt in from `site.yaml`. A single `.container` uses `container.labels`. A pod uses `pod.spec.containers[].labels` with `sablier.enable: true`. SET writes `[X-Sablier]` / `Enable=true` on the Quadlet file. Quadlet copies that section into the generated unit. The systemd provider will not start a unit without it. A Podman `Label=` does not count.
+Opt in from `site.yaml` with `autoscale.enabled: true` on the instance. SET writes `sablier.enable=true` on the container, or on every container in the pod, and `[X-Sablier]` / `Enable=true` on the Quadlet file. Quadlet copies that section into the generated unit. The systemd provider reads the section. A Podman `Label=` on its own does not start the unit.
+
+`autoscale.with` lists other instance names on that same host and workload user. A visit starts those units in this session. Each name is the instance `name`, so two copies of one service stay distinct. The other service's own route is unchanged.
 
 Sablier reads that unit file from the path systemd returns, `/run/user/<uid>/systemd/generator/<name>.service`. The container must mount that directory as well as the user bus socket. Without the mount, D-Bus answers and `stat` fails with `no such file or directory`. While that fails, Sablier never stops anything, so Homepage keeps showing Running. A container Quadlet already removed shows Not Found.
 

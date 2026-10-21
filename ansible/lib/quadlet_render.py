@@ -15,7 +15,13 @@ from typing import Any
 from .backup import backup_runner, backup_sources
 from .generate import inject_authelia_ldap_password
 from .integrate import apply_placed_integrations
-from .pod import apply_container_overlay, apply_pod_overlay, ensure_sablier_section, sablier_enabled
+from .pod import (
+    apply_container_overlay,
+    apply_pod_overlay,
+    ensure_sablier_section,
+    inject_sablier_pod_labels,
+    sablier_enabled,
+)
 from .quadlet import read_utf8, strip_yaml_text
 from .resolve import account_ids, bind, proxy_port, render
 from .secrets import SecretError
@@ -130,7 +136,16 @@ def populate_service(
             raise QuadletRenderError(f"{name}: {exc}") from exc
         units[0].write_text(rendered_unit, encoding="utf-8")
     if sablier_enabled(raw):
-        for unit in list(out.glob("*.container")) + list(out.glob("*.kube")):
+        for unit in list(out.glob("*.container")):
+            text = apply_container_overlay(
+                unit.read_text(encoding="utf-8"),
+                {"labels": {"sablier.enable": "true"}},
+            )
+            unit.write_text(ensure_sablier_section(text), encoding="utf-8")
+        pod_path = out / "pod.yaml"
+        if pod_path.is_file():
+            inject_sablier_pod_labels(pod_path)
+        for unit in list(out.glob("*.kube")):
             unit.write_text(ensure_sablier_section(unit.read_text(encoding="utf-8")), encoding="utf-8")
     assets = policy(desired)["portal_assets"]
     custom_caddy = bool(assets) or "sablier" in policy(desired)["plugins"]

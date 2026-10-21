@@ -705,6 +705,9 @@ def validate_ingress(desired: dict[str, Any]) -> list[str]:
         if host in seen_host:
             errors.append(f"host {host} lists sablier more than once")
         seen_host.add(host)
+    from .generate import autoscale_errors
+
+    errors.extend(autoscale_errors(desired))
     return errors
 
 

@@ -418,7 +418,10 @@ class TestExample(unittest.TestCase):
         placed["site"]["networking"]["ingress"]["plugins"] = ["sablier"]
         placed["site"]["hosts"][1]["operations"]["workload"]["users"][0]["services"]["sablier"] = None
         placed["site"]["hosts"][1]["operations"]["workload"]["users"][0]["services"]["glances"] = [
-            {"name": "glances", "container": {"labels": {"sablier.enable": True}}}
+            {"name": "glances", "autoscale": {"enabled": True, "with": ["tools"]}}
+        ]
+        placed["site"]["hosts"][1]["operations"]["workload"]["users"][0]["services"]["it-tools"] = [
+            {"name": "tools", "autoscale": {"enabled": True}}
         ]
         self.assertEqual(validate_placement(placed), [])
         caddy = generate_caddyfile(placed)
@@ -429,7 +432,38 @@ class TestExample(unittest.TestCase):
         self.assertIn("theme site", caddy)
         glances = caddy.split("https://glances.example.lan {", 1)[1].split("\nhttps://", 1)[0]
         self.assertLess(glances.index("import authelia_gate"), glances.index("import sablier_gate"))
-        self.assertIn('import sablier_gate http://10.0.0.11:10000 "glances.service" glances', glances)
+        self.assertIn('import sablier_gate http://10.0.0.11:10000 "glances.service it-tools.service" glances', glances)
+        tools_block = caddy.split("https://tools.example.lan {", 1)[1].split("\nhttps://", 1)[0]
+        self.assertIn('import sablier_gate http://10.0.0.11:10000 "it-tools.service" tools', tools_block)
+        missing_peer = load_desired(EXAMPLE)
+        missing_peer["site"]["networking"]["ingress"]["plugins"] = ["sablier"]
+        missing_peer["site"]["hosts"][1]["operations"]["workload"]["users"][0]["services"]["sablier"] = None
+        missing_peer["site"]["hosts"][1]["operations"]["workload"]["users"][0]["services"]["glances"] = [
+            {"name": "glances", "autoscale": {"enabled": True, "with": ["it-tools"]}}
+        ]
+        self.assertTrue(any("not an instance of this Sablier" in error for error in validate_placement(missing_peer)))
+        import tempfile
+
+        from .quadlet_render import populate_service
+
+        glances_svc = next(service for service in all_services(placed) if service.get("name") == "glances")
+        with tempfile.TemporaryDirectory() as tmp:
+            populate_service(Path(tmp) / "glances", placed, glances_svc, None, missing_secret="name")
+            unit = (Path(tmp) / "glances" / "glances.container").read_text(encoding="utf-8")
+        self.assertIn("Label=sablier.enable=true", unit)
+        self.assertIn("[X-Sablier]\nEnable=true\n", unit)
+        pod_site = load_desired(EXAMPLE)
+        pod_site["site"]["networking"]["ingress"]["plugins"] = ["sablier"]
+        pod_user = pod_site["site"]["hosts"][1]["operations"]["workload"]["users"][0]["services"]
+        pod_user["immich"] = [{"name": "immich", "autoscale": {"enabled": True}}]
+        pod_svc = next(service for service in all_services(pod_site) if service.get("name") == "immich")
+        with tempfile.TemporaryDirectory() as tmp:
+            populate_service(Path(tmp) / "immich", pod_site, pod_svc, None, missing_secret="name")
+            pod = (Path(tmp) / "immich" / "pod.yaml").read_text(encoding="utf-8")
+            kube = (Path(tmp) / "immich" / "immich.kube").read_text(encoding="utf-8")
+        self.assertIn("sablier.enable: 'true'", pod)
+        self.assertEqual(pod.count("sablier.enable"), 4)
+        self.assertIn("[X-Sablier]\nEnable=true\n", kube)
         self.assertIn("lb_try_duration 30s", glances)
         homepage = caddy.split("https://homepage.example.lan {", 1)[1].split("\nhttps://", 1)[0]
         self.assertNotIn("sablier_gate", homepage)
@@ -981,9 +1015,10 @@ container:
         self.assertEqual(pod["metadata"]["labels"]["app"], "rustdesk")
         from .pod import ensure_sablier_section, sablier_enabled
 
-        self.assertTrue(sablier_enabled({"container": {"labels": {"sablier.enable": True}}}))
-        self.assertTrue(sablier_enabled({"pod": {"spec": {"containers": [{"name": "hbbs", "labels": {"sablier.enable": "true"}}]}}}))
-        self.assertFalse(sablier_enabled({"container": {"labels": {"sablier.enable": False}}}))
+        self.assertTrue(sablier_enabled({"autoscale": {"enabled": True}}))
+        self.assertTrue(sablier_enabled({"autoscale": {"enabled": "true"}}))
+        self.assertFalse(sablier_enabled({"autoscale": {"enabled": False}}))
+        self.assertFalse(sablier_enabled({"container": {"labels": {"sablier.enable": True}}}))
         opted = ensure_sablier_section(base)
         self.assertIn("[X-Sablier]\nEnable=true\n", opted)
         self.assertEqual(ensure_sablier_section(opted), opted)

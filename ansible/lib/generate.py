@@ -169,6 +169,60 @@ def _deny_replay(proxy: list[str]) -> list[str]:
     return [*proxy[:-1], '\t\theader_down Cache-Control "private, no-store"', "\t}"]
 
 
+def autoscale_companions(desired: dict[str, Any], service: dict[str, Any]) -> list[str]:
+    """Units from other instances this visit should start.
+
+    ``autoscale.with`` names instances on this host and workload user, which is
+    the one Sablier that can see them. The service key is not a name: two
+    copies of a service have different instance names.
+    """
+    from .pod import sablier_enabled
+
+    raw = service.get("raw") or {}
+    if "autoscale" not in raw or raw.get("autoscale") is None:
+        return []
+    block = raw.get("autoscale")
+    name = str(service.get("name") or service.get("key") or "service")
+    if not isinstance(block, dict):
+        raise ValueError(f"{name} autoscale must be a mapping")
+    unknown = [key for key in block if key not in {"enabled", "with"}]
+    if unknown:
+        raise ValueError(f"{name} autoscale has unknown keys: {', '.join(sorted(unknown))}")
+    requested = block.get("with") or []
+    if not isinstance(requested, list) or any(not isinstance(item, str) or not item for item in requested):
+        raise ValueError(f"{name} autoscale.with must be a list of instance names")
+    if requested and not sablier_enabled(raw):
+        raise ValueError(f"{name} autoscale.with requires autoscale.enabled")
+    local = {
+        str(peer.get("name")): peer
+        for peer in all_services(desired)
+        if peer.get("host") == service.get("host") and peer.get("user") == service.get("user")
+    }
+    units: list[str] = []
+    for item in requested:
+        peer = local.get(item)
+        if peer is None:
+            raise ValueError(f"{name} autoscale.with {item} is not an instance of this Sablier")
+        if str(peer.get("name")) == name:
+            continue
+        if not sablier_enabled(peer.get("raw")):
+            raise ValueError(f"{name} autoscale.with {item} is not opted in")
+        for unit in _sablier_names(peer):
+            if unit not in units:
+                units.append(unit)
+    return units
+
+
+def autoscale_errors(desired: dict[str, Any]) -> list[str]:
+    errors: list[str] = []
+    for service in all_services(desired):
+        try:
+            autoscale_companions(desired, service)
+        except ValueError as exc:
+            errors.append(str(exc))
+    return errors
+
+
 def sablier_import(desired: dict[str, Any], service: dict[str, Any], ingress_name: str | None) -> str | None:
     """Ask Sablier to wake this container after authentication and before the upstream.
 
@@ -178,9 +232,12 @@ def sablier_import(desired: dict[str, Any], service: dict[str, Any], ingress_nam
     from .pod import sablier_enabled
 
     peer = _sablier_peer(desired, service)
-    names = _sablier_names(service)
+    names = list(_sablier_names(service))
     if not peer or not names or not sablier_enabled(service.get("raw")):
         return None
+    for unit in autoscale_companions(desired, service):
+        if unit not in names:
+            names.append(unit)
     port = web_port(peer) or "10000"
     if peer.get("host") and ingress_name and peer.get("host") == ingress_name:
         address = f"127.0.0.1:{port}"

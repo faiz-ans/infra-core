@@ -107,18 +107,27 @@ def _sablier_flag(value: Any) -> bool:
 
 def sablier_enabled(raw: dict[str, Any] | None) -> bool:
     """True when site.yaml opted this instance into Sablier."""
-    raw = raw or {}
-    labels = ((raw.get("container") or {}).get("labels") or {})
-    if isinstance(labels, dict) and _sablier_flag(labels.get("sablier.enable")):
-        return True
-    containers = (((raw.get("pod") or {}).get("spec") or {}).get("containers") or [])
-    for item in containers:
-        if not isinstance(item, dict):
-            continue
-        pod_labels = item.get("labels") or {}
-        if isinstance(pod_labels, dict) and _sablier_flag(pod_labels.get("sablier.enable")):
-            return True
-    return False
+    block = (raw or {}).get("autoscale")
+    if not isinstance(block, dict):
+        return False
+    return _sablier_flag(block.get("enabled"))
+
+
+def inject_sablier_pod_labels(path: Path) -> None:
+    """Mark every container in a rendered pod so the opt-in is visible on the spec."""
+    base = yaml.safe_load(path.read_text(encoding="utf-8")) or {}
+    if not isinstance(base, dict):
+        raise ValueError(f"{path} is not a Pod mapping")
+    containers = ((base.get("spec") or {}).get("containers") or [])
+    overlay = [
+        {"name": item["name"], "labels": {"sablier.enable": "true"}}
+        for item in containers
+        if isinstance(item, dict) and item.get("name")
+    ]
+    if not overlay:
+        return
+    merged = merge_pod(base, {"spec": {"containers": overlay}})
+    path.write_text(yaml.safe_dump(merged, sort_keys=False), encoding="utf-8")
 
 
 def ensure_sablier_section(text: str) -> str:

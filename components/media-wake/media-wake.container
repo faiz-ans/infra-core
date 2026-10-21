@@ -1,0 +1,20 @@
+[Unit]
+Description=media-wake
+
+[Container]
+Image=docker.io/library/python:3.13-alpine
+ContainerName=media-wake
+Network=site
+Pull=missing
+Exec=python3 -u /media-wake.py
+Environment=TZ=${site.env.timezone}
+Environment=PYTHONUNBUFFERED=1
+Volume=${component.dir}/media-wake.py:/media-wake.py:ro
+Volume=${host.data.roots.appdata}/media-wake:/var/lib/media-wake
+
+[Service]
+Restart=on-failure
+RestartSec=5
+
+[Install]
+WantedBy=default.target
