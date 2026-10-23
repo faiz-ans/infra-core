@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Hold Sablier sessions for a Seerr grab, then for the import, then for seeding.
+"""Hold Sablier sessions for a Seerr grab, the import, seeding, and library scans.
 
 Seerr's Radarr server URL is http://media-wake:7878 and its Sonarr server URL is
 http://media-wake:8989. A request Seerr sends here asks Sablier to start the
@@ -12,14 +12,34 @@ while it still needs the unit. When it stops refreshing, the unit stops after
 that session unless a browser visit is still refreshing it. A direct systemctl
 start is not a session, and this Sablier stops those.
 
-qBittorrent's WebUI login is not in the site secrets. Write two lines to
+After Radarr or Sonarr imports a file, this process starts Jellyfin, asks it to
+scan the library, then holds Jellyfin and Seerr for ten more minutes so Seerr's
+every-five-minutes recently-added job can see the new item.
+
+At 2:55 in the container timezone it starts the whole media stack. Seerr and
+Jellyfin stay up through Seerr's 3:00 full library scan. The other apps stay up
+until 3:10. At 4:55 it starts Seerr and Jellyfin again for the 5:00 media
+availability sync. Both clocks are Seerr's, which uses the same timezone.
+
+qBittorrent stops a torrent on its own share limits. This process keeps that
+container's session up while the torrent is still downloading or seeding, and
+lets the session end once qBittorrent reports the torrent stopped.
+
+qBittorrent's WebUI login is not in the site secrets. Write it to
 /var/lib/media-wake/qbit.env:
 
     QBIT_USERNAME=admin
     QBIT_PASSWORD=the-webui-password
 
-Until that file exists, a grabbed torrent keeps qBittorrent's session up,
-because the ratio cannot be read.
+Jellyfin's library scan and Seerr's job status need their own keys, in the
+same directory:
+
+    /var/lib/media-wake/jellyfin.env    JELLYFIN_API_KEY=...
+    /var/lib/media-wake/seerr.env       SEERR_API_KEY=...
+
+The Seerr key has to belong to an admin user. Settings jobs are admin-only.
+Until the qBittorrent file exists, a grabbed torrent keeps that session up,
+because the torrent state cannot be read.
 """
 
 from __future__ import annotations
@@ -31,19 +51,32 @@ import time
 import urllib.error
 import urllib.parse
 import urllib.request
+from datetime import datetime, timedelta, timezone
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from typing import Any
+from zoneinfo import ZoneInfo
 
 SABLIER = os.environ.get("SABLIER_URL", "http://sablier:10000").rstrip("/")
 SESSION = os.environ.get("SESSION_DURATION", "5m")
 SABLIER_TIMEOUT = os.environ.get("SABLIER_TIMEOUT", "3m")
 STATE_PATH = os.environ.get("STATE_PATH", "/var/lib/media-wake/state.json")
 QBIT_ENV = os.environ.get("QBIT_ENV", "/var/lib/media-wake/qbit.env")
+JELLYFIN_ENV = os.environ.get("JELLYFIN_ENV", "/var/lib/media-wake/jellyfin.env")
+SEERR_ENV = os.environ.get("SEERR_ENV", "/var/lib/media-wake/seerr.env")
 QUIET_S = float(os.environ.get("QUIET_SECONDS", "30"))
 IMPORT_TIMEOUT_S = float(os.environ.get("IMPORT_TIMEOUT_SECONDS", "600"))
+PUBLISH_HOLD_S = float(os.environ.get("PUBLISH_HOLD_SECONDS", "600"))
+SCAN_TIMEOUT_S = float(os.environ.get("SCAN_TIMEOUT_SECONDS", "1800"))
 REFRESH_S = float(os.environ.get("REFRESH_SECONDS", "50"))
 LOOP_S = float(os.environ.get("LOOP_SECONDS", "15"))
-RATIO = float(os.environ.get("SEED_RATIO", "1.0"))
+# 2:55 starts the stack. The download apps drop at 3:10. Seerr's full scan is
+# 3:00 and its availability sync is 5:00; those two hold Seerr and Jellyfin
+# until the job has finished, and no later than the ceiling if it never starts.
+FULL_START = 2 * 60 + 55
+REST_END = 3 * 60 + 10
+FULL_CEILING = 4 * 60
+AVAIL_START = 4 * 60 + 55
+AVAIL_CEILING = 6 * 60
 
 UNITS = {
     "radarr": "radarr.service",
@@ -51,6 +84,8 @@ UNITS = {
     "prowlarr": "prowlarr.service",
     "flaresolverr": "flaresolverr.service",
     "qbittorrent": "qbittorrent.service",
+    "jellyfin": "jellyfin.service",
+    "seerr": "seerr.service",
 }
 UPSTREAM = {
     "radarr": os.environ.get("RADARR_URL", "http://radarr:7878"),
@@ -63,9 +98,21 @@ PING = {
     "prowlarr": "http://prowlarr:9696/ping",
     "flaresolverr": "http://flaresolverr:8191/",
     "qbittorrent": "http://qbittorrent:8081/api/v2/app/version",
+    "jellyfin": "http://jellyfin:8096/health",
+    "seerr": "http://seerr:5055/api/v1/status",
 }
 # Started with Prowlarr for a search, and released when that grab window ends.
 SEARCH = {"prowlarr", "flaresolverr", "qbittorrent"}
+# Held from 2:55 until 3:10, apart from Seerr and Jellyfin which follow the scans.
+NIGHT_REST = {"radarr", "sonarr", "prowlarr", "flaresolverr", "qbittorrent"}
+WATCH = {"jellyfin", "seerr"}
+JELLYFIN = os.environ.get("JELLYFIN_URL", "http://jellyfin:8096").rstrip("/")
+SEERR = os.environ.get("SEERR_URL", "http://seerr:5055").rstrip("/")
+# Seerr job id, clock hour, clock minute, hold ceiling.
+NIGHT_JOBS = (
+    ("full", "jellyfin-full-scan", 3, 0, FULL_START, FULL_CEILING),
+    ("avail", "availability-sync", 5, 0, AVAIL_START, AVAIL_CEILING),
+)
 API = {
     "radarr": "http://radarr:7878/api/v3",
     "sonarr": "http://sonarr:8989/api/v3",
@@ -118,16 +165,183 @@ def wake_targets(method: str, path: str, app: str) -> set[str]:
     return {app}
 
 
-def torrent_working(state: str, progress: float, ratio: float) -> bool:
-    """True while this torrent is downloading, or seeding and still under the ratio.
+def torrent_working(state: str, progress: float) -> bool:
+    """True while qBittorrent itself still has this torrent running.
 
-    Paused and stopped torrents are the user's. They do not keep qBittorrent up.
+    qBittorrent's share limits stop the torrent. A paused or stopped torrent
+    does not keep the container up. Stopping the container while the torrent
+    is still seeding would resume it on the next start.
     """
     if state in {"pausedDL", "pausedUP", "stoppedDL", "stoppedUP", "error", "missingFiles"}:
         return False
     if progress < 0.999:
         return state in DOWNLOADING
-    return ratio < RATIO and state in SEEDING
+    return state in SEEDING
+
+
+_ZONE: ZoneInfo | timezone | None = None
+
+
+def zone() -> ZoneInfo | timezone:
+    global _ZONE
+    if _ZONE is not None:
+        return _ZONE
+    name = os.environ.get("TZ") or "America/Los_Angeles"
+    try:
+        _ZONE = ZoneInfo(name)
+    except Exception:
+        log(f"timezone {name} is not installed; clock windows are using UTC")
+        _ZONE = timezone.utc
+    return _ZONE
+
+
+def parse_time(value: str) -> datetime | None:
+    text = str(value or "").strip().replace("Z", "+00:00")
+    if not text:
+        return None
+    try:
+        parsed = datetime.fromisoformat(text)
+    except ValueError:
+        return None
+    if parsed.tzinfo is None:
+        parsed = parsed.replace(tzinfo=timezone.utc)
+    return parsed
+
+
+def library_scan_done(tasks: list[dict[str, Any]], started: float) -> bool:
+    """True once Jellyfin's library scan has gone idle after this request."""
+    task = None
+    for item in tasks:
+        name = str(item.get("Name") or "")
+        key = str(item.get("Key") or "")
+        if name == "Scan Media Library" or "RefreshMediaLibrary" in key:
+            task = item
+            break
+    if not task or str(task.get("State") or "") != "Idle":
+        return False
+    result = task.get("LastExecutionResult") or {}
+    end = parse_time(str(result.get("EndTimeUtc") or ""))
+    if end is None:
+        return False
+    return end.timestamp() >= started - 2
+
+
+class Night:
+    """Seerr's two overnight jobs, and the download apps that share the 2:55 start."""
+
+    def __init__(self) -> None:
+        self.tracks: dict[str, dict[str, Any]] = {name: self._fresh(None) for name, *_rest in NIGHT_JOBS}
+
+    @staticmethod
+    def _fresh(day: Any) -> dict[str, Any]:
+        return {
+            "day": day,
+            "due": None,
+            "done_on": None,
+            "running": False,
+            "saw_running": False,
+            "triggered": False,
+            "triggered_at": 0.0,
+            "armed_poll": False,
+            "needs_run": False,
+        }
+
+    def _roll(self, name: str, today: Any) -> dict[str, Any]:
+        track = self.tracks[name]
+        if track["day"] != today:
+            done_on = track["done_on"]
+            track.clear()
+            track.update(self._fresh(today))
+            track["done_on"] = done_on
+        return track
+
+    def observe(self, now: datetime, jobs: list[dict[str, Any]]) -> None:
+        local = now.astimezone(zone())
+        today = local.date()
+        by_id = {str(item.get("id") or ""): item for item in jobs if isinstance(item, dict)}
+        for name, job_id, hour, minute, _start, _ceiling in NIGHT_JOBS:
+            self._observe_one(local, today, by_id.get(job_id), name, hour, minute)
+
+    def _observe_one(
+        self,
+        local: datetime,
+        today: Any,
+        job: dict[str, Any] | None,
+        name: str,
+        hour: int,
+        minute: int,
+    ) -> None:
+        track = self._roll(name, today)
+        if track["done_on"] == today:
+            track["running"] = False
+            track["needs_run"] = False
+            return
+        if job is None:
+            track["running"] = False
+            return
+        slot = local.replace(hour=hour, minute=minute, second=0, microsecond=0)
+        running = bool(job and job.get("running"))
+        nxt = parse_time(str((job or {}).get("nextExecutionTime") or ""))
+        track["needs_run"] = False
+        if local < slot:
+            if nxt is not None:
+                track["due"] = nxt
+            track["running"] = False
+            return
+        if running:
+            track["saw_running"] = True
+            track["running"] = True
+            return
+        track["running"] = False
+        due = track["due"]
+        if isinstance(due, datetime) and nxt is not None and nxt > due:
+            track["done_on"] = today
+            return
+        if track["triggered"]:
+            waited = time.time() - float(track["triggered_at"] or 0)
+            if track["saw_running"] or (track["armed_poll"] and waited >= 20):
+                track["done_on"] = today
+                return
+            track["armed_poll"] = True
+            return
+        if track["saw_running"]:
+            track["done_on"] = today
+            return
+        if local >= slot + timedelta(minutes=2):
+            track["needs_run"] = True
+
+    def pending_triggers(self) -> list[tuple[str, str]]:
+        """(seerr job id, track name) for a clock job that was missed."""
+        pending = []
+        for name, job_id, *_rest in NIGHT_JOBS:
+            if self.tracks[name]["needs_run"]:
+                pending.append((job_id, name))
+        return pending
+
+    def mark_triggered(self, name: str) -> None:
+        track = self.tracks[name]
+        track["triggered"] = True
+        track["triggered_at"] = time.time()
+        track["armed_poll"] = False
+        track["needs_run"] = False
+
+    def wants_poll(self, now: datetime) -> bool:
+        if self.units(now) & WATCH:
+            return True
+        return any(track["running"] or track["needs_run"] or track["triggered"] for track in self.tracks.values())
+
+    def units(self, now: datetime) -> set[str]:
+        local = now.astimezone(zone())
+        minutes = local.hour * 60 + local.minute
+        today = local.date()
+        units: set[str] = set()
+        if FULL_START <= minutes < REST_END:
+            units.update(NIGHT_REST)
+        for name, _job_id, _hour, _minute, start, ceiling in NIGHT_JOBS:
+            track = self._roll(name, today)
+            if track["running"] or (start <= minutes < ceiling and track["done_on"] != today):
+                units.update(WATCH)
+        return units
 
 
 def decide(snap: dict[str, Any]) -> set[str]:
@@ -172,6 +386,9 @@ class Gate:
         self.held: set[str] = set()
         self.refreshed: dict[str, float] = {}
         self.status_cache: dict[str, bytes] = {}
+        self.publish_phase = ""
+        self.publish_until = 0.0
+        self.scan_started = 0.0
         self._load()
 
     def _load(self) -> None:
@@ -195,11 +412,24 @@ class Gate:
                         "seen": bool(job.get("seen")),
                         "complete_at": float(job.get("complete_at") or 0),
                     }
+        phase = str(raw.get("publish_phase") or "")
+        if phase in {"scan", "hold"}:
+            self.publish_phase = phase
+            self.publish_until = float(raw.get("publish_until") or 0)
+            self.scan_started = float(raw.get("scan_started") or 0)
+            if phase == "hold" and time.time() >= self.publish_until:
+                self.publish_phase = ""
 
     def save(self) -> None:
         parent = os.path.dirname(STATE_PATH)
         os.makedirs(parent, exist_ok=True)
-        payload = {"keys": self.keys, "jobs": self.jobs}
+        payload = {
+            "keys": self.keys,
+            "jobs": self.jobs,
+            "publish_phase": self.publish_phase,
+            "publish_until": self.publish_until,
+            "scan_started": self.scan_started,
+        }
         tmp = STATE_PATH + ".tmp"
         with open(tmp, "w", encoding="utf-8") as handle:
             json.dump(payload, handle)
@@ -277,7 +507,7 @@ class Gate:
                 )
                 job["app"] = app
                 if state == "imported" or history.get(download_id) == "downloadFolderImported":
-                    job["imported"] = True
+                    self._imported(job, download_id)
                 if state in {"failed", "failedPending"} or status == "failed" or history.get(download_id) == "downloadFailed":
                     job["failed"] = True
                 if job["complete"] and job["complete_at"] and not job["imported"] and not job["failed"]:
@@ -289,7 +519,7 @@ class Gate:
                     continue
                 event = history.get(download_id)
                 if event == "downloadFolderImported":
-                    job["imported"] = True
+                    self._imported(job, download_id)
                 elif event == "downloadFailed":
                     job["failed"] = True
             if (
@@ -300,6 +530,27 @@ class Gate:
             ):
                 self.grab_apps.clear()
             self.save()
+
+    def _imported(self, job: dict[str, Any], download_id: str) -> None:
+        """An import just landed. Scan Jellyfin once the file is on disk."""
+        if job["imported"]:
+            return
+        job["imported"] = True
+        self.publish_phase = "scan"
+        self.scan_started = 0.0
+        log(f"{job['app']} imported {download_id}; scanning the Jellyfin library")
+
+    def publish_units(self) -> set[str]:
+        with self.lock:
+            if self.publish_phase == "scan":
+                return {"jellyfin"}
+            if self.publish_phase == "hold" and time.time() < self.publish_until:
+                return {"jellyfin", "seerr"}
+            if self.publish_phase == "hold":
+                self.publish_phase = ""
+                self.save()
+                log("jellyfin and seerr publish window ended")
+            return set()
 
     def note_torrents(self, torrents: list[dict[str, Any]] | None) -> None:
         now = time.time()
@@ -316,11 +567,8 @@ class Gate:
             for item in torrents:
                 download_id = str(item.get("hash") or "").lower()
                 progress = float(item.get("progress") or 0)
-                ratio = float(item.get("ratio") or 0)
                 state = str(item.get("state") or "")
-                if ratio < 0:
-                    ratio = RATIO
-                working = torrent_working(state, progress, ratio)
+                working = torrent_working(state, progress)
                 if download_id and download_id not in known and working:
                     foreign = True
                 job = self.jobs.get(download_id)
@@ -333,9 +581,7 @@ class Gate:
                     job["complete"] = True
                     job["complete_at"] = now
                     log(f"{job['app']} torrent {download_id} finished downloading")
-                job["seeding"] = working and ratio < RATIO and not job["failed"]
-                if not working and ratio >= RATIO:
-                    job["seeding"] = False
+                job["seeding"] = working
             for download_id, job in self.jobs.items():
                 if download_id not in present and job.get("seen"):
                     job["seeding"] = False
@@ -361,22 +607,25 @@ class Gate:
 GATE = Gate()
 
 
-def qbit_login() -> tuple[str, str]:
-    username = os.environ.get("QBIT_USERNAME", "")
-    password = os.environ.get("QBIT_PASSWORD", "")
+def read_env(path: str) -> dict[str, str]:
+    found: dict[str, str] = {}
     try:
-        with open(QBIT_ENV, encoding="utf-8") as handle:
+        with open(path, encoding="utf-8") as handle:
             for line in handle:
                 line = line.strip()
                 if not line or line.startswith("#") or "=" not in line:
                     continue
                 key, value = line.split("=", 1)
-                if key.strip() == "QBIT_USERNAME" and not username:
-                    username = value.strip()
-                elif key.strip() == "QBIT_PASSWORD" and not password:
-                    password = value.strip()
+                found[key.strip()] = value.strip()
     except OSError:
-        pass
+        return {}
+    return found
+
+
+def qbit_login() -> tuple[str, str]:
+    file_env = read_env(QBIT_ENV)
+    username = os.environ.get("QBIT_USERNAME", "") or file_env.get("QBIT_USERNAME", "")
+    password = os.environ.get("QBIT_PASSWORD", "") or file_env.get("QBIT_PASSWORD", "")
     return username, password
 
 
@@ -497,11 +746,9 @@ def arr_records(app: str) -> tuple[list[dict[str, Any]], dict[str, str]] | None:
     return list(records or []), by_id
 
 
-def qbit_torrents() -> list[dict[str, Any]] | None:
+def qbit_cookie() -> str | None:
     username, password = qbit_login()
-    if not username:
-        return None
-    if not ping("qbittorrent"):
+    if not username or not ping("qbittorrent"):
         return None
     form = urllib.parse.urlencode({"username": username, "password": password}).encode()
     try:
@@ -511,8 +758,18 @@ def qbit_torrents() -> list[dict[str, Any]] | None:
             headers={"Content-Type": "application/x-www-form-urlencoded", "Referer": f"{QBIT}/"},
         )
         with urllib.request.urlopen(request, timeout=20) as response:
-            cookie = response.headers.get("Set-Cookie", "")
-        info = urllib.request.Request(f"{QBIT}/api/v2/torrents/info", headers={"Cookie": cookie.split(";", 1)[0]})
+            return response.headers.get("Set-Cookie", "").split(";", 1)[0]
+    except (OSError, urllib.error.URLError) as exc:
+        log(f"qbit: {exc}")
+        return None
+
+
+def qbit_torrents() -> list[dict[str, Any]] | None:
+    cookie = qbit_cookie()
+    if not cookie:
+        return None
+    try:
+        info = urllib.request.Request(f"{QBIT}/api/v2/torrents/info", headers={"Cookie": cookie})
         with urllib.request.urlopen(info, timeout=20) as response:
             payload = json.loads(response.read().decode("utf-8"))
     except (OSError, urllib.error.URLError, json.JSONDecodeError) as exc:
@@ -521,17 +778,161 @@ def qbit_torrents() -> list[dict[str, Any]] | None:
     return list(payload) if isinstance(payload, list) else None
 
 
+def jellyfin_key() -> str:
+    return os.environ.get("JELLYFIN_API_KEY", "") or read_env(JELLYFIN_ENV).get("JELLYFIN_API_KEY", "")
+
+
+def seerr_key() -> str:
+    return os.environ.get("SEERR_API_KEY", "") or read_env(SEERR_ENV).get("SEERR_API_KEY", "")
+
+
+def jellyfin_headers() -> dict[str, str] | None:
+    key = jellyfin_key()
+    if not key:
+        return None
+    return {"Authorization": f'MediaBrowser Token="{key}"'}
+
+
+_TASK_ERROR = [""]
+_SCAN_ERROR = [""]
+_SEERR_ERROR = [""]
+
+
+def log_once(slot: list[str], message: str) -> None:
+    if slot[0] == message:
+        return
+    slot[0] = message
+    log(message)
+
+
+def jellyfin_tasks() -> list[dict[str, Any]] | None:
+    headers = jellyfin_headers()
+    if not headers or not ping("jellyfin"):
+        return None
+    try:
+        payload = http_json(f"{JELLYFIN}/ScheduledTasks", headers)
+    except (OSError, urllib.error.URLError, json.JSONDecodeError) as exc:
+        log_once(_TASK_ERROR, f"jellyfin tasks: {exc}")
+        return None
+    _TASK_ERROR[0] = ""
+    return list(payload) if isinstance(payload, list) else None
+
+
+def start_library_scan() -> bool:
+    headers = jellyfin_headers()
+    if not headers:
+        return False
+    request = urllib.request.Request(f"{JELLYFIN}/Library/Refresh", data=b"", headers=headers, method="POST")
+    try:
+        with urllib.request.urlopen(request, timeout=20) as response:
+            response.read()
+            ok = 200 <= response.status < 300
+    except (OSError, urllib.error.URLError) as exc:
+        log_once(_SCAN_ERROR, f"jellyfin scan: {exc}")
+        return False
+    if ok:
+        _SCAN_ERROR[0] = ""
+    return ok
+
+
+def seerr_jobs() -> list[dict[str, Any]] | None:
+    key = seerr_key()
+    if not key or not ping("seerr"):
+        return None
+    try:
+        payload = http_json(f"{SEERR}/api/v1/settings/jobs", {"X-Api-Key": key})
+    except (OSError, urllib.error.URLError, json.JSONDecodeError) as exc:
+        log_once(_SEERR_ERROR, f"seerr jobs: {exc}")
+        return None
+    _SEERR_ERROR[0] = ""
+    return list(payload) if isinstance(payload, list) else None
+
+
+def seerr_run(job_id: str) -> bool:
+    key = seerr_key()
+    if not key:
+        return False
+    request = urllib.request.Request(
+        f"{SEERR}/api/v1/settings/jobs/{job_id}/run",
+        data=b"",
+        headers={"X-Api-Key": key},
+        method="POST",
+    )
+    try:
+        with urllib.request.urlopen(request, timeout=20) as response:
+            response.read()
+            log(f"started Seerr job {job_id}")
+            return 200 <= response.status < 300
+    except (OSError, urllib.error.URLError) as exc:
+        log(f"seerr job {job_id}: {exc}")
+        return False
+
+
+def advance_publish(missing_key_logged: list[bool]) -> bool:
+    """Move an import from the Jellyfin scan to the ten minute Seerr hold."""
+    with GATE.lock:
+        phase = GATE.publish_phase
+        started = GATE.scan_started
+    if phase != "scan":
+        return False
+    if not ping("jellyfin"):
+        return False
+    if not jellyfin_key():
+        if not missing_key_logged[0]:
+            log(f"no Jellyfin api key in {JELLYFIN_ENV}; holding Jellyfin and Seerr without a scan")
+            missing_key_logged[0] = True
+        _begin_publish_hold()
+        return True
+    if not started:
+        if start_library_scan():
+            with GATE.lock:
+                GATE.scan_started = time.time()
+                GATE.save()
+            log("asked Jellyfin to scan the library")
+        return False
+    tasks = jellyfin_tasks()
+    if tasks is not None and library_scan_done(tasks, started):
+        log("jellyfin library scan finished; holding jellyfin and seerr for 10 minutes")
+        _begin_publish_hold()
+        return True
+    if time.time() - started > SCAN_TIMEOUT_S:
+        log("jellyfin library scan timed out; holding jellyfin and seerr for 10 minutes")
+        _begin_publish_hold()
+        return True
+    return False
+
+
+def _begin_publish_hold() -> None:
+    with GATE.lock:
+        GATE.publish_phase = "hold"
+        GATE.publish_until = time.time() + PUBLISH_HOLD_S
+        GATE.save()
+
+
 def supervise() -> None:
     missing_logged = False
+    jellyfin_key_logged = [False]
+    seerr_key_logged = False
+    night = Night()
     while True:
         username, _password = qbit_login()
         if not username and not missing_logged:
-            log(f"no qBittorrent login in {QBIT_ENV}; seeded ratio cannot be read, so qBittorrent stays up after a grab")
+            log(f"no qBittorrent login in {QBIT_ENV}; torrent state cannot be read, so qBittorrent stays up after a grab")
             missing_logged = True
         if username:
             missing_logged = False
-        snap = GATE.snapshot()
-        units = decide(snap)
+        now = datetime.now(zone())
+        if night.wants_poll(now):
+            if not seerr_key() and not seerr_key_logged:
+                log(f"no Seerr api key in {SEERR_ENV}; overnight scans stay up until their clock ceiling")
+                seerr_key_logged = True
+            found = seerr_jobs()
+            if found is not None:
+                night.observe(now, found)
+                for job_id, name in night.pending_triggers():
+                    if seerr_run(job_id):
+                        night.mark_triggered(name)
+        units = decide(GATE.snapshot()) | GATE.publish_units() | night.units(now)
         if units != GATE.held:
             log(f"holding {', '.join(sorted(units)) or 'nothing'}")
             GATE.held = set(units)
@@ -544,7 +945,21 @@ def supervise() -> None:
             if scanned is not None:
                 GATE.note_jobs(app, scanned[0], scanned[1])
         if "qbittorrent" in units or GATE.jobs:
-            GATE.note_torrents(qbit_torrents() if username else None)
+            torrents = qbit_torrents() if username else None
+            GATE.note_torrents(torrents)
+        added = (decide(GATE.snapshot()) | GATE.publish_units() | night.units(now)) - units
+        if added:
+            units |= added
+            refresh(added)
+            log(f"holding {', '.join(sorted(units))}")
+            GATE.held = set(units)
+        if advance_publish(jellyfin_key_logged):
+            extra = GATE.publish_units()
+            refresh(extra)
+            merged = GATE.held | extra
+            if merged != GATE.held:
+                log(f"holding {', '.join(sorted(merged)) or 'nothing'}")
+                GATE.held = merged
         time.sleep(LOOP_S)
 
 
@@ -654,6 +1069,7 @@ def serve() -> None:
 
 
 def _self_test() -> None:
+    import tempfile
     assert wakes("POST", "/api/v3/movie")
     assert wakes("GET", "/api/v3/qualityprofile")
     assert wakes("GET", "/api/v3/movie/lookup?term=foo")
@@ -710,11 +1126,114 @@ def _self_test() -> None:
     )
     assert decide(paused) == set()
 
-    assert torrent_working("downloading", 0.4, 0.0)
-    assert torrent_working("stalledUP", 1.0, 0.2)
-    assert not torrent_working("stalledUP", 1.0, 1.0)
-    assert not torrent_working("pausedUP", 1.0, 0.2)
-    assert not torrent_working("stoppedDL", 0.4, 0.0)
+    assert torrent_working("downloading", 0.4)
+    assert torrent_working("stalledUP", 1.0)
+    assert torrent_working("uploading", 1.0)
+    assert not torrent_working("pausedUP", 1.0)
+    assert not torrent_working("stoppedDL", 0.4)
+    assert not torrent_working("stoppedUP", 1.0)
+
+    started = datetime(2026, 10, 21, 2, 0, tzinfo=timezone.utc).timestamp()
+    assert not library_scan_done(
+        [{"Name": "Scan Media Library", "State": "Running", "LastExecutionResult": None}],
+        started,
+    )
+    assert library_scan_done(
+        [
+            {
+                "Name": "Scan Media Library",
+                "State": "Idle",
+                "LastExecutionResult": {"EndTimeUtc": "2026-10-21T02:05:00.0000000Z"},
+            }
+        ],
+        started,
+    )
+    assert not library_scan_done(
+        [
+            {
+                "Name": "Scan Media Library",
+                "State": "Idle",
+                "LastExecutionResult": {"EndTimeUtc": "2026-10-21T01:00:00.0000000Z"},
+            }
+        ],
+        started,
+    )
+
+    la = ZoneInfo("America/Los_Angeles")
+
+    def at(hour: int, minute: int) -> datetime:
+        return datetime(2026, 10, 21, hour, minute, tzinfo=la)
+
+    night = Night()
+    assert night.units(at(2, 54)) == set()
+    assert night.units(at(2, 55)) == NIGHT_REST | WATCH
+    night.observe(
+        at(2, 56),
+        [{"id": "jellyfin-full-scan", "running": False, "nextExecutionTime": "2026-10-21T10:00:00.000Z"}],
+    )
+    night.observe(
+        at(3, 5),
+        [{"id": "jellyfin-full-scan", "running": False, "nextExecutionTime": "2026-10-22T10:00:00.000Z"}],
+    )
+    assert night.units(at(3, 5)) == NIGHT_REST
+    assert night.units(at(3, 10)) == set()
+
+    long_scan = Night()
+    long_scan.observe(
+        at(2, 56),
+        [{"id": "jellyfin-full-scan", "running": False, "nextExecutionTime": "2026-10-21T10:00:00.000Z"}],
+    )
+    long_scan.observe(
+        at(4, 30),
+        [{"id": "jellyfin-full-scan", "running": True, "nextExecutionTime": "2026-10-22T10:00:00.000Z"}],
+    )
+    assert WATCH <= long_scan.units(at(4, 30))
+    long_scan.observe(
+        at(4, 31),
+        [{"id": "jellyfin-full-scan", "running": False, "nextExecutionTime": "2026-10-22T10:00:00.000Z"}],
+    )
+    assert long_scan.units(at(4, 31)) == set()
+
+    missed = Night()
+    missed.observe(
+        at(3, 3),
+        [{"id": "jellyfin-full-scan", "running": False, "nextExecutionTime": "2026-10-22T10:00:00.000Z"}],
+    )
+    assert missed.pending_triggers() == [("jellyfin-full-scan", "full")]
+    missed.mark_triggered("full")
+    missed.observe(
+        at(3, 4),
+        [{"id": "jellyfin-full-scan", "running": True, "nextExecutionTime": "2026-10-22T10:00:00.000Z"}],
+    )
+    assert WATCH <= missed.units(at(3, 4))
+    missed.observe(
+        at(3, 5),
+        [{"id": "jellyfin-full-scan", "running": False, "nextExecutionTime": "2026-10-22T10:00:00.000Z"}],
+    )
+    assert "seerr" not in missed.units(at(3, 5))
+
+    avail = Night()
+    avail.observe(
+        at(4, 56),
+        [{"id": "availability-sync", "running": False, "nextExecutionTime": "2026-10-21T12:00:00.000Z"}],
+    )
+    assert avail.units(at(4, 56)) == WATCH
+    avail.observe(
+        at(5, 5),
+        [{"id": "availability-sync", "running": False, "nextExecutionTime": "2026-10-22T12:00:00.000Z"}],
+    )
+    assert avail.units(at(5, 5)) == set()
+    assert avail.units(at(14, 0)) == set()
+
+    global STATE_PATH
+    STATE_PATH = os.path.join(tempfile.mkdtemp(), "state.json")
+    gate = Gate()
+    gate.note_jobs("radarr", [{"downloadId": "abc", "trackedDownloadState": "importing", "status": "completed"}], {})
+    assert gate.publish_phase == ""
+    gate.note_jobs("radarr", [{"downloadId": "abc", "trackedDownloadState": "imported", "status": "completed"}], {})
+    assert gate.publish_phase == "scan"
+    gate.note_jobs("radarr", [{"downloadId": "abc", "trackedDownloadState": "imported", "status": "completed"}], {})
+    assert gate.publish_phase == "scan"
     print("ok")
 
 

@@ -6,7 +6,9 @@ Image=docker.io/library/python:3.13-alpine
 ContainerName=media-wake
 Network=site
 Pull=missing
-Exec=python3 -u /media-wake.py
+Exec=sh /start.sh
+Volume=${component.dir}/start.sh:/start.sh:ro
+Volume=/usr/share/zoneinfo:/usr/share/zoneinfo:ro
 Environment=TZ=${site.env.timezone}
 Environment=PYTHONUNBUFFERED=1
 Volume=${component.dir}/media-wake.py:/media-wake.py:ro

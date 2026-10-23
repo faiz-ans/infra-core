@@ -166,7 +166,7 @@
             # Cleartext /ping 301s onto Cockpit's certificate. Homepage follows that and reports 500.
             siteMonitor: https://{{HOMEPAGE_VAR_HOST_LOOPBACK}}:9090/ping
             icon: /images/icons/cockpit.svg
-            description: Operations
+            description: System
         - OpenLDAP:
             href: https://users.{{HOMEPAGE_VAR_DOMAIN}}
             icon: /images/icons/openldap.svg
@@ -179,6 +179,12 @@
             description: Authentication
             server: core-pilot
             container: authelia
+        - What's Up Docker:
+            href: https://update.{{HOMEPAGE_VAR_DOMAIN}}
+            icon: /images/icons/wud.svg
+            description: Updates
+            server: core-pilot
+            container: wud
         - Backrest:
             href: https://backup.{{HOMEPAGE_VAR_DOMAIN}}
             icon: /images/icons/backrest.svg
@@ -193,24 +199,8 @@
                     - num_success_30
                     - num_failure_30
                     - bytes_added_30
-        - What's Up Docker:
-            href: https://update.{{HOMEPAGE_VAR_DOMAIN}}
-            icon: /images/icons/wud.svg
-            description: Updates
-            server: core-pilot
-            container: wud
 
     - Network:
-        - Linksys EA8300:
-            href: https://wifi.{{HOMEPAGE_VAR_DOMAIN}}
-            siteMonitor: https://{{HOMEPAGE_VAR_ROUTER_LAN_IP}}/
-            icon: /images/icons/linksys.svg
-            description: Router
-        - WireGuard:
-            href: https://vpn.{{HOMEPAGE_VAR_DOMAIN}}
-            icon: /images/icons/wireguard.svg
-            description: VPN
-            siteMonitor: http://{{HOMEPAGE_VAR_HOST_LOOPBACK}}:51821/
         - Pi-hole:
             href: https://dns.{{HOMEPAGE_VAR_DOMAIN}}/admin
             icon: /images/icons/pi-hole.svg
@@ -227,7 +217,6 @@
                   - blocked_percent
                   - gravity
         - Caddy:
-            href: https://ingress.{{HOMEPAGE_VAR_DOMAIN}}
             icon: /images/icons/caddy.svg
             description: Reverse Proxy
             server: core-pilot
@@ -235,13 +224,23 @@
             widget:
                 type: caddy
                 url: http://{{HOMEPAGE_VAR_HOST_LOOPBACK}}:2019
+        - WireGuard:
+            href: https://vpn.{{HOMEPAGE_VAR_DOMAIN}}
+            icon: /images/icons/wireguard.svg
+            description: VPN
+            siteMonitor: http://{{HOMEPAGE_VAR_HOST_LOOPBACK}}:51821/
+        - Linksys EA8300:
+            href: https://wifi.{{HOMEPAGE_VAR_DOMAIN}}
+            siteMonitor: https://{{HOMEPAGE_VAR_ROUTER_LAN_IP}}/
+            icon: /images/icons/linksys.svg
+            description: Router
        #- HP LaserJet M29w:
        #     href: https://print.{{HOMEPAGE_VAR_DOMAIN}}
        #     siteMonitor: https://{{HOMEPAGE_VAR_PRINTER_LAN_IP}}/
        #     icon: hp.svg
        #     description: Printer
 
-    - Telemetry:
+    - Observability:
         - Grafana:
             href: https://site.{{HOMEPAGE_VAR_DOMAIN}}
             icon: /images/icons/grafana.svg
@@ -260,6 +259,12 @@
             description: Logs
             server: core-pilot
             container: victorialogs
+        - VictoriaTraces:
+            href: https://traces.{{HOMEPAGE_VAR_DOMAIN}}
+            icon: /images/icons/victoriatraces.svg
+            description: Traces
+            server: core-pilot
+            container: victoriatraces
         - Peanut:
             href: https://ups.{{HOMEPAGE_VAR_DOMAIN}}
             icon: /images/icons/peanut.svg
