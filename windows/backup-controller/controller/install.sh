@@ -11,6 +11,7 @@ key="${HOME}/.ssh/backup_mantle"
 
 mkdir -p "$dest" "$unit_dir" "${HOME}/.ssh"
 install -m 755 "$src/backup_controller.py" "$dest/backup_controller.py"
+install -m 644 "$src/background.jpg" "$dest/background.jpg"
 install -m 755 "$src/backup-remote" "$dest/backup-remote"
 install -m 644 "$src/backup-disk.ps1" "$dest/backup-disk.ps1"
 install -m 644 "$src/backup-disk.vbs" "$dest/backup-disk.vbs"

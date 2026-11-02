@@ -6,6 +6,7 @@ from __future__ import annotations
 import json
 import os
 import subprocess
+import time
 from unittest.mock import patch
 import tempfile
 import threading
@@ -480,6 +481,186 @@ class ProxyTests(unittest.TestCase):
         quiet.close()
         self.assertEqual(other.status, 200)
         self.assertEqual(controller.hold.last_activity, stamp)
+
+
+def front_of(controller: bc.Controller) -> tuple[ThreadingHTTPServer, int]:
+    front = ThreadingHTTPServer(("127.0.0.1", 0), type("H", (bc.Handler,), {"controller": controller}))
+    thread = threading.Thread(target=front.serve_forever, daemon=True)
+    thread.start()
+    return front, front.server_address[1]
+
+
+class WaitingPageTests(unittest.TestCase):
+    def test_a_document_load_returns_before_the_stack_is_up(self) -> None:
+        remote = Recorder()
+        controller = bc.Controller(remote)  # type: ignore[arg-type]
+        started = threading.Event()
+        release = threading.Event()
+
+        def slow() -> None:
+            started.set()
+            self.assertTrue(release.wait(5))
+
+        controller._on = slow  # type: ignore[method-assign]
+        front, port = front_of(controller)
+        self.addCleanup(front.shutdown)
+        self.addCleanup(front.server_close)
+
+        conn = HTTPConnection("127.0.0.1", port, timeout=5)
+        conn.request(
+            "GET",
+            "/",
+            headers={
+                "Host": "backup.home.lan",
+                "Accept": "text/html",
+                "Sec-Fetch-Dest": "document",
+                "Sec-Fetch-Mode": "navigate",
+            },
+        )
+        resp = conn.getresponse()
+        body = resp.read()
+        conn.close()
+        self.assertEqual(resp.status, 200)
+        self.assertIn("text/html", resp.getheader("Content-Type") or "")
+        self.assertIn("no-store", resp.getheader("Cache-Control") or "")
+        self.assertIn(b"Starting...", body)
+        self.assertIn(b"Backrest", body)
+        self.assertIn(b"data:image/jpeg;base64,", body)
+        self.assertIn(b"X-Backup-Status", body)
+        self.assertTrue(started.wait(2))
+        self.assertEqual(controller.gate.phase, "starting")
+        self.assertTrue(controller.hold.interactive)
+
+        poll = HTTPConnection("127.0.0.1", port, timeout=5)
+        poll.request("GET", "/", headers={"Host": "backup.home.lan", "X-Backup-Status": "1"})
+        waiting = poll.getresponse()
+        self.assertEqual(json.loads(waiting.read()), {"ready": False})
+        poll.close()
+        self.assertEqual(controller.gate.phase, "starting")
+
+        release.set()
+        deadline = time.monotonic() + 2
+        while controller.gate.phase != "on" and time.monotonic() < deadline:
+            time.sleep(0.01)
+        self.assertEqual(controller.gate.phase, "on")
+
+    def test_a_failed_start_is_not_retried_by_the_poll(self) -> None:
+        remote = Recorder()
+        controller = bc.Controller(remote)  # type: ignore[arg-type]
+        calls = 0
+
+        def fail() -> None:
+            nonlocal calls
+            calls += 1
+            raise TimeoutError("D: stayed pending, wanted ready")
+
+        controller._on = fail  # type: ignore[method-assign]
+        front, port = front_of(controller)
+        self.addCleanup(front.shutdown)
+        self.addCleanup(front.server_close)
+
+        page = HTTPConnection("127.0.0.1", port, timeout=5)
+        page.request("GET", "/", headers={"Host": "backup.home.lan", "Accept": "text/html"})
+        self.assertEqual(page.getresponse().status, 200)
+        page.close()
+        deadline = time.monotonic() + 2
+        while controller.gate.phase != "off" and time.monotonic() < deadline:
+            time.sleep(0.01)
+        self.assertIsInstance(controller.gate.error, TimeoutError)
+
+        poll = HTTPConnection("127.0.0.1", port, timeout=5)
+        poll.request("GET", "/", headers={"Host": "backup.home.lan", "X-Backup-Status": "1"})
+        failed = poll.getresponse()
+        detail = failed.read()
+        poll.close()
+        self.assertEqual(failed.status, 503)
+        self.assertIn(b"D: stayed pending", detail)
+        self.assertEqual(calls, 1)
+        self.assertEqual(controller.gate.phase, "off")
+
+        again = HTTPConnection("127.0.0.1", port, timeout=5)
+        again.request("GET", "/", headers={"Host": "backup.home.lan", "Accept": "text/html"})
+        self.assertEqual(again.getresponse().status, 200)
+        again.close()
+        deadline = time.monotonic() + 2
+        while calls < 2 and time.monotonic() < deadline:
+            time.sleep(0.01)
+        self.assertEqual(calls, 2)
+
+    def test_an_api_call_waits_instead_of_receiving_the_page(self) -> None:
+        body = b'{"ok":true}'
+
+        class Backend(BaseHTTPRequestHandler):
+            def do_POST(self) -> None:  # noqa: N802
+                length = int(self.headers.get("Content-Length", "0"))
+                self.rfile.read(length)
+                self.send_response(200)
+                self.send_header("Content-Type", "application/json")
+                self.send_header("Content-Length", str(len(body)))
+                self.end_headers()
+                self.wfile.write(body)
+
+            def log_message(self, fmt: str, *args: object) -> None:
+                return
+
+        backend = ThreadingHTTPServer(("127.0.0.1", 0), Backend)
+        threading.Thread(target=backend.serve_forever, daemon=True).start()
+        self.addCleanup(backend.shutdown)
+        self.addCleanup(backend.server_close)
+        remote = Recorder()
+        controller = bc.Controller(remote)  # type: ignore[arg-type]
+        release = threading.Event()
+        started = threading.Event()
+
+        def slow() -> None:
+            started.set()
+            self.assertTrue(release.wait(5))
+
+        controller._on = slow  # type: ignore[method-assign]
+        previous = bc.UPSTREAM_PORT
+        bc.UPSTREAM_PORT = backend.server_address[1]
+        self.addCleanup(setattr, bc, "UPSTREAM_PORT", previous)
+        front, port = front_of(controller)
+        self.addCleanup(front.shutdown)
+        self.addCleanup(front.server_close)
+
+        other = HTTPConnection("127.0.0.1", port, timeout=5)
+        other.request(
+            "GET",
+            "/",
+            headers={"Host": "169.254.1.2:9898", "Accept": "text/html", "Sec-Fetch-Dest": "document"},
+        )
+        refused = other.getresponse()
+        refused.read()
+        other.close()
+        self.assertEqual(refused.status, 503)
+        self.assertEqual(controller.gate.phase, "off")
+
+        done = threading.Event()
+        result: dict[str, int] = {}
+
+        def post() -> None:
+            conn = HTTPConnection("127.0.0.1", port, timeout=5)
+            conn.request(
+                "POST",
+                "/v1.Backrest/GetConfig",
+                b"{}",
+                {"Host": "backup.home.lan", "Accept": "text/html", "Content-Type": "application/json"},
+            )
+            resp = conn.getresponse()
+            result["status"] = resp.status
+            result["body"] = resp.read()
+            conn.close()
+            done.set()
+
+        threading.Thread(target=post, daemon=True).start()
+        self.assertTrue(started.wait(2))
+        self.assertFalse(done.is_set())
+        self.assertEqual(controller.gate.phase, "starting")
+        release.set()
+        self.assertTrue(done.wait(2))
+        self.assertEqual(result["status"], 200)
+        self.assertEqual(result["body"], body)
 
 
 if __name__ == "__main__":

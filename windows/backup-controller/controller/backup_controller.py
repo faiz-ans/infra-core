@@ -13,8 +13,10 @@ Sunday prune is 01:00. Both come from Backrest's config once it is up; the
 seed schedule is the fallback. The seed writes that schedule only when
 config.json is created. An existing Backrest config keeps its own crons
 until they are changed in the UI. A browser request wakes the same three
-parts. They turn off again after BACKUP_IDLE_MINUTES with no browser traffic
-and no Backrest operation still running. A running operation finishes first,
+parts. A document load gets a waiting page and reloads when the API is up.
+Anything else waits on that start, then is proxied. They turn off again
+after BACKUP_IDLE_MINUTES with no browser traffic and no Backrest operation
+still running. A running operation finishes first,
 and the idle period starts at that finish. SIGUSR1 ends that idle period
 immediately so the next pass stops the stack. It does not cancel a
 scheduled backup window.
@@ -35,6 +37,7 @@ and collect / collect status.
 
 from __future__ import annotations
 
+import base64
 import json
 import logging
 import os
@@ -124,6 +127,176 @@ DEFAULT_JOBS = (
 SMART_SCRIPT = Path(os.environ.get("BACKUP_SMART", "/usr/local/sbin/backup-smart"))
 SMART_LIMIT = timedelta(hours=int(os.environ.get("BACKUP_SMART_LIMIT_HOURS", "18")))
 COLLECT_LIMIT = timedelta(minutes=int(os.environ.get("BACKUP_COLLECT_MINUTES", "15")))
+# Homepage's Backrest mark. The waiting page is served by this process, so the
+# icon cannot be a URL of an app that is still starting.
+BACKREST_MARK = (
+    '<svg class="logo" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" aria-hidden="true">'
+    '<path d="M511.7 196.3c-1.1-10.2-4.6-18.4-10.6-24.6-6-6.1-14.2-10.2-24.6-12.1-3.7-.7-8.2-1.3'
+    "-13.4-1.7h-59.9c-.1 0-.1-.1-.2-.1h-76.9c0 .1-.1.1-.2.1h-26.8l-.1.1h-1.1c-.2 0-.4 0-.6-.1-.1"
+    " 0-.2 0-.4-.1h-5.4c-.2 0-.4.1-.5.1h-.1c0 .1-.1.1-.1.2-.1.2-.2.4-.2.6 0 .1-.1.1-.1.1-2.3 4.8"
+    "-4.6 9.6-6.8 14.4-4.9 8.2-7.9 17.6-12.4 25.9-10.6 22.5-21.3 45-31.9 67.4L195 360.4c-4.9-8-9.8"
+    "-16-14.8-24.1-6.4-10.5-12.8-21-19.3-31.4-7.4-12-14.8-24.1-22.1-36.1-4-6.5-10.8-11.1-18.1-12.8"
+    "-7.6-1.8-15.7-.4-22.3 3.8-2.2 1.4-4.3 3.2-6 5.1-3.6 2.4-6.6 5.5-8.8 9.2-.2.3-.4.6-.6 1-6.2 10.5"
+    "-12.4 21-18.5 31.5-6.5 11-12.9 21.9-19.4 32.9-6.5 11.1-13 22.1-19.5 33.2L4.3 409c-4 6.8-5.3 14.9"
+    "-3.3 22.5 1.9 7.3 6.7 13.8 13.2 17.7 4.6 2.8 9.9 4.2 15.2 4.2 2.5 0 4.9-.3 7.3-.9 7.3-1.9 13.9"
+    "-6.7 17.7-13.2.4-.6.8-1.3 1.1-1.9 6.9-11.8 13.8-23.5 20.8-35.3 6.4-10.8 12.8-21.7 19.1-32.5 5.9"
+    "-10.1 11.9-20.2 17.8-30.3.4.7.8 1.4 1.3 2 6.6 10.8 13.2 21.5 19.8 32.2s13.1 21.4 19.7 32.1c6.4"
+    " 10.5 12.9 21 19.3 31.5 4 6.5 10.8 11.1 18.1 12.8 1.6.4 3.2.6 4.9.7v.1h73.4c37.5-.3 61.4-.9 71.7"
+    "-2 16.4-1.7 31.8-6.4 46-13.9s27.4-17.6 39.6-30.3c12.2-12.6 21.4-25.6 27.8-39 8.1-17 10.3-31.7"
+    " 6.8-44.3q-5.25-18.75-28.2-26.7c15.3-5.7 29.3-14.4 42.1-25.9s22.5-24.1 29-37.9c5.9-12.7 8.3-24.2"
+    " 7.2-34.4M395.2 362.6c-4.9 10.4-11.7 18.7-20.1 25-8.4 6.2-17.4 10.1-26.9 11.7q-9.45 1.8-41.1"
+    " 1.8h-54.3l37.4-78.6h47.4c26.7 0 43.4 1.4 50 4.2 6.7 2.8 10.6 7.3 12 13.4 1.3 6.2-.2 13.6-4.4"
+    " 22.5m48-123.5c-4.5 9.5-11 17.1-19.5 23-8.5 5.8-18.1 9.3-28.7 10.5-5.9.7-20.2 1-43.1 1h-38.5"
+    "l32.3-67.9h33.7c27.6 0 44.2.3 49.7 1 9.2 1.2 14.9 4.6 17.2 10.3 2.3 5.6 1.2 13-3.1 22.1M318.1"
+    " 133.7c-8.2-8.2-12.9-19.5-12.9-31.1s4.7-22.9 12.9-31.1 19.5-12.9 31.1-12.9 22.9 4.7 31.1 12.9"
+    " 12.9 19.5 12.9 31.1-4.7 22.9-12.9 31.1-19.5 12.9-31.1 12.9c-11.7-.1-22.9-4.7-31.1-12.9M196.2"
+    " 241.5c0 .2-.1 3.7-.4 3.7H90.5c-.1 0-.2-.3-.2-.6-2.8-.3-5.3-1.8-7-3.9-.2.1-.3.2-.4.2-12.6-20.6"
+    "-25.2-41.2-37.7-61.8-5.4-8.8-10.7-17.6-16.1-26.3-1.2-1 .6-2 1.2-2.5 3.6-3.1 10.7-8.6 14.6-10.6"
+    " 2.4 3.9 4.8 7.9 7.2 11.8 14.9 24.4 29.8 48.8 44.7 73.3h99c.3 0 .3 2.3.3 2.4.3 4.7.3 9.5.1 14.3"
+    '"/></svg>'
+)
+
+
+def _background_uri() -> str:
+    """Homepage's photo, the same file Sablier copies into its waiting theme.
+
+    Inlined because a relative URL would be fetched from Backrest, which is
+    the app this page is waiting on.
+    """
+    path = Path(__file__).with_name("background.jpg")
+    if not path.is_file():
+        return ""
+    payload = base64.b64encode(path.read_bytes()).decode("ascii")
+    return f"data:image/jpeg;base64,{payload}"
+
+
+_BACKGROUND_URI = _background_uri()
+_BACKGROUND_IMG = f'<img class="bg" src="{_BACKGROUND_URI}" alt="">' if _BACKGROUND_URI else ""
+WAITING_PAGE = f"""<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="color-scheme" content="dark">
+  <title>Starting...</title>
+  <style>
+    html, body {{ height: 100%; margin: 0; overflow: hidden; }}
+    body {{
+      color: #fff;
+      font-family: Manrope, Manrope-Fallback, Arial, sans-serif;
+      background: #1e293b;
+      display: flex;
+      flex-direction: column;
+    }}
+    .bg {{
+      position: fixed;
+      inset: 0;
+      width: 100%;
+      height: 100%;
+      object-fit: cover;
+      z-index: 0;
+    }}
+    .veil {{
+      position: fixed;
+      inset: 0;
+      z-index: 1;
+      pointer-events: none;
+      background: linear-gradient(rgb(30 41 59 / 0.13), rgb(30 41 59 / 0.13));
+      backdrop-filter: brightness(0.5);
+    }}
+    .header-bar, .footer-bar {{ position: relative; z-index: 2; flex: 0 0 auto; padding: 2rem; }}
+    .footer-bar {{ height: 24px; margin-bottom: 1rem; }}
+    main {{
+      position: relative;
+      z-index: 2;
+      flex: 1 1 auto;
+      min-height: 0;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      text-align: center;
+    }}
+    .card {{
+      width: 100%;
+      max-width: 444px;
+      min-height: 28.725rem;
+      margin-block: auto;
+      padding: 0 32px;
+      box-sizing: border-box;
+      display: flex;
+      flex-direction: column;
+    }}
+    .logo {{ display: block; width: 4rem; height: 4rem; margin: 0.5rem auto; }}
+    .service-name {{
+      margin: 0;
+      padding: 0.5rem 0 2rem 0;
+      font-size: 1.75rem;
+      font-weight: 800;
+      line-height: 1.1;
+      letter-spacing: -0.03em;
+    }}
+    .service-status {{ flex: 1 1 auto; }}
+    h1 {{ margin: 0; font-size: 1.5rem; font-weight: 400; line-height: 1.334; padding-bottom: 0.7rem; }}
+    .spin {{
+      width: 7rem;
+      height: 7rem;
+      margin: 1rem auto 0;
+      border-radius: 50%;
+      border: 2px solid rgb(255 255 255 / 0.35);
+      border-top-color: #fff;
+      animation: turn 0.8s linear infinite;
+    }}
+    @keyframes turn {{ to {{ transform: rotate(360deg); }} }}
+  </style>
+</head>
+<body>
+  {_BACKGROUND_IMG}
+  <div class="veil"></div>
+  <div class="header-bar"></div>
+  <main>
+    <div class="card">
+      <div class="service-logo">{BACKREST_MARK}</div>
+      <div class="service-name">Backrest</div>
+      <div class="service-status">
+        <h1>Starting...</h1>
+        <div class="spin" aria-hidden="true"></div>
+      </div>
+    </div>
+  </main>
+  <div class="footer-bar"></div>
+  <script>
+    const status = document.querySelector("h1");
+    const spin = document.querySelector(".spin");
+    async function poll() {{
+      try {{
+        const res = await fetch(location.href, {{
+          headers: {{ "X-Backup-Status": "1", "Accept": "application/json" }},
+          cache: "no-store",
+        }});
+        if (res.status === 503) {{
+          status.textContent = (await res.text()) || "Backrest did not start";
+          spin.remove();
+          return;
+        }}
+        const type = res.headers.get("content-type") || "";
+        if (type.includes("application/json")) {{
+          const data = await res.json();
+          if (data && data.ready === false) {{
+            setTimeout(poll, 2000);
+            return;
+          }}
+        }}
+      }} catch (e) {{
+        setTimeout(poll, 2000);
+        return;
+      }}
+      location.reload();
+    }}
+    poll();
+  </script>
+</body>
+</html>
+"""
 HOP = {
     "connection",
     "keep-alive",
@@ -434,6 +607,19 @@ class Hold:
         return self.interactive or self.cron
 
 
+def document_navigation(headers: Message | dict[str, str]) -> bool:
+    """A browser loading the page, not an API call or a subresource.
+
+    Sec-Fetch-Dest and Sec-Fetch-Mode are set by the browser. A client without
+    them is a document load only when it asks for HTML.
+    """
+    dest = str(headers.get("Sec-Fetch-Dest") or "").lower()
+    mode = str(headers.get("Sec-Fetch-Mode") or "").lower()
+    if dest or mode:
+        return dest == "document" or mode == "navigate"
+    return "text/html" in str(headers.get("Accept") or "").lower()
+
+
 def request_wakes(headers: Message | dict[str, str]) -> bool:
     getter = headers.get
     for key in ("X-Forwarded-Host", "Host"):
@@ -556,6 +742,31 @@ class Gate:
             self.phase = "on"
             self.error = None
             self.cv.notify_all()
+
+    def begin(self, start: Callable[[], None]) -> None:
+        """Start the stack in the background. A start already underway is left alone."""
+        with self.cv:
+            if self.phase != "off":
+                return
+            self.phase = "starting"
+            self.error = None
+
+        def run() -> None:
+            try:
+                start()
+            except Exception as exc:
+                log.exception("power on failed")
+                with self.cv:
+                    self.phase = "off"
+                    self.error = exc
+                    self.cv.notify_all()
+                return
+            with self.cv:
+                self.phase = "on"
+                self.error = None
+                self.cv.notify_all()
+
+        threading.Thread(target=run, name="backup-start", daemon=True).start()
 
     def ensure_off(self, stop: Callable[[], None]) -> None:
         with self.cv:
@@ -1157,25 +1368,74 @@ class Controller:
         self._park_surface()
 
     def handle(self, handler: BaseHTTPRequestHandler) -> None:
-        if request_wakes(handler.headers):
+        waking = request_wakes(handler.headers)
+        if waking:
             with self.lock:
                 self.hold.browser(self.now())
+        if handler.command == "GET" and handler.headers.get("X-Backup-Status") == "1":
+            self.answer_wait(handler, waking)
+            return
+        # The page returns immediately. API calls still block in ensure_on so
+        # they are not served the HTML, and they share this same start.
+        if waking and handler.command in ("GET", "HEAD") and document_navigation(handler.headers):
+            if self.gate.phase != "on":
+                self.gate.begin(self._on)
+                send_waiting_page(handler)
+                return
+        elif not waking and self.gate.phase != "on":
+            handler.send_error(503, "Backrest is off")
+            return
+        if waking:
             try:
                 self.gate.ensure_on(self._on)
             except Exception as exc:
                 handler.send_error(503, explain(exc))
                 return
-        elif self.gate.phase != "on":
-            handler.send_error(503, "Backrest is off")
-            return
         if handler.path.rstrip("/").endswith("/Backup"):
             self.refresh_read_access()
         proxy(handler, UPSTREAM_PORT)
+
+    def answer_wait(self, handler: BaseHTTPRequestHandler, waking: bool) -> None:
+        """Tell the waiting page whether to keep polling. Do not start after a failure.
+
+        A failed start stays failed until the next document load. The page's
+        own poll would otherwise turn the disk on again every two seconds.
+        """
+        with self.gate.cv:
+            phase = self.gate.phase
+            error = self.gate.error
+        if phase == "on":
+            proxy(handler, UPSTREAM_PORT)
+            return
+        if not waking:
+            handler.send_error(503, "Backrest is off")
+            return
+        if phase == "off" and error is not None:
+            send_bytes(handler, 503, "text/plain; charset=utf-8", explain(error).encode())
+            return
+        if phase == "off":
+            self.gate.begin(self._on)
+        send_bytes(handler, 200, "application/json", b'{"ready":false}')
 
 
 def explain(exc: BaseException) -> str:
     text = str(exc).strip() or exc.__class__.__name__
     return text.splitlines()[0][:200]
+
+
+def send_bytes(handler: BaseHTTPRequestHandler, status: int, content_type: str, body: bytes) -> None:
+    handler.send_response(status)
+    handler.send_header("Content-Type", content_type)
+    handler.send_header("Content-Length", str(len(body)))
+    handler.send_header("Cache-Control", "private, no-store")
+    handler.send_header("Connection", "close")
+    handler.end_headers()
+    if handler.command != "HEAD":
+        handler.wfile.write(body)
+
+
+def send_waiting_page(handler: BaseHTTPRequestHandler) -> None:
+    send_bytes(handler, 200, "text/html; charset=utf-8", WAITING_PAGE.encode())
 
 
 def proxy(handler: BaseHTTPRequestHandler, port: int) -> None:
@@ -1253,6 +1513,8 @@ class Handler(BaseHTTPRequestHandler):
     do_OPTIONS = do_GET
 
     def log_message(self, fmt: str, *args: Any) -> None:
+        if self.headers.get("X-Backup-Status"):
+            return
         log.info("%s - %s", self.address_string(), fmt % args)
 
 
